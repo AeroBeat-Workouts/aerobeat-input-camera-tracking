@@ -208,6 +208,12 @@ func _is_process_alive(pid: int) -> bool:
 
 func _check_and_start() -> bool:
 	_emit_progress(0, "Starting sidecar runtime validation...")
+	var camera_source_validation := _validate_camera_source_override()
+	if not bool(camera_source_validation.get("ok", false)):
+		var camera_source_message := String(camera_source_validation.get("message", "Invalid camera source override"))
+		_emit_progress(0, camera_source_message)
+		emit_signal("server_failed", camera_source_message)
+		return false
 	if not check_python_installed():
 		return false
 	if not check_mediapipe_installed():
@@ -316,6 +322,17 @@ func _get_camera_source_override() -> String:
 	if not env_override.is_empty():
 		return env_override
 	return "0"
+
+func _validate_camera_source_override() -> Dictionary:
+	var camera_source := _get_camera_source_override()
+	if camera_source.is_empty() or camera_source == "0" or camera_source.is_valid_int():
+		return {"ok": true}
+	if FileAccess.file_exists(camera_source):
+		return {"ok": true}
+	return {
+		"ok": false,
+		"message": "Configured prerecorded camera source does not exist: %s" % camera_source,
+	}
 
 func get_active_camera_source() -> String:
 	return _get_camera_source_override()
