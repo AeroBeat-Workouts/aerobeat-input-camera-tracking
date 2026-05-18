@@ -160,11 +160,42 @@ def main() -> int:
 
 def _install_requirements(*, runtime_root: Path, platform_key: str) -> None:
     python_executable = get_runtime_python_path(platform_key=platform_key, runtime_root=runtime_root)
+    _ensure_runtime_pip_available(python_executable)
     requirements_path = Path(__file__).resolve().parent / "requirements.txt"
     subprocess.run(
         [str(python_executable), "-m", "pip", "install", "-r", str(requirements_path)],
         check=True,
     )
+
+
+
+def _ensure_runtime_pip_available(python_executable: Path) -> None:
+    if _runtime_pip_available(python_executable):
+        return
+
+    subprocess.run(
+        [str(python_executable), "-m", "ensurepip", "--upgrade"],
+        check=True,
+    )
+
+    if _runtime_pip_available(python_executable):
+        return
+
+    raise SystemExit(
+        "Runtime-local venv exists but pip is unavailable even after 'python -m ensurepip --upgrade'. "
+        "Recreate the runtime venv with '--force' and try again."
+    )
+
+
+
+def _runtime_pip_available(python_executable: Path) -> bool:
+    result = subprocess.run(
+        [str(python_executable), "-m", "pip", "--version"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
 
 
 
