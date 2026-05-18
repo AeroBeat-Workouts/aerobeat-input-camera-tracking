@@ -14,7 +14,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
-prerecorded_video_source = "res://assets/fixtures/boxing/punch_left/boxing__punch_left__positive__guard_start_end__take_01.mp4"
+prerecorded_video_source = "res://assets/fixtures/boxing/punch_left/boxing_punch_left_x4_while_guarding_take_01.mp4"
 scene_title = "BOXING GESTURE DETECTION"
 
 [node name="AutoStartManager" type="Node" parent="." unique_id=343298553]
