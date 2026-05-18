@@ -16,10 +16,10 @@ For this first real slice, the YAML needs to answer only three practical questio
 
 ```yaml
 schema_version: 1
-fixture_id: boxing__punch_left__positive__guard_start_end__take_01
+fixture_id: boxing_punch_left_x4_while_guarding_take_01
 family: boxing
 video:
-  path: ./boxing__punch_left__positive__guard_start_end__take_01.mp4
+  path: ./boxing_punch_left_x4_while_guarding_take_01.mp4
 expected_gestures:
   - name: punch_left
     windows:
