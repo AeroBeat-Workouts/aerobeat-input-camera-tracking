@@ -19,6 +19,10 @@ config/features=PackedStringArray("4.6")
 features=PackedStringArray("4.6", "Forward Plus")
 icon="res://icon.svg"
 
+[autoload]
+
+AeroHeadlessManager="*res://addons/aerobeat-tool-headless-manager/src/AeroHeadlessManager.gd"
+
 [debug]
 
 gdscript/warnings/untyped_declaration=1

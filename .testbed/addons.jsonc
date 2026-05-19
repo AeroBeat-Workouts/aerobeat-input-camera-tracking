@@ -13,6 +13,12 @@
       "source": "symlink",
       "subfolder": "/"
     },
+    // The reusable headless quit manager is consumed like a normal addon package.
+    "aerobeat-tool-headless-manager": {
+      "url": "git@github.com:AeroBeat-Workouts/aerobeat-tool-headless-manager.git",
+      "checkout": "e13b751",
+      "subfolder": "/"
+    },
     // GUT drives the repo-local test suite inside the hidden testbed/workbench.
     "gut": {
       "url": "git@github.com:bitwes/Gut.git",
