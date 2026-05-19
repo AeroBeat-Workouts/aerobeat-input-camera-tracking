@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Punch-left golden-truth experiment log</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --bad: #f87171;
+      --info: #60a5fa;
+      --code: #0b1220;
+      --border: #334155;
+    }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    h1, h2, h3 { margin: 0 0 10px; }
+    h1 { font-size: 30px; }
+    h2 { font-size: 22px; margin-top: 28px; }
+    h3 { font-size: 18px; margin-top: 20px; }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+    .pill {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .ok { background: rgba(52,211,153,.12); color: var(--ok); }
+    .warn { background: rgba(251,191,36,.12); color: var(--warn); }
+    .bad { background: rgba(248,113,113,.12); color: var(--bad); }
+    .info { background: rgba(96,165,250,.12); color: var(--info); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: var(--panel);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: var(--panel-2); }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--code);
+      color: #dbeafe;
+    }
+    code { padding: 2px 5px; border-radius: 6px; }
+    pre {
+      padding: 12px;
+      border-radius: 10px;
+      overflow: auto;
+      border: 1px solid var(--border);
+    }
+    a { color: #93c5fd; }
+    .small { font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Punch-left golden-truth experiment log</h1>
+  <p class="muted">Repo: <code>/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-mediapipe-python</code><br>
+  Task: coder instrumentation + evidence-backed detector-improvement attempt log for <code>boxing_punch_left_x4_while_guarding_take_01</code><br>
+  Last updated: 2026-05-18 (America/New_York)</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Current verdict</h2>
+      <span class="pill bad">Fixture still FAILS</span>
+      <span class="pill info">Instrumentation added</span>
+      <span class="pill warn">Detector logic experiments reverted</span>
+      <p>The left straight-punch path is still <strong>reachable in code</strong>, but the newly captured per-frame evidence shows the real blocker is not a missing provider branch or a dead ready flag. On the authored punch windows, the current 2D straight-punch inputs are wildly implausible for a real punch — while simple 3D instrumentation shows the arm is in fact nearly fully extended and much straighter in depth.</p>
+      <p>In the final preserved rerun artifact, the authored punch windows peak around <code>left_arm_extension ≈ 0.10-0.43</code> and <code>left_elbow_bend_deg ≈ 0-9</code> in 2D, but around <code>arm_extension_3d ≈ 0.97-0.99</code>, <code>elbow_bend_deg_3d ≈ 152-162</code>, and <code>forward_velocity</code> spikes up to about <code>8.0</code>, <code>18.4</code>, and <code>13.9</code> on the first three authored punch windows. That is a geometry-truth problem, not a simple threshold-tightness story.</p>
+    </section>
+
+    <section class="card">
+      <h2>Evidence snapshot</h2>
+      <ul>
+        <li>Fixture contract expects <strong>4</strong> <code>punch_left</code> windows and guard windows between punches.</li>
+        <li>Observed event timeline in latest available run: <code>provider_started</code>, <code>guard_start</code>, <code>squat_start</code>, <code>guard_end</code>, <code>guard_start</code>, <code>guard_end</code>.</li>
+        <li>No <code>punch_left</code>, <code>punch_right</code>, <code>hook_*</code>, or <code>uppercut_*</code> in that latest artifact.</li>
+        <li>The plan’s referenced artifact directory <code>.testbed/test-results/fixtures/20260514-214817__boxing_punch_left_x4_while_guarding_take_01/</code> is not present in the current repo checkout; this audit used the current available equivalent run under <code>.testbed/test-results/runner-boxing/20260518-183350__boxing_punch_left_x4_while_guarding_take_01/</code>.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Narrow coder target</h2>
+      <ol>
+        <li>Instrument / inspect the straight-punch inputs on real frames: <code>left_arm_extension</code>, <code>left_elbow_bend_deg</code>, <code>outward_velocity</code>, <code>outward_distance</code>, and whether landmarks are mirrored or collapsing.</li>
+        <li>If measurement truth is wrong, fix the input math or coordinate interpretation first; do <strong>not</strong> start by loosening all punch thresholds.</li>
+        <li>Only after measurement truth is confirmed, tune the smallest left-punch gate that is demonstrably too strict on the guarded-left clip.</li>
+      </ol>
+    </section>
+  </div>
+
+  <section>
+    <h2>References used</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Description</th><th>Path</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>REF-A</td><td>Active punch-left plan</td><td><code>.plans/2026-05-18-punch-left-golden-truth-detector-improvement.md</code></td><td>Updated after this audit.</td></tr>
+        <tr><td>REF-B</td><td>Fixture-system truth plan</td><td><code>.plans/2026-05-13-boxing-fixture-system-truth-and-schema.md</code></td><td>Used for timing-basis and recorder context.</td></tr>
+        <tr><td>REF-C</td><td>Detector substrate</td><td><code>src/detectors/pose_detector_substrate.gd</code></td><td>Primary source for gate logic.</td></tr>
+        <tr><td>REF-D</td><td>Pose metrics helpers</td><td><code>src/detectors/pose_metrics.gd</code></td><td>Confirmed geometry primitives are thin wrappers.</td></tr>
+        <tr><td>REF-E</td><td>Fixture YAML</td><td><code>.testbed/assets/fixtures/boxing/punch_left/boxing_punch_left_x4_while_guarding_take_01.yaml</code></td><td>Source of truth for expected windows and forbidden gestures.</td></tr>
+        <tr><td>REF-F</td><td>Actual inspected proving artifact</td><td><code>.testbed/test-results/runner-boxing/20260518-183350__boxing_punch_left_x4_while_guarding_take_01/</code></td><td>Used because the older plan-cited artifact path is missing in this checkout.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Baseline fixture truth</h2>
+    <table>
+      <thead>
+        <tr><th>Gesture</th><th>Authored expectation</th><th>Observed in current artifact</th><th>Verdict</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>punch_left</code></td><td>4 windows: 1150-1300, 2150-2650, 3333-3833, 4833-5088 ms</td><td>0 events total</td><td><span class="pill bad">Regressed / missing</span></td></tr>
+        <tr><td><code>guard</code></td><td>5 windows, including opening, between-punch holds, and final hold</td><td>Only two short true segments: 135-489 ms and 1215-1596 ms</td><td><span class="pill bad">Too short / mostly missing</span></td></tr>
+        <tr><td><code>squat_start</code></td><td>Forbidden</td><td>Observed once at 140 ms; squat then latched until ~1895 ms</td><td><span class="pill bad">False positive</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Assumption audit</h2>
+    <table>
+      <thead>
+        <tr><th>Assumption checked</th><th>Status</th><th>Evidence</th><th>Code area</th><th>Verdict</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Is the left straight-punch path reachable under current booleans?</td>
+          <td><span class="pill ok">Confirmed reachable</span></td>
+          <td><code>_detect_intent_events()</code> always calls <code>_process_straight_punch(..., "left", ...)</code> once baseline is calibrated. Guard only suppresses hook/uppercut paths, not straight punches.</td>
+          <td><code>src/detectors/pose_detector_substrate.gd:582-638</code></td>
+          <td>Not blocked by a high-level boolean gate.</td>
+        </tr>
+        <tr>
+          <td>Does rearm / cooldown make the left punch impossible to emit?</td>
+          <td><span class="pill ok">Unlikely primary blocker</span></td>
+          <td><code>ready.punch_left</code> starts <code>true</code>. It only flips false after a successful emit. It rearms when <code>arm_extension &lt;= 0.72</code>. In the inspected artifact, no punch emits at all, so there is no evidence of the ready gate getting stuck false.</td>
+          <td><code>src/detectors/pose_detector_substrate.gd:550-568</code>, <code>640-663</code></td>
+          <td>Rearm logic exists but is not the first thing to fix.</td>
+        </tr>
+        <tr>
+          <td>Does guard/state interaction silently suppress <code>punch_left</code>?</td>
+          <td><span class="pill ok">No direct suppression</span></td>
+          <td>Guard affects only hook/uppercut evaluation via <code>if not _get_state("guard")</code>. Straight punches run regardless of guard state. However, the guard detector itself also looks wrong versus fixture truth, which is a separate sign that body geometry is drifting.</td>
+          <td><code>src/detectors/pose_detector_substrate.gd:627-631</code>, <code>930-940</code></td>
+          <td>Guard truth is weak, but it is not the direct punch-left blocker.</td>
+        </tr>
+        <tr>
+          <td>Does provider event wiring / forwarding drop <code>punch_left</code>?</td>
+          <td><span class="pill ok">Confirmed wired</span></td>
+          <td>Provider declares <code>signal punch_left(power: float)</code> and forwards detector events with a direct <code>match</code> branch for <code>"punch_left"</code>.</td>
+          <td><code>src/providers/mediapipe_provider.gd:12-39</code>, <code>259-324</code></td>
+          <td>No missing forwarder bug found.</td>
+        </tr>
+        <tr>
+          <td>Is the left-punch geometry / math obviously unsound or impossible?</td>
+          <td><span class="pill bad">Strong suspicion</span></td>
+          <td>The current artifact’s latest measurements show implausible posture: <code>height_ratio 0.256</code>, <code>squat_depth 0.744</code>, and a false <code>squat_start</code> on a clip that should mostly be upright. That points to bad landmark interpretation / normalization / axis assumptions before threshold tuning. The straight-punch gate stack is also strict: it requires <code>arm_extension &gt;= 0.92</code>, <code>elbow_bend_deg &gt;= 170</code>, strong outward lateral velocity, and outward wrist distance &gt; <code>0.75 * shoulder_width</code>.</td>
+          <td><code>src/detectors/pose_detector_substrate.gd:10-13</code>, <code>640-663</code>; artifact <code>report.json</code> latest_state metrics</td>
+          <td>Likely the real root area.</td>
+        </tr>
+        <tr>
+          <td>Are sibling families stealing or misclassifying the motion?</td>
+          <td><span class="pill warn">Possible historically, weak in latest run</span></td>
+          <td>Older plan notes mention false <code>uppercut_right</code>. In the latest available artifact inspected here, no sibling attack family fired at all. That makes “stolen by sibling family” less convincing than “straight-punch gates never receive believable inputs.” Flow families are only attempted if no same-side punch/hook/uppercut event already fired, so they are downstream, not first-priority suspects.</td>
+          <td><code>src/detectors/pose_detector_substrate.gd:632-637</code>, <code>709-903</code></td>
+          <td>Secondary concern, not top culprit.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Exact code areas inspected</h2>
+    <ul>
+      <li><code>src/detectors/pose_detector_substrate.gd:10-13</code> — straight-punch constants.</li>
+      <li><code>src/detectors/pose_detector_substrate.gd:582-638</code> — detector dispatch order and guard/sibling interactions.</li>
+      <li><code>src/detectors/pose_detector_substrate.gd:640-663</code> — left/right straight-punch fire logic.</li>
+      <li><code>src/detectors/pose_detector_substrate.gd:930-947</code> — guard + squat state logic.</li>
+      <li><code>src/providers/mediapipe_provider.gd:12-39</code> and <code>259-324</code> — signal surface and detector-event forwarding.</li>
+      <li><code>.testbed/scripts/proving_harness.gd:1172-1220</code> — provider-ready time anchoring and captured report structure.</li>
+      <li><code>src/detectors/pose_metrics.gd</code> — helper math; no obvious defect by itself.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Rerun / artifact log</h2>
+    <table>
+      <thead>
+        <tr><th>When</th><th>Artifact</th><th>What was checked</th><th>Outcome</th><th>Verdict</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>2026-05-18 existing repo artifact</td>
+          <td><code>.testbed/test-results/runner-boxing/20260518-183350__boxing_punch_left_x4_while_guarding_take_01/</code></td>
+          <td>Read the saved baseline capture and assumption-audited the current detector path.</td>
+          <td>0/4 expected <code>punch_left</code> windows hit; guard only active in short spans; false <code>squat_start</code> present.</td>
+          <td><span class="pill bad">Baseline fail</span></td>
+        </tr>
+        <tr>
+          <td>2026-05-18 instrumentation rerun</td>
+          <td><code>.testbed/test-results/runner-boxing/20260518-214702__boxing_punch_left_x4_while_guarding_take_01/20260518-214702__boxing_punch_left_x4_while_guarding_take_01/</code></td>
+          <td>Captured per-frame <code>boxing_debug</code> data including 2D vs temporary 3D straight-punch inputs across the authored windows.</td>
+          <td>Showed the key truth gap directly: 2D punch inputs stay tiny while temporary 3D comparison values show near-full extension and strong forward motion.</td>
+          <td><span class="pill ok">Evidence improved</span></td>
+        </tr>
+        <tr>
+          <td>2026-05-18 reverted final evidence rerun</td>
+          <td><code>.testbed/test-results/runner-boxing/20260518-215350__boxing_punch_left_x4_while_guarding_take_01/20260518-215350__boxing_punch_left_x4_while_guarding_take_01/</code></td>
+          <td>Re-ran after reverting the regressing detector experiments, keeping only the fixture-capture instrumentation.</td>
+          <td>The detector returned to the no-<code>punch_left</code> failure pattern, but the state timeline now preserves the critical evidence: window peaks like <code>2D extension 0.237 / 0.105 / 0.429 / 0.326</code> versus <code>3D extension 0.987 / 0.972 / 0.981 / 0.974</code>, plus strong forward-velocity spikes on the first three windows.</td>
+          <td><span class="pill warn">Truthful stop sign preserved</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Hypotheses and attempted ideas</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Type</th><th>Statement</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>H1</td><td>Confirmed risk</td><td>Measured body geometry is distorted enough that both guard and squat truth are wrong, so <code>punch_left</code> thresholds are being fed bad inputs.</td><td><span class="pill bad">Strong evidence</span></td></tr>
+        <tr><td>H2</td><td>Hypothesis</td><td>The left-side straight-punch thresholds may still be too strict for this guarded clip even after measurement truth is fixed, especially <code>PUNCH_FIRE_EXTENSION = 0.92</code> and <code>PUNCH_ELBOW_STRAIGHT_MIN_DEG = 170</code>.</td><td><span class="pill warn">Not yet proven</span></td></tr>
+        <tr><td>H3</td><td>Rejected as primary</td><td>A missing provider forwarder or obvious ready/cooldown deadlock explains the failure.</td><td><span class="pill ok">Ruled out as primary</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Ranked recommendations for the coder</h2>
+    <ol>
+      <li><strong>First, inspect real per-frame punch-left inputs before changing thresholds.</strong> Add temporary debug capture or recorder output for <code>left_arm_extension</code>, <code>left_elbow_bend_deg</code>, <code>outward_velocity</code>, <code>outward_distance</code>, and guard-state inputs on the punch-left fixture. The goal is to answer: are values plausible and merely too strict, or are they fundamentally wrong?</li>
+      <li><strong>If values are fundamentally wrong, fix input truth at the smallest source.</strong> The false <code>squat_start</code> and missing guard windows suggest posture measurements are already off. Candidate areas: landmark normalization/mirroring assumptions, shoulder/hip/nose baselines, or serialized/current landmark interpretation feeding the substrate.</li>
+      <li><strong>Only then tune the smallest straight-punch gate.</strong> If per-frame inputs look reasonable but just under thresholds, start with the straight-punch gate stack in <code>src/detectors/pose_detector_substrate.gd:640-663</code>; avoid broad sibling-family edits in the first coder slice.</li>
+      <li><strong>Keep out of scope unless evidence forces it.</strong> Do not redesign Flow detection, do not broadly retune hook/uppercut families, and do not alter proving-harness time-basis logic unless new evidence contradicts the existing provider-ready anchoring.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Attempt log</h2>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Hypothesis</th><th>Exact code area touched</th><th>Type</th><th>Rerun outcome</th><th>Verdict</th><th>Next candidate ideas</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>A1</td>
+          <td>The saved artifact is missing the per-frame straight-punch inputs needed to distinguish "threshold too strict" from "geometry is lying." Add only the smallest fixture-capture instrumentation first.</td>
+          <td><code>.testbed/scripts/proving_harness.gd</code> — added a per-frame <code>boxing_debug</code> snapshot with 2D straight-punch inputs, local guard inputs, and temporary 3D comparison values.</td>
+          <td>Instrumentation only</td>
+          <td>Fresh reruns now expose the exact per-frame values inside <code>state_timeline.json</code>.</td>
+          <td><span class="pill ok">Improved</span></td>
+          <td>Use the new evidence to decide whether a tiny geometry fix is possible or whether threshold tuning would be dishonest.</td>
+        </tr>
+        <tr>
+          <td>A2</td>
+          <td>If the clip is a forward punch collapsing in 2D, switch the straight-punch gate to 3D arm truth plus forward-depth motion.</td>
+          <td><code>src/detectors/pose_detector_substrate.gd</code> and <code>src/detectors/pose_metrics.gd</code> — temporary real logic experiment using 3D arm extension/elbow and forward depth in the straight-punch path.</td>
+          <td>Real logic change</td>
+          <td>The fixture started firing stray <code>punch_left</code> / <code>punch_right</code> events outside the authored windows and broke rearm truth because the 3D arm stayed "extended" nearly all clip long.</td>
+          <td><span class="pill bad">Regressed</span></td>
+          <td>Do not keep this. A truthful forward-punch fix needs a better model of retraction / side disambiguation than a quick straight-gate swap.</td>
+        </tr>
+        <tr>
+          <td>A3</td>
+          <td>Try a narrower hybrid: keep rearm on the old 2D return behavior, but let fire-time straight detection use 3D arm truth and a stronger forward burst.</td>
+          <td><code>src/detectors/pose_detector_substrate.gd</code> — temporary hybrid straight-punch experiment only.</td>
+          <td>Real logic change</td>
+          <td>Still regressed badly: the fixture produced many repeated <code>punch_left</code> and <code>punch_right</code> false positives across the clip, so the experiment was reverted.</td>
+          <td><span class="pill bad">Regressed</span></td>
+          <td>Stop here. The evidence is useful, but a truthful fix now wants a deeper measurement / state-design pass rather than another threshold poke.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Next candidate ideas</h2>
+    <ul>
+      <li>Keep the new <code>boxing_debug</code> capture surface and use it to design a real forward-punch model, not just another threshold shuffle.</li>
+      <li>Model straight-punch truth around depth-aware extension/retraction and side disambiguation together; the failed A2/A3 experiments show those pieces are inseparable.</li>
+      <li>Do not do a blind threshold-only <code>punch_left</code> tweak from the current 2D inputs. The preserved evidence now shows that would be tuning around a geometry lie.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

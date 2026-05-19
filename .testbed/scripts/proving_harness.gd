@@ -1194,6 +1194,94 @@ func _fixture_relative_ms(timestamp_ms: int = -1) -> int:
 		return 0
 	return max(effective_timestamp - _fixture_time_origin_ms, 0)
 
+func _build_fixture_boxing_debug_snapshot() -> Dictionary:
+	var state: Dictionary = _latest_state
+	var metrics: Dictionary = state.get("metrics", {})
+	var measurements: Dictionary = metrics.get("measurements", {})
+	var velocities: Dictionary = metrics.get("velocities", {})
+	var ready_map: Dictionary = ((state.get("gesture_debug", {}) as Dictionary).get("ready", {}) as Dictionary)
+	var landmarks: Dictionary = state.get("landmarks_by_id", {})
+	var left_shoulder: Dictionary = landmarks.get(PoseLandmarkIds.LEFT_SHOULDER, {})
+	var right_shoulder: Dictionary = landmarks.get(PoseLandmarkIds.RIGHT_SHOULDER, {})
+	var left_elbow: Dictionary = landmarks.get(PoseLandmarkIds.LEFT_ELBOW, {})
+	var right_elbow: Dictionary = landmarks.get(PoseLandmarkIds.RIGHT_ELBOW, {})
+	var left_wrist: Dictionary = landmarks.get(PoseLandmarkIds.LEFT_WRIST, {})
+	var right_wrist: Dictionary = landmarks.get(PoseLandmarkIds.RIGHT_WRIST, {})
+	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
+	var left_hand_velocity: Vector3 = velocities.get("left_hand", Vector3.ZERO)
+	var left_outward_velocity := -left_hand_velocity.x
+	var left_forward_velocity := -left_hand_velocity.z
+	var left_lateral_speed := absf(left_hand_velocity.x)
+	var left_vertical_speed := absf(left_hand_velocity.y)
+	var left_outward_distance := 0.0
+	var left_forward_distance := 0.0
+	var left_elbow_bend_deg_3d := 0.0
+	var left_arm_extension_3d := 0.0
+	if not left_shoulder.is_empty() and not left_wrist.is_empty():
+		left_outward_distance = float(left_shoulder.get("x", 0.0)) - float(left_wrist.get("x", 0.0))
+		left_forward_distance = float(left_shoulder.get("z", 0.0)) - float(left_wrist.get("z", 0.0))
+	if not left_shoulder.is_empty() and not left_elbow.is_empty() and not left_wrist.is_empty():
+		var shoulder_vec := PoseMetrics.to_vector3(left_shoulder)
+		var elbow_vec := PoseMetrics.to_vector3(left_elbow)
+		var wrist_vec := PoseMetrics.to_vector3(left_wrist)
+		var upper_arm_3d := shoulder_vec.distance_to(elbow_vec)
+		var lower_arm_3d := elbow_vec.distance_to(wrist_vec)
+		var full_arm_3d := upper_arm_3d + lower_arm_3d
+		if full_arm_3d > 0.000001:
+			left_arm_extension_3d = clampf(shoulder_vec.distance_to(wrist_vec) / full_arm_3d, 0.0, 1.0)
+		var elbow_to_shoulder := shoulder_vec - elbow_vec
+		var elbow_to_wrist := wrist_vec - elbow_vec
+		if elbow_to_shoulder.length() > 0.000001 and elbow_to_wrist.length() > 0.000001:
+			left_elbow_bend_deg_3d = rad_to_deg(absf(elbow_to_shoulder.angle_to(elbow_to_wrist)))
+	var guard_aligned_left := false
+	var guard_aligned_right := false
+	var guard_raised_left := false
+	var guard_raised_right := false
+	var guard_wrist_near_head_left := false
+	var guard_wrist_near_head_right := false
+	if not left_wrist.is_empty() and not left_elbow.is_empty():
+		guard_aligned_left = absf(float(left_wrist.get("x", 0.0)) - float(left_elbow.get("x", 0.0))) <= shoulder_width * 0.32
+	if not right_wrist.is_empty() and not right_elbow.is_empty():
+		guard_aligned_right = absf(float(right_wrist.get("x", 0.0)) - float(right_elbow.get("x", 0.0))) <= shoulder_width * 0.32
+	if not left_wrist.is_empty() and not left_shoulder.is_empty():
+		guard_raised_left = float(left_wrist.get("y", 0.0)) >= float(left_shoulder.get("y", 0.0)) - shoulder_width * 0.10
+		guard_wrist_near_head_left = absf(float(left_wrist.get("x", 0.0)) - float(left_shoulder.get("x", 0.0))) <= shoulder_width * 0.55
+	if not right_wrist.is_empty() and not right_shoulder.is_empty():
+		guard_raised_right = float(right_wrist.get("y", 0.0)) >= float(right_shoulder.get("y", 0.0)) - shoulder_width * 0.10
+		guard_wrist_near_head_right = absf(float(right_wrist.get("x", 0.0)) - float(right_shoulder.get("x", 0.0))) <= shoulder_width * 0.55
+	return {
+		"left_straight": {
+			"arm_extension": float(measurements.get("left_arm_extension", 0.0)),
+			"arm_extension_3d": left_arm_extension_3d,
+			"elbow_bend_deg": float(measurements.get("left_elbow_bend_deg", 0.0)),
+			"elbow_bend_deg_3d": left_elbow_bend_deg_3d,
+			"outward_velocity": left_outward_velocity,
+			"forward_velocity": left_forward_velocity,
+			"outward_distance": left_outward_distance,
+			"forward_distance": left_forward_distance,
+			"lateral_speed": left_lateral_speed,
+			"vertical_speed": left_vertical_speed,
+			"ready": bool(ready_map.get("punch_left", true)),
+			"gates": {
+				"extension": float(measurements.get("left_arm_extension", 0.0)) >= 0.92,
+				"elbow": float(measurements.get("left_elbow_bend_deg", 0.0)) >= 170.0,
+				"outward_velocity": left_outward_velocity > shoulder_width * 1.35,
+				"lateral_dominance": left_lateral_speed > left_vertical_speed * 1.35,
+				"outward_distance": left_outward_distance > shoulder_width * 0.75,
+			},
+		},
+		"guard": {
+			"state": bool((state.get("gesture_states", {}) as Dictionary).get("guard", false)),
+			"aligned_left": guard_aligned_left,
+			"aligned_right": guard_aligned_right,
+			"raised_left": guard_raised_left,
+			"raised_right": guard_raised_right,
+			"wrist_near_head_left": guard_wrist_near_head_left,
+			"wrist_near_head_right": guard_wrist_near_head_right,
+			"candidate": guard_aligned_left and guard_aligned_right and guard_raised_left and guard_raised_right and guard_wrist_near_head_left and guard_wrist_near_head_right,
+		},
+	}
+
 func _record_fixture_state_snapshot(reason: String) -> void:
 	_fixture_state_sequence += 1
 	_fixture_state_timeline.append({
@@ -1204,6 +1292,7 @@ func _record_fixture_state_snapshot(reason: String) -> void:
 		"gesture_states": (_latest_state.get("gesture_states", {}) as Dictionary).duplicate(true),
 		"ready": ((_latest_state.get("gesture_debug", {}) as Dictionary).get("ready", {}) as Dictionary).duplicate(true),
 		"flow": ((_latest_state.get("gesture_debug", {}) as Dictionary).get("flow", {}) as Dictionary).duplicate(true),
+		"boxing_debug": _build_fixture_boxing_debug_snapshot(),
 		"latest_event": _latest_event_name(),
 	})
 
