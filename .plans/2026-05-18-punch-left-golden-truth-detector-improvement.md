@@ -166,6 +166,7 @@ Per Derrick’s recommendation, this work should also maintain a living HTML exp
 
 **Commits:**
 - `5f6d9b0` - `Add punch-left fixture instrumentation evidence`
+- `d69b5c9` - `Update punch-left instrumentation plan results`
 
 **Lessons Learned:**
 - The hard part now is detector truth, not fixture plumbing.
