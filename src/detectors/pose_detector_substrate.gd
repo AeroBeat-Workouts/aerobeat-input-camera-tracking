@@ -11,6 +11,13 @@ const PUNCH_READY_EXTENSION := 0.72
 const PUNCH_FIRE_EXTENSION := 0.92
 const PUNCH_ELBOW_STRAIGHT_MIN_DEG := 170.0
 const PUNCH_LATERAL_VELOCITY_RATIO := 1.35
+const PUNCH_3D_EXTENSION_MIN := 0.95
+const PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG := 145.0
+const PUNCH_FORWARD_DELTA_RATIO := 0.08
+const PUNCH_FORWARD_VELOCITY_MIN_RATIO := 8.0
+const PUNCH_REARM_RETREAT_RATIO := 0.12
+const PUNCH_REARM_READY_MARGIN_RATIO := 0.09
+const PUNCH_OWN_HALF_MARGIN_RATIO := 0.12
 
 const HOOK_ELBOW_MIN_DEG := 55.0
 const HOOK_ELBOW_MAX_DEG := 145.0
@@ -245,6 +252,12 @@ func _build_metrics(landmarks_by_id: Dictionary, timestamp_ms: int) -> Dictionar
 	var right_arm_length := PoseMetrics.distance_2d(right_shoulder, right_elbow) + PoseMetrics.distance_2d(right_elbow, right_wrist)
 	var left_arm_extension := PoseMetrics.clamp01(PoseMetrics.normalized_ratio(PoseMetrics.distance_2d(left_shoulder, left_wrist), left_arm_length))
 	var right_arm_extension := PoseMetrics.clamp01(PoseMetrics.normalized_ratio(PoseMetrics.distance_2d(right_shoulder, right_wrist), right_arm_length))
+	var left_arm_length_3d := PoseMetrics.distance_3d(left_shoulder, left_elbow) + PoseMetrics.distance_3d(left_elbow, left_wrist)
+	var right_arm_length_3d := PoseMetrics.distance_3d(right_shoulder, right_elbow) + PoseMetrics.distance_3d(right_elbow, right_wrist)
+	var left_arm_extension_3d := PoseMetrics.clamp01(PoseMetrics.normalized_ratio(PoseMetrics.distance_3d(left_shoulder, left_wrist), left_arm_length_3d))
+	var right_arm_extension_3d := PoseMetrics.clamp01(PoseMetrics.normalized_ratio(PoseMetrics.distance_3d(right_shoulder, right_wrist), right_arm_length_3d))
+	var left_elbow_bend_3d := PoseMetrics.angle_degrees_3d(left_shoulder, left_elbow, left_wrist)
+	var right_elbow_bend_3d := PoseMetrics.angle_degrees_3d(right_shoulder, right_elbow, right_wrist)
 
 	var confidences := {
 		"head": PoseMetrics.visibility(nose),
@@ -267,6 +280,12 @@ func _build_metrics(landmarks_by_id: Dictionary, timestamp_ms: int) -> Dictionar
 		"left_foot": _direction_from_velocity(velocities.get("left_foot", Vector3.ZERO)),
 		"right_foot": _direction_from_velocity(velocities.get("right_foot", Vector3.ZERO)),
 	}
+	var left_forward_distance := float(left_shoulder.get("z", 0.0)) - float(left_wrist.get("z", 0.0))
+	var right_forward_distance := float(right_shoulder.get("z", 0.0)) - float(right_wrist.get("z", 0.0))
+	var left_forward_velocity := -float((velocities.get("left_hand", Vector3.ZERO) as Vector3).z)
+	var right_forward_velocity := -float((velocities.get("right_hand", Vector3.ZERO) as Vector3).z)
+	var left_outward_distance := float(left_shoulder.get("x", 0.0)) - float(left_wrist.get("x", 0.0))
+	var right_outward_distance := float(right_wrist.get("x", 0.0)) - float(right_shoulder.get("x", 0.0))
 
 	var shoulder_center_vec := PoseMetrics.to_vector3(shoulder_center)
 	var hip_center_vec := PoseMetrics.to_vector3(hip_center)
@@ -304,6 +323,12 @@ func _build_metrics(landmarks_by_id: Dictionary, timestamp_ms: int) -> Dictionar
 		left_foot_rise = maxf(0.0, (float(left_ankle.get("y", 0.0)) - float(_baseline.get("left_ankle_y", left_ankle.get("y", 0.0)))) / baseline_torso_height)
 		right_foot_rise = maxf(0.0, (float(right_ankle.get("y", 0.0)) - float(_baseline.get("right_ankle_y", right_ankle.get("y", 0.0)))) / baseline_torso_height)
 
+	var left_lane_offset_ratio := PoseMetrics.normalized_ratio(body_centerline_x - float(left_wrist.get("x", body_centerline_x)), maxf(shoulder_width, 0.000001))
+	var right_lane_offset_ratio := PoseMetrics.normalized_ratio(float(right_wrist.get("x", body_centerline_x)) - body_centerline_x, maxf(shoulder_width, 0.000001))
+	var own_half_margin := shoulder_width * PUNCH_OWN_HALF_MARGIN_RATIO
+	var left_own_half_lock := float(left_wrist.get("x", body_centerline_x)) <= body_centerline_x + own_half_margin and left_outward_distance >= -own_half_margin
+	var right_own_half_lock := float(right_wrist.get("x", body_centerline_x)) >= body_centerline_x - own_half_margin and right_outward_distance >= -own_half_margin
+
 	var measurements := {
 		"shoulder_width": shoulder_width,
 		"torso_height": torso_height,
@@ -312,8 +337,22 @@ func _build_metrics(landmarks_by_id: Dictionary, timestamp_ms: int) -> Dictionar
 		"normalized_torso_height": PoseMetrics.normalized_ratio(torso_height, maxf(_baseline.get("torso_height", torso_height), 0.000001)),
 		"left_elbow_bend_deg": left_elbow_bend,
 		"right_elbow_bend_deg": right_elbow_bend,
+		"left_elbow_bend_deg_3d": left_elbow_bend_3d,
+		"right_elbow_bend_deg_3d": right_elbow_bend_3d,
 		"left_arm_extension": left_arm_extension,
 		"right_arm_extension": right_arm_extension,
+		"left_arm_extension_3d": left_arm_extension_3d,
+		"right_arm_extension_3d": right_arm_extension_3d,
+		"left_forward_distance": left_forward_distance,
+		"right_forward_distance": right_forward_distance,
+		"left_forward_velocity": left_forward_velocity,
+		"right_forward_velocity": right_forward_velocity,
+		"left_outward_distance": left_outward_distance,
+		"right_outward_distance": right_outward_distance,
+		"left_lane_offset_ratio": left_lane_offset_ratio,
+		"right_lane_offset_ratio": right_lane_offset_ratio,
+		"left_own_half_lock": left_own_half_lock,
+		"right_own_half_lock": right_own_half_lock,
 		"head_center": nose_vec,
 		"shoulder_center": shoulder_center_vec,
 		"hip_center": hip_center_vec,
@@ -471,6 +510,7 @@ func _get_metric_dictionary(key: String) -> Dictionary:
 func _build_gesture_debug_state() -> Dictionary:
 	return {
 		"ready": _gesture_state.get("ready", {}).duplicate(true),
+		"straight_punch": (_gesture_state.get("straight_punch", {}) as Dictionary).duplicate(true),
 		"flow": _build_flow_debug_state(),
 	}
 
@@ -555,8 +595,8 @@ func _reset_gesture_state() -> void:
 			"trail_right": false,
 		},
 		"ready": {
-			"punch_left": true,
-			"punch_right": true,
+			"punch_left": false,
+			"punch_right": false,
 			"hook_left": true,
 			"hook_right": true,
 			"uppercut_left": true,
@@ -565,6 +605,10 @@ func _reset_gesture_state() -> void:
 			"knee_right": true,
 			"swing_left": true,
 			"swing_right": true,
+		},
+		"straight_punch": {
+			"left": _build_straight_punch_state("recovering"),
+			"right": _build_straight_punch_state("recovering"),
 		},
 		"flow": {
 			"left_hand": [],
@@ -622,8 +666,8 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if right_foot_confidence >= lower_body_confidence_gate:
 		_process_knee(events, "right", float(measurements.get("right_knee_rise", 0.0)), float(measurements.get("right_foot_rise", 0.0)), float(measurements.get("left_knee_rise", 0.0)), right_hip, right_ankle, torso_height)
 		_process_leg_lift(events, "right", float(measurements.get("right_leg_angle_from_core_deg", 0.0)), right_hip, right_ankle, torso_height)
-	_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), float(measurements.get("left_arm_extension", 0.0)), left_hand_velocity, shoulder_width)
-	_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), float(measurements.get("right_arm_extension", 0.0)), right_hand_velocity, shoulder_width)
+	_process_straight_punch(events, "left", left_shoulder, left_wrist, measurements, shoulder_width)
+	_process_straight_punch(events, "right", right_shoulder, right_wrist, measurements, shoulder_width)
 	if not _get_state("guard"):
 		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), left_hand_velocity, shoulder_width)
 		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), right_hand_velocity, shoulder_width)
@@ -637,30 +681,64 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 		_process_flow_swing(events, "right", right_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
 	return events
 
-func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, arm_extension: float, hand_velocity: Vector3, shoulder_width: float) -> void:
+func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, wrist: Dictionary, measurements: Dictionary, shoulder_width: float) -> void:
 	var event_name := "punch_%s" % side
-	if arm_extension <= PUNCH_READY_EXTENSION:
-		_set_ready(event_name, true)
-	if not _is_ready(event_name):
+	if shoulder.is_empty() or wrist.is_empty() or shoulder_width <= 0.0:
 		return
-	if shoulder.is_empty() or elbow.is_empty() or wrist.is_empty():
+	var state := _get_straight_punch_state(side)
+	var phase := String(state.get("phase", "recovering"))
+	var forward_distance := float(measurements.get("%s_forward_distance" % side, 0.0))
+	var forward_velocity := float(measurements.get("%s_forward_velocity" % side, 0.0))
+	var arm_extension_3d := float(measurements.get("%s_arm_extension_3d" % side, 0.0))
+	var elbow_bend_deg_3d := float(measurements.get("%s_elbow_bend_deg_3d" % side, 0.0))
+	var outward_distance := float(measurements.get("%s_outward_distance" % side, 0.0))
+	var lane_locked := bool(measurements.get("%s_own_half_lock" % side, false))
+	var armed_forward_distance := float(state.get("armed_forward_distance", forward_distance))
+	var peak_forward_distance := maxf(float(state.get("peak_forward_distance", forward_distance)), forward_distance)
+	var forward_delta_min := shoulder_width * PUNCH_FORWARD_DELTA_RATIO
+	var forward_velocity_min := shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
+	var rearm_retreat_min := shoulder_width * PUNCH_REARM_RETREAT_RATIO
+	var rearm_ready_margin := shoulder_width * PUNCH_REARM_READY_MARGIN_RATIO
+	var straight_enough := arm_extension_3d >= PUNCH_3D_EXTENSION_MIN and elbow_bend_deg_3d >= PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG
+	if phase == "recovering":
+		if armed_forward_distance <= 0.0:
+			state["armed_forward_distance"] = forward_distance
+			state["peak_forward_distance"] = forward_distance
+			if lane_locked and not straight_enough:
+				state["phase"] = "armed"
+			_set_straight_punch_state(side, state)
+			return
+		var retreated := peak_forward_distance - forward_distance >= rearm_retreat_min
+		var returned_near_ready_reach := forward_distance <= armed_forward_distance + rearm_ready_margin
+		if retreated and returned_near_ready_reach and lane_locked:
+			state["phase"] = "armed"
+			state["armed_forward_distance"] = forward_distance
+			state["peak_forward_distance"] = forward_distance
+			_set_straight_punch_state(side, state)
+			return
+		state["peak_forward_distance"] = peak_forward_distance
+		_set_straight_punch_state(side, state)
 		return
-	var outward_velocity := hand_velocity.x if side == "right" else -hand_velocity.x
-	var lateral_speed := absf(hand_velocity.x)
-	var vertical_speed := absf(hand_velocity.y)
-	var outward_distance: float = float(shoulder.get("x", 0.0) - wrist.get("x", 0.0) if side == "left" else wrist.get("x", 0.0) - shoulder.get("x", 0.0))
-	if arm_extension < PUNCH_FIRE_EXTENSION:
+	if phase == "armed":
+		if lane_locked:
+			armed_forward_distance = minf(armed_forward_distance, forward_distance)
+			peak_forward_distance = maxf(forward_distance, armed_forward_distance)
+			state["armed_forward_distance"] = armed_forward_distance
+			state["peak_forward_distance"] = peak_forward_distance
+		if lane_locked and straight_enough and forward_velocity > forward_velocity_min and forward_distance >= armed_forward_distance + forward_delta_min:
+			var power := clampf(0.45 + (arm_extension_3d - PUNCH_3D_EXTENSION_MIN) * 4.0 + (forward_distance - armed_forward_distance) / maxf(forward_delta_min * 2.0, 0.000001), 0.0, 1.0)
+			_emit_power_event(events, event_name, power)
+			state["phase"] = "extending"
+			state["peak_forward_distance"] = forward_distance
+			_set_straight_punch_state(side, state)
+			return
+		_set_straight_punch_state(side, state)
 		return
-	if elbow_bend_deg < PUNCH_ELBOW_STRAIGHT_MIN_DEG:
-		return
-	if outward_velocity <= shoulder_width * 1.35:
-		return
-	if lateral_speed <= vertical_speed * PUNCH_LATERAL_VELOCITY_RATIO:
-		return
-	if float(outward_distance) <= shoulder_width * 0.75:
-		return
-	_emit_power_event(events, event_name, clampf(0.55 + (arm_extension - PUNCH_FIRE_EXTENSION) * 2.5 + outward_velocity / maxf(shoulder_width * 6.0, 0.000001), 0.0, 1.0))
-	_set_ready(event_name, false)
+	peak_forward_distance = maxf(peak_forward_distance, forward_distance)
+	state["peak_forward_distance"] = peak_forward_distance
+	if not lane_locked or forward_velocity <= 0.0 or forward_distance + shoulder_width * 0.01 < peak_forward_distance or outward_distance < -shoulder_width * PUNCH_OWN_HALF_MARGIN_RATIO:
+		state["phase"] = "recovering"
+	_set_straight_punch_state(side, state)
 
 func _process_hook(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, hand_velocity: Vector3, shoulder_width: float) -> void:
 	var event_name := "hook_%s" % side
@@ -1013,6 +1091,23 @@ func _set_state_toggle(events: Array, state_name: String, active: bool) -> void:
 
 func _build_public_gesture_states() -> Dictionary:
 	return (_gesture_state.get("states", {}) as Dictionary).duplicate(true)
+
+func _build_straight_punch_state(phase: String = "recovering") -> Dictionary:
+	return {
+		"phase": phase,
+		"armed_forward_distance": 0.0,
+		"peak_forward_distance": 0.0,
+	}
+
+func _get_straight_punch_state(side: String) -> Dictionary:
+	var straight_punch: Dictionary = _gesture_state.get("straight_punch", {})
+	return (straight_punch.get(side, _build_straight_punch_state()) as Dictionary).duplicate(true)
+
+func _set_straight_punch_state(side: String, state: Dictionary) -> void:
+	var straight_punch: Dictionary = _gesture_state.get("straight_punch", {})
+	straight_punch[side] = state.duplicate(true)
+	_gesture_state["straight_punch"] = straight_punch
+	_set_ready("punch_%s" % side, String(state.get("phase", "recovering")) == "armed")
 
 func _emit_power_event(events: Array, event_name: String, power: float) -> void:
 	events.append({

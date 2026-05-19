@@ -61,6 +61,11 @@ static func distance_2d(a: Dictionary, b: Dictionary) -> float:
 		return 0.0
 	return to_vector2(a).distance_to(to_vector2(b))
 
+static func distance_3d(a: Dictionary, b: Dictionary) -> float:
+	if a.is_empty() or b.is_empty():
+		return 0.0
+	return to_vector3(a).distance_to(to_vector3(b))
+
 static func direction_2d(from_point: Dictionary, to_point: Dictionary) -> Vector2:
 	if from_point.is_empty() or to_point.is_empty():
 		return Vector2.ZERO
@@ -74,6 +79,15 @@ static func angle_degrees(a: Dictionary, b: Dictionary, c: Dictionary) -> float:
 		return 0.0
 	var ba := to_vector2(a) - to_vector2(b)
 	var bc := to_vector2(c) - to_vector2(b)
+	if ba.length() <= 0.000001 or bc.length() <= 0.000001:
+		return 0.0
+	return rad_to_deg(absf(ba.angle_to(bc)))
+
+static func angle_degrees_3d(a: Dictionary, b: Dictionary, c: Dictionary) -> float:
+	if a.is_empty() or b.is_empty() or c.is_empty():
+		return 0.0
+	var ba := to_vector3(a) - to_vector3(b)
+	var bc := to_vector3(c) - to_vector3(b)
 	if ba.length() <= 0.000001 or bc.length() <= 0.000001:
 		return 0.0
 	return rad_to_deg(absf(ba.angle_to(bc)))

@@ -97,7 +97,7 @@
   <h1>Punch-left golden-truth experiment log</h1>
   <p class="muted">Repo: <code>/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-mediapipe-python</code><br>
   Task: coder instrumentation + evidence-backed detector-improvement attempt log for <code>boxing_punch_left_x4_while_guarding_take_01</code><br>
-  Last updated: 2026-05-18 (America/New_York)</p>
+  Last updated: 2026-05-19 (America/New_York)</p>
 
   <div class="grid">
     <section class="card">
@@ -105,6 +105,7 @@
       <span class="pill bad">Fixture still FAILS</span>
       <span class="pill info">Instrumentation added</span>
       <span class="pill warn">Detector logic experiments reverted</span>
+      <span class="pill info">2026-05-19 design pass recorded</span>
       <p>The left straight-punch path is still <strong>reachable in code</strong>, but the newly captured per-frame evidence shows the real blocker is not a missing provider branch or a dead ready flag. On the authored punch windows, the current 2D straight-punch inputs are wildly implausible for a real punch — while simple 3D instrumentation shows the arm is in fact nearly fully extended and much straighter in depth.</p>
       <p>In the final preserved rerun artifact, the authored punch windows peak around <code>left_arm_extension ≈ 0.10-0.43</code> and <code>left_elbow_bend_deg ≈ 0-9</code> in 2D, but around <code>arm_extension_3d ≈ 0.97-0.99</code>, <code>elbow_bend_deg_3d ≈ 152-162</code>, and <code>forward_velocity</code> spikes up to about <code>8.0</code>, <code>18.4</code>, and <code>13.9</code> on the first three authored punch windows. That is a geometry-truth problem, not a simple threshold-tightness story.</p>
     </section>
@@ -316,6 +317,15 @@
           <td><span class="pill bad">Regressed</span></td>
           <td>Stop here. The evidence is useful, but a truthful fix now wants a deeper measurement / state-design pass rather than another threshold poke.</td>
         </tr>
+        <tr>
+          <td>A4</td>
+          <td>Implement the smallest kept coupled model from the new design pass: mirrored 3D straight-punch metrics plus a per-side <code>armed -&gt; extending -&gt; recovering</code> state with stored forward baseline/peak and own-half lock.</td>
+          <td><code>src/detectors/pose_detector_substrate.gd</code>, <code>src/detectors/pose_metrics.gd</code>, and <code>.testbed/scripts/proving_harness.gd</code>.</td>
+          <td>Real logic change</td>
+          <td><strong>Pre-run note:</strong> code is staged for the first truthful rerun. 2026-05-19 relaunch resume: this remains the first fresh guarded-left rerun for A4 after the coupled-model detector slice landed. The kept goal is limited to Boxing straights only; if this emits spam or fake rearm behavior, the change should stop here and be documented instead of widened.</td>
+          <td><span class="pill info">Pending rerun</span></td>
+          <td>Rerun the guarded-left fixture, preserve the fresh artifacts, and count authored-window hits, false positives, and rearm behavior before deciding whether this slice is keepable.</td>
+        </tr>
       </tbody>
     </table>
   </section>
@@ -327,6 +337,98 @@
       <li>Model straight-punch truth around depth-aware extension/retraction and side disambiguation together; the failed A2/A3 experiments show those pieces are inseparable.</li>
       <li>Do not do a blind threshold-only <code>punch_left</code> tweak from the current 2D inputs. The preserved evidence now shows that would be tuning around a geometry lie.</li>
     </ul>
+  </section>
+
+  <section>
+    <h2>2026-05-19 straight-punch design pass</h2>
+    <div class="grid">
+      <section class="card">
+        <h3>Trustworthy enough to keep using</h3>
+        <ul>
+          <li><code>shoulder_width</code> normalization still looks usable as the main per-athlete ratio surface.</li>
+          <li>Handed landmark ownership still looks good enough to treat left/right as separate per-side models; the reverted kept run did not spontaneously emit <code>punch_right</code>.</li>
+          <li>Current 2D horizontal placement like <code>outward_distance</code> is still useful as a <strong>side lock / lane ownership</strong> clue, even though it is a bad extension measure for forward punches.</li>
+          <li>Depth bursts matter: <code>forward_velocity</code> spikes in authored windows 1-3 line up with real punch effort much better than the old lateral-only straight-punch gates.</li>
+          <li>The existing one-shot fire / explicit rearm idea in <code>pose_detector_substrate.gd</code> is still the right overall state shape; what failed was the metric truth, not the need for state.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h3>Misleading on front-facing forward straights</h3>
+        <ul>
+          <li>2D <code>arm_extension</code> and 2D <code>elbow_bend_deg</code> lie badly on the authored forward punches. They repeatedly read “not extended / not straight” while temporary 3D comparison values show the opposite.</li>
+          <li>2D <code>outward_distance</code> is also misleading as a fire threshold for straights. It is a lateral reach proxy, not a forward punch truth signal.</li>
+          <li>Absolute <code>forward_distance</code> is too sticky to own the detector. It stays elevated across large portions of the clip, so it cannot truthfully decide retraction by itself.</li>
+          <li>Raw <code>forward_velocity</code> alone is too noisy. The clip has large depth-velocity swings outside authored windows too.</li>
+          <li>Naive 3D straightness alone is not a rearm signal. In the final preserved run, <code>arm_extension_3d &gt;= 0.92</code> for <strong>131 / 176</strong> captured samples, which is exactly why the quick 3D patches spammed.</li>
+        </ul>
+      </section>
+    </div>
+  </section>
+
+  <section>
+    <h2>Design options and rejected shortcuts</h2>
+    <table>
+      <thead>
+        <tr><th>Option</th><th>Why it was tempting</th><th>Why it was rejected or kept</th><th>Disposition</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Retune the current 2D straight-punch thresholds only</td>
+          <td>Smallest code diff; no new state required.</td>
+          <td>The preserved evidence now shows the 2D straight-punch inputs are structurally misleading on front-facing forward punches. Threshold tuning would just be fitting around a projection lie.</td>
+          <td><span class="pill bad">Rejected</span></td>
+        </tr>
+        <tr>
+          <td>Switch straight-punch fire truth directly to 3D extension + 3D elbow + forward burst</td>
+          <td>Seems like the obvious response once the 3D debug values look truthful.</td>
+          <td>This was effectively attempt A2. It produced stray <code>punch_left</code> / <code>punch_right</code> events and fake rearm behavior because the arm stays “extended” in 3D for too much of the clip.</td>
+          <td><span class="pill bad">Rejected</span></td>
+        </tr>
+        <tr>
+          <td>Hybrid patch: let fire use 3D truth, but keep old 2D rearm</td>
+          <td>Looks narrower than a full model rewrite.</td>
+          <td>This was effectively attempt A3. It still spammed, which proves fire truth and rearm truth are coupled for this Boxing case.</td>
+          <td><span class="pill bad">Rejected</span></td>
+        </tr>
+        <tr>
+          <td>Depth-aware Boxing-only per-side mini-state with explicit side lock and retraction</td>
+          <td>Smallest model that treats extension, retraction, and side ownership together.</td>
+          <td>Recommended next slice. It keeps scope inside Boxing straights while finally giving the detector somewhere honest to store forward baseline, forward peak, and rearm progress.</td>
+          <td><span class="pill ok">Recommended</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Recommended smallest next coding slice</h2>
+    <div class="card">
+      <p><strong>Minimum new metric surface:</strong> mirror the currently temporary left-only quantities into real left/right straight-punch metrics: <code>arm_extension_3d</code>, <code>elbow_bend_deg_3d</code>, <code>forward_distance</code>, <code>forward_velocity</code>, plus a side-lane lock derived from own-half / outward placement.</p>
+      <p><strong>Minimum new state:</strong> per-side <code>armed -&gt; extending -&gt; recovering</code> with stored <code>armed_forward_distance</code> and <code>peak_forward_distance</code>.</p>
+      <ol>
+        <li>Arm the side only when the hand has returned to its ready lane / ready reach.</li>
+        <li>Enter <code>extending</code> only when the same side is still lane-locked <em>and</em> 3D straightness is high <em>and</em> forward reach is increasing relative to the armed baseline.</li>
+        <li>Emit one straight-punch event for that extension phase.</li>
+        <li>Do not rearm until forward reach has visibly retreated from the phase peak and the hand has returned near its ready lane.</li>
+      </ol>
+      <p><strong>Truthful scope note:</strong> the first three authored left-punch windows are well-supported by the preserved depth evidence. The fourth window is still less well explained because its final preserved <code>forward_velocity</code> is weak/negative at the window peak, so the next coding slice should not promise an honest 4/4 pass before rerunning the new model.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>2026-05-19 interrupted validation preservation note</h2>
+    <div class="card">
+      <p><strong>What happened:</strong> the coding slice for the new Boxing straight-punch model was interrupted by a host GUI/login reset while harness validation was in progress.</p>
+      <p><strong>Preserved WIP files:</strong></p>
+      <ul>
+        <li><code>src/detectors/pose_detector_substrate.gd</code></li>
+        <li><code>src/detectors/pose_metrics.gd</code></li>
+        <li><code>.testbed/scripts/proving_harness.gd</code></li>
+      </ul>
+      <p><strong>Truthful status:</strong> validation did <strong>not</strong> complete. This log is intentionally not claiming authored-window hit counts, false-positive totals, rearm quality, or any successful guarded-left rerun result for the preserved WIP slice.</p>
+      <p><strong>Resume point:</strong> keep the current detector/harness changes exactly as preserved, restore a stable host session, rerun the guarded-left fixture, then write new results from fresh artifacts rather than inference.</p>
+    </div>
   </section>
 
   <section>
@@ -345,7 +447,7 @@
         <li><code>.testbed/test-results/runner-boxing/20260518-214702__boxing_punch_left_x4_while_guarding_take_01/20260518-214702__boxing_punch_left_x4_while_guarding_take_01/</code></li>
         <li><code>.testbed/test-results/runner-boxing/20260518-215350__boxing_punch_left_x4_while_guarding_take_01/20260518-215350__boxing_punch_left_x4_while_guarding_take_01/</code></li>
       </ul>
-      <p><strong>Resume note:</strong> this HTML log plus the new plan file are now the canonical handoff for the next punch-left work session.</p>
+      <p><strong>Resume note:</strong> this HTML log plus the new plan file are now the canonical handoff for the next punch-left work session, and the current detector/harness code changes are preserved for later resumption without any claim that validation already passed.</p>
     </div>
   </section>
 </main>

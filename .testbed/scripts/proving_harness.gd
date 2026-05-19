@@ -870,8 +870,8 @@ func _build_boxing_signal_text() -> String:
 	lines.append("")
 	lines.append("Current detector inputs")
 	lines.append("----------------------")
-	lines.append("L extension=%s  elbow=%s°" % [_fmt_float(measurements.get("left_arm_extension", 0.0)), _fmt_float(measurements.get("left_elbow_bend_deg", 0.0))])
-	lines.append("R extension=%s  elbow=%s°" % [_fmt_float(measurements.get("right_arm_extension", 0.0)), _fmt_float(measurements.get("right_elbow_bend_deg", 0.0))])
+	lines.append("L extension=%s  elbow=%s°  3D=%s / %s°  fwd=%s / %s" % [_fmt_float(measurements.get("left_arm_extension", 0.0)), _fmt_float(measurements.get("left_elbow_bend_deg", 0.0)), _fmt_float(measurements.get("left_arm_extension_3d", 0.0)), _fmt_float(measurements.get("left_elbow_bend_deg_3d", 0.0)), _fmt_float(measurements.get("left_forward_distance", 0.0)), _fmt_float(measurements.get("left_forward_velocity", 0.0))])
+	lines.append("R extension=%s  elbow=%s°  3D=%s / %s°  fwd=%s / %s" % [_fmt_float(measurements.get("right_arm_extension", 0.0)), _fmt_float(measurements.get("right_elbow_bend_deg", 0.0)), _fmt_float(measurements.get("right_arm_extension_3d", 0.0)), _fmt_float(measurements.get("right_elbow_bend_deg_3d", 0.0)), _fmt_float(measurements.get("right_forward_distance", 0.0)), _fmt_float(measurements.get("right_forward_velocity", 0.0))])
 	lines.append("squat depth=%s  head drop=%s" % [_fmt_float(measurements.get("squat_depth", 0.0)), _fmt_float(measurements.get("head_drop_ratio", 0.0))])
 	lines.append("lateral body/head/hip=%s / %s / %s" % [_fmt_float(measurements.get("lateral_offset", 0.0)), _fmt_float(measurements.get("head_lateral_offset", 0.0)), _fmt_float(measurements.get("hip_lateral_offset", 0.0))])
 	lines.append("L knee/foot rise=%s / %s" % [_fmt_float(measurements.get("left_knee_rise", 0.0)), _fmt_float(measurements.get("left_foot_rise", 0.0))])
@@ -928,8 +928,10 @@ func _build_metrics_text() -> String:
 		lines.append("")
 		lines.append("Boxing threshold readouts")
 		lines.append("------------------------")
-		lines.append("L arm ext=%s elbow=%s°" % [_fmt_float(measurements.get("left_arm_extension", 0.0)), _fmt_float(measurements.get("left_elbow_bend_deg", 0.0))])
-		lines.append("R arm ext=%s elbow=%s°" % [_fmt_float(measurements.get("right_arm_extension", 0.0)), _fmt_float(measurements.get("right_elbow_bend_deg", 0.0))])
+		lines.append("L arm ext=%s elbow=%s° | 3D ext=%s elbow=%s°" % [_fmt_float(measurements.get("left_arm_extension", 0.0)), _fmt_float(measurements.get("left_elbow_bend_deg", 0.0)), _fmt_float(measurements.get("left_arm_extension_3d", 0.0)), _fmt_float(measurements.get("left_elbow_bend_deg_3d", 0.0))])
+		lines.append("R arm ext=%s elbow=%s° | 3D ext=%s elbow=%s°" % [_fmt_float(measurements.get("right_arm_extension", 0.0)), _fmt_float(measurements.get("right_elbow_bend_deg", 0.0)), _fmt_float(measurements.get("right_arm_extension_3d", 0.0)), _fmt_float(measurements.get("right_elbow_bend_deg_3d", 0.0))])
+		lines.append("L fwd dist/vel=%s / %s lock=%s lane=%s" % [_fmt_float(measurements.get("left_forward_distance", 0.0)), _fmt_float(measurements.get("left_forward_velocity", 0.0)), str(bool(measurements.get("left_own_half_lock", false))), _fmt_float(measurements.get("left_lane_offset_ratio", 0.0))])
+		lines.append("R fwd dist/vel=%s / %s lock=%s lane=%s" % [_fmt_float(measurements.get("right_forward_distance", 0.0)), _fmt_float(measurements.get("right_forward_velocity", 0.0)), str(bool(measurements.get("right_own_half_lock", false))), _fmt_float(measurements.get("right_lane_offset_ratio", 0.0))])
 		lines.append("height_ratio=%s head_drop=%s" % [_fmt_float(measurements.get("height_ratio", 0.0)), _fmt_float(measurements.get("head_drop_ratio", 0.0))])
 		lines.append("lateral body/head/hip=%s / %s / %s" % [_fmt_float(measurements.get("lateral_offset", 0.0)), _fmt_float(measurements.get("head_lateral_offset", 0.0)), _fmt_float(measurements.get("hip_lateral_offset", 0.0))])
 		lines.append("L knee/foot rise=%s / %s" % [_fmt_float(measurements.get("left_knee_rise", 0.0)), _fmt_float(measurements.get("left_foot_rise", 0.0))])
@@ -1199,7 +1201,9 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 	var metrics: Dictionary = state.get("metrics", {})
 	var measurements: Dictionary = metrics.get("measurements", {})
 	var velocities: Dictionary = metrics.get("velocities", {})
-	var ready_map: Dictionary = ((state.get("gesture_debug", {}) as Dictionary).get("ready", {}) as Dictionary)
+	var gesture_debug: Dictionary = state.get("gesture_debug", {})
+	var ready_map: Dictionary = (gesture_debug.get("ready", {}) as Dictionary)
+	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
 	var landmarks: Dictionary = state.get("landmarks_by_id", {})
 	var left_shoulder: Dictionary = landmarks.get(PoseLandmarkIds.LEFT_SHOULDER, {})
 	var right_shoulder: Dictionary = landmarks.get(PoseLandmarkIds.RIGHT_SHOULDER, {})
@@ -1209,30 +1213,7 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 	var right_wrist: Dictionary = landmarks.get(PoseLandmarkIds.RIGHT_WRIST, {})
 	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
 	var left_hand_velocity: Vector3 = velocities.get("left_hand", Vector3.ZERO)
-	var left_outward_velocity := -left_hand_velocity.x
-	var left_forward_velocity := -left_hand_velocity.z
-	var left_lateral_speed := absf(left_hand_velocity.x)
-	var left_vertical_speed := absf(left_hand_velocity.y)
-	var left_outward_distance := 0.0
-	var left_forward_distance := 0.0
-	var left_elbow_bend_deg_3d := 0.0
-	var left_arm_extension_3d := 0.0
-	if not left_shoulder.is_empty() and not left_wrist.is_empty():
-		left_outward_distance = float(left_shoulder.get("x", 0.0)) - float(left_wrist.get("x", 0.0))
-		left_forward_distance = float(left_shoulder.get("z", 0.0)) - float(left_wrist.get("z", 0.0))
-	if not left_shoulder.is_empty() and not left_elbow.is_empty() and not left_wrist.is_empty():
-		var shoulder_vec := PoseMetrics.to_vector3(left_shoulder)
-		var elbow_vec := PoseMetrics.to_vector3(left_elbow)
-		var wrist_vec := PoseMetrics.to_vector3(left_wrist)
-		var upper_arm_3d := shoulder_vec.distance_to(elbow_vec)
-		var lower_arm_3d := elbow_vec.distance_to(wrist_vec)
-		var full_arm_3d := upper_arm_3d + lower_arm_3d
-		if full_arm_3d > 0.000001:
-			left_arm_extension_3d = clampf(shoulder_vec.distance_to(wrist_vec) / full_arm_3d, 0.0, 1.0)
-		var elbow_to_shoulder := shoulder_vec - elbow_vec
-		var elbow_to_wrist := wrist_vec - elbow_vec
-		if elbow_to_shoulder.length() > 0.000001 and elbow_to_wrist.length() > 0.000001:
-			left_elbow_bend_deg_3d = rad_to_deg(absf(elbow_to_shoulder.angle_to(elbow_to_wrist)))
+	var right_hand_velocity: Vector3 = velocities.get("right_hand", Vector3.ZERO)
 	var guard_aligned_left := false
 	var guard_aligned_right := false
 	var guard_raised_left := false
@@ -1252,23 +1233,39 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 	return {
 		"left_straight": {
 			"arm_extension": float(measurements.get("left_arm_extension", 0.0)),
-			"arm_extension_3d": left_arm_extension_3d,
+			"arm_extension_3d": float(measurements.get("left_arm_extension_3d", 0.0)),
 			"elbow_bend_deg": float(measurements.get("left_elbow_bend_deg", 0.0)),
-			"elbow_bend_deg_3d": left_elbow_bend_deg_3d,
-			"outward_velocity": left_outward_velocity,
-			"forward_velocity": left_forward_velocity,
-			"outward_distance": left_outward_distance,
-			"forward_distance": left_forward_distance,
-			"lateral_speed": left_lateral_speed,
-			"vertical_speed": left_vertical_speed,
-			"ready": bool(ready_map.get("punch_left", true)),
-			"gates": {
-				"extension": float(measurements.get("left_arm_extension", 0.0)) >= 0.92,
-				"elbow": float(measurements.get("left_elbow_bend_deg", 0.0)) >= 170.0,
-				"outward_velocity": left_outward_velocity > shoulder_width * 1.35,
-				"lateral_dominance": left_lateral_speed > left_vertical_speed * 1.35,
-				"outward_distance": left_outward_distance > shoulder_width * 0.75,
-			},
+			"elbow_bend_deg_3d": float(measurements.get("left_elbow_bend_deg_3d", 0.0)),
+			"outward_velocity": -left_hand_velocity.x,
+			"forward_velocity": float(measurements.get("left_forward_velocity", 0.0)),
+			"outward_distance": float(measurements.get("left_outward_distance", 0.0)),
+			"forward_distance": float(measurements.get("left_forward_distance", 0.0)),
+			"lane_offset_ratio": float(measurements.get("left_lane_offset_ratio", 0.0)),
+			"own_half_lock": bool(measurements.get("left_own_half_lock", false)),
+			"lateral_speed": absf(left_hand_velocity.x),
+			"vertical_speed": absf(left_hand_velocity.y),
+			"ready": bool(ready_map.get("punch_left", false)),
+			"phase": String((straight_punch_debug.get("left", {}) as Dictionary).get("phase", "recovering")),
+			"armed_forward_distance": float((straight_punch_debug.get("left", {}) as Dictionary).get("armed_forward_distance", 0.0)),
+			"peak_forward_distance": float((straight_punch_debug.get("left", {}) as Dictionary).get("peak_forward_distance", 0.0)),
+		},
+		"right_straight": {
+			"arm_extension": float(measurements.get("right_arm_extension", 0.0)),
+			"arm_extension_3d": float(measurements.get("right_arm_extension_3d", 0.0)),
+			"elbow_bend_deg": float(measurements.get("right_elbow_bend_deg", 0.0)),
+			"elbow_bend_deg_3d": float(measurements.get("right_elbow_bend_deg_3d", 0.0)),
+			"outward_velocity": right_hand_velocity.x,
+			"forward_velocity": float(measurements.get("right_forward_velocity", 0.0)),
+			"outward_distance": float(measurements.get("right_outward_distance", 0.0)),
+			"forward_distance": float(measurements.get("right_forward_distance", 0.0)),
+			"lane_offset_ratio": float(measurements.get("right_lane_offset_ratio", 0.0)),
+			"own_half_lock": bool(measurements.get("right_own_half_lock", false)),
+			"lateral_speed": absf(right_hand_velocity.x),
+			"vertical_speed": absf(right_hand_velocity.y),
+			"ready": bool(ready_map.get("punch_right", false)),
+			"phase": String((straight_punch_debug.get("right", {}) as Dictionary).get("phase", "recovering")),
+			"armed_forward_distance": float((straight_punch_debug.get("right", {}) as Dictionary).get("armed_forward_distance", 0.0)),
+			"peak_forward_distance": float((straight_punch_debug.get("right", {}) as Dictionary).get("peak_forward_distance", 0.0)),
 		},
 		"guard": {
 			"state": bool((state.get("gesture_states", {}) as Dictionary).get("guard", false)),
