@@ -77,7 +77,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
 harness_mode = 1
-prerecorded_video_source = "res://assets/fixtures/flow/left_3_right_3_to_left_6_right_6/flow_swing_left_3_right_3_to_left_6_right_6_x4.mp4"
+prerecorded_video_source = "res://assets/fixtures/flow/swings/left-and-right-hands/same-direction/lr3->lr9/flow_swing_lr3->lr9_repeat_04_take_01.mp4"
 scene_title = "FLOW GESTURE DETECTION"
 
 [node name="AutoStartManager" type="Node" parent="." unique_id=681176957]
