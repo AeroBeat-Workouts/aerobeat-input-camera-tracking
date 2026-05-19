@@ -165,7 +165,7 @@ Per Derrick’s recommendation, this work should also maintain a living HTML exp
   - `.testbed/test-results/runner-boxing/20260518-215350__boxing_punch_left_x4_while_guarding_take_01/20260518-215350__boxing_punch_left_x4_while_guarding_take_01/`
 
 **Commits:**
-- Pending commit for instrumentation/log/plan update only. No detector-logic change was kept.
+- `5f6d9b0` - `Add punch-left fixture instrumentation evidence`
 
 **Lessons Learned:**
 - The hard part now is detector truth, not fixture plumbing.
