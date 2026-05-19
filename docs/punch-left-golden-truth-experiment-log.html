@@ -428,6 +428,7 @@
       </ul>
       <p><strong>Truthful status:</strong> validation did <strong>not</strong> complete. This log is intentionally not claiming authored-window hit counts, false-positive totals, rearm quality, or any successful guarded-left rerun result for the preserved WIP slice.</p>
       <p><strong>Resume point:</strong> keep the current detector/harness changes exactly as preserved, restore a stable host session, rerun the guarded-left fixture, then write new results from fresh artifacts rather than inference.</p>
+      <p><strong>2026-05-19 close-path retry note:</strong> a separate QA/audit pass retried the same Boxing proving path under the updated generic Godot workflow guardrails and used the explicit human-equivalent editor sequence: open the `.testbed` editor deliberately, switch to <code>boxing_proving.tscn</code>, run with <code>Play Current Scene</code> / <code>F6</code>, stop with <code>Stop Running Project</code> / <code>F8</code>, then close the editor separately with <code>Ctrl+Q</code>. That retry reached Boxing harness live state and exited cleanly without reproducing the GUI/login reset. This is useful close-path evidence, but it is <strong>not</strong> a fresh detector-truth validation result for the preserved straight-punch WIP.</p>
     </div>
   </section>
 
