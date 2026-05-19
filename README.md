@@ -97,6 +97,7 @@ Manual `.testbed/src`, `.testbed/python_mediapipe`, and repo-owned `.testbed/add
 - receive pose landmarks in Godot and expose head/hand/foot polling helpers plus normalized detector-state observations
 - emit shipped Boxing gameplay-intent signals: punches, hooks, uppercuts, guard, squat, weave, sidestep, knees, and leg-lift state changes
 - emit shipped first-pass Flow gameplay-intent signals: `swing_left/right(placement, direction)` and `trail_left/right(placement, direction)`
+- auto-publish a started assembly-facing `src/input_provider.gd` session into `AeroProviderSessionRegistry` when `aerobeat-input-core` is mounted, so same-runtime consumers can borrow the live provider instead of spawning a duplicate copy
 - use either a webcam (`--camera 0`) or a video path (`--camera path/to/file.mp4`) when launching the Python sidecar directly
 - look up MediaPipe models from committed assets under `python_mediapipe/assets/models/`
 - fail fast in Godot when the expected desktop runtime manifest, sentinel, Python executable, or model assets are missing or invalid
@@ -106,6 +107,8 @@ Manual `.testbed/src`, `.testbed/python_mediapipe`, and repo-owned `.testbed/add
 
 - the assembly-community repo still owns addon registration / consumer wiring
 - `src/input_provider.gd` is an adapter layer, not a claim that the full contract is finished
+- the shared-session seam is intentionally **same Godot runtime only**; it does not claim cross-process ownership, machine-global locking, or automatic sidecar discovery outside `AeroProviderSessionRegistry`
+- the repo-local proving harness still exercises `src/providers/mediapipe_provider.gd` directly, so duplicate-prevention reuse only applies when the owner lane starts the assembly-facing adapter (or another explicit `AeroInputProvider` owner) and publishes into the registry
 - desktop export/build integration is **not** yet automated here; exported builds are expected to use the same `assets/runtimes/<platform>/` family, but packaging / hydration policy still needs follow-on work
 - macOS and Windows runtime prep / launch branches are present as architecture scaffolding, **not** as validated desktop parity claims
 - full end-to-end runtime still depends on legitimate local prerequisites such as a working camera / display stack and Python package install success
@@ -350,6 +353,8 @@ This repo now exposes an assembly-facing `src/input_provider.gd` via `plugin.cfg
   - `swing_right(placement, direction)`
   - `trail_left(placement, direction)`
   - `trail_right(placement, direction)`
+- when `aerobeat-input-core` is mounted, a successfully started `src/input_provider.gd` instance now publishes **itself** through `AeroProviderSessionRegistry` under the canonical `mediapipe_python` session key so same-runtime consumers can request/acquire the live adapter instead of starting a duplicate one
+- that publication seam is intentionally small and honest: it only covers in-process shared reuse of the live `AeroInputProvider` adapter instance, and the adapter unpublishes its session on stop/teardown
 - `run_in_place` remains a legitimate authored/chart beat, but it is **not** a tracked provider input event in this pass
 - haptics are **not** implemented here yet
 - rotation / full `tracking_updated` spatial output are **not** implemented here yet

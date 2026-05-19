@@ -16,6 +16,9 @@ extends "res://addons/aerobeat-input-core/src/interfaces/boxing_input.gd"
 ## - no haptics or 6DOF transform output yet
 
 const PROVIDER_ID := "mediapipe_python"
+const PROVIDER_SESSION_REGISTRY_PATH := "res://addons/aerobeat-input-core/src/runtime/provider_session_registry.gd"
+const SHARED_SESSION_OWNER_PREFIX := "aerobeat-input-mediapipe-python:input_provider"
+const SHARED_SESSION_KEY := "mediapipe_python"
 
 signal swing_left(placement: int, direction: int)
 signal swing_right(placement: int, direction: int)
@@ -30,6 +33,8 @@ var _provider = null
 var _config = null
 var _tracking_mode: TrackingMode = TrackingMode.MODE_2D
 var _body_track_flags: int = BodyTrackFlags.ALL
+var _published_session_key := ""
+var _published_session_owner_id := ""
 
 func _ready() -> void:
 	_ensure_provider()
@@ -39,12 +44,14 @@ func start(settings_json: String = "") -> bool:
 	_apply_settings(settings_json)
 	var success: bool = _provider.start()
 	if success:
+		_publish_shared_session_if_possible()
 		started.emit()
 	else:
 		failed.emit("MediaPipe provider failed to start")
 	return success
 
 func stop() -> void:
+	_unpublish_shared_session_if_needed()
 	if _provider == null:
 		return
 	_provider.stop()
@@ -124,6 +131,75 @@ func set_tracking_mode(mode: TrackingMode) -> void:
 
 func set_body_track_flags(flags: int) -> void:
 	_body_track_flags = flags
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EXIT_TREE:
+		_unpublish_shared_session_if_needed()
+
+func _provider_session_registry_available() -> bool:
+	return ResourceLoader.exists(PROVIDER_SESSION_REGISTRY_PATH)
+
+func _load_provider_session_registry():
+	if not _provider_session_registry_available():
+		return null
+	return load(PROVIDER_SESSION_REGISTRY_PATH)
+
+func _publish_shared_session_if_possible() -> Dictionary:
+	var registry = _load_provider_session_registry()
+	if registry == null:
+		return {}
+
+	var owner_id := _build_shared_session_owner_id()
+	var publish: Dictionary = registry.publish_session(
+		owner_id,
+		self,
+		{
+			"session_key": SHARED_SESSION_KEY,
+			"metadata": _build_shared_session_metadata(),
+		}
+	)
+	if bool(publish.get("ok", false)):
+		var session: Dictionary = publish.get("session", {}) if publish.get("session", {}) is Dictionary else {}
+		_published_session_owner_id = owner_id
+		_published_session_key = String(session.get("session_key", SHARED_SESSION_KEY)).strip_edges()
+		return publish
+
+	_published_session_owner_id = ""
+	_published_session_key = ""
+	var status := String(publish.get("status", "unknown"))
+	if status != "owner_mismatch" and status != "session_exists":
+		push_warning("MediaPipe input provider session was not published: %s" % status)
+	return publish
+
+func _unpublish_shared_session_if_needed() -> void:
+	if _published_session_owner_id.is_empty() or _published_session_key.is_empty():
+		return
+
+	var owner_id := _published_session_owner_id
+	var session_key := _published_session_key
+	_published_session_owner_id = ""
+	_published_session_key = ""
+
+	var registry = _load_provider_session_registry()
+	if registry == null:
+		return
+	registry.unpublish_session(owner_id, session_key)
+
+func _build_shared_session_owner_id() -> String:
+	var node_identity := "instance_%d" % get_instance_id()
+	if is_inside_tree():
+		var node_path := String(get_path()).strip_edges()
+		if not node_path.is_empty():
+			node_identity = node_path
+	return "%s:%s" % [SHARED_SESSION_OWNER_PREFIX, node_identity]
+
+func _build_shared_session_metadata() -> Dictionary:
+	return {
+		"lane": "input_provider",
+		"entrypoint": "src/input_provider.gd",
+		"node_path": String(get_path()) if is_inside_tree() else "",
+		"shared_reuse_scope": "same_runtime_only",
+	}
 
 func _ensure_provider() -> void:
 	if _provider != null:
