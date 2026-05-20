@@ -238,7 +238,7 @@ static func validate_runtime(owner_script_path: String, required_model_name: Str
 			if relative_path.is_empty():
 				errors.append("Runtime manifest has model_assets entry without relative_path")
 				continue
-			var absolute_path := ProjectSettings.globalize_path("res://../" + relative_path)
+			var absolute_path := ProjectSettings.globalize_path(resolve_package_path(owner_script_path, relative_path))
 			if not FileAccess.file_exists(absolute_path):
 				errors.append("Required model asset listed in runtime manifest is missing: %s" % absolute_path)
 			if String(model_entry.get("filename", "")) == required_model_name:
