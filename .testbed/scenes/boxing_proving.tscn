@@ -83,13 +83,6 @@ vertical_alignment = 1
 layout_mode = 2
 text = "Initializing..."
 
-[node name="LiveStatusLabel" type="RichTextLabel" parent="Margin/VSplit/Header" unique_id=1178114352]
-custom_minimum_size = Vector2(0, 22)
-layout_mode = 2
-text = "waiting for provider..."
-fit_content = true
-scroll_active = false
-
 [node name="NotesLabel" type="Label" parent="Margin/VSplit/Header" unique_id=234435807]
 visible = false
 layout_mode = 2
@@ -105,6 +98,18 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 0.96
 theme_override_constants/separation = 12
+
+[node name="CameraSourceControls" type="VBoxContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=215770001]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CameraSourceLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770002]
+layout_mode = 2
+text = "Live camera"
+
+[node name="CameraSourcePicker" type="OptionButton" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770003]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="CameraPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=609295185]
 layout_mode = 2

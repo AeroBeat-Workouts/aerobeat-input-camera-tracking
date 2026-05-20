@@ -150,6 +150,18 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 0.92
 theme_override_constants/separation = 12
 
+[node name="CameraSourceControls" type="VBoxContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=215880001]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CameraSourceLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215880002]
+layout_mode = 2
+text = "Live camera"
+
+[node name="CameraSourcePicker" type="OptionButton" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215880003]
+layout_mode = 2
+size_flags_horizontal = 3
+
 [node name="CameraPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=592508220]
 layout_mode = 2
 size_flags_horizontal = 3

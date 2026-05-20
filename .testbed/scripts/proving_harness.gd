@@ -94,7 +94,6 @@ enum StartupMode {
 @export var scene_title := "Detector Proving Harness"
 @export_multiline var scene_notes := ""
 @export var overlay_visibility_threshold := 0.35
-@export var camera_source := ""
 @export_enum("full", "optimized", "off") var tracking_overlay_mode := "full"
 @export_range(1, 6, 1) var gesture_eval_interval_frames := 1
 @export var show_landmarks := true
@@ -112,6 +111,8 @@ enum StartupMode {
 @onready var live_status_label: RichTextLabel = get_node_or_null("Margin/VSplit/Header/LiveStatusLabel") as RichTextLabel
 @onready var title_label: Label = find_child("TitleLabel", true, false) as Label
 @onready var notes_label: Label = get_node_or_null("Margin/VSplit/Header/NotesLabel") as Label
+@onready var camera_source_controls: Control = get_node_or_null("Margin/VSplit/Content/LeftColumn/CameraSourceControls") as Control
+@onready var camera_source_picker: OptionButton = find_child("CameraSourcePicker", true, false) as OptionButton
 @onready var camera_display: TextureRect = get_node_or_null("Margin/VSplit/Content/LeftColumn/CameraPanel/CameraDisplay") as TextureRect
 @onready var landmark_drawer: Control = find_child("LandmarkDrawer", true, false) as Control
 @onready var trail_drawer: Control = find_child("TrailDrawer", true, false) as Control
@@ -153,6 +154,10 @@ var _last_console_snapshot := ""
 var _preview_only_invalid_reason := ""
 var _preview_only_invalid_logged := false
 var _shutdown_summary_logged := false
+var _camera_devices: Array = []
+var _selected_live_camera_device_id := ""
+var _suppress_camera_picker_signal := false
+var _camera_switch_in_progress := false
 
 func _enter_tree() -> void:
 	if startup_mode != StartupMode.GODOT_ONLY_DEBUG:
@@ -172,6 +177,7 @@ func _ready() -> void:
 			label_variant.bbcode_enabled = false
 	if live_status_label:
 		live_status_label.scroll_active = false
+	_configure_camera_source_controls()
 	_left_trail_debug = _make_trail_debug_state("left")
 	_right_trail_debug = _make_trail_debug_state("right")
 	_reset_last_flow_events()
@@ -189,6 +195,142 @@ func _ready() -> void:
 		_setup_auto_start()
 	_refresh_debug_panels()
 
+func _configure_camera_source_controls() -> void:
+	if camera_source_picker and not camera_source_picker.item_selected.is_connected(_on_camera_source_picker_selected):
+		camera_source_picker.item_selected.connect(_on_camera_source_picker_selected)
+	_refresh_camera_source_controls()
+
+func _refresh_camera_source_controls() -> void:
+	var show_controls := _should_show_camera_source_controls()
+	if camera_source_controls:
+		camera_source_controls.visible = show_controls
+	if camera_source_picker == null:
+		return
+	if not show_controls:
+		return
+	_camera_devices = _load_available_camera_devices()
+	if _selected_live_camera_device_id.strip_edges().is_empty():
+		_selected_live_camera_device_id = _resolve_default_live_camera_device_id(_camera_devices)
+	_populate_camera_source_picker()
+
+func _should_show_camera_source_controls() -> bool:
+	return startup_mode != StartupMode.GODOT_ONLY_DEBUG and _get_scene_camera_source_override().is_empty()
+
+func _load_available_camera_devices() -> Array:
+	var temp_provider: Variant = MediaPipeProviderScript.new()
+	var devices: Array = []
+	if temp_provider != null and temp_provider.has_method("get_available_camera_devices"):
+		devices = temp_provider.get_available_camera_devices()
+	if temp_provider is Node and is_instance_valid(temp_provider):
+		temp_provider.free()
+	if devices.is_empty():
+		devices.append({
+			"id": "/dev/video0",
+			"label": "Default camera",
+			"path": "/dev/video0",
+			"provider": "mediapipe_python",
+		})
+	return devices
+
+func _resolve_default_live_camera_device_id(devices: Array) -> String:
+	var source := _get_effective_camera_source()
+	if not _is_live_camera_source_value(source):
+		return _first_camera_device_id(devices)
+	var normalized := _normalize_live_camera_device_id(source)
+	if _device_list_has_id(devices, normalized):
+		return normalized
+	if source == "0" and _device_list_has_id(devices, "/dev/video0"):
+		return "/dev/video0"
+	if not normalized.is_empty():
+		return normalized
+	return _first_camera_device_id(devices)
+
+func _first_camera_device_id(devices: Array) -> String:
+	for device_variant: Variant in devices:
+		if not device_variant is Dictionary:
+			continue
+		var device: Dictionary = device_variant
+		var device_id := String(device.get("id", "")).strip_edges()
+		if not device_id.is_empty():
+			return device_id
+	return ""
+
+func _device_list_has_id(devices: Array, device_id: String) -> bool:
+	for device_variant: Variant in devices:
+		if not device_variant is Dictionary:
+			continue
+		if String((device_variant as Dictionary).get("id", "")).strip_edges() == device_id:
+			return true
+	return false
+
+func _populate_camera_source_picker() -> void:
+	if camera_source_picker == null:
+		return
+	_suppress_camera_picker_signal = true
+	camera_source_picker.clear()
+	var selected_index := -1
+	for index: int in range(_camera_devices.size()):
+		var device_variant: Variant = _camera_devices[index]
+		if not device_variant is Dictionary:
+			continue
+		var device: Dictionary = device_variant
+		var device_id := String(device.get("id", "")).strip_edges()
+		var label := _camera_device_label(device)
+		camera_source_picker.add_item(label)
+		var item_index := camera_source_picker.item_count - 1
+		camera_source_picker.set_item_metadata(item_index, device_id)
+		camera_source_picker.set_item_tooltip(item_index, device_id)
+		if device_id == _selected_live_camera_device_id:
+			selected_index = item_index
+	if selected_index == -1 and camera_source_picker.item_count > 0:
+		selected_index = 0
+		_selected_live_camera_device_id = String(camera_source_picker.get_item_metadata(0)).strip_edges()
+	if selected_index >= 0:
+		camera_source_picker.select(selected_index)
+	_suppress_camera_picker_signal = false
+
+func _camera_device_label(device: Dictionary) -> String:
+	var label := String(device.get("label", "")).strip_edges()
+	var device_id := String(device.get("id", "")).strip_edges()
+	if label.is_empty():
+		label = device_id
+	if label == device_id or device_id.is_empty():
+		return label
+	return "%s (%s)" % [label, device_id]
+
+func _on_camera_source_picker_selected(index: int) -> void:
+	if _suppress_camera_picker_signal or camera_source_picker == null or index < 0 or index >= camera_source_picker.item_count:
+		return
+	var device_id := String(camera_source_picker.get_item_metadata(index)).strip_edges()
+	if device_id.is_empty() or device_id == _selected_live_camera_device_id or _camera_switch_in_progress:
+		return
+	_switch_live_camera_source.call_deferred(device_id)
+
+func _switch_live_camera_source(device_id: String) -> void:
+	await _apply_live_camera_source(device_id)
+
+func _apply_live_camera_source(device_id: String) -> void:
+	if device_id.strip_edges().is_empty() or not _should_show_camera_source_controls():
+		return
+	_camera_switch_in_progress = true
+	_selected_live_camera_device_id = _normalize_live_camera_device_id(device_id)
+	_refresh_camera_source_controls()
+	_update_status("Switching live camera...", Color.YELLOW)
+	if provider != null:
+		provider.stop()
+		if is_instance_valid(provider):
+			provider.queue_free()
+		provider = null
+	if camera_view != null and camera_view.is_streaming():
+		camera_view.stop_stream()
+	_server_ready = false
+	if auto_start_manager != null:
+		auto_start_manager.camera_source_override = _get_autostart_camera_source_override()
+		await auto_start_manager.stop_server()
+		await auto_start_manager.start_server()
+	_camera_switch_in_progress = false
+	_refresh_camera_source_controls()
+
 func _setup_auto_start() -> void:
 	auto_start_manager = get_node_or_null("AutoStartManager")
 	if auto_start_manager == null:
@@ -196,7 +338,7 @@ func _setup_auto_start() -> void:
 		_update_status("AutoStartManager missing", Color.RED)
 		return
 
-	auto_start_manager.camera_source_override = _get_scene_camera_source_override()
+	auto_start_manager.camera_source_override = _get_autostart_camera_source_override()
 	auto_start_manager.debug_logging = steady_state_console_debug or shutdown_console_debug
 	auto_start_manager.skip_sidecar_stop_on_close_debug = skip_sidecar_stop_on_close_debug
 	auto_start_manager.skip_sidecar_terminate_sync_on_close_debug = skip_sidecar_terminate_sync_on_close_debug
@@ -301,6 +443,7 @@ func _start_provider() -> void:
 	var success := provider.start()
 	if success:
 		_server_ready = true
+		_refresh_camera_source_controls()
 		_record_event("provider_started", {"mode": _mode_name()})
 		_record_fixture_state_snapshot("provider_started")
 		_update_status("%s harness live" % _mode_name(), Color.GREEN)
@@ -313,8 +456,9 @@ func _build_runtime_config() -> MediaPipeConfig:
 	config.track_left_foot = true
 	config.track_right_foot = true
 	config.flip_horizontal = _should_flip_horizontal_preview()
-	if not camera_source.strip_edges().is_empty():
-		config.set_selected_camera_device_id(camera_source.strip_edges())
+	var live_camera_source := _get_configured_live_camera_source()
+	if not live_camera_source.is_empty() and live_camera_source != "0":
+		config.set_selected_camera_device_id(live_camera_source)
 	config.tracking_overlay_mode = tracking_overlay_mode
 	config.gesture_eval_interval_frames = maxi(1, gesture_eval_interval_frames)
 	return config
@@ -1418,37 +1562,69 @@ func _emit_console_snapshot_if_changed(force: bool = false) -> void:
 func _get_scene_camera_source_override() -> String:
 	return prerecorded_video_source.strip_edges()
 
+func _get_autostart_camera_source_override() -> String:
+	var explicit_override := _get_scene_camera_source_override()
+	if not explicit_override.is_empty():
+		return explicit_override
+	return _get_configured_live_camera_source()
+
+func _get_configured_live_camera_source() -> String:
+	if not _selected_live_camera_device_id.strip_edges().is_empty():
+		return _selected_live_camera_device_id.strip_edges()
+	var env_override := OS.get_environment("AEROBEAT_MEDIAPIPE_CAMERA_SOURCE").strip_edges()
+	if not env_override.is_empty():
+		return _normalize_live_camera_device_id(env_override)
+	return "0"
+
 func _get_effective_camera_source() -> String:
 	if auto_start_manager != null and auto_start_manager.has_method("get_active_camera_source"):
 		return String(auto_start_manager.get_active_camera_source())
 	var explicit_override := _get_scene_camera_source_override()
 	if not explicit_override.is_empty():
 		return ProjectSettings.globalize_path(explicit_override) if not explicit_override.is_valid_int() else explicit_override
-	var env_override := OS.get_environment("AEROBEAT_MEDIAPIPE_CAMERA_SOURCE").strip_edges()
-	if not env_override.is_empty():
-		return ProjectSettings.globalize_path(env_override) if not env_override.is_valid_int() else env_override
-	return "0"
+	return _get_configured_live_camera_source()
+
+func _is_live_camera_source_value(source: String) -> bool:
+	var trimmed := source.strip_edges()
+	return trimmed.is_empty() or trimmed == "0" or trimmed.is_valid_int() or trimmed.begins_with("/dev/video")
+
+func _normalize_live_camera_device_id(source: String) -> String:
+	var trimmed := source.strip_edges()
+	if trimmed.is_empty() or trimmed == "0":
+		return "/dev/video0"
+	if trimmed.is_valid_int():
+		return "/dev/video%s" % trimmed
+	return trimmed
+
+func _camera_label_for_device_id(device_id: String) -> String:
+	var normalized := _normalize_live_camera_device_id(device_id)
+	for device_variant: Variant in _camera_devices:
+		if not device_variant is Dictionary:
+			continue
+		var device: Dictionary = device_variant
+		if String(device.get("id", "")).strip_edges() == normalized:
+			return _camera_device_label(device)
+	return normalized.get_file() if normalized.get_file() != "" else normalized
 
 func _camera_source_summary_text() -> String:
 	var source := _get_effective_camera_source()
-	if source == "0":
-		return "live camera (default)"
+	if _is_live_camera_source_value(source):
+		if source == "0" or source.strip_edges().is_empty():
+			return "live camera (default)"
+		return "live camera (%s)" % _camera_label_for_device_id(source)
 	var scene_override := _get_scene_camera_source_override()
 	if not scene_override.is_empty():
 		return "scene override: %s" % scene_override
-	var env_override := OS.get_environment("AEROBEAT_MEDIAPIPE_CAMERA_SOURCE").strip_edges()
-	if not env_override.is_empty():
-		return "environment override: %s" % env_override
 	return source
 
 func _camera_source_compact_text() -> String:
 	var source := _get_effective_camera_source()
-	if source == "0":
-		return "live"
+	if _is_live_camera_source_value(source):
+		return _normalize_live_camera_device_id(source).get_file()
 	return source.get_file() if source.get_file() != "" else source
 
 func _should_flip_horizontal_preview() -> bool:
-	return _get_effective_camera_source() == "0"
+	return _is_live_camera_source_value(_get_effective_camera_source())
 
 func _mode_name() -> String:
 	return "Boxing" if harness_mode == HarnessMode.BOXING else "Flow"
