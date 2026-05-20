@@ -163,6 +163,58 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"group": "threshold",
 	},
 ]
+const PUNCH_CALIBRATION_ROWS := [
+	{
+		"id": "calibration_section",
+		"label": "Calibration / Baselines",
+		"row_kind": "section",
+	},
+	{
+		"id": "calibration_ready",
+		"label": "Calibration status",
+		"row_kind": "info",
+	},
+	{
+		"id": "calibration_sample_frames",
+		"label": "Calibration sample frames",
+		"row_kind": "info",
+	},
+	{
+		"id": "baseline_shoulder_width",
+		"label": "Baseline shoulder width",
+		"row_kind": "info",
+	},
+	{
+		"id": "baseline_torso_height",
+		"label": "Baseline torso height",
+		"row_kind": "info",
+	},
+	{
+		"id": "baseline_athlete_height",
+		"label": "Baseline athlete height",
+		"row_kind": "info",
+	},
+	{
+		"id": "calibration_armed_forward_distance",
+		"label": "Armed forward distance snapshot",
+		"row_kind": "info",
+	},
+	{
+		"id": "calibration_threshold_width",
+		"label": "Frozen threshold shoulder width",
+		"row_kind": "info",
+	},
+	{
+		"id": "calibration_forward_delta_min",
+		"label": "Derived forward delta min",
+		"row_kind": "info",
+	},
+	{
+		"id": "calibration_forward_velocity_min",
+		"label": "Derived forward velocity min",
+		"row_kind": "info",
+	},
+]
 const HOVER_REQUIREMENT_SPECS := {
 	"punch_left": {
 		"title": "Punch-L",
@@ -484,7 +536,7 @@ func _refresh_hover_card() -> void:
 	_hover_card_footer_label.text = String(model.get("footer", ""))
 	_hover_card_footer_label.visible = not _hover_card_footer_label.text.is_empty()
 	_sync_hover_card_rows(model.get("rows", []))
-	_hover_card_panel.reset_size()
+	_resize_and_reposition_hover_card(_hovered_card_key)
 
 func _build_hover_card_model(card_key: String) -> Dictionary:
 	var spec: Dictionary = HOVER_REQUIREMENT_SPECS.get(card_key, {})
@@ -516,6 +568,9 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 	for row_spec_variant: Variant in spec.get("rows", []):
 		var row_spec: Dictionary = row_spec_variant
 		rows.append(_build_punch_requirement_row(row_spec, straight_side, side))
+	for row_spec_variant: Variant in PUNCH_CALIBRATION_ROWS:
+		var row_spec: Dictionary = row_spec_variant
+		rows.append(_build_punch_requirement_row(row_spec, straight_side, side))
 	return {
 		"title": spec.get("title", _display_name_for_card_key("punch_%s" % side)),
 		"rows": rows,
@@ -544,9 +599,17 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var raw_forward_velocity := float(straight_side.get("raw_forward_velocity", 0.0))
 	var forward_velocity_min := float(straight_side.get("forward_velocity_min", 0.0))
 	var threshold_shoulder_width := float(straight_side.get("threshold_shoulder_width", 0.0))
+	var threshold_shoulder_width_latched := bool(straight_side.get("threshold_shoulder_width_latched", false))
+	var latched_threshold_shoulder_width := float(straight_side.get("latched_threshold_shoulder_width", 0.0))
+	var live_shoulder_width := float(straight_side.get("live_shoulder_width", 0.0))
+	var calibration_ready := bool(straight_side.get("calibration_ready", false))
+	var calibration_sample_frames := int(straight_side.get("calibration_sample_frames", 0))
+	var baseline_shoulder_width := float(straight_side.get("baseline_shoulder_width", 0.0))
+	var baseline_torso_height := float(straight_side.get("baseline_torso_height", 0.0))
+	var baseline_athlete_height := float(straight_side.get("baseline_athlete_height", 0.0))
 	match row_id:
 		"phase_armed":
-			current_text = phase
+			current_text = "armed (waiting for fire gates)" if phase == "armed" else phase
 			passed = phase == "armed"
 		"arm_extension_3d":
 			current_text = _fmt_float(arm_extension_3d)
@@ -556,7 +619,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			passed = elbow_angle_3d >= elbow_angle_min
 		"armed_forward_distance":
 			current_text = _fmt_float(armed_forward_distance)
-			passed = threshold_shoulder_width > 0.0
+			passed = threshold_shoulder_width_latched
 		"forward_delta_from_armed":
 			threshold_text = _fmt_float(forward_delta_min)
 			current_text = "%s (armed %s → current %s)" % [
@@ -576,12 +639,53 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			current_text = _fmt_float(raw_forward_velocity)
 			passed = raw_forward_velocity > forward_velocity_min
 		"frozen_threshold_source":
-			current_text = "%s (Δ %s, vz %s)" % [
-				_fmt_float(threshold_shoulder_width),
-				_fmt_float(forward_delta_min),
-				_fmt_float(forward_velocity_min),
-			]
-			passed = threshold_shoulder_width > 0.0
+			if threshold_shoulder_width_latched:
+				current_text = "%s (Δ %s, vz %s)" % [
+					_fmt_float(latched_threshold_shoulder_width),
+					_fmt_float(forward_delta_min),
+					_fmt_float(forward_velocity_min),
+				]
+			else:
+				current_text = "not latched yet (live %s → Δ %s, vz %s)" % [
+					_fmt_float(live_shoulder_width),
+					_fmt_float(forward_delta_min),
+					_fmt_float(forward_velocity_min),
+				]
+			passed = threshold_shoulder_width_latched
+		"calibration_section":
+			current_text = ""
+			passed = false
+		"calibration_ready":
+			current_text = "ready" if calibration_ready else "not ready"
+			passed = calibration_ready
+		"calibration_sample_frames":
+			current_text = str(calibration_sample_frames)
+			passed = calibration_sample_frames > 0
+		"baseline_shoulder_width":
+			current_text = _fmt_float(baseline_shoulder_width)
+			passed = baseline_shoulder_width > 0.0
+		"baseline_torso_height":
+			current_text = _fmt_float(baseline_torso_height)
+			passed = baseline_torso_height > 0.0
+		"baseline_athlete_height":
+			current_text = _fmt_float(baseline_athlete_height)
+			passed = baseline_athlete_height > 0.0
+		"calibration_armed_forward_distance":
+			current_text = _fmt_float(armed_forward_distance)
+			passed = threshold_shoulder_width_latched
+		"calibration_threshold_width":
+			if threshold_shoulder_width_latched:
+				current_text = _fmt_float(latched_threshold_shoulder_width)
+				passed = true
+			else:
+				current_text = "not latched yet (live %s)" % _fmt_float(live_shoulder_width)
+				passed = false
+		"calibration_forward_delta_min":
+			current_text = _fmt_float(forward_delta_min)
+			passed = threshold_shoulder_width_latched
+		"calibration_forward_velocity_min":
+			current_text = _fmt_float(forward_velocity_min)
+			passed = threshold_shoulder_width_latched
 		_:
 			current_text = "pending"
 			passed = false
@@ -635,6 +739,11 @@ func _create_requirement_row(row: Dictionary) -> Dictionary:
 	var container := VBoxContainer.new()
 	container.add_theme_constant_override("separation", 3)
 
+	var separator := HSeparator.new()
+	separator.visible = false
+	separator.modulate = Color(1.0, 1.0, 1.0, 0.18)
+	container.add_child(separator)
+
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", 8)
 	container.add_child(line)
@@ -662,6 +771,7 @@ func _create_requirement_row(row: Dictionary) -> Dictionary:
 
 	var row_node := {
 		"container": container,
+		"separator": separator,
 		"checkbox": checkbox,
 		"text_label": text_label,
 		"footer": footer,
@@ -670,19 +780,33 @@ func _create_requirement_row(row: Dictionary) -> Dictionary:
 	return row_node
 
 func _update_requirement_row(row_node: Dictionary, row: Dictionary) -> void:
+	var row_kind := String(row.get("row_kind", "requirement"))
 	var passed := bool(row.get("passed", false))
+	var separator := row_node.get("separator") as HSeparator
 	var checkbox := row_node.get("checkbox") as Label
+	var text_label := row_node.get("text_label") as Label
+	var footer := row_node.get("footer") as Label
+	if separator != null:
+		separator.visible = row_kind == "section"
 	if checkbox != null:
+		checkbox.visible = row_kind == "requirement"
 		checkbox.text = "[x]" if passed else "[ ]"
 		checkbox.add_theme_color_override("font_color", Color(0.70, 1.0, 0.82, 0.96) if passed else Color(1.0, 1.0, 1.0, 0.88))
-	var text_label := row_node.get("text_label") as Label
 	if text_label != null:
 		text_label.text = _build_requirement_row_text(row)
-	var footer := row_node.get("footer") as Label
+		if row_kind == "section":
+			text_label.add_theme_font_size_override("font_size", 12)
+			text_label.add_theme_color_override("font_color", Color(0.82, 0.90, 1.0, 0.88))
+		elif row_kind == "info":
+			text_label.add_theme_font_size_override("font_size", 12)
+			text_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.78))
+		else:
+			text_label.add_theme_font_size_override("font_size", HOVER_CARD_BODY_FONT_SIZE)
+			text_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
 	if footer != null:
 		var suspect_text := String(row.get("suspect_text", ""))
 		footer.text = suspect_text
-		footer.visible = not suspect_text.is_empty()
+		footer.visible = row_kind == "requirement" and not suspect_text.is_empty()
 
 func _build_requirement_row_text(row: Dictionary) -> String:
 	var label := String(row.get("label", ""))
@@ -725,9 +849,8 @@ func _position_hover_card(card_key: String) -> void:
 		anchor = tile.get("panel") as Control
 	if anchor == null:
 		return
-	_hover_card_panel.reset_size()
 	var anchor_rect := anchor.get_global_rect()
-	var popup_size := _hover_card_panel.get_combined_minimum_size()
+	var popup_size := _hover_card_panel.size
 	var viewport_size := get_viewport_rect().size
 	var x := anchor_rect.end.x + HOVER_CARD_MARGIN
 	var y := anchor_rect.position.y - 8.0
@@ -739,11 +862,29 @@ func _position_hover_card(card_key: String) -> void:
 		y = maxf(HOVER_CARD_MARGIN, viewport_size.y - popup_size.y - HOVER_CARD_MARGIN)
 	_hover_card_panel.position = Vector2(x, maxf(HOVER_CARD_MARGIN, y))
 
+func _resize_and_reposition_hover_card(card_key: String) -> void:
+	if _hover_card_panel == null:
+		return
+	_apply_hover_card_rect(card_key)
+	call_deferred("_apply_hover_card_rect", card_key)
+
+func _apply_hover_card_rect(card_key: String) -> void:
+	if _hover_card_panel == null:
+		return
+	_hover_card_panel.custom_minimum_size = Vector2(HOVER_CARD_MAX_WIDTH, 0.0)
+	if _hover_card_rows != null:
+		_hover_card_rows.queue_sort()
+		_hover_card_rows.update_minimum_size()
+	_hover_card_panel.update_minimum_size()
+	_hover_card_panel.reset_size()
+	var popup_size := _hover_card_panel.get_combined_minimum_size()
+	_hover_card_panel.size = popup_size
+	_position_hover_card(card_key)
+
 func _on_hover_target_entered(card_key: String) -> void:
 	_hovered_card_key = card_key
 	_hover_card_signature = ""
 	_refresh_hover_card()
-	_position_hover_card(card_key)
 
 func _on_hover_target_exited(card_key: String) -> void:
 	if _hovered_card_key != card_key:

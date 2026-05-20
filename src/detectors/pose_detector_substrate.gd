@@ -524,6 +524,8 @@ func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 func _build_straight_punch_side_debug(side: String, measurements: Dictionary) -> Dictionary:
 	var state := _get_straight_punch_state(side)
 	var current_shoulder_width := maxf(float(measurements.get("shoulder_width", float(_baseline.get("shoulder_width", 0.0)))), 0.0)
+	var latched_threshold_shoulder_width := maxf(float(state.get("threshold_shoulder_width", 0.0)), 0.0)
+	var threshold_shoulder_width_latched := latched_threshold_shoulder_width > 0.0
 	var threshold_shoulder_width := _get_straight_punch_threshold_shoulder_width(state, current_shoulder_width)
 	var forward_delta_min := threshold_shoulder_width * PUNCH_FORWARD_DELTA_RATIO
 	var forward_velocity_min := threshold_shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
@@ -545,12 +547,20 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary) ->
 		"elbow_bend_deg_3d": elbow_bend_deg_3d,
 		"raw_forward_velocity": raw_forward_velocity,
 		"threshold_shoulder_width": threshold_shoulder_width,
+		"threshold_shoulder_width_latched": threshold_shoulder_width_latched,
+		"latched_threshold_shoulder_width": latched_threshold_shoulder_width,
+		"live_shoulder_width": current_shoulder_width,
 		"forward_delta_min": forward_delta_min,
 		"forward_velocity_min": forward_velocity_min,
 		"rearm_retreat_min": rearm_retreat_min,
 		"rearm_ready_margin": rearm_ready_margin,
 		"arm_extension_min": PUNCH_3D_EXTENSION_MIN,
 		"elbow_bend_deg_min": PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG,
+		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
+		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
+		"baseline_shoulder_width": float(_baseline.get("shoulder_width", 0.0)),
+		"baseline_torso_height": float(_baseline.get("torso_height", 0.0)),
+		"baseline_athlete_height": float(_baseline.get("athlete_height", 0.0)),
 	}
 
 func _build_flow_debug_state(metrics: Dictionary = {}) -> Dictionary:

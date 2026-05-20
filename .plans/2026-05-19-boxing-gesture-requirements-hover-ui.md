@@ -400,6 +400,136 @@ Recommended next implementation slice: fix hover-row teardown so row containers 
 
 **Folders Created/Deleted/Modified:**
 - `.plans/`
+- `.temp/qa-task10-overlay/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
+- `.temp/qa-task10-overlay.gd`
+- `.temp/qa-task10-overlay/report.json`
+- `.temp/qa-task10-overlay/scene-smoke.log`
+- `.temp/qa-task10-overlay/sampler.log`
+
+**Status:** ❌ Failed (QA complete; auditor still needed)
+
+**Results:** QA re-verified the corrected overlay and Punch rows with fresh runtime evidence from two sources: `.temp/qa-task10-overlay/report.json` (new fixture-backed headless sampling against `boxing_punch_left_x4_while_guarding_take_01.mp4`) plus `.temp/qa-task10-overlay/scene-smoke.log` / `.temp/qa-task10-overlay/sampler.log` for command logs. This pass also cross-checked the direct badge-transition behavior through the live scene root rather than relying only on code review.
+- **Popup stability bug appears fixed.** Repeated direct badge transitions now stayed sane with no tall accumulation state: `Punch-L` row count `8`, `Punch-R` `8`, `Guard` `1`, `Squat` `1`, then back to `Punch-L` `8` / `Punch-R` `8` / `Guard` `1` / `Squat` `1` / `Punch-L` `8` in the fresh runtime capture (`report.json > transitions[*].row_count`). That directly covers the previously broken badge→badge path Derrick reported.
+- **Own-half / side-of-screen row is fully gone from Punch-L and Punch-R.** Fresh Punch card rows are now: phase, 3D arm reach ratio, 3D elbow angle, armed forward-distance snapshot, forward delta from armed, peak forward distance, raw forward z velocity, and frozen threshold shoulder width. No `own_half`, `side of screen`, or equivalent row appeared anywhere in the live `Punch-L` / `Punch-R` card captures (`report.json > punch_left_card.rows`, `punch_right_card.rows`, and `transitions[0/1].rows`).
+- **New truth-model rows do render and are more readable.** The live overlay text now matches the intended rework from Task 9: `3D arm reach ratio`, `3D elbow angle`, `Armed forward distance snapshot`, `Forward delta from armed`, `Peak forward distance`, `Raw forward z velocity`, and `Frozen threshold shoulder width` all render in the live card output (`transitions[0].rows`, `transitions[1].rows`). The old mislabeled 2D/own-half rows are not present.
+- **Phase row no longer appears falsely stuck on `armed`, but this fixture did not exercise a full good punch cycle.** Across 72 fresh runtime samples from the guarded left-punch video, both sides stayed in `recovering`, not `armed` (`report.json > samples.samples[*].left.phase/right.phase`). That is good evidence the old “looks permanently armed” problem is gone, but this specific fixture still did not produce a runtime sample showing `armed`→`extending` transitions or any `punch_left` events, so QA could not positively verify the full phase-cycle readability here.
+- **Row counts stay sane under repeated direct transitions.** No row accumulation reappeared in the fresh transition sequence, and the Punch cards consistently rendered exactly 8 rows each instead of growing across hovers.
+- **Remaining QA blocker: the frozen-threshold row is still not truthful/coherent enough in this runtime.** In the fresh fixture-backed sample set, both left and right `threshold_shoulder_width` values changed every sample in lockstep with live `shoulder_width` (`72` threshold changes across `72` shoulder-width changes for both sides), while both sides remained in `recovering` the whole time. So the overlay row labeled `Frozen threshold shoulder width is latched` was still effectively following live shoulder width in this runtime capture rather than presenting a clearly frozen value. That means Goal 5 is not convincingly satisfied yet, at least outside a successfully armed/extending punch cycle.
+- **No new parse/runtime regressions were introduced by the Punch overlay truth patch itself.** Fresh smoke run `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` completed without new Punch-overlay parse errors; the only recurring issues were the same pre-existing missing `boxing-weave-1.svg` import warning and the usual abrupt-quit shutdown/resource-noise seen in prior headless smoke runs (`scene-smoke.log`). The fixture-backed sampler also ran cleanly after removing screenshot capture attempts from the temp QA script (`sampler.log`).
+- **QA verdict:** fail for now, specifically because the `Frozen threshold shoulder width is latched` debug row still behaved like a live shoulder-width follower in the captured runtime instead of an obviously frozen baseline/latched value. Popup stability, row removal, row rendering, and non-accumulating transitions all passed.
+- **Audit handoff concern:** auditor should verify whether the current fallback path in `src/detectors/pose_detector_substrate.gd` / debug builder is intentionally exposing live shoulder width whenever the punch side never reaches `armed`, and whether the overlay wording/state should distinguish `not latched yet` from `latched` instead of always presenting the row as frozen truth.
+
+---
+
+### Task 11: Investigate remaining live-review regressions (popup bug, phase stickiness, calibration section)
+
+**Bead ID:** `aerobeat-input-mediapipe-python-hww`  
+**SubAgent:** `primary`  
+**Role:** `research`  
+**References:** outputs from Tasks 8-10 plus Derrick review notes from 2026-05-20  
+**Prompt:** Investigate the remaining live-review regressions in the Boxing proving scene. Reproduce and explain why the gesture info popup bug is still present in live review even after the earlier row-accumulation fix. Determine whether `L-punch phase` is supposed to transition away from `armed` in the current detector state machine and why Derrick still observes it stuck at `armed` in the live scene. Also determine what calibration/baseline values are actually latched today and which of them should be displayed in a visually separated calibration section at the bottom of the popup. Do not investigate the separate Chip `python server died` issue in this slice; defer that to later work.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `src/detectors/`
+- `.plans/`
+- maybe `.temp/` if evidence artifacts or logs are needed
+
+**Files Created/Deleted/Modified:**
+- exact proving-scene, detector, and runtime files inspected
+- `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
+- optional evidence/log files if needed
+
+**Status:** ✅ Complete
+
+**Results:** Investigated the remaining live-review regressions with code review plus the existing runtime evidence in `.temp/qa-task10-overlay/report.json` and `.temp/qa-hover-polish/report.json`.
+- **Popup bug root cause after the row-accumulation fix:** the remaining bug is no longer child-row stacking; it is stale popup **panel size** when switching from a taller card to a shorter one. Current code in `.testbed/scripts/boxing_proving_harness.gd` now removes stale row containers synchronously in `_sync_hover_card_rows()` (`594-632`), so the old accumulation path is genuinely fixed. But `_refresh_hover_card()` only calls `_hover_card_panel.reset_size()` after swapping content (`466-487`), and the hover card itself is a `top_level` `PanelContainer` (`251-260`), not a layout-managed child. Runtime evidence shows the content shrinks correctly while the actual panel size does not: in `.temp/qa-task10-overlay/report.json`, `guard` and `squat` transitions both have `row_count: 1` and `panel_min_size: [440, 121]`, yet `panel_size` stays `[440, 1133]`; the same pattern appears in `.temp/qa-hover-polish/report.json` where single-row placeholder cards still report huge panel sizes (`1597`) despite only one row. So Derrick’s live popup bug is best explained by **size carry-over on the top-level panel after content shrink**, not by more hidden row duplication.
+- **`L-punch phase` transition truth:** yes, `armed` is absolutely supposed to transition away in the current state machine — specifically `armed -> extending` on a successful fire, then `extending -> recovering` when the hand stops advancing / leaves lane / falls back from peak. The relevant code is `_process_straight_punch()` in `src/detectors/pose_detector_substrate.gd` (`723-789`). `recovering -> armed` happens when the side is lane-locked and not yet straight enough (`748-750` or `755-759`). `armed -> extending` only happens when **all** fire gates pass at once: `lane_locked`, `straight_enough`, `forward_velocity > forward_velocity_min`, and `forward_distance >= armed_forward_distance + forward_delta_min` (`771-781`). The important behavior gap is that the `phase == "armed"` branch has **no non-fire exit path at all**: if those fire gates never all go true on the same frame, the code just writes the state back and returns (`783-784`). Even losing lane lock while armed does not demote the phase. So Derrick seeing `L-punch phase` sit at `armed` in live review is consistent with the current detector semantics, not obviously a stale UI read. It likely means the side entered `armed` successfully, then never simultaneously satisfied the extension + elbow + velocity + delta gates strongly enough to fire, and the current state machine provides no timeout/disarm path back out of `armed`.
+- **Calibration / baseline values actually latched today:** there are two real latch layers in current code, plus one misleading debug fallback:
+  1. **Global detector baseline** (`_baseline`) is latched once after 5 valid tracking/reacquiring frames in `_update_baseline()` (`437-481`). The truly frozen values are: `is_calibrated`, `sample_frames`, `shoulder_width`, `torso_height`, `athlete_height`, `shoulder_center_x`, `hip_center_y`, `nose_y`, `left_knee_y`, `right_knee_y`, `left_ankle_y`, and `right_ankle_y`.
+  2. **Per-side straight-punch baseline/state** lives in `_gesture_state.straight_punch.<side>` and currently stores `phase`, `armed_forward_distance`, `peak_forward_distance`, and `threshold_shoulder_width` (`1144-1148`). Of those, the truly latched baseline-style values are `armed_forward_distance` and `threshold_shoulder_width`, both snapped when the side enters `armed` / rearms (`745-750`, `755-759`, `766-770`). `peak_forward_distance` is not calibration; it is a live running peak after arming.
+  3. **Derived thresholds** shown in debug (`forward_delta_min`, `forward_velocity_min`, `rearm_retreat_min`, `rearm_ready_margin`) are not independently latched; they are recomputed from the per-side frozen `threshold_shoulder_width` in `_build_straight_punch_side_debug()` (`524-554`).
+  4. **Misleading fallback still present:** when `state.threshold_shoulder_width` is still zero, `_get_straight_punch_threshold_shoulder_width()` falls back to the live current shoulder width (`1161-1165`), so the overlay can currently claim a value is `frozen` even when the side has not actually latched one yet.
+- **Recommended calibration section for the popup bottom:** only show values that are truly frozen or are directly derived from those frozen values, and visually separate them from the live pass/fail rows. Best bottom section contents for Punch are:
+  - `Calibration ready` / `Not calibrated yet` from `_baseline.is_calibrated`
+  - `Calibration sample frames` from `_baseline.sample_frames`
+  - `Baseline shoulder width` from `_baseline.shoulder_width`
+  - `Baseline torso height` from `_baseline.torso_height`
+  - optional `Baseline athlete height` from `_baseline.athlete_height` if there is room
+  - `Armed forward distance snapshot` from side state `armed_forward_distance`
+  - `Frozen threshold shoulder width` from side state `threshold_shoulder_width`, but shown as `not latched yet` when the underlying state value is still `0.0`
+  - derived `Forward delta min` and `Forward velocity min`, explicitly labeled as derived from the frozen threshold width
+- **What the coder should implement next:**
+  1. Fix the remaining popup bug by explicitly resizing the top-level hover panel to its new combined minimum size after row/content changes, rather than relying on `reset_size()` alone, and then reposition it using the new size.
+  2. Stop labeling threshold rows as frozen when they are coming from the live-width fallback. Expose an explicit boolean like `threshold_shoulder_width_latched` (or equivalent) from detector debug so the UI can say `not latched yet` honestly.
+  3. Add a visually separated calibration/baseline section at the bottom of Punch cards for the real frozen values listed above.
+  4. Decide whether to change the detector state machine or just the overlay wording: if `armed` should not sit forever, add a real de-arm / timeout / lost-lane escape path in `_process_straight_punch()`; if it is allowed to sit forever for now, make the overlay wording reflect that `armed` means `waiting for fire gates` rather than implying a punch is actively progressing.
+
+---
+
+### Task 12: Fix live popup regression, add calibration section, and correct phase/runtime truth surfacing
+
+**Bead ID:** `aerobeat-input-mediapipe-python-sf9`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** outputs from Task 11 plus `REF-04`–`REF-07`  
+**Prompt:** Implement the next proving-scene overlay/debugging pass based on the live-review investigation. Fix the remaining live popup bug, add a visually separated calibration section below the main Punch debug rows that shows the currently latched calibration/baseline values, and correct the phase/runtime truth surfacing so the overlay honestly reflects whether Punch is armed, extending, recovering, or not latched yet. Do not expand scope into the separate Chip `python server died` issue in this slice. Keep the overlay reusable and update the plan with the exact new truth model.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `src/detectors/`
+- `.plans/`
+- `.temp/task12-overlay/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `src/detectors/pose_detector_substrate.gd`
+- `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
+- `.temp/task12-overlay.gd`
+- `.temp/task12-overlay/report.json`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the next live-review punch overlay pass in `.testbed/scripts/boxing_proving_harness.gd` and `src/detectors/pose_detector_substrate.gd`.
+- **Remaining popup bug fixed for the real root cause:** the row-accumulation fix from Task 9 stayed intact, but the actual live regression was stale size on the top-level hover popup after switching from a taller card to a shorter one. The fix now explicitly reapplies the popup rect after content changes instead of trusting `reset_size()` alone: `_refresh_hover_card()` now calls `_resize_and_reposition_hover_card()`, which recomputes the combined minimum size, assigns that exact `size` to the top-level panel, then repositions it against the hovered badge. It also repeats the rect application in a deferred pass so the top-level `PanelContainer` shrinks correctly after layout settles.
+- **Reusable calibration section added at the bottom of Punch cards:** Punch-L and Punch-R now append a visually separated `Calibration / Baselines` section after the main truth rows. This uses reusable row kinds (`requirement`, `section`, `info`) rather than a Punch-only hardcoded footer layout.
+- **Calibration section truth model now shows only honest baseline/latch data:**
+  - `Calibration status` (`ready` / `not ready`)
+  - `Calibration sample frames`
+  - `Baseline shoulder width`
+  - `Baseline torso height`
+  - `Baseline athlete height`
+  - `Armed forward distance snapshot`
+  - `Frozen threshold shoulder width` or `not latched yet (live <width>)`
+  - `Derived forward delta min`
+  - `Derived forward velocity min`
+- **Latch truth surfaced explicitly:** `pose_detector_substrate.gd` now exposes `threshold_shoulder_width_latched`, `latched_threshold_shoulder_width`, and `live_shoulder_width` in the straight-punch debug payload, alongside baseline/calibration values. The overlay now uses that boolean so neither the main threshold row nor the calibration section falsely claims a frozen width when the detector is still falling back to live shoulder width.
+- **Phase truth is surfaced more honestly without inventing detector behavior:** the detector state machine was left intact in this slice. The phase row still truthfully checks `phase == armed`, but the displayed phase text now reflects the actual runtime state (`recovering`, `extending`, or `armed (waiting for fire gates)`) so the overlay does not imply a punch is progressing when the detector is merely sitting in `armed` waiting for all fire gates to line up.
+- **New Punch overlay truth model after this task:**
+  1. main checkbox rows remain detector-fire/debug rows (`phase`, `3D arm reach ratio`, `3D elbow angle`, armed snapshot, forward delta, peak distance, raw forward velocity, threshold-width latch state)
+  2. calibration/baseline values are shown separately in a bottom section and do not pretend to be gate checks
+  3. frozen-threshold claims are now conditional on the explicit detector latch boolean rather than inferred from fallback values
+- **Validation performed:**
+  - `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1`
+  - `~/.local/bin/godot --headless --path .testbed --script ../.temp/task12-overlay.gd`
+- **Validation evidence:** `.temp/task12-overlay/report.json` now shows the tall→short popup path shrinking correctly again (`Punch-L` `panel_size=[440,643]` then `Guard` / `Squat` `panel_size=[440,121]`, matching `panel_min_size`), and shows the new latch-truth text on the calibration row (`Frozen threshold shoulder width - not latched yet (live ...)`).
+- **Known unrelated issue still present:** the pre-existing missing `boxing-weave-1.svg` import warning still appears during headless validation and is unrelated to this slice.
+
+---
+
+### Task 13: QA and audit the live-reviewed Punch overlay/runtime truth
+
+**Bead ID:** `aerobeat-input-mediapipe-python-dcj`  
+**SubAgent:** `primary`  
+**Role:** `qa` / `auditor`  
+**References:** outputs from Tasks 11-12  
+**Prompt:** First QA the updated overlay/runtime behavior against the specific live-review regressions, then independently audit whether the popup bug is actually gone in real use, whether the calibration section is truthful and readable, and whether the phase display now matches detector/runtime truth. Do not include the separate Chip `python server died` issue in this slice.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/`
 - maybe `.temp/` evidence folders
 
 **Files Created/Deleted/Modified:**
