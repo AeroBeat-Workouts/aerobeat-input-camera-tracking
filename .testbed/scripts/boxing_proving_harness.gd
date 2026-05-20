@@ -6,9 +6,12 @@ const TILE_PULSE_MS := 420
 const MAX_BOXING_FEED_ROWS := 8
 const ACTIVE_PILL_FILL := Color8(0x3d, 0xdc, 0xdc, 0xff)
 const ACTIVE_PILL_TEXT := Color8(0x05, 0x22, 0x28, 0xff)
-const HOVER_CARD_TITLE := "What Gesture Requirements Are Met Right Now?"
-const HOVER_CARD_MAX_WIDTH := 360.0
+const HOVER_CARD_TITLE := "Gesture Detection"
+const HOVER_CARD_MAX_WIDTH := 440.0
 const HOVER_CARD_MARGIN := 14.0
+const HOVER_CARD_BODY_FONT_SIZE := 14
+const HOVER_CARD_TITLE_FONT_SIZE := 18
+const HOVER_CARD_GESTURE_FONT_SIZE := 16
 const BOARD_ICON_PATHS := {
 	"punch": "res://assets/icons/boxing-punch-1.svg",
 	"hook": "res://assets/icons/boxing-hook-1.svg",
@@ -118,43 +121,46 @@ const TILE_CONFIGS := [
 		"right_events": ["weave_right_start"],
 	},
 ]
+const PUNCH_REQUIREMENT_ROWS := [
+	{
+		"id": "phase_armed",
+		"label_template": "{prefix}-Punch phase is armed",
+		"group": "phase",
+	},
+	{
+		"id": "side_of_screen",
+		"label_template": "{prefix}-Hand is on {side_name_lower} side of screen",
+		"group": "lane",
+	},
+	{
+		"id": "arm_extension",
+		"label_template": "{prefix}-Arm extension is >= 0.95",
+		"group": "shape",
+	},
+	{
+		"id": "elbow_bend",
+		"label_template": "{prefix}-Elbow bend is >= 145°",
+		"group": "shape",
+	},
+	{
+		"id": "forward_velocity",
+		"label_template": "{prefix}-Forward velocity >= {threshold}",
+		"group": "speed",
+	},
+	{
+		"id": "forward_distance",
+		"label_template": "{prefix}-Forward distance >= {threshold}",
+		"group": "distance",
+	},
+]
 const HOVER_REQUIREMENT_SPECS := {
-	"punch": {
+	"punch_left": {
 		"title": "Punch-L",
-		"subtitle": "Live Punch-L detector/debug values from the current proving-scene state.",
-		"rows": [
-			{
-				"id": "left_phase_armed",
-				"label": "L-Punch phase is armed",
-				"group": "phase",
-			},
-			{
-				"id": "left_side_of_screen",
-				"label": "L-Hand is on left side of screen",
-				"group": "lane",
-			},
-			{
-				"id": "left_arm_extension",
-				"label": "L-Arm extension is >= 0.95",
-				"group": "shape",
-			},
-			{
-				"id": "left_elbow_bend",
-				"label": "L-Elbow bend is >= 145°",
-				"group": "shape",
-			},
-			{
-				"id": "left_forward_velocity",
-				"label": "L-Forward velocity >= {threshold}",
-				"group": "speed",
-			},
-			{
-				"id": "left_forward_distance",
-				"label": "L-Forward distance >= {threshold}",
-				"group": "distance",
-			},
-		],
-		"footer": "",
+		"rows": PUNCH_REQUIREMENT_ROWS,
+	},
+	"punch_right": {
+		"title": "Punch-R",
+		"rows": PUNCH_REQUIREMENT_ROWS,
 	},
 }
 
@@ -165,12 +171,14 @@ var _board_grid: GridContainer
 var _boxing_event_feed: Array[String] = []
 var _boxing_event_sequence := 0
 var _tile_refs := {}
-var _hovered_tile_id := ""
+var _hovered_card_key := ""
 var _hover_card_panel: PanelContainer
 var _hover_card_gesture_label: Label
-var _hover_card_subtitle_label: Label
 var _hover_card_rows: VBoxContainer
 var _hover_card_footer_label: Label
+var _hover_card_row_nodes := {}
+var _hover_card_row_order: Array[String] = []
+var _hover_card_signature := ""
 
 func _ready() -> void:
 	_resolve_boxing_shell_nodes()
@@ -242,41 +250,35 @@ func _ensure_hover_card() -> void:
 	add_child(_hover_card_panel)
 
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_bottom", 14)
+	margin.add_theme_constant_override("margin_left", 18)
+	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_right", 18)
+	margin.add_theme_constant_override("margin_bottom", 16)
 	_hover_card_panel.add_child(margin)
 
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
+	column.add_theme_constant_override("separation", 10)
 	margin.add_child(column)
 
 	var title := Label.new()
 	title.text = HOVER_CARD_TITLE
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.add_theme_font_size_override("font_size", 15)
+	title.add_theme_font_size_override("font_size", HOVER_CARD_TITLE_FONT_SIZE)
 	title.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
 	column.add_child(title)
 
 	_hover_card_gesture_label = Label.new()
-	_hover_card_gesture_label.add_theme_font_size_override("font_size", 13)
-	_hover_card_gesture_label.add_theme_color_override("font_color", Color(0.80, 0.90, 1.0, 0.92))
+	_hover_card_gesture_label.add_theme_font_size_override("font_size", HOVER_CARD_GESTURE_FONT_SIZE)
+	_hover_card_gesture_label.add_theme_color_override("font_color", Color(0.80, 0.90, 1.0, 0.96))
 	column.add_child(_hover_card_gesture_label)
 
-	_hover_card_subtitle_label = Label.new()
-	_hover_card_subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hover_card_subtitle_label.add_theme_font_size_override("font_size", 11)
-	_hover_card_subtitle_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.72))
-	column.add_child(_hover_card_subtitle_label)
-
 	_hover_card_rows = VBoxContainer.new()
-	_hover_card_rows.add_theme_constant_override("separation", 6)
+	_hover_card_rows.add_theme_constant_override("separation", 8)
 	column.add_child(_hover_card_rows)
 
 	_hover_card_footer_label = Label.new()
 	_hover_card_footer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_hover_card_footer_label.add_theme_font_size_override("font_size", 10)
+	_hover_card_footer_label.add_theme_font_size_override("font_size", 11)
 	_hover_card_footer_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.56))
 	column.add_child(_hover_card_footer_label)
 
@@ -335,13 +337,11 @@ func _create_tile(config: Dictionary) -> Dictionary:
 	panel.custom_minimum_size = Vector2(132, 158)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = 0
-	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_apply_panel_style(panel, Color(1.0, 1.0, 1.0, 0.0), Color(1.0, 1.0, 1.0, 0.0), 0, 0, 0)
 
 	var tile_id := String(config.get("id", ""))
-	if tile_id != "":
-		panel.mouse_entered.connect(_on_tile_mouse_entered.bind(tile_id))
-		panel.mouse_exited.connect(_on_tile_mouse_exited.bind(tile_id))
+	var mode := String(config.get("mode", "pulse_lr"))
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 6)
@@ -382,10 +382,14 @@ func _create_tile(config: Dictionary) -> Dictionary:
 	badges.add_child(center_badge["panel"])
 	badges.add_child(right_badge["panel"])
 
-	var mode := String(config.get("mode", "pulse_lr"))
 	center_badge["panel"].visible = mode == "state_center"
 	left_badge["panel"].visible = mode != "state_center"
 	right_badge["panel"].visible = mode != "state_center"
+
+	if tile_id != "":
+		_connect_hover_target(left_badge, _card_key_for_target(tile_id, "left"))
+		_connect_hover_target(right_badge, _card_key_for_target(tile_id, "right"))
+		_connect_hover_target(center_badge, _card_key_for_target(tile_id, "center"))
 
 	return {
 		"panel": panel,
@@ -398,109 +402,152 @@ func _create_tile(config: Dictionary) -> Dictionary:
 		"left": left_badge,
 		"center": center_badge,
 		"right": right_badge,
+		"shell_active": false,
 	}
 
 func _create_badge(text: String, wide: bool = false) -> Dictionary:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(68 if wide else 34, 34)
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel, Color(0.16, 0.20, 0.28, 0.20), Color(1.0, 1.0, 1.0, 0.70), 18, 1, 0)
 	var label := Label.new()
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_font_size_override("font_size", 13 if wide else 14)
 	label.add_theme_color_override("font_color", Color(0.96, 0.97, 1.0, 1.0))
 	panel.add_child(label)
-	return {"panel": panel, "label": label}
+	return {"panel": panel, "label": label, "active": false, "style_key": "idle"}
+
+func _connect_hover_target(badge: Dictionary, card_key: String) -> void:
+	var panel := badge.get("panel") as PanelContainer
+	if panel == null or card_key.is_empty():
+		if panel != null:
+			panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return
+	panel.mouse_entered.connect(_on_hover_target_entered.bind(card_key))
+	panel.mouse_exited.connect(_on_hover_target_exited.bind(card_key))
+
+func _card_key_for_target(tile_id: String, target: String) -> String:
+	var tile: Dictionary = _find_tile_config(tile_id)
+	if tile.is_empty():
+		return ""
+	var mode := String(tile.get("mode", "pulse_lr"))
+	match mode:
+		"state_center":
+			return tile_id if target == "center" else ""
+		"state_lr", "pulse_lr":
+			if target == "left":
+				return "%s_left" % tile_id
+			if target == "right":
+				return "%s_right" % tile_id
+	return ""
+
+func _find_tile_config(tile_id: String) -> Dictionary:
+	for config_variant: Variant in TILE_CONFIGS:
+		var config: Dictionary = config_variant
+		if String(config.get("id", "")) == tile_id:
+			return config
+	return {}
 
 func _refresh_hover_card() -> void:
-	if _hovered_tile_id.is_empty():
+	if _hovered_card_key.is_empty():
 		if _hover_card_panel:
 			_hover_card_panel.visible = false
+			_hover_card_signature = ""
 		return
 	if _hover_card_panel == null:
 		return
-	var model := _build_hover_card_model(_hovered_tile_id)
+	var model := _build_hover_card_model(_hovered_card_key)
 	_hover_card_panel.visible = not model.is_empty()
 	if model.is_empty():
+		_hover_card_signature = ""
 		return
-	_hover_card_gesture_label.text = String(model.get("title", String(_hovered_tile_id).capitalize()))
-	_hover_card_subtitle_label.text = String(model.get("subtitle", ""))
-	_hover_card_subtitle_label.visible = not _hover_card_subtitle_label.text.is_empty()
+	var signature := JSON.stringify(model)
+	if signature == _hover_card_signature:
+		return
+	_hover_card_signature = signature
+	_hover_card_gesture_label.text = String(model.get("title", _display_name_for_card_key(_hovered_card_key)))
 	_hover_card_footer_label.text = String(model.get("footer", ""))
 	_hover_card_footer_label.visible = not _hover_card_footer_label.text.is_empty()
-	_rebuild_hover_card_rows(model.get("rows", []))
-	_position_hover_card(_hovered_tile_id)
+	_sync_hover_card_rows(model.get("rows", []))
+	_hover_card_panel.reset_size()
 
-func _build_hover_card_model(tile_id: String) -> Dictionary:
-	var spec: Dictionary = HOVER_REQUIREMENT_SPECS.get(tile_id, {})
+func _build_hover_card_model(card_key: String) -> Dictionary:
+	var spec: Dictionary = HOVER_REQUIREMENT_SPECS.get(card_key, {})
 	if spec.is_empty():
 		return {
-			"title": String(tile_id).capitalize(),
-			"subtitle": "Reusable hover-card shell is ready for this gesture.",
+			"title": _display_name_for_card_key(card_key),
 			"rows": [
 				{
-					"id": "%s_pending" % tile_id,
+					"id": "%s_pending" % card_key,
 					"label": "Requirement list pending",
 					"passed": false,
-					"current_text": "Task 3 hookup still needed",
+					"current_text": "Live hookup still needed",
 				},
 			],
 		}
-	match tile_id:
-		"punch":
-			return _build_punch_hover_card_model(spec)
+	match card_key:
+		"punch_left":
+			return _build_punch_hover_card_model(spec, "left")
+		"punch_right":
+			return _build_punch_hover_card_model(spec, "right")
 		_:
 			return spec.duplicate(true)
 
-func _build_punch_hover_card_model(spec: Dictionary) -> Dictionary:
+func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
 	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
-	var left_straight: Dictionary = (straight_punch_debug.get("left", {}) as Dictionary)
+	var straight_side: Dictionary = (straight_punch_debug.get(side, {}) as Dictionary)
 	var rows: Array[Dictionary] = []
 	for row_spec_variant: Variant in spec.get("rows", []):
 		var row_spec: Dictionary = row_spec_variant
-		rows.append(_build_punch_left_requirement_row(row_spec, left_straight))
+		rows.append(_build_punch_requirement_row(row_spec, straight_side, side))
 	return {
-		"title": spec.get("title", "Punch-L"),
-		"subtitle": spec.get("subtitle", ""),
+		"title": spec.get("title", _display_name_for_card_key("punch_%s" % side)),
 		"rows": rows,
 		"footer": spec.get("footer", ""),
 	}
 
-func _build_punch_left_requirement_row(row_spec: Dictionary, left_straight: Dictionary) -> Dictionary:
+func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, side: String) -> Dictionary:
 	var row := row_spec.duplicate(true)
+	var prefix := "L" if side == "left" else "R"
+	var side_name_lower := side.to_lower()
 	var row_id := String(row_spec.get("id", ""))
-	var label := String(row_spec.get("label", ""))
+	var label := String(row_spec.get("label_template", row_spec.get("label", "")))
+	label = label.replace("{prefix}", prefix)
+	label = label.replace("{side_name_lower}", side_name_lower)
 	var passed := false
 	var current_text := ""
 	var threshold_text := ""
-	var suspect_text := ""
 	match row_id:
-		"left_phase_armed":
-			current_text = String(left_straight.get("phase", "recovering"))
+		"phase_armed":
+			current_text = String(straight_side.get("phase", "recovering"))
 			passed = current_text == "armed"
-		"left_side_of_screen":
-			var own_half_lock := bool(left_straight.get("own_half_lock", false))
+		"side_of_screen":
+			var own_half_lock := bool(straight_side.get("own_half_lock", false))
 			current_text = _fmt_bool(own_half_lock)
 			passed = own_half_lock
-		"left_arm_extension":
-			var arm_extension := float(left_straight.get("arm_extension_3d", 0.0))
+		"arm_extension":
+			var arm_extension := float(straight_side.get("arm_extension_3d", 0.0))
 			current_text = _fmt_float(arm_extension)
-			passed = arm_extension >= float(left_straight.get("arm_extension_min", 0.95))
-		"left_elbow_bend":
-			var elbow_bend := float(left_straight.get("elbow_bend_deg_3d", 0.0))
+			passed = arm_extension >= float(straight_side.get("arm_extension_min", 0.95))
+		"elbow_bend":
+			var elbow_bend := float(straight_side.get("elbow_bend_deg_3d", 0.0))
 			current_text = _fmt_degrees_int(elbow_bend)
-			passed = elbow_bend >= float(left_straight.get("elbow_bend_deg_min", 145.0))
-		"left_forward_velocity":
-			var velocity_threshold := float(left_straight.get("forward_velocity_min", 0.0))
-			var forward_velocity := float(left_straight.get("forward_velocity", 0.0))
+			passed = elbow_bend >= float(straight_side.get("elbow_bend_deg_min", 145.0))
+		"forward_velocity":
+			var velocity_threshold := float(straight_side.get("forward_velocity_min", 0.0))
+			var forward_velocity := float(straight_side.get("forward_velocity", 0.0))
 			threshold_text = _fmt_float(velocity_threshold)
 			current_text = _fmt_float(forward_velocity)
 			passed = forward_velocity > velocity_threshold
-		"left_forward_distance":
-			var distance_threshold := float(left_straight.get("forward_distance_min", 0.0))
-			var forward_distance := float(left_straight.get("forward_distance", 0.0))
+		"forward_distance":
+			var distance_threshold := float(straight_side.get("forward_distance_min", 0.0))
+			var forward_distance := float(straight_side.get("forward_distance", 0.0))
 			threshold_text = _fmt_float(distance_threshold)
 			current_text = _fmt_float(forward_distance)
 			passed = forward_distance >= distance_threshold
@@ -511,20 +558,35 @@ func _build_punch_left_requirement_row(row_spec: Dictionary, left_straight: Dict
 	row["passed"] = passed
 	row["threshold_text"] = threshold_text
 	row["current_text"] = current_text
-	row["suspect_text"] = suspect_text
 	return row
 
-func _rebuild_hover_card_rows(rows_variant: Variant) -> void:
+func _sync_hover_card_rows(rows_variant: Variant) -> void:
 	if _hover_card_rows == null:
 		return
-	for child: Node in _hover_card_rows.get_children():
-		child.queue_free()
 	var rows: Array = rows_variant if rows_variant is Array else []
+	var next_order: Array[String] = []
+	var row_dicts := {}
 	for row_variant: Variant in rows:
 		var row: Dictionary = row_variant
-		_hover_card_rows.add_child(_create_requirement_row(row))
+		var row_id := String(row.get("id", ""))
+		if row_id.is_empty():
+			row_id = "row_%d" % next_order.size()
+			row["id"] = row_id
+		next_order.append(row_id)
+		row_dicts[row_id] = row
+	if next_order != _hover_card_row_order:
+		for child: Node in _hover_card_rows.get_children():
+			child.queue_free()
+		_hover_card_row_nodes.clear()
+		_hover_card_row_order = next_order.duplicate()
+		for row_id: String in _hover_card_row_order:
+			var row_node := _create_requirement_row(row_dicts[row_id])
+			_hover_card_rows.add_child(row_node["container"])
+			_hover_card_row_nodes[row_id] = row_node
+	for row_id: String in next_order:
+		_update_requirement_row(_hover_card_row_nodes[row_id], row_dicts[row_id])
 
-func _create_requirement_row(row: Dictionary) -> Control:
+func _create_requirement_row(row: Dictionary) -> Dictionary:
 	var container := VBoxContainer.new()
 	container.add_theme_constant_override("separation", 3)
 
@@ -533,34 +595,49 @@ func _create_requirement_row(row: Dictionary) -> Control:
 	container.add_child(line)
 
 	var checkbox := Label.new()
-	checkbox.text = "🗹" if bool(row.get("passed", false)) else "☐"
+	checkbox.text = "[ ]"
 	checkbox.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	checkbox.add_theme_font_size_override("font_size", 15)
-	checkbox.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	checkbox.add_theme_font_size_override("font_size", HOVER_CARD_BODY_FONT_SIZE)
+	checkbox.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.92))
 	line.add_child(checkbox)
 
-	var text_column := VBoxContainer.new()
-	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_column.add_theme_constant_override("separation", 2)
-	line.add_child(text_column)
-
 	var text_label := Label.new()
-	text_label.text = _build_requirement_row_text(row)
 	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_label.add_theme_font_size_override("font_size", 12)
+	text_label.add_theme_font_size_override("font_size", HOVER_CARD_BODY_FONT_SIZE)
 	text_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
-	text_column.add_child(text_label)
+	line.add_child(text_label)
 
-	var suspect_text := String(row.get("suspect_text", ""))
-	if not suspect_text.is_empty():
-		var suspect_label := Label.new()
-		suspect_label.text = suspect_text
-		suspect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		suspect_label.add_theme_font_size_override("font_size", 10)
-		suspect_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.46, 0.96))
-		text_column.add_child(suspect_label)
-	return container
+	var footer := Label.new()
+	footer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	footer.visible = false
+	footer.add_theme_font_size_override("font_size", 11)
+	footer.add_theme_color_override("font_color", Color(1.0, 0.82, 0.46, 0.96))
+	container.add_child(footer)
+
+	var row_node := {
+		"container": container,
+		"checkbox": checkbox,
+		"text_label": text_label,
+		"footer": footer,
+	}
+	_update_requirement_row(row_node, row)
+	return row_node
+
+func _update_requirement_row(row_node: Dictionary, row: Dictionary) -> void:
+	var passed := bool(row.get("passed", false))
+	var checkbox := row_node.get("checkbox") as Label
+	if checkbox != null:
+		checkbox.text = "[x]" if passed else "[ ]"
+		checkbox.add_theme_color_override("font_color", Color(0.70, 1.0, 0.82, 0.96) if passed else Color(1.0, 1.0, 1.0, 0.88))
+	var text_label := row_node.get("text_label") as Label
+	if text_label != null:
+		text_label.text = _build_requirement_row_text(row)
+	var footer := row_node.get("footer") as Label
+	if footer != null:
+		var suspect_text := String(row.get("suspect_text", ""))
+		footer.text = suspect_text
+		footer.visible = not suspect_text.is_empty()
 
 func _build_requirement_row_text(row: Dictionary) -> String:
 	var label := String(row.get("label", ""))
@@ -572,34 +649,62 @@ func _build_requirement_row_text(row: Dictionary) -> String:
 		return label
 	return "%s - %s" % [label, current_text]
 
-func _position_hover_card(tile_id: String) -> void:
+func _display_name_for_card_key(card_key: String) -> String:
+	return card_key.replace("_", " ").capitalize()
+
+func _split_card_key(card_key: String) -> Dictionary:
+	var parts := card_key.split("_")
+	if parts.size() >= 2:
+		var target := String(parts[parts.size() - 1])
+		if target == "left" or target == "right" or target == "center":
+			parts.remove_at(parts.size() - 1)
+			return {
+				"tile_id": "_".join(parts),
+				"target": target,
+			}
+	return {
+		"tile_id": card_key,
+		"target": "center",
+	}
+
+func _position_hover_card(card_key: String) -> void:
 	if _hover_card_panel == null:
 		return
+	var card_parts := _split_card_key(card_key)
+	var tile_id := String(card_parts.get("tile_id", card_key))
+	var target := String(card_parts.get("target", "center"))
 	var tile: Dictionary = _tile_refs.get(tile_id, {})
-	var panel := tile.get("panel") as Control
-	if panel == null:
+	var badge: Dictionary = tile.get(target, {})
+	var anchor := badge.get("panel") as Control
+	if anchor == null:
+		anchor = tile.get("panel") as Control
+	if anchor == null:
 		return
-	var tile_rect := panel.get_global_rect()
+	_hover_card_panel.reset_size()
+	var anchor_rect := anchor.get_global_rect()
 	var popup_size := _hover_card_panel.get_combined_minimum_size()
 	var viewport_size := get_viewport_rect().size
-	var x := tile_rect.end.x + HOVER_CARD_MARGIN
-	var y := tile_rect.position.y
+	var x := anchor_rect.end.x + HOVER_CARD_MARGIN
+	var y := anchor_rect.position.y - 8.0
 	if x + popup_size.x > viewport_size.x - HOVER_CARD_MARGIN:
-		x = tile_rect.position.x - popup_size.x - HOVER_CARD_MARGIN
+		x = anchor_rect.position.x - popup_size.x - HOVER_CARD_MARGIN
 	if x < HOVER_CARD_MARGIN:
 		x = HOVER_CARD_MARGIN
 	if y + popup_size.y > viewport_size.y - HOVER_CARD_MARGIN:
 		y = maxf(HOVER_CARD_MARGIN, viewport_size.y - popup_size.y - HOVER_CARD_MARGIN)
-	_hover_card_panel.position = Vector2(x, y)
+	_hover_card_panel.position = Vector2(x, maxf(HOVER_CARD_MARGIN, y))
 
-func _on_tile_mouse_entered(tile_id: String) -> void:
-	_hovered_tile_id = tile_id
+func _on_hover_target_entered(card_key: String) -> void:
+	_hovered_card_key = card_key
+	_hover_card_signature = ""
 	_refresh_hover_card()
+	_position_hover_card(card_key)
 
-func _on_tile_mouse_exited(tile_id: String) -> void:
-	if _hovered_tile_id != tile_id:
+func _on_hover_target_exited(card_key: String) -> void:
+	if _hovered_card_key != card_key:
 		return
-	_hovered_tile_id = ""
+	_hovered_card_key = ""
+	_hover_card_signature = ""
 	if _hover_card_panel:
 		_hover_card_panel.visible = false
 
@@ -640,6 +745,10 @@ func _update_badge(badge: Dictionary, text: String, active: bool) -> void:
 	if panel == null or label == null:
 		return
 	label.text = text
+	var style_key := "active" if active else "idle"
+	if String(badge.get("style_key", "")) == style_key:
+		return
+	badge["style_key"] = style_key
 	if active:
 		_apply_panel_style(panel, ACTIVE_PILL_FILL, ACTIVE_PILL_FILL, 18, 1, 0)
 		label.add_theme_color_override("font_color", ACTIVE_PILL_TEXT)
@@ -651,6 +760,9 @@ func _update_tile_shell(tile: Dictionary, active: bool) -> void:
 	var panel := tile.get("panel") as PanelContainer
 	if panel == null:
 		return
+	if bool(tile.get("shell_active", false)) == active:
+		return
+	tile["shell_active"] = active
 	if active:
 		_apply_panel_style(panel, Color(0.22, 0.78, 0.88, 0.14), Color(0.60, 1.0, 1.0, 0.38), 12, 1, 0)
 	else:

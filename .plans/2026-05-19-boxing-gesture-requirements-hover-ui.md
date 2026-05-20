@@ -226,6 +226,88 @@ Derrick also called out an important design correction: the current “hand must
 
 ---
 
+### Task 5: Apply Derrick's overlay review changes
+
+**Bead ID:** `aerobeat-input-mediapipe-python-dr8`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-04`–`REF-07` plus Derrick review notes from 2026-05-20  
+**Prompt:** Update the Boxing/Flow gesture info overlay pattern based on Derrick's manual review. Change the title to `Gesture Detection`, remove the descriptive subtitle/body text under the title, size the panel height to its actual content with a small margin, widen the panel and increase font size for readability, replace the broken checkbox glyphs with a rendering-safe solution, and move hover activation to the specific sub-gesture target (`L`, `R`, or equivalent state label) instead of the whole gesture tile. Keep the interaction pattern reusable across Boxing and Flow, including single-state gestures like Squat. Investigate and fix the hover-time framerate drop, avoiding expensive per-frame UI rebuild work if possible. Update the plan with what changed and any performance root cause found.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scenes/`
+- `.testbed/scripts/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
+
+**Status:** ✅ Complete
+
+**Results:**
+- Updated the reusable overlay shell in `.testbed/scripts/boxing_proving_harness.gd` to match Derrick's review notes: the header now reads `Gesture Detection`, the old descriptive subtitle line was removed, the card width increased from `360` to `440`, and the title/gesture/body font sizes were bumped for readability.
+- Kept the panel height content-driven instead of forcing a tall fixed card. The hover card now rebuilds its minimum size from content after row updates, so the panel hugs the active checklist with only the intended margin container padding.
+- Moved hover activation off the full gesture tile and onto the specific interactive sub-targets instead: `L` and `R` badges for left/right gestures, and the center `Active` badge for single-state gestures like Guard and Squat. This keeps the interaction pattern reusable for Boxing today and Flow later without requiring a Punch-only special case.
+- Extended the overlay model from a tile-level key to a card-level key (`punch_left`, `punch_right`, `guard`, `squat`, etc.). That preserves the reusable pattern while letting each sub-gesture/state own its own popup content and hover target.
+- Added live right-side Punch support while doing the badge-target refactor, so both `Punch-L` and `Punch-R` now use the same detector-backed row renderer instead of leaving the right badge disconnected.
+- Replaced the broken Unicode checkbox/checkmark rendering with ASCII-safe `[x]` / `[ ]` markers plus pass/fail tinting, which avoids font fallback issues while keeping the checklist scan pattern obvious.
+- Investigated the hover-time framerate tank and found two main sources of avoidable churn in the previous implementation:
+  1. the hovered popup rows were fully freed/recreated on every boxing UI refresh, which forced repeated layout/tree churn while hovering;
+  2. badge/tile styles were being recreated every refresh even when their active state had not changed.
+- Fixed that performance issue by caching hover-row controls and only updating their text/state when the model changes, plus short-circuiting badge/tile style reapplication unless the active/inactive state actually flips. The popup is still live-updating, but no longer does full per-frame row rebuilds or redundant stylebox swaps just because the cursor is resting on a hover target.
+- Validation performed:
+  - `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1`
+  - `~/.local/bin/godot --headless --path .testbed --script ../.temp/validate_hover.gd` during development to force the new badge hover path and confirm the popup became visible on `punch_left` with 6 rendered rows before the temp validation script was removed.
+- Committed and pushed to `main`: `2024a9c` — `Polish gesture detection hover overlay`
+- The same pre-existing missing `boxing-weave-1.svg` import warning still appears during headless runs and is unrelated to this overlay pass.
+
+---
+
+### Task 6: Re-QA the overlay behavior after Derrick's review fixes
+
+**Bead ID:** `aerobeat-input-mediapipe-python-gmr`  
+**SubAgent:** `primary`  
+**Role:** `qa`  
+**References:** outputs from Tasks 1-5  
+**Prompt:** Re-verify the gesture info overlay after the review-driven polish pass. Confirm the title is `Gesture Detection`, the subtitle/description is gone, the panel sizes to content cleanly, the wider panel plus larger text improves readability, the hover target is now the specific sub-gesture label (`L`, `R`, or equivalent state label), and the checkbox visuals render correctly. Specifically test whether hover interaction still causes a framerate drop and capture whether the performance issue is resolved or meaningfully improved.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/`
+- maybe `.temp/` or evidence folders if screenshots/logs are useful
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
+- optional evidence notes/screenshots paths if collected
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 7: Audit whether this UI is truthful and performant enough to use as the next debugging surface
+
+**Bead ID:** `aerobeat-input-mediapipe-python-pav`  
+**SubAgent:** `primary`  
+**Role:** `auditor`  
+**References:** all outputs from Tasks 1-6  
+**Prompt:** Audit whether the updated hover-card UI is truthful, readable, and performant enough to use as the next debugging surface. Confirm the displayed requirements still match detector checks, note any still-dangerous left/right ownership assumptions, and verify the new per-subgesture hover pattern and checkbox rendering are acceptable. Call out any remaining performance risks or readability problems before the UI is used to drive the next straight-punch redesign pass.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/`
+- maybe `docs/` if a final audit note belongs there
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
+- optional note files if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 ## Final Results
 
 **Status:** Draft / in progress
