@@ -28,6 +28,7 @@ signal weave_left_start()
 signal weave_left_end()
 signal weave_right_start()
 signal weave_right_end()
+signal camera_devices_changed(devices: Array, selected_device_id: String)
 
 var _provider = null
 var _config = null
@@ -90,7 +91,7 @@ func set_selected_camera_device_id(device_id: String) -> bool:
 	if _config == null:
 		return false
 	_config.set_selected_camera_device_id(device_id)
-	var ok := _provider != null and _provider.set_selected_camera_device_id(device_id)
+	var ok: bool = _provider != null and bool(_provider.set_selected_camera_device_id(device_id))
 	_refresh_available_camera_devices()
 	camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
 	return ok
