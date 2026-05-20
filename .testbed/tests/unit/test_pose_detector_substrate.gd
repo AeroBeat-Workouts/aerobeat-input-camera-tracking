@@ -68,25 +68,34 @@ func test_degrades_then_reacquires_tracking_when_confidence_drops() -> void:
 
 func test_detects_straight_hook_and_uppercut_events_truthfully() -> void:
 	_calibrate_stance()
-	substrate.process_landmarks(_make_pose_frame(), 1100)
+	var ready_state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	_force_straight_punch_phase("left", "armed", float(ready_state.get("metrics", {}).get("measurements", {}).get("left_forward_distance", 0.0)))
 	var punch_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.26, "y": 0.70},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.12, "y": 0.70},
-	}), 1200)
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.24, "y": 0.70, "z": -0.12},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.08, "y": 0.70, "z": -0.34},
+	}), 1180)
 	assert_eq(_event_names(punch_state.get("events", [])), ["punch_left"])
 
-	substrate.process_landmarks(_make_pose_frame(), 1300)
+	ready_state = substrate.process_landmarks(_make_pose_frame(), 1280)
+	_force_straight_punch_phase("right", "armed", float(ready_state.get("metrics", {}).get("measurements", {}).get("right_forward_distance", 0.0)))
+	var mirrored_punch_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.76, "y": 0.70, "z": -0.12},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.92, "y": 0.70, "z": -0.34},
+	}), 1360)
+	assert_eq(_event_names(mirrored_punch_state.get("events", [])), ["punch_right"])
+
+	substrate.process_landmarks(_make_pose_frame(), 1620)
 	var hook_state := substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.68, "y": 0.62},
 		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.84, "y": 0.60},
-	}), 1400)
+	}), 1720)
 	assert_eq(_event_names(hook_state.get("events", [])), ["hook_right"])
 
-	substrate.process_landmarks(_make_pose_frame(), 1500)
+	substrate.process_landmarks(_make_pose_frame(), 1820)
 	var uppercut_state := substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.62},
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.33, "y": 0.76},
-	}), 1600)
+	}), 1920)
 	assert_eq(_event_names(uppercut_state.get("events", [])), ["uppercut_left"])
 
 func test_quantizes_flow_direction_to_twelve_chart_slots() -> void:
@@ -231,6 +240,15 @@ func _calibrate_stance() -> void:
 	for idx in range(5):
 		var state := substrate.process_landmarks(_make_pose_frame(), 1000 + idx * 16)
 		assert_eq(String(state["tracking_state"]), "tracking")
+
+func _force_straight_punch_phase(side: String, phase: String, forward_distance: float) -> void:
+	var straight_punch: Dictionary = (substrate._gesture_state.get("straight_punch", {}) as Dictionary).duplicate(true)
+	straight_punch[side] = {
+		"phase": phase,
+		"armed_forward_distance": forward_distance,
+		"peak_forward_distance": forward_distance,
+	}
+	substrate._gesture_state["straight_punch"] = straight_punch
 
 func _flow_events(events: Array) -> Array:
 	var flow_events: Array = []
