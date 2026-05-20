@@ -1,0 +1,9 @@
+schema_version: 1
+fixture_id: boxing_guard->sidestep_right_repeat_04_take_01
+family: boxing
+video:
+  path: ./boxing_guard->sidestep_right_repeat_04_take_01.mp4
+notes:
+  - Boxing clip of Derrick
+  - starts in guard, ends in guard, with four repeated side step right gestures
+  - windows below are human validated. No other gestures besides side_step_right and guard should be detected

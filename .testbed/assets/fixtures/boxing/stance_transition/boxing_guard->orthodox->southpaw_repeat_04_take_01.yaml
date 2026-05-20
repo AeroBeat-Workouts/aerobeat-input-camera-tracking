@@ -1,0 +1,9 @@
+schema_version: 1
+fixture_id: boxing_guard->orthodox->southpaw_repeat_04_take_01
+family: boxing
+video:
+  path: ./boxing_guard->orthodox->southpaw_repeat_04_take_01.mp4
+notes:
+  - Boxing clip of Derrick
+  - starts in guard, ends in guard, with four repeated stance transitions between orthodox to southpaw gestures
+  - windows below are human validated. No other gestures besides orthodox and southpaw and guard should be detected

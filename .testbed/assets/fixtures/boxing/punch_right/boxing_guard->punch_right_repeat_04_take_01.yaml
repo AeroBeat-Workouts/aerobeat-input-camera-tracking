@@ -1,8 +1,8 @@
 schema_version: 1
-fixture_id: boxing_punch_right_x4_while_guarding_take_01
+fixture_id: boxing_guard->punch_right_repeat_04_take_01
 family: boxing
 video:
-  path: ./boxing_punch_right_x4_while_guarding_take_01.mp4
+  path: ./boxing_guard->punch_right_repeat_04_take_01.mp4
 notes:
   - Boxing clip of Derrick
   - starts in guard, ends in guard, with four repeated right punches
@@ -10,14 +10,27 @@ notes:
 expected_gestures:
   - name: punch_right
     windows:
-      - start_ms: 900
-        end_ms: 1300
-      - start_ms: 1900
-        end_ms: 2300
-      - start_ms: 2900
-        end_ms: 3300
-      - start_ms: 3900
-        end_ms: 4300
+      - start_ms: 400
+        end_ms: 600
+      - start_ms: 1700
+        end_ms: 2000
+      - start_ms: 3100
+        end_ms: 3400
+      - start_ms: 4400
+        end_ms: 4900
+  - name: guard
+    surface: state
+    windows:
+      - start_ms: 0
+        end_ms: 400
+      - start_ms: 600
+        end_ms: 1700
+      - start_ms: 2000
+        end_ms: 3100
+      - start_ms: 3400
+        end_ms: 4400
+      - start_ms: 4900
+        end_ms: 6000
 forbidden_gestures:
   - name: punch_left
   - name: hook_left

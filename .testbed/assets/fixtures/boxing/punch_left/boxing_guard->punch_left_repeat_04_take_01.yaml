@@ -1,8 +1,8 @@
 schema_version: 1
-fixture_id: boxing_punch_left_x4_while_guarding_take_01
+fixture_id: boxing_guard->punch_left_repeat_04_take_01
 family: boxing
 video:
-  path: ./boxing_punch_left_x4_while_guarding_take_01.mp4
+  path: ./boxing_guard->punch_left_repeat_04_take_01.mp4
 notes:
   - Boxing clip of Derrick
   - starts in guard, ends in guard, with four repeated left punches
