@@ -399,11 +399,75 @@ func _passes_visibility_threshold(landmark: Dictionary, resolved_config: Variant
 	return float(landmark.get("v", 1.0)) >= float(active_config.min_visibility)
 
 func _list_linux_camera_devices() -> Array:
-	var devices: Array = []
-	var dir := DirAccess.open("/sys/class/video4linux")
+	var devices := _list_linux_camera_devices_via_v4l2_probe()
+	if devices.is_empty():
+		devices = _list_linux_camera_devices_via_sysfs()
+	if devices.is_empty():
+		devices.append({
+			"id": "/dev/video0",
+			"label": "Default camera",
+			"path": "/dev/video0",
+			"provider": "mediapipe_python",
+		})
+	return devices
+
+func _list_linux_camera_devices_via_v4l2_probe() -> Array:
+	var script := """
+import ctypes, fcntl, glob, json, os
+VIDIOC_QUERYCAP = 0x80685600
+V4L2_CAP_VIDEO_CAPTURE = 0x00000001
+V4L2_CAP_VIDEO_CAPTURE_MPLANE = 0x00001000
+V4L2_CAP_META_CAPTURE = 0x00800000
+V4L2_CAP_DEVICE_CAPS = 0x80000000
+class Cap(ctypes.Structure):
+    _fields_=[('driver', ctypes.c_uint8*16),('card', ctypes.c_uint8*32),('bus_info', ctypes.c_uint8*32),('version', ctypes.c_uint32),('capabilities', ctypes.c_uint32),('device_caps', ctypes.c_uint32),('reserved', ctypes.c_uint32*3)]
+def s(arr):
+    return bytes(arr).split(b'\\0',1)[0].decode(errors='ignore')
+devices = []
+for path in sorted(glob.glob('/dev/video*')):
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+    except OSError:
+        continue
+    cap = Cap()
+    try:
+        fcntl.ioctl(fd, VIDIOC_QUERYCAP, cap)
+        effective = cap.device_caps if (cap.capabilities & V4L2_CAP_DEVICE_CAPS) else cap.capabilities
+        capture = bool(effective & V4L2_CAP_VIDEO_CAPTURE) or bool(effective & V4L2_CAP_VIDEO_CAPTURE_MPLANE)
+        meta = bool(effective & V4L2_CAP_META_CAPTURE)
+        if capture and not meta:
+            devices.append({
+                'id': path,
+                'label': s(cap.card) or os.path.basename(path),
+                'path': path,
+                'provider': 'mediapipe_python',
+                'bus_info': s(cap.bus_info),
+                'caps_hex': hex(cap.capabilities),
+                'device_caps_hex': hex(cap.device_caps),
+            })
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+print(json.dumps(devices))
+""".strip_edges()
+	var output: Array = []
+	var exit_code := OS.execute("python3", PackedStringArray(["-c", script]), output, true)
+	if exit_code != 0 or output.is_empty():
+		return []
+	var parsed := JSON.parse_string(String(output[0]).strip_edges())
+	if not parsed is Array:
+		return []
+	var raw_devices: Array = parsed
+	return _normalize_camera_device_entries(raw_devices)
+
+func _list_linux_camera_devices_via_sysfs() -> Array:
+	var sysfs_root := "/sys/class/video4linux"
+	var dir := DirAccess.open(sysfs_root)
 	if dir == null:
-		return devices
-	var names: Array = []
+		return []
+	var raw_devices: Array = []
+	var names: Array[String] = []
 	dir.list_dir_begin()
 	while true:
 		var entry := dir.get_next()
@@ -412,21 +476,43 @@ func _list_linux_camera_devices() -> Array:
 		if dir.current_is_dir():
 			continue
 		if entry.begins_with("video"):
-			names.append(entry)
+			names.append(String(entry))
 	dir.list_dir_end()
 	names.sort()
 	for entry in names:
-		var id: String = "/dev/%s" % entry
-		var label: String = String(entry)
-		var name_path: String = "/sys/class/video4linux/%s/name" % entry
+		var id := "/dev/%s" % entry
+		var sysfs_dir := "%s/%s" % [sysfs_root, entry]
+		var label := entry
+		var name_path := "%s/name" % sysfs_dir
 		if FileAccess.file_exists(name_path):
 			label = FileAccess.get_file_as_string(name_path).strip_edges()
-		devices.append({
+		raw_devices.append({
 			"id": id,
-			"label": label,
+			"label": label if not label.is_empty() else entry,
 			"path": id,
 			"provider": "mediapipe_python",
+			"sysfs_name": entry,
 		})
+	return _normalize_camera_device_entries(raw_devices)
+
+func _normalize_camera_device_entries(raw_devices: Array) -> Array:
+	var label_counts := {}
+	for device_variant: Variant in raw_devices:
+		if not device_variant is Dictionary:
+			continue
+		var label := String((device_variant as Dictionary).get("label", "")).strip_edges()
+		label_counts[label] = int(label_counts.get(label, 0)) + 1
+
+	var devices: Array = []
+	for device_variant: Variant in raw_devices:
+		if not device_variant is Dictionary:
+			continue
+		var normalized: Dictionary = (device_variant as Dictionary).duplicate(true)
+		var label := String(normalized.get("label", "")).strip_edges()
+		var id := String(normalized.get("id", "")).strip_edges()
+		if int(label_counts.get(label, 0)) > 1 and not id.is_empty():
+			normalized["label"] = "%s [%s]" % [label, id.get_file()]
+		devices.append(normalized)
 	return devices
 
 func _new_local_script_instance(relative_path: String) -> Variant:

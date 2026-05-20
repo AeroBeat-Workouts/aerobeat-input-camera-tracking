@@ -314,6 +314,10 @@ func _normalize_camera_source_value(raw_value: String) -> String:
 		return ""
 	return ProjectSettings.globalize_path(normalized_value) if not normalized_value.is_valid_int() else normalized_value
 
+func _is_live_camera_source_value(camera_source: String) -> bool:
+	var normalized_source := camera_source.strip_edges()
+	return normalized_source.is_empty() or normalized_source == "0" or normalized_source.is_valid_int() or normalized_source.begins_with("/dev/video")
+
 func _get_camera_source_override() -> String:
 	var explicit_override := _normalize_camera_source_value(camera_source_override)
 	if not explicit_override.is_empty():
@@ -325,7 +329,7 @@ func _get_camera_source_override() -> String:
 
 func _validate_camera_source_override() -> Dictionary:
 	var camera_source := _get_camera_source_override()
-	if camera_source.is_empty() or camera_source == "0" or camera_source.is_valid_int():
+	if _is_live_camera_source_value(camera_source):
 		return {"ok": true}
 	if FileAccess.file_exists(camera_source):
 		return {"ok": true}

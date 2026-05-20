@@ -14,8 +14,8 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
+prerecorded_video_source = ""
 scene_title = "BOXING GESTURE DETECTION"
-tracking_overlay_mode = "optimized"
 
 [node name="AutoStartManager" type="Node" parent="." unique_id=343298553]
 script = ExtResource("4_autostart")
