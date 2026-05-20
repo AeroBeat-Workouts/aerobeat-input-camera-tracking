@@ -154,9 +154,9 @@ Derrick also called out an important design correction: the current “hand must
   5. `L-Forward velocity >= ??? - <float>`
   6. `L-Forward distance >= ??? - <float>`
 - Replaced the row 5 and row 6 `???` placeholders at render time with the real live threshold values currently being used by the detector (`shoulder_width * 8.0` and `armed_forward_distance + shoulder_width * 0.08`, respectively) from the detector debug feed rather than recomputing them inside the shell.
-- Presented the left-side-of-screen line honestly without rewriting its approved wording: the row now adds an explicit under-review note stating that it reflects the detector's current own-half/image-space check and is not settled physical truth.
+- Preserved the approved left-side-of-screen row wording and kept it live, but removed the extra under-review/helper copy from the popup so Derrick can do a cleaner manual UI review next session without changing the detector-backed row itself.
 - Validation: `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` completed with the same pre-existing missing `boxing-weave-1.svg` import warning seen in Task 2, and no new GDScript parse/runtime errors from the Punch-L hookup.
-- Task 4 should specifically verify, in a live hover over the Punch tile, that all six rows update from current detector state, that rows 5 and 6 show concrete live threshold numbers instead of `???`, and that row 2 visibly carries the under-review warning while keeping its approved main line text intact.
+- Manual-review handoff for next session: hover popup is now the clean version (live rows and values intact, warning/helper text removed) and should be visually rechecked by Derrick in the live Punch tile.
 
 ---
 
@@ -176,9 +176,31 @@ Derrick also called out an important design correction: the current “hand must
 - `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
 - optional evidence notes/screenshots paths if collected
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified the live Punch-L hover card in the actual Boxing proving scene via headless proving-scene capture evidence at `.temp/qa-hover-capture/hover.png` and `.temp/qa-hover-capture/report.json`.
+- Hover behavior: emitting the Punch tile hover in the live scene made the popup visible, and exit hid it again (`initial=false`, `after_hover=true`, `after_exit=false`).
+- Styling verdict: close to requested. Captured panel style was mostly transparent black (`#000000d1`), rounded corners (`16px` radius), white/light text, and a subtle light border. Screenshot confirms the intended look.
+- Exact displayed Punch-L wording captured for Derrick review:
+  1. `L-Punch phase is armed - <phase>`
+  2. `L-Hand is on left side of screen - <boolean>`
+     - warning subline: `Under review: this is the current detector own-half/image-space check, not settled physical truth.`
+  3. `L-Arm extension is >= 0.95 - <float>`
+  4. `L-Elbow bend is >= 145° - <int>°`
+  5. `L-Forward velocity >= <threshold> - <float>`
+  6. `L-Forward distance >= <threshold> - <float>`
+- Captured live example shown in the screenshot:
+  1. `L-Punch phase is armed - armed`
+  2. `L-Hand is on left side of screen - false`
+  3. `L-Arm extension is >= 0.95 - 0.928`
+  4. `L-Elbow bend is >= 145° - 136°`
+  5. `L-Forward velocity >= 1.177 - -0.043`
+  6. `L-Forward distance >= 0.348 - 0.304`
+- Truth/live verdict: rows 3-6 and their checkbox states are genuinely live, not stale shell text. Across captured samples, the values and pass/fail checkboxes changed frame-to-frame from `_latest_state.gesture_debug.straight_punch.left`, including threshold numbers on rows 5 and 6 instead of `???`.
+- Row 2 truthfulness at the time of QA capture: main wording stayed as approved, and the UI then still showed the under-review helper copy. That capture evidence is now stale for visual review because the helper/warning text has since been removed for a cleaner manual handoff while keeping the live row itself intact.
+- Row 1 phase verification: QA observed the row display `recovering` in one live pass and `armed` in another. This confirms the UI can render live phase text rather than a hardcoded value. QA did **not** capture an `extending` display from this saved Punch-L fixture, so that phase remains unverified here.
+- Known unrelated issue still present during capture: the pre-existing missing `boxing-weave-1.svg` import warning appeared again, but it did not block Punch-L hover verification.
+- Manual-review note: current next-session check should focus on the cleaner popup presentation with the same live rows/values, since the older capture/report still reflects the pre-cleanup helper text.
 
 ---
 
@@ -209,7 +231,8 @@ Derrick also called out an important design correction: the current “hand must
 **Status:** Draft / in progress
 
 **What We Built:**
-- A plan to turn Boxing gesture requirements into a live hoverable debugging UI, starting with Punch-L and explicitly surfacing questionable side-ownership assumptions.
+- A plan to turn Boxing gesture requirements into a live hoverable debugging UI, starting with Punch-L.
+- Current handoff state: the Punch-L popup is now cleaned for manual UI review next session — the live rows/values remain wired, and the extra warning/helper text has been removed without rewriting the approved main row wording.
 
 **Reference Check:**
 - `REF-01` / `REF-02` explain why debugging visibility is now more important than more blind threshold tweaking.

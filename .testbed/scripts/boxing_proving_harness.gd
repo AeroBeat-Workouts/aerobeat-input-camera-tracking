@@ -154,7 +154,7 @@ const HOVER_REQUIREMENT_SPECS := {
 				"group": "distance",
 			},
 		],
-		"footer": "Detector wording preserved; row 2 reflects the current image-space own-half check and is still under review.",
+		"footer": "",
 	},
 }
 
@@ -484,7 +484,6 @@ func _build_punch_left_requirement_row(row_spec: Dictionary, left_straight: Dict
 			var own_half_lock := bool(left_straight.get("own_half_lock", false))
 			current_text = _fmt_bool(own_half_lock)
 			passed = own_half_lock
-			suspect_text = "Under review: this is the current detector own-half/image-space check, not settled physical truth."
 		"left_arm_extension":
 			var arm_extension := float(left_straight.get("arm_extension_3d", 0.0))
 			current_text = _fmt_float(arm_extension)
