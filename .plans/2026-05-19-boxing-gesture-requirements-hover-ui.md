@@ -141,9 +141,22 @@ Derrick also called out an important design correction: the current “hand must
 - `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
 - `docs/punch-left-golden-truth-experiment-log.html` if a note belongs there
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:**
+- Rewired the Punch-L hover card to read from the actual live detector/debug state instead of the shell-local placeholder builder. `boxing_proving_harness.gd` now pulls row values from `_latest_state.gesture_debug.straight_punch.left`, which is populated by the same proving-scene detector state used for live Boxing playback.
+- Narrowly extended `src/detectors/pose_detector_substrate.gd` so `gesture_debug.straight_punch.left/right` exposes the current live Punch straight-punch values the UI actually needs: `phase`, `own_half_lock`, `arm_extension_3d`, `elbow_bend_deg_3d`, `forward_velocity`, `forward_distance`, plus the dynamically computed threshold values `forward_velocity_min` and `forward_distance_min` and the fixed 3D straightness mins.
+- Preserved the approved row wording contract exactly in the displayed line text:
+  1. `L-Punch phase is armed - <phase>`
+  2. `L-Hand is on left side of screen - <boolean>`
+  3. `L-Arm extension is >= 0.95 - <float>`
+  4. `L-Elbow bend is >= 145° - <int>°`
+  5. `L-Forward velocity >= ??? - <float>`
+  6. `L-Forward distance >= ??? - <float>`
+- Replaced the row 5 and row 6 `???` placeholders at render time with the real live threshold values currently being used by the detector (`shoulder_width * 8.0` and `armed_forward_distance + shoulder_width * 0.08`, respectively) from the detector debug feed rather than recomputing them inside the shell.
+- Presented the left-side-of-screen line honestly without rewriting its approved wording: the row now adds an explicit under-review note stating that it reflects the detector's current own-half/image-space check and is not settled physical truth.
+- Validation: `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` completed with the same pre-existing missing `boxing-weave-1.svg` import warning seen in Task 2, and no new GDScript parse/runtime errors from the Punch-L hookup.
+- Task 4 should specifically verify, in a live hover over the Punch tile, that all six rows update from current detector state, that rows 5 and 6 show concrete live threshold numbers instead of `???`, and that row 2 visibly carries the under-review warning while keeping its approved main line text intact.
 
 ---
 

@@ -152,7 +152,7 @@ func process_landmarks(landmarks: Array, timestamp_ms: int = 0) -> Dictionary:
 		"metrics": metrics,
 		"events": events.duplicate(true),
 		"gesture_states": _build_public_gesture_states(),
-		"gesture_debug": _build_gesture_debug_state(),
+		"gesture_debug": _build_gesture_debug_state(metrics),
 	}
 	_last_processed_timestamp_ms = timestamp_ms
 	return _latest_state
@@ -507,15 +507,48 @@ func _get_metric_dictionary(key: String) -> Dictionary:
 			return value
 	return {}
 
-func _build_gesture_debug_state() -> Dictionary:
+func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	return {
 		"ready": _gesture_state.get("ready", {}).duplicate(true),
-		"straight_punch": (_gesture_state.get("straight_punch", {}) as Dictionary).duplicate(true),
-		"flow": _build_flow_debug_state(),
+		"straight_punch": _build_straight_punch_debug_state(metrics),
+		"flow": _build_flow_debug_state(metrics),
 	}
 
-func _build_flow_debug_state() -> Dictionary:
-	var measurements: Dictionary = _latest_state.get("metrics", {}).get("measurements", {})
+func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
+	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+	var shoulder_width := maxf(float(measurements.get("shoulder_width", float(_baseline.get("shoulder_width", 0.0)))), 0.0)
+	return {
+		"left": _build_straight_punch_side_debug("left", measurements, shoulder_width),
+		"right": _build_straight_punch_side_debug("right", measurements, shoulder_width),
+	}
+
+func _build_straight_punch_side_debug(side: String, measurements: Dictionary, shoulder_width: float) -> Dictionary:
+	var state := _get_straight_punch_state(side)
+	var forward_delta_min := shoulder_width * PUNCH_FORWARD_DELTA_RATIO
+	var forward_velocity_min := shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
+	var arm_extension_3d := float(measurements.get("%s_arm_extension_3d" % side, 0.0))
+	var elbow_bend_deg_3d := float(measurements.get("%s_elbow_bend_deg_3d" % side, 0.0))
+	var forward_velocity := float(measurements.get("%s_forward_velocity" % side, 0.0))
+	var forward_distance := float(measurements.get("%s_forward_distance" % side, 0.0))
+	var armed_forward_distance := float(state.get("armed_forward_distance", forward_distance))
+	var own_half_lock := bool(measurements.get("%s_own_half_lock" % side, false))
+	return {
+		"phase": String(state.get("phase", "recovering")),
+		"armed_forward_distance": armed_forward_distance,
+		"peak_forward_distance": float(state.get("peak_forward_distance", forward_distance)),
+		"own_half_lock": own_half_lock,
+		"arm_extension_3d": arm_extension_3d,
+		"elbow_bend_deg_3d": elbow_bend_deg_3d,
+		"forward_velocity": forward_velocity,
+		"forward_distance": forward_distance,
+		"forward_velocity_min": forward_velocity_min,
+		"forward_distance_min": armed_forward_distance + forward_delta_min,
+		"arm_extension_min": PUNCH_3D_EXTENSION_MIN,
+		"elbow_bend_deg_min": PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG,
+	}
+
+func _build_flow_debug_state(metrics: Dictionary = {}) -> Dictionary:
+	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
 	var shoulder_width := maxf(float(_baseline.get("shoulder_width", measurements.get("shoulder_width", 0.0))), 0.000001)
 	var shoulder_center_vec: Vector3 = measurements.get("shoulder_center", Vector3(float(_baseline.get("shoulder_center_x", 0.0)), 0.0, 0.0))
 	var shoulder_center := Vector2(shoulder_center_vec.x, shoulder_center_vec.y)

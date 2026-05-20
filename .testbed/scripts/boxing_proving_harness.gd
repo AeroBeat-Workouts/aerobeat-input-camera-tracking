@@ -9,10 +9,6 @@ const ACTIVE_PILL_TEXT := Color8(0x05, 0x22, 0x28, 0xff)
 const HOVER_CARD_TITLE := "What Gesture Requirements Are Met Right Now?"
 const HOVER_CARD_MAX_WIDTH := 360.0
 const HOVER_CARD_MARGIN := 14.0
-const PUNCH_ARM_EXTENSION_MIN := 0.95
-const PUNCH_ELBOW_MIN_DEG := 145.0
-const PUNCH_FORWARD_VELOCITY_MIN_RATIO := 8.0
-const PUNCH_FORWARD_DELTA_RATIO := 0.08
 const BOARD_ICON_PATHS := {
 	"punch": "res://assets/icons/boxing-punch-1.svg",
 	"hook": "res://assets/icons/boxing-hook-1.svg",
@@ -125,55 +121,40 @@ const TILE_CONFIGS := [
 const HOVER_REQUIREMENT_SPECS := {
 	"punch": {
 		"title": "Punch-L",
-		"subtitle": "Reusable hover-card shell wired to the approved initial wording contract.",
+		"subtitle": "Live Punch-L detector/debug values from the current proving-scene state.",
 		"rows": [
 			{
 				"id": "left_phase_armed",
 				"label": "L-Punch phase is armed",
-				"value_type": "phase",
 				"group": "phase",
 			},
 			{
 				"id": "left_side_of_screen",
 				"label": "L-Hand is on left side of screen",
-				"value_type": "bool",
-				"metric_key": "own_half_lock",
 				"group": "lane",
 			},
 			{
 				"id": "left_arm_extension",
 				"label": "L-Arm extension is >= 0.95",
-				"value_type": "float",
-				"metric_key": "arm_extension_3d",
-				"threshold_value": PUNCH_ARM_EXTENSION_MIN,
 				"group": "shape",
 			},
 			{
 				"id": "left_elbow_bend",
 				"label": "L-Elbow bend is >= 145°",
-				"value_type": "degrees_int",
-				"metric_key": "elbow_bend_deg_3d",
-				"threshold_value": PUNCH_ELBOW_MIN_DEG,
 				"group": "shape",
 			},
 			{
 				"id": "left_forward_velocity",
 				"label": "L-Forward velocity >= {threshold}",
-				"value_type": "float",
-				"metric_key": "forward_velocity",
-				"threshold_kind": "velocity_min",
 				"group": "speed",
 			},
 			{
 				"id": "left_forward_distance",
 				"label": "L-Forward distance >= {threshold}",
-				"value_type": "float",
-				"metric_key": "forward_distance",
-				"threshold_kind": "distance_min",
 				"group": "distance",
 			},
 		],
-		"pending_footer": "Task 3 still needs to swap the shell-local Punch-L row builder over to the final shared live debug source for all Boxing/Flow gestures.",
+		"footer": "Detector wording preserved; row 2 reflects the current image-space own-half check and is still under review.",
 	},
 }
 
@@ -473,29 +454,28 @@ func _build_hover_card_model(tile_id: String) -> Dictionary:
 			return spec.duplicate(true)
 
 func _build_punch_hover_card_model(spec: Dictionary) -> Dictionary:
-	var state: Dictionary = _latest_state
-	var metrics: Dictionary = (state.get("metrics", {}) as Dictionary).get("measurements", {})
-	var shoulder_width := float(metrics.get("shoulder_width", 0.0))
-	var boxing_debug := _build_fixture_boxing_debug_snapshot()
-	var left_straight: Dictionary = boxing_debug.get("left_straight", {})
+	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
+	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
+	var left_straight: Dictionary = (straight_punch_debug.get("left", {}) as Dictionary)
 	var rows: Array[Dictionary] = []
 	for row_spec_variant: Variant in spec.get("rows", []):
 		var row_spec: Dictionary = row_spec_variant
-		rows.append(_build_punch_left_requirement_row(row_spec, left_straight, shoulder_width))
+		rows.append(_build_punch_left_requirement_row(row_spec, left_straight))
 	return {
 		"title": spec.get("title", "Punch-L"),
 		"subtitle": spec.get("subtitle", ""),
 		"rows": rows,
-		"footer": spec.get("pending_footer", ""),
+		"footer": spec.get("footer", ""),
 	}
 
-func _build_punch_left_requirement_row(row_spec: Dictionary, left_straight: Dictionary, shoulder_width: float) -> Dictionary:
+func _build_punch_left_requirement_row(row_spec: Dictionary, left_straight: Dictionary) -> Dictionary:
 	var row := row_spec.duplicate(true)
 	var row_id := String(row_spec.get("id", ""))
 	var label := String(row_spec.get("label", ""))
 	var passed := false
 	var current_text := ""
 	var threshold_text := ""
+	var suspect_text := ""
 	match row_id:
 		"left_phase_armed":
 			current_text = String(left_straight.get("phase", "recovering"))
@@ -504,22 +484,23 @@ func _build_punch_left_requirement_row(row_spec: Dictionary, left_straight: Dict
 			var own_half_lock := bool(left_straight.get("own_half_lock", false))
 			current_text = _fmt_bool(own_half_lock)
 			passed = own_half_lock
+			suspect_text = "Under review: this is the current detector own-half/image-space check, not settled physical truth."
 		"left_arm_extension":
 			var arm_extension := float(left_straight.get("arm_extension_3d", 0.0))
 			current_text = _fmt_float(arm_extension)
-			passed = arm_extension >= PUNCH_ARM_EXTENSION_MIN
+			passed = arm_extension >= float(left_straight.get("arm_extension_min", 0.95))
 		"left_elbow_bend":
 			var elbow_bend := float(left_straight.get("elbow_bend_deg_3d", 0.0))
 			current_text = _fmt_degrees_int(elbow_bend)
-			passed = elbow_bend >= PUNCH_ELBOW_MIN_DEG
+			passed = elbow_bend >= float(left_straight.get("elbow_bend_deg_min", 145.0))
 		"left_forward_velocity":
-			var velocity_threshold := shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
+			var velocity_threshold := float(left_straight.get("forward_velocity_min", 0.0))
 			var forward_velocity := float(left_straight.get("forward_velocity", 0.0))
 			threshold_text = _fmt_float(velocity_threshold)
 			current_text = _fmt_float(forward_velocity)
-			passed = forward_velocity >= velocity_threshold
+			passed = forward_velocity > velocity_threshold
 		"left_forward_distance":
-			var distance_threshold := float(left_straight.get("armed_forward_distance", 0.0)) + shoulder_width * PUNCH_FORWARD_DELTA_RATIO
+			var distance_threshold := float(left_straight.get("forward_distance_min", 0.0))
 			var forward_distance := float(left_straight.get("forward_distance", 0.0))
 			threshold_text = _fmt_float(distance_threshold)
 			current_text = _fmt_float(forward_distance)
@@ -531,6 +512,7 @@ func _build_punch_left_requirement_row(row_spec: Dictionary, left_straight: Dict
 	row["passed"] = passed
 	row["threshold_text"] = threshold_text
 	row["current_text"] = current_text
+	row["suspect_text"] = suspect_text
 	return row
 
 func _rebuild_hover_card_rows(rows_variant: Variant) -> void:
