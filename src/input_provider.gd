@@ -35,6 +35,7 @@ var _tracking_mode: TrackingMode = TrackingMode.MODE_2D
 var _body_track_flags: int = BodyTrackFlags.ALL
 var _published_session_key := ""
 var _published_session_owner_id := ""
+var _available_camera_devices: Array = []
 
 func _ready() -> void:
 	_ensure_provider()
@@ -45,6 +46,8 @@ func start(settings_json: String = "") -> bool:
 	var success: bool = _provider.start()
 	if success:
 		_publish_shared_session_if_possible()
+		_refresh_available_camera_devices()
+		camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
 		started.emit()
 	else:
 		failed.emit("MediaPipe provider failed to start")
@@ -73,6 +76,24 @@ func has_capability(capability: Capability) -> bool:
 func trigger_haptic(_side: int, _intensity: float, _duration_ms: int) -> void:
 	# No haptics in the Python/camera implementation.
 	pass
+
+func get_available_camera_devices() -> Array:
+	return _available_camera_devices.duplicate(true)
+
+func get_selected_camera_device_id() -> String:
+	if _config == null:
+		return ""
+	return String(_config.get_camera_source()).strip_edges()
+
+func set_selected_camera_device_id(device_id: String) -> bool:
+	_ensure_provider()
+	if _config == null:
+		return false
+	_config.set_selected_camera_device_id(device_id)
+	var ok := _provider != null and _provider.set_selected_camera_device_id(device_id)
+	_refresh_available_camera_devices()
+	camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
+	return ok
 
 func get_head_position(mode: TrackingMode = TrackingMode.MODE_2D) -> Vector3:
 	return _to_vector3(_provider.get_head_position(_to_provider_mode(mode)))
@@ -276,6 +297,12 @@ func _connect_provider_signals() -> void:
 	if not _provider.leg_lift_right_end.is_connected(_on_provider_leg_lift_right_end):
 		_provider.leg_lift_right_end.connect(_on_provider_leg_lift_right_end)
 
+func _refresh_available_camera_devices() -> void:
+	if _provider == null:
+		_available_camera_devices = []
+		return
+	_available_camera_devices = _provider.get_available_camera_devices()
+
 func _apply_settings(settings_json: String) -> void:
 	if settings_json.is_empty():
 		return
@@ -294,6 +321,19 @@ func _apply_settings(settings_json: String) -> void:
 		_config.tracking_confidence = float(settings["tracking_confidence"])
 	if settings.has("flip_horizontal"):
 		_config.flip_horizontal = bool(settings["flip_horizontal"])
+	if settings.has("selected_camera_device_id"):
+		_config.set_selected_camera_device_id(String(settings["selected_camera_device_id"]))
+	elif settings.has("camera_source"):
+		_config.set_selected_camera_device_id(String(settings["camera_source"]))
+	if settings.has("tracking_overlay_mode"):
+		_config.tracking_overlay_mode = String(settings["tracking_overlay_mode"]).strip_edges().to_lower()
+	if settings.has("gesture_eval_interval_frames"):
+		_config.gesture_eval_interval_frames = maxi(1, int(settings["gesture_eval_interval_frames"]))
+	if _provider != null:
+		_provider.config = _config
+		_provider.set_selected_camera_device_id(_config.get_camera_source())
+	_refresh_available_camera_devices()
+	camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
 
 func _load_local_script(relative_path: String) -> GDScript:
 	var script_path := _resolve_local_path(relative_path)

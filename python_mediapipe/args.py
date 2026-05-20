@@ -78,6 +78,10 @@ def parse_args():
                        help="Show OpenCV debug window with pose overlay (default: disabled)")
     parser.add_argument("--window-scale", type=float, default=1.0,
                        help="Scale factor for debug window (default: 1.0)")
+    parser.add_argument("--tracking-overlay-mode", type=str, default="full", choices=["off", "full", "optimized"],
+                       help="Overlay/tracking-dot mode: off=video only, full=current full set, optimized=core body plus eyes+nose")
+    parser.add_argument("--gesture-eval-interval-frames", type=int, default=1,
+                       help="Cadence-gate expensive gesture evaluation while still ingesting pose every frame")
     parser.add_argument("--sidecar-identity", type=str, default="",
                        help="Explicit launch identity marker used by the host lifecycle manager")
     

@@ -94,6 +94,9 @@ enum StartupMode {
 @export var scene_title := "Detector Proving Harness"
 @export_multiline var scene_notes := ""
 @export var overlay_visibility_threshold := 0.35
+@export var camera_source := ""
+@export_enum("full", "optimized", "off") var tracking_overlay_mode := "full"
+@export_range(1, 6, 1) var gesture_eval_interval_frames := 1
 @export var show_landmarks := true
 @export var show_trails := true
 @export var trail_debug_logging := false
@@ -310,6 +313,10 @@ func _build_runtime_config() -> MediaPipeConfig:
 	config.track_left_foot = true
 	config.track_right_foot = true
 	config.flip_horizontal = _should_flip_horizontal_preview()
+	if not camera_source.strip_edges().is_empty():
+		config.set_selected_camera_device_id(camera_source.strip_edges())
+	config.tracking_overlay_mode = tracking_overlay_mode
+	config.gesture_eval_interval_frames = maxi(1, gesture_eval_interval_frames)
 	return config
 
 func _connect_mode_signals() -> void:

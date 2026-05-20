@@ -169,6 +169,26 @@ func get_player_head(player_idx: int, mode: TrackingMode = TrackingMode.MODE_2D)
 func set_tracking_mode(_mode: TrackingMode) -> void:
 	pass
 
+func get_available_camera_devices() -> Array:
+	return _list_linux_camera_devices()
+
+func get_selected_camera_device_id() -> String:
+	var resolved_config := _ensure_config()
+	if resolved_config == null:
+		return ""
+	return String(resolved_config.get_camera_source()).strip_edges()
+
+func set_selected_camera_device_id(device_id: String) -> bool:
+	var resolved_config := _ensure_config()
+	if resolved_config == null:
+		return false
+	resolved_config.set_selected_camera_device_id(device_id)
+	if _server != null:
+		_server.config = resolved_config
+	if _detector_substrate != null:
+		_detector_substrate.configure(resolved_config)
+	return true
+
 func _get_landmark_position(landmark_id: int, mode: TrackingMode) -> Variant:
 	return get_landmark_position_for_pose(0, landmark_id, mode)
 
@@ -377,6 +397,37 @@ func _passes_visibility_threshold(landmark: Dictionary, resolved_config: Variant
 	if active_config == null:
 		return true
 	return float(landmark.get("v", 1.0)) >= float(active_config.min_visibility)
+
+func _list_linux_camera_devices() -> Array:
+	var devices: Array = []
+	var dir := DirAccess.open("/sys/class/video4linux")
+	if dir == null:
+		return devices
+	var names: Array = []
+	dir.list_dir_begin()
+	while true:
+		var entry := dir.get_next()
+		if entry == "":
+			break
+		if dir.current_is_dir():
+			continue
+		if entry.begins_with("video"):
+			names.append(entry)
+	dir.list_dir_end()
+	names.sort()
+	for entry in names:
+		var id: String = "/dev/%s" % entry
+		var label: String = String(entry)
+		var name_path: String = "/sys/class/video4linux/%s/name" % entry
+		if FileAccess.file_exists(name_path):
+			label = FileAccess.get_file_as_string(name_path).strip_edges()
+		devices.append({
+			"id": id,
+			"label": label,
+			"path": id,
+			"provider": "mediapipe_python",
+		})
+	return devices
 
 func _new_local_script_instance(relative_path: String) -> Variant:
 	var script_path := "%s/%s" % [get_script().resource_path.get_base_dir(), relative_path]

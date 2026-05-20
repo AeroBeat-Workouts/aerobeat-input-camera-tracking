@@ -871,6 +871,12 @@ def main():
         if roi_tracker:
             roi_tracker.update(landmarks, frame.shape)
 
+        filtered_all_landmarks = [
+            (pose_id, filter_landmarks_for_tracking_mode(pose_landmarks, args.tracking_overlay_mode))
+            for pose_id, pose_landmarks in all_landmarks
+        ]
+        landmarks = filtered_all_landmarks[0][1] if filtered_all_landmarks else []
+
         # Serialize and send
         serialization_start = time.time()
         timestamp = time.time()
@@ -887,7 +893,7 @@ def main():
                 processing_fps=processing_fps,
                 skip_frames=skip_frames,
                 binary=binary_mode,
-                all_poses=all_landmarks,
+                all_poses=filtered_all_landmarks,
             )
         except Exception as e:
             print(f"UDP send error: {e}")
@@ -904,11 +910,11 @@ def main():
             display_frame = frame.copy()
 
             # Draw all detected poses
-            for pose_id, pose_landmarks in all_landmarks:
-                display_frame = draw_landmarks_on_frame(display_frame, pose_landmarks, pose_id=pose_id)
+            for pose_id, pose_landmarks in filtered_all_landmarks:
+                display_frame = draw_landmarks_on_frame(display_frame, pose_landmarks, args.tracking_overlay_mode, pose_id=pose_id)
 
             # Add FPS and pose count overlay
-            total_landmarks = sum(len(lm) for _, lm in all_landmarks)
+            total_landmarks = sum(len(lm) for _, lm in filtered_all_landmarks)
             status_text = f"Poses: {num_poses_detected} | Total Landmarks: {total_landmarks} | Press 'q' to quit"
             cv2.putText(display_frame, status_text, (10, 30),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)

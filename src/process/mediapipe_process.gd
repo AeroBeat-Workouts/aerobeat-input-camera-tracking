@@ -64,7 +64,7 @@ func start(config: Variant) -> bool:
 
 	var args := PackedStringArray([
 		resolved_python_script_path,
-		"--camera", str(config.camera_id),
+		"--camera", str(config.get_camera_argument()),
 		"--port", str(config.udp_port),
 		"--host", "127.0.0.1",
 		"--detection-confidence", str(config.detection_confidence),

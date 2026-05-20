@@ -669,6 +669,12 @@ func _reset_gesture_state() -> void:
 		},
 	}
 
+func _should_evaluate_gestures_this_frame() -> bool:
+	var interval := 1
+	if _config != null:
+		interval = maxi(1, int(_config.gesture_eval_interval_frames))
+	return _frame_index % interval == 0
+
 func _clear_transient_gesture_state() -> void:
 	_reset_gesture_state()
 
