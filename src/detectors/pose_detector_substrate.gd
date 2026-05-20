@@ -516,33 +516,39 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 
 func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
-	var shoulder_width := maxf(float(measurements.get("shoulder_width", float(_baseline.get("shoulder_width", 0.0)))), 0.0)
 	return {
-		"left": _build_straight_punch_side_debug("left", measurements, shoulder_width),
-		"right": _build_straight_punch_side_debug("right", measurements, shoulder_width),
+		"left": _build_straight_punch_side_debug("left", measurements),
+		"right": _build_straight_punch_side_debug("right", measurements),
 	}
 
-func _build_straight_punch_side_debug(side: String, measurements: Dictionary, shoulder_width: float) -> Dictionary:
+func _build_straight_punch_side_debug(side: String, measurements: Dictionary) -> Dictionary:
 	var state := _get_straight_punch_state(side)
-	var forward_delta_min := shoulder_width * PUNCH_FORWARD_DELTA_RATIO
-	var forward_velocity_min := shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
+	var current_shoulder_width := maxf(float(measurements.get("shoulder_width", float(_baseline.get("shoulder_width", 0.0)))), 0.0)
+	var threshold_shoulder_width := _get_straight_punch_threshold_shoulder_width(state, current_shoulder_width)
+	var forward_delta_min := threshold_shoulder_width * PUNCH_FORWARD_DELTA_RATIO
+	var forward_velocity_min := threshold_shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
+	var rearm_retreat_min := threshold_shoulder_width * PUNCH_REARM_RETREAT_RATIO
+	var rearm_ready_margin := threshold_shoulder_width * PUNCH_REARM_READY_MARGIN_RATIO
 	var arm_extension_3d := float(measurements.get("%s_arm_extension_3d" % side, 0.0))
 	var elbow_bend_deg_3d := float(measurements.get("%s_elbow_bend_deg_3d" % side, 0.0))
-	var forward_velocity := float(measurements.get("%s_forward_velocity" % side, 0.0))
-	var forward_distance := float(measurements.get("%s_forward_distance" % side, 0.0))
-	var armed_forward_distance := float(state.get("armed_forward_distance", forward_distance))
-	var own_half_lock := bool(measurements.get("%s_own_half_lock" % side, false))
+	var raw_forward_velocity := float(measurements.get("%s_forward_velocity" % side, 0.0))
+	var current_forward_distance := float(measurements.get("%s_forward_distance" % side, 0.0))
+	var armed_forward_distance := float(state.get("armed_forward_distance", current_forward_distance))
+	var peak_forward_distance := float(state.get("peak_forward_distance", current_forward_distance))
 	return {
 		"phase": String(state.get("phase", "recovering")),
 		"armed_forward_distance": armed_forward_distance,
-		"peak_forward_distance": float(state.get("peak_forward_distance", forward_distance)),
-		"own_half_lock": own_half_lock,
+		"current_forward_distance": current_forward_distance,
+		"forward_delta_from_armed": current_forward_distance - armed_forward_distance,
+		"peak_forward_distance": peak_forward_distance,
 		"arm_extension_3d": arm_extension_3d,
 		"elbow_bend_deg_3d": elbow_bend_deg_3d,
-		"forward_velocity": forward_velocity,
-		"forward_distance": forward_distance,
+		"raw_forward_velocity": raw_forward_velocity,
+		"threshold_shoulder_width": threshold_shoulder_width,
+		"forward_delta_min": forward_delta_min,
 		"forward_velocity_min": forward_velocity_min,
-		"forward_distance_min": armed_forward_distance + forward_delta_min,
+		"rearm_retreat_min": rearm_retreat_min,
+		"rearm_ready_margin": rearm_ready_margin,
 		"arm_extension_min": PUNCH_3D_EXTENSION_MIN,
 		"elbow_bend_deg_min": PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG,
 	}
@@ -728,10 +734,12 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var lane_locked := bool(measurements.get("%s_own_half_lock" % side, false))
 	var armed_forward_distance := float(state.get("armed_forward_distance", forward_distance))
 	var peak_forward_distance := maxf(float(state.get("peak_forward_distance", forward_distance)), forward_distance)
-	var forward_delta_min := shoulder_width * PUNCH_FORWARD_DELTA_RATIO
-	var forward_velocity_min := shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
-	var rearm_retreat_min := shoulder_width * PUNCH_REARM_RETREAT_RATIO
-	var rearm_ready_margin := shoulder_width * PUNCH_REARM_READY_MARGIN_RATIO
+	var threshold_shoulder_width := _get_straight_punch_threshold_shoulder_width(state, shoulder_width)
+	var forward_delta_min := threshold_shoulder_width * PUNCH_FORWARD_DELTA_RATIO
+	var forward_velocity_min := threshold_shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
+	var rearm_retreat_min := threshold_shoulder_width * PUNCH_REARM_RETREAT_RATIO
+	var rearm_ready_margin := threshold_shoulder_width * PUNCH_REARM_READY_MARGIN_RATIO
+	var own_half_margin := threshold_shoulder_width * PUNCH_OWN_HALF_MARGIN_RATIO
 	var straight_enough := arm_extension_3d >= PUNCH_3D_EXTENSION_MIN and elbow_bend_deg_3d >= PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG
 	if phase == "recovering":
 		if armed_forward_distance <= 0.0:
@@ -739,6 +747,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			state["peak_forward_distance"] = forward_distance
 			if lane_locked and not straight_enough:
 				state["phase"] = "armed"
+				state["threshold_shoulder_width"] = shoulder_width
 			_set_straight_punch_state(side, state)
 			return
 		var retreated := peak_forward_distance - forward_distance >= rearm_retreat_min
@@ -747,12 +756,18 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			state["phase"] = "armed"
 			state["armed_forward_distance"] = forward_distance
 			state["peak_forward_distance"] = forward_distance
+			state["threshold_shoulder_width"] = shoulder_width
 			_set_straight_punch_state(side, state)
 			return
 		state["peak_forward_distance"] = peak_forward_distance
 		_set_straight_punch_state(side, state)
 		return
 	if phase == "armed":
+		if float(state.get("threshold_shoulder_width", 0.0)) <= 0.0:
+			state["threshold_shoulder_width"] = shoulder_width
+			threshold_shoulder_width = shoulder_width
+			forward_delta_min = threshold_shoulder_width * PUNCH_FORWARD_DELTA_RATIO
+			forward_velocity_min = threshold_shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
 		if lane_locked:
 			armed_forward_distance = minf(armed_forward_distance, forward_distance)
 			peak_forward_distance = maxf(forward_distance, armed_forward_distance)
@@ -769,7 +784,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		return
 	peak_forward_distance = maxf(peak_forward_distance, forward_distance)
 	state["peak_forward_distance"] = peak_forward_distance
-	if not lane_locked or forward_velocity <= 0.0 or forward_distance + shoulder_width * 0.01 < peak_forward_distance or outward_distance < -shoulder_width * PUNCH_OWN_HALF_MARGIN_RATIO:
+	if not lane_locked or forward_velocity <= 0.0 or forward_distance + threshold_shoulder_width * 0.01 < peak_forward_distance or outward_distance < -own_half_margin:
 		state["phase"] = "recovering"
 	_set_straight_punch_state(side, state)
 
@@ -1130,6 +1145,7 @@ func _build_straight_punch_state(phase: String = "recovering") -> Dictionary:
 		"phase": phase,
 		"armed_forward_distance": 0.0,
 		"peak_forward_distance": 0.0,
+		"threshold_shoulder_width": 0.0,
 	}
 
 func _get_straight_punch_state(side: String) -> Dictionary:
@@ -1141,6 +1157,12 @@ func _set_straight_punch_state(side: String, state: Dictionary) -> void:
 	straight_punch[side] = state.duplicate(true)
 	_gesture_state["straight_punch"] = straight_punch
 	_set_ready("punch_%s" % side, String(state.get("phase", "recovering")) == "armed")
+
+func _get_straight_punch_threshold_shoulder_width(state: Dictionary, fallback_width: float) -> float:
+	var frozen_width := maxf(float(state.get("threshold_shoulder_width", 0.0)), 0.0)
+	if frozen_width > 0.0:
+		return frozen_width
+	return maxf(fallback_width, 0.0)
 
 func _emit_power_event(events: Array, event_name: String, power: float) -> void:
 	events.append({

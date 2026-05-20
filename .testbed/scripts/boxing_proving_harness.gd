@@ -128,29 +128,39 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"group": "phase",
 	},
 	{
-		"id": "side_of_screen",
-		"label_template": "{prefix}-Hand is on {side_name_lower} side of screen",
-		"group": "lane",
-	},
-	{
-		"id": "arm_extension",
-		"label_template": "{prefix}-Arm extension is >= 0.95",
+		"id": "arm_extension_3d",
+		"label_template": "{prefix}-3D arm reach ratio is >= 0.95",
 		"group": "shape",
 	},
 	{
-		"id": "elbow_bend",
-		"label_template": "{prefix}-Elbow bend is >= 145°",
+		"id": "elbow_angle_3d",
+		"label_template": "{prefix}-3D elbow angle is >= 145°",
 		"group": "shape",
 	},
 	{
-		"id": "forward_velocity",
-		"label_template": "{prefix}-Forward velocity >= {threshold}",
+		"id": "armed_forward_distance",
+		"label_template": "{prefix}-Armed forward distance snapshot is latched",
+		"group": "baseline",
+	},
+	{
+		"id": "forward_delta_from_armed",
+		"label_template": "{prefix}-Forward delta from armed is >= {threshold}",
+		"group": "distance",
+	},
+	{
+		"id": "peak_forward_distance",
+		"label_template": "{prefix}-Peak forward distance is tracked",
+		"group": "distance",
+	},
+	{
+		"id": "raw_forward_velocity",
+		"label_template": "{prefix}-Raw forward z velocity is > {threshold}",
 		"group": "speed",
 	},
 	{
-		"id": "forward_distance",
-		"label_template": "{prefix}-Forward distance >= {threshold}",
-		"group": "distance",
+		"id": "frozen_threshold_source",
+		"label_template": "{prefix}-Frozen threshold shoulder width is latched",
+		"group": "threshold",
 	},
 ]
 const HOVER_REQUIREMENT_SPECS := {
@@ -515,42 +525,63 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, side: String) -> Dictionary:
 	var row := row_spec.duplicate(true)
 	var prefix := "L" if side == "left" else "R"
-	var side_name_lower := side.to_lower()
 	var row_id := String(row_spec.get("id", ""))
 	var label := String(row_spec.get("label_template", row_spec.get("label", "")))
 	label = label.replace("{prefix}", prefix)
-	label = label.replace("{side_name_lower}", side_name_lower)
 	var passed := false
 	var current_text := ""
 	var threshold_text := ""
+	var phase := String(straight_side.get("phase", "recovering"))
+	var arm_extension_3d := float(straight_side.get("arm_extension_3d", 0.0))
+	var arm_extension_min := float(straight_side.get("arm_extension_min", 0.95))
+	var elbow_angle_3d := float(straight_side.get("elbow_bend_deg_3d", 0.0))
+	var elbow_angle_min := float(straight_side.get("elbow_bend_deg_min", 145.0))
+	var armed_forward_distance := float(straight_side.get("armed_forward_distance", 0.0))
+	var current_forward_distance := float(straight_side.get("current_forward_distance", 0.0))
+	var forward_delta_from_armed := float(straight_side.get("forward_delta_from_armed", 0.0))
+	var peak_forward_distance := float(straight_side.get("peak_forward_distance", 0.0))
+	var forward_delta_min := float(straight_side.get("forward_delta_min", 0.0))
+	var raw_forward_velocity := float(straight_side.get("raw_forward_velocity", 0.0))
+	var forward_velocity_min := float(straight_side.get("forward_velocity_min", 0.0))
+	var threshold_shoulder_width := float(straight_side.get("threshold_shoulder_width", 0.0))
 	match row_id:
 		"phase_armed":
-			current_text = String(straight_side.get("phase", "recovering"))
-			passed = current_text == "armed"
-		"side_of_screen":
-			var own_half_lock := bool(straight_side.get("own_half_lock", false))
-			current_text = _fmt_bool(own_half_lock)
-			passed = own_half_lock
-		"arm_extension":
-			var arm_extension := float(straight_side.get("arm_extension_3d", 0.0))
-			current_text = _fmt_float(arm_extension)
-			passed = arm_extension >= float(straight_side.get("arm_extension_min", 0.95))
-		"elbow_bend":
-			var elbow_bend := float(straight_side.get("elbow_bend_deg_3d", 0.0))
-			current_text = _fmt_degrees_int(elbow_bend)
-			passed = elbow_bend >= float(straight_side.get("elbow_bend_deg_min", 145.0))
-		"forward_velocity":
-			var velocity_threshold := float(straight_side.get("forward_velocity_min", 0.0))
-			var forward_velocity := float(straight_side.get("forward_velocity", 0.0))
-			threshold_text = _fmt_float(velocity_threshold)
-			current_text = _fmt_float(forward_velocity)
-			passed = forward_velocity > velocity_threshold
-		"forward_distance":
-			var distance_threshold := float(straight_side.get("forward_distance_min", 0.0))
-			var forward_distance := float(straight_side.get("forward_distance", 0.0))
-			threshold_text = _fmt_float(distance_threshold)
-			current_text = _fmt_float(forward_distance)
-			passed = forward_distance >= distance_threshold
+			current_text = phase
+			passed = phase == "armed"
+		"arm_extension_3d":
+			current_text = _fmt_float(arm_extension_3d)
+			passed = arm_extension_3d >= arm_extension_min
+		"elbow_angle_3d":
+			current_text = _fmt_degrees_int(elbow_angle_3d)
+			passed = elbow_angle_3d >= elbow_angle_min
+		"armed_forward_distance":
+			current_text = _fmt_float(armed_forward_distance)
+			passed = threshold_shoulder_width > 0.0
+		"forward_delta_from_armed":
+			threshold_text = _fmt_float(forward_delta_min)
+			current_text = "%s (armed %s → current %s)" % [
+				_fmt_float(forward_delta_from_armed),
+				_fmt_float(armed_forward_distance),
+				_fmt_float(current_forward_distance),
+			]
+			passed = forward_delta_from_armed >= forward_delta_min
+		"peak_forward_distance":
+			current_text = "%s (current %s)" % [
+				_fmt_float(peak_forward_distance),
+				_fmt_float(current_forward_distance),
+			]
+			passed = peak_forward_distance >= current_forward_distance
+		"raw_forward_velocity":
+			threshold_text = _fmt_float(forward_velocity_min)
+			current_text = _fmt_float(raw_forward_velocity)
+			passed = raw_forward_velocity > forward_velocity_min
+		"frozen_threshold_source":
+			current_text = "%s (Δ %s, vz %s)" % [
+				_fmt_float(threshold_shoulder_width),
+				_fmt_float(forward_delta_min),
+				_fmt_float(forward_velocity_min),
+			]
+			passed = threshold_shoulder_width > 0.0
 		_:
 			current_text = "pending"
 			passed = false
@@ -574,17 +605,31 @@ func _sync_hover_card_rows(rows_variant: Variant) -> void:
 			row["id"] = row_id
 		next_order.append(row_id)
 		row_dicts[row_id] = row
-	if next_order != _hover_card_row_order:
-		for child: Node in _hover_card_rows.get_children():
-			child.queue_free()
-		_hover_card_row_nodes.clear()
-		_hover_card_row_order = next_order.duplicate()
-		for row_id: String in _hover_card_row_order:
-			var row_node := _create_requirement_row(row_dicts[row_id])
-			_hover_card_rows.add_child(row_node["container"])
-			_hover_card_row_nodes[row_id] = row_node
+	var next_lookup := {}
 	for row_id: String in next_order:
-		_update_requirement_row(_hover_card_row_nodes[row_id], row_dicts[row_id])
+		next_lookup[row_id] = true
+	for existing_id_variant: Variant in _hover_card_row_nodes.keys():
+		var existing_id := String(existing_id_variant)
+		if next_lookup.has(existing_id):
+			continue
+		var stale_row: Dictionary = _hover_card_row_nodes.get(existing_id, {})
+		var stale_container := stale_row.get("container") as Control
+		if stale_container != null and stale_container.get_parent() == _hover_card_rows:
+			_hover_card_rows.remove_child(stale_container)
+			stale_container.free()
+		_hover_card_row_nodes.erase(existing_id)
+	for row_id: String in next_order:
+		if not _hover_card_row_nodes.has(row_id):
+			var row_node := _create_requirement_row(row_dicts[row_id])
+			_hover_card_row_nodes[row_id] = row_node
+			_hover_card_rows.add_child(row_node["container"])
+	for idx in range(next_order.size()):
+		var ordered_row: Dictionary = _hover_card_row_nodes.get(next_order[idx], {})
+		var ordered_container := ordered_row.get("container") as Control
+		if ordered_container != null and ordered_container.get_parent() == _hover_card_rows:
+			_hover_card_rows.move_child(ordered_container, idx)
+			_update_requirement_row(ordered_row, row_dicts[next_order[idx]])
+	_hover_card_row_order = next_order.duplicate()
 
 func _create_requirement_row(row: Dictionary) -> Dictionary:
 	var container := VBoxContainer.new()
