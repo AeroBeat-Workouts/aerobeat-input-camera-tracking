@@ -11,17 +11,17 @@ config_version=5
 [application]
 
 config/name="AeroBeat MediaPipe Testbed"
-run/main_scene="uid://djor28v3p7k2v"
+run/main_scene="uid://83jxycoubyxd"
 config/features=PackedStringArray("4.6")
+
+[autoload]
+
+AeroHeadlessManager="*res://addons/aerobeat-tool-headless-manager/src/AeroHeadlessManager.gd"
 
 [config]
 
 features=PackedStringArray("4.6", "Forward Plus")
 icon="res://icon.svg"
-
-[autoload]
-
-AeroHeadlessManager="*res://addons/aerobeat-tool-headless-manager/src/AeroHeadlessManager.gd"
 
 [debug]
 
