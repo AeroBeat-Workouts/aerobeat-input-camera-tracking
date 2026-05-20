@@ -6,6 +6,13 @@ const TILE_PULSE_MS := 420
 const MAX_BOXING_FEED_ROWS := 8
 const ACTIVE_PILL_FILL := Color8(0x3d, 0xdc, 0xdc, 0xff)
 const ACTIVE_PILL_TEXT := Color8(0x05, 0x22, 0x28, 0xff)
+const HOVER_CARD_TITLE := "What Gesture Requirements Are Met Right Now?"
+const HOVER_CARD_MAX_WIDTH := 360.0
+const HOVER_CARD_MARGIN := 14.0
+const PUNCH_ARM_EXTENSION_MIN := 0.95
+const PUNCH_ELBOW_MIN_DEG := 145.0
+const PUNCH_FORWARD_VELOCITY_MIN_RATIO := 8.0
+const PUNCH_FORWARD_DELTA_RATIO := 0.08
 const BOARD_ICON_PATHS := {
 	"punch": "res://assets/icons/boxing-punch-1.svg",
 	"hook": "res://assets/icons/boxing-hook-1.svg",
@@ -115,6 +122,60 @@ const TILE_CONFIGS := [
 		"right_events": ["weave_right_start"],
 	},
 ]
+const HOVER_REQUIREMENT_SPECS := {
+	"punch": {
+		"title": "Punch-L",
+		"subtitle": "Reusable hover-card shell wired to the approved initial wording contract.",
+		"rows": [
+			{
+				"id": "left_phase_armed",
+				"label": "L-Punch phase is armed",
+				"value_type": "phase",
+				"group": "phase",
+			},
+			{
+				"id": "left_side_of_screen",
+				"label": "L-Hand is on left side of screen",
+				"value_type": "bool",
+				"metric_key": "own_half_lock",
+				"group": "lane",
+			},
+			{
+				"id": "left_arm_extension",
+				"label": "L-Arm extension is >= 0.95",
+				"value_type": "float",
+				"metric_key": "arm_extension_3d",
+				"threshold_value": PUNCH_ARM_EXTENSION_MIN,
+				"group": "shape",
+			},
+			{
+				"id": "left_elbow_bend",
+				"label": "L-Elbow bend is >= 145°",
+				"value_type": "degrees_int",
+				"metric_key": "elbow_bend_deg_3d",
+				"threshold_value": PUNCH_ELBOW_MIN_DEG,
+				"group": "shape",
+			},
+			{
+				"id": "left_forward_velocity",
+				"label": "L-Forward velocity >= {threshold}",
+				"value_type": "float",
+				"metric_key": "forward_velocity",
+				"threshold_kind": "velocity_min",
+				"group": "speed",
+			},
+			{
+				"id": "left_forward_distance",
+				"label": "L-Forward distance >= {threshold}",
+				"value_type": "float",
+				"metric_key": "forward_distance",
+				"threshold_kind": "distance_min",
+				"group": "distance",
+			},
+		],
+		"pending_footer": "Task 3 still needs to swap the shell-local Punch-L row builder over to the final shared live debug source for all Boxing/Flow gestures.",
+	},
+}
 
 var _background_rect: TextureRect
 var _header_icon: TextureRect
@@ -123,10 +184,17 @@ var _board_grid: GridContainer
 var _boxing_event_feed: Array[String] = []
 var _boxing_event_sequence := 0
 var _tile_refs := {}
+var _hovered_tile_id := ""
+var _hover_card_panel: PanelContainer
+var _hover_card_gesture_label: Label
+var _hover_card_subtitle_label: Label
+var _hover_card_rows: VBoxContainer
+var _hover_card_footer_label: Label
 
 func _ready() -> void:
 	_resolve_boxing_shell_nodes()
 	_build_tile_grid_if_needed()
+	_ensure_hover_card()
 	_apply_boxing_visual_shell()
 	super._ready()
 	_refresh_debug_panels()
@@ -146,6 +214,7 @@ func _refresh_debug_panels() -> void:
 		if quick_stats_label.has_method("scroll_to_line"):
 			quick_stats_label.scroll_to_line(max(quick_stats_label.get_line_count() - 1, 0))
 	_update_tile_states()
+	_refresh_hover_card()
 
 func _record_event(event_name: String, payload: Dictionary) -> void:
 	if harness_mode == HarnessMode.BOXING:
@@ -179,6 +248,56 @@ func _build_tile_grid_if_needed() -> void:
 		var tile := _create_tile(config)
 		_board_grid.add_child(tile["panel"])
 		_tile_refs[String(config["id"])] = tile
+
+func _ensure_hover_card() -> void:
+	if _hover_card_panel != null:
+		return
+	_hover_card_panel = PanelContainer.new()
+	_hover_card_panel.name = "GestureRequirementsHoverCard"
+	_hover_card_panel.visible = false
+	_hover_card_panel.top_level = true
+	_hover_card_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hover_card_panel.custom_minimum_size = Vector2(HOVER_CARD_MAX_WIDTH, 0.0)
+	add_child(_hover_card_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	_hover_card_panel.add_child(margin)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	margin.add_child(column)
+
+	var title := Label.new()
+	title.text = HOVER_CARD_TITLE
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.add_theme_font_size_override("font_size", 15)
+	title.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	column.add_child(title)
+
+	_hover_card_gesture_label = Label.new()
+	_hover_card_gesture_label.add_theme_font_size_override("font_size", 13)
+	_hover_card_gesture_label.add_theme_color_override("font_color", Color(0.80, 0.90, 1.0, 0.92))
+	column.add_child(_hover_card_gesture_label)
+
+	_hover_card_subtitle_label = Label.new()
+	_hover_card_subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hover_card_subtitle_label.add_theme_font_size_override("font_size", 11)
+	_hover_card_subtitle_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.72))
+	column.add_child(_hover_card_subtitle_label)
+
+	_hover_card_rows = VBoxContainer.new()
+	_hover_card_rows.add_theme_constant_override("separation", 6)
+	column.add_child(_hover_card_rows)
+
+	_hover_card_footer_label = Label.new()
+	_hover_card_footer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_hover_card_footer_label.add_theme_font_size_override("font_size", 10)
+	_hover_card_footer_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.56))
+	column.add_child(_hover_card_footer_label)
 
 func _apply_boxing_visual_shell() -> void:
 	if _background_rect:
@@ -219,6 +338,8 @@ func _apply_boxing_visual_shell() -> void:
 		_board_grid.columns = 3
 		_board_grid.add_theme_constant_override("h_separation", 10)
 		_board_grid.add_theme_constant_override("v_separation", 10)
+	if _hover_card_panel:
+		_apply_panel_style(_hover_card_panel, Color(0.0, 0.0, 0.0, 0.82), Color(1.0, 1.0, 1.0, 0.14), 16, 1, 0)
 	if summary_label and summary_label.get_parent() is Control:
 		summary_label.get_parent().visible = false
 	if signal_status_label and signal_status_label.get_parent() is Control:
@@ -233,7 +354,13 @@ func _create_tile(config: Dictionary) -> Dictionary:
 	panel.custom_minimum_size = Vector2(132, 158)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = 0
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_style(panel, Color(1.0, 1.0, 1.0, 0.0), Color(1.0, 1.0, 1.0, 0.0), 0, 0, 0)
+
+	var tile_id := String(config.get("id", ""))
+	if tile_id != "":
+		panel.mouse_entered.connect(_on_tile_mouse_entered.bind(tile_id))
+		panel.mouse_exited.connect(_on_tile_mouse_exited.bind(tile_id))
 
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 6)
@@ -304,6 +431,196 @@ func _create_badge(text: String, wide: bool = false) -> Dictionary:
 	label.add_theme_color_override("font_color", Color(0.96, 0.97, 1.0, 1.0))
 	panel.add_child(label)
 	return {"panel": panel, "label": label}
+
+func _refresh_hover_card() -> void:
+	if _hovered_tile_id.is_empty():
+		if _hover_card_panel:
+			_hover_card_panel.visible = false
+		return
+	if _hover_card_panel == null:
+		return
+	var model := _build_hover_card_model(_hovered_tile_id)
+	_hover_card_panel.visible = not model.is_empty()
+	if model.is_empty():
+		return
+	_hover_card_gesture_label.text = String(model.get("title", String(_hovered_tile_id).capitalize()))
+	_hover_card_subtitle_label.text = String(model.get("subtitle", ""))
+	_hover_card_subtitle_label.visible = not _hover_card_subtitle_label.text.is_empty()
+	_hover_card_footer_label.text = String(model.get("footer", ""))
+	_hover_card_footer_label.visible = not _hover_card_footer_label.text.is_empty()
+	_rebuild_hover_card_rows(model.get("rows", []))
+	_position_hover_card(_hovered_tile_id)
+
+func _build_hover_card_model(tile_id: String) -> Dictionary:
+	var spec: Dictionary = HOVER_REQUIREMENT_SPECS.get(tile_id, {})
+	if spec.is_empty():
+		return {
+			"title": String(tile_id).capitalize(),
+			"subtitle": "Reusable hover-card shell is ready for this gesture.",
+			"rows": [
+				{
+					"id": "%s_pending" % tile_id,
+					"label": "Requirement list pending",
+					"passed": false,
+					"current_text": "Task 3 hookup still needed",
+				},
+			],
+		}
+	match tile_id:
+		"punch":
+			return _build_punch_hover_card_model(spec)
+		_:
+			return spec.duplicate(true)
+
+func _build_punch_hover_card_model(spec: Dictionary) -> Dictionary:
+	var state: Dictionary = _latest_state
+	var metrics: Dictionary = (state.get("metrics", {}) as Dictionary).get("measurements", {})
+	var shoulder_width := float(metrics.get("shoulder_width", 0.0))
+	var boxing_debug := _build_fixture_boxing_debug_snapshot()
+	var left_straight: Dictionary = boxing_debug.get("left_straight", {})
+	var rows: Array[Dictionary] = []
+	for row_spec_variant: Variant in spec.get("rows", []):
+		var row_spec: Dictionary = row_spec_variant
+		rows.append(_build_punch_left_requirement_row(row_spec, left_straight, shoulder_width))
+	return {
+		"title": spec.get("title", "Punch-L"),
+		"subtitle": spec.get("subtitle", ""),
+		"rows": rows,
+		"footer": spec.get("pending_footer", ""),
+	}
+
+func _build_punch_left_requirement_row(row_spec: Dictionary, left_straight: Dictionary, shoulder_width: float) -> Dictionary:
+	var row := row_spec.duplicate(true)
+	var row_id := String(row_spec.get("id", ""))
+	var label := String(row_spec.get("label", ""))
+	var passed := false
+	var current_text := ""
+	var threshold_text := ""
+	match row_id:
+		"left_phase_armed":
+			current_text = String(left_straight.get("phase", "recovering"))
+			passed = current_text == "armed"
+		"left_side_of_screen":
+			var own_half_lock := bool(left_straight.get("own_half_lock", false))
+			current_text = _fmt_bool(own_half_lock)
+			passed = own_half_lock
+		"left_arm_extension":
+			var arm_extension := float(left_straight.get("arm_extension_3d", 0.0))
+			current_text = _fmt_float(arm_extension)
+			passed = arm_extension >= PUNCH_ARM_EXTENSION_MIN
+		"left_elbow_bend":
+			var elbow_bend := float(left_straight.get("elbow_bend_deg_3d", 0.0))
+			current_text = _fmt_degrees_int(elbow_bend)
+			passed = elbow_bend >= PUNCH_ELBOW_MIN_DEG
+		"left_forward_velocity":
+			var velocity_threshold := shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
+			var forward_velocity := float(left_straight.get("forward_velocity", 0.0))
+			threshold_text = _fmt_float(velocity_threshold)
+			current_text = _fmt_float(forward_velocity)
+			passed = forward_velocity >= velocity_threshold
+		"left_forward_distance":
+			var distance_threshold := float(left_straight.get("armed_forward_distance", 0.0)) + shoulder_width * PUNCH_FORWARD_DELTA_RATIO
+			var forward_distance := float(left_straight.get("forward_distance", 0.0))
+			threshold_text = _fmt_float(distance_threshold)
+			current_text = _fmt_float(forward_distance)
+			passed = forward_distance >= distance_threshold
+		_:
+			current_text = "pending"
+			passed = false
+	row["label"] = label
+	row["passed"] = passed
+	row["threshold_text"] = threshold_text
+	row["current_text"] = current_text
+	return row
+
+func _rebuild_hover_card_rows(rows_variant: Variant) -> void:
+	if _hover_card_rows == null:
+		return
+	for child: Node in _hover_card_rows.get_children():
+		child.queue_free()
+	var rows: Array = rows_variant if rows_variant is Array else []
+	for row_variant: Variant in rows:
+		var row: Dictionary = row_variant
+		_hover_card_rows.add_child(_create_requirement_row(row))
+
+func _create_requirement_row(row: Dictionary) -> Control:
+	var container := VBoxContainer.new()
+	container.add_theme_constant_override("separation", 3)
+
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 8)
+	container.add_child(line)
+
+	var checkbox := Label.new()
+	checkbox.text = "🗹" if bool(row.get("passed", false)) else "☐"
+	checkbox.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	checkbox.add_theme_font_size_override("font_size", 15)
+	checkbox.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	line.add_child(checkbox)
+
+	var text_column := VBoxContainer.new()
+	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_column.add_theme_constant_override("separation", 2)
+	line.add_child(text_column)
+
+	var text_label := Label.new()
+	text_label.text = _build_requirement_row_text(row)
+	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_label.add_theme_font_size_override("font_size", 12)
+	text_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	text_column.add_child(text_label)
+
+	var suspect_text := String(row.get("suspect_text", ""))
+	if not suspect_text.is_empty():
+		var suspect_label := Label.new()
+		suspect_label.text = suspect_text
+		suspect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		suspect_label.add_theme_font_size_override("font_size", 10)
+		suspect_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.46, 0.96))
+		text_column.add_child(suspect_label)
+	return container
+
+func _build_requirement_row_text(row: Dictionary) -> String:
+	var label := String(row.get("label", ""))
+	var threshold_text := String(row.get("threshold_text", ""))
+	if not threshold_text.is_empty():
+		label = label.replace("{threshold}", threshold_text)
+	var current_text := String(row.get("current_text", ""))
+	if current_text.is_empty():
+		return label
+	return "%s - %s" % [label, current_text]
+
+func _position_hover_card(tile_id: String) -> void:
+	if _hover_card_panel == null:
+		return
+	var tile: Dictionary = _tile_refs.get(tile_id, {})
+	var panel := tile.get("panel") as Control
+	if panel == null:
+		return
+	var tile_rect := panel.get_global_rect()
+	var popup_size := _hover_card_panel.get_combined_minimum_size()
+	var viewport_size := get_viewport_rect().size
+	var x := tile_rect.end.x + HOVER_CARD_MARGIN
+	var y := tile_rect.position.y
+	if x + popup_size.x > viewport_size.x - HOVER_CARD_MARGIN:
+		x = tile_rect.position.x - popup_size.x - HOVER_CARD_MARGIN
+	if x < HOVER_CARD_MARGIN:
+		x = HOVER_CARD_MARGIN
+	if y + popup_size.y > viewport_size.y - HOVER_CARD_MARGIN:
+		y = maxf(HOVER_CARD_MARGIN, viewport_size.y - popup_size.y - HOVER_CARD_MARGIN)
+	_hover_card_panel.position = Vector2(x, y)
+
+func _on_tile_mouse_entered(tile_id: String) -> void:
+	_hovered_tile_id = tile_id
+	_refresh_hover_card()
+
+func _on_tile_mouse_exited(tile_id: String) -> void:
+	if _hovered_tile_id != tile_id:
+		return
+	_hovered_tile_id = ""
+	if _hover_card_panel:
+		_hover_card_panel.visible = false
 
 func _update_tile_states() -> void:
 	for tile_id_variant: Variant in _tile_refs.keys():
@@ -404,6 +721,12 @@ func _any_recent_event(names_variant: Variant) -> bool:
 		if timestamp_ms > 0 and Time.get_ticks_msec() - timestamp_ms <= TILE_PULSE_MS:
 			return true
 	return false
+
+func _fmt_bool(value: bool) -> String:
+	return "true" if value else "false"
+
+func _fmt_degrees_int(value: float) -> String:
+	return "%d°" % int(round(value))
 
 func _apply_panel_style(panel: PanelContainer, bg: Color, border: Color, radius: int, border_width: int, expand_margin: int) -> void:
 	var style := StyleBoxFlat.new()
