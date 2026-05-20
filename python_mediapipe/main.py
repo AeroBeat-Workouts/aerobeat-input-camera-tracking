@@ -82,6 +82,45 @@ POSE_CONNECTIONS = [
 ]
 
 
+FULL_TRACKING_LANDMARK_IDS = set(range(33))
+OPTIMIZED_TRACKING_LANDMARK_IDS = {
+    0, 2, 5, 7, 8,
+    11, 12, 13, 14, 15, 16,
+    23, 24, 25, 26, 27, 28,
+}
+
+
+def _is_live_camera_source(source) -> bool:
+    if isinstance(source, int):
+        return True
+    if not isinstance(source, str):
+        return False
+    trimmed = source.strip()
+    return not trimmed or trimmed.isdigit() or trimmed.startswith('/dev/video')
+
+
+def filter_landmarks_for_tracking_mode(landmarks, tracking_overlay_mode):
+    if not landmarks:
+        return []
+
+    mode = str(tracking_overlay_mode or 'full').strip().lower()
+    if mode == 'off':
+        return []
+    if mode == 'optimized':
+        allowed_ids = OPTIMIZED_TRACKING_LANDMARK_IDS
+    else:
+        allowed_ids = FULL_TRACKING_LANDMARK_IDS
+
+    filtered = []
+    for landmark in landmarks:
+        if not isinstance(landmark, dict):
+            continue
+        landmark_id = int(landmark.get('id', -1))
+        if landmark_id in allowed_ids:
+            filtered.append(dict(landmark))
+    return filtered
+
+
 def update_heartbeat():
     """Update the last heartbeat timestamp"""
     global _heartbeat_last_time
@@ -174,7 +213,7 @@ class FrameCapture:
         if not self.cap.isOpened():
             raise RuntimeError(f"Could not open camera {camera_id}")
 
-        self._is_file_source = isinstance(camera_id, str) and os.path.isfile(camera_id)
+        self._is_file_source = not _is_live_camera_source(camera_id) and isinstance(camera_id, str) and os.path.isfile(camera_id)
         self._requested_fps = max(float(fps), 1.0)
         self._source_fps = 0.0
         self._frame_interval_sec = 0.0
@@ -911,7 +950,7 @@ def main():
 
             # Draw all detected poses
             for pose_id, pose_landmarks in filtered_all_landmarks:
-                display_frame = draw_landmarks_on_frame(display_frame, pose_landmarks, args.tracking_overlay_mode, pose_id=pose_id)
+                display_frame = draw_landmarks_on_frame(display_frame, pose_landmarks, args.tracking_overlay_mode != 'off', pose_id=pose_id)
 
             # Add FPS and pose count overlay
             total_landmarks = sum(len(lm) for _, lm in filtered_all_landmarks)
