@@ -157,7 +157,7 @@ Truth findings captured by this task:
 - The prior `tracking state` label was misleading because it described overall detector pose-lock health, not the selected landmark's individual tracking state.
 - The real MediaPipe Python comparison knobs currently exposed by the sidecar are `model_complexity` and One-Euro filter enabled/disabled; this slice exposes exactly that combination as the public scene enum.
 
-Commit / push: `f3bdf67` (`Fix landmark inspector truth and expose smoothing style`) pushed to `main`.
+Commit / push: `5570e82` (`Fix landmark inspector truth and expose smoothing style`) pushed to `main`.
 
 ---
 
@@ -194,7 +194,7 @@ Commit / push: `f3bdf67` (`Fix landmark inspector truth and expose smoothing sty
 - `3e72292` - Update plan with final commit hash
 - `0e00839` - Fix proving inspector click-away and width
 - `a34d853` - Update plan for inspector regression fix
-- `f3bdf67` - Fix landmark inspector truth and expose smoothing style
+- `5570e82` - Fix landmark inspector truth and expose smoothing style
 
 **Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught UX regressions and then exposed deeper debug-truth problems that headless smoke checks did not: first background click dismissal and practical readability width, then stuck `x/y`, misleading tracking-state behavior, and jitter/smoothing concerns. The shared-harness architecture continues to hold up because these fixes remain localized instead of forcing scene-specific rewrites. The main truth lesson from this slice is that the harness must keep raw live landmark values visually distinct from detector-smoothed/debug state and must name overall pose-lock health explicitly so it is not mistaken for per-landmark tracking truth.
 
