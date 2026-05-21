@@ -530,15 +530,22 @@ Recommended next implementation slice: fix hover-row teardown so row containers 
 
 **Folders Created/Deleted/Modified:**
 - `.plans/`
-- maybe `.temp/` evidence folders
+- `.temp/task13-overlay/`
 
 **Files Created/Deleted/Modified:**
 - `.plans/2026-05-19-boxing-gesture-requirements-hover-ui.md`
-- optional evidence files if collected
+- `.temp/task13-overlay.gd`
+- `.temp/task13-overlay/report.json`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA + audit completed against commit `d911c49` with fresh runtime evidence from both punch fixtures plus targeted substrate unit coverage.
+- **Popup shrink regression:** passed. Fresh headless transition captures in `.temp/task13-overlay/report.json` show the tall→short path shrinking correctly on direct badge-to-badge moves for both fixtures: Punch cards render at `panel_size == panel_min_size == [440,643]`, then Guard/Squat immediately shrink to `panel_size == panel_min_size == [440,121]`, then expand back to Punch without stale carry-over.
+- **Calibration section presence/readability:** passed. Both `punch_left_card` and `punch_right_card` now contain 18 rows with `calibration_section_index == 8`, placing a clearly separated `Calibration / Baselines` section below the 8 main Punch requirement rows. The bottom section truthfully shows `Calibration status`, `Calibration sample frames`, baseline dimensions, armed snapshot, threshold width, and derived Δ/vz mins.
+- **Latch truth honesty:** passed for the live fallback path; partially unproven for the true-latched branch. Across 90 sampled frames per fixture/side, `threshold_shoulder_width_latched` stayed `false` and the overlay consistently said `not latched yet (live ...)` in both the main threshold row and the calibration row instead of falsely claiming a frozen width. These fixtures did not produce a runtime sample where the threshold width became latched, so the positive `latched` wording branch was not directly witnessed in live runtime during this QA pass.
+- **Phase truth honesty:** passed for observed runtime states; partially unproven for the `armed` display branch. Across both fresh fixture passes, all sampled left/right phases stayed `recovering`, and the phase row/card text matched that runtime truth instead of appearing falsely stuck on `armed`. The detector/UI branch that renders `armed (waiting for fire gates)` is wired in code and consistent with Task 11’s state-machine analysis, but these fixtures did not naturally enter `armed` or `extending`, so that exact live wording branch remains unobserved here.
+- **Parse/runtime issues:** no new task-slice failures found. Validation commands run: `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1`, `~/.local/bin/godot --headless --path .testbed --script ../.temp/task13-overlay.gd`, and `~/.local/bin/godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (`12/12 passed`). The only runtime issue observed was the pre-existing missing `boxing-weave-1.svg` import/load warning, unchanged from earlier tasks.
+- **Audit conclusion:** good enough for continued debugging use. The popup sizing bug is fixed, the calibration/baseline split is readable, and the overlay no longer lies about frozen threshold width when the detector is still on live fallback. Remaining uncertainty is mostly branch coverage / detector-behavior proof (`armed`, `extending`, true threshold latching) rather than a discovered new overlay-truth regression.
 
 ---
 
