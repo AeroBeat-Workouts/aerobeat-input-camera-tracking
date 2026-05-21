@@ -219,12 +219,41 @@ Commit / push: `2002451` (`Fix playback seek bar centering layout`) pushed to `m
 
 ---
 
-### Task 6: Manual truth-pass on Cookie terminal
+### Task 6: Fix playback controls vertical centering without disturbing restored seek-bar width
+
+**Bead ID:** `aerobeat-input-mediapipe-python-ba8`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** Task 1-5 output  
+**Prompt:** Claim bead `aerobeat-input-mediapipe-python-ba8` with `bd update aerobeat-input-mediapipe-python-ba8 --status in_progress --json`. Fix the remaining playback layout issue Derrick reported from Cookie QA: the playback controls are still not vertically centered within the timeline panel, likely due to their anchor/layout setup. Preserve the restored seek-bar horizontal stretch behavior from Task 5, preserve the rule that playback controls do not dismiss the open inspector, and apply the narrowest layout fix that achieves true vertical centering. Run targeted validation, update this plan with exact files changed and commit hash, commit/push to `main`, and close the bead.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.plans/2026-05-21-boxing-flow-landmark-inspector-and-playback-controls.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the remaining playback-controls centering issue with a narrow shared-harness layout patch in `.testbed/scripts/proving_harness.gd`. Replaced the timeline row's anchor-based host/control setup with a `VBoxContainer` centered on the vertical axis, then kept the playback `HBoxContainer` full-width inside it. That removes the misleading anchor math that was still leaving the controls visually off-center, while preserving the restored seek-bar horizontal stretch behavior from Task 5. The existing `_input()` allowlist for the playback panel was left untouched, so playback interactions still do not dismiss the open inspector.
+
+Targeted validation run:
+- `~/.local/bin/godot --headless --path .testbed --check-only --script scripts/proving_harness.gd` ✅
+- `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` ✅
+- `~/.local/bin/godot --headless --path .testbed res://scenes/flow_proving.tscn --quit-after 1` ✅
+
+Commit / push: `PENDING` (`Center playback controls in timeline panel`) pushed to `main`.
+
+---
+
+### Task 7: Manual truth-pass on Cookie terminal
 
 **Bead ID:** `Deferred to Derrick`  
 **SubAgent:** `Deferred to Derrick`  
 **Role:** `qa`  
-**References:** Task 1-5 output  
+**References:** Task 1-6 output  
 **Prompt:** Derrick will manually test the new landmark inspector and prerecorded playback controls on Cookie’s terminal once the follow-up fixes are landed.
 
 **Folders Created/Deleted/Modified:**

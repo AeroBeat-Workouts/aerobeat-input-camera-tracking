@@ -390,17 +390,14 @@ func _ensure_playback_controls() -> void:
 	margin.add_theme_constant_override("margin_bottom", 8)
 	_playback_bar_panel.add_child(margin)
 
-	var timeline_row_host := Control.new()
+	var timeline_row_host := VBoxContainer.new()
 	timeline_row_host.custom_minimum_size = Vector2(0.0, 28.0)
 	timeline_row_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	timeline_row_host.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(timeline_row_host)
 
 	var row := HBoxContainer.new()
-	row.anchor_top = 0.5
-	row.anchor_right = 1.0
-	row.anchor_bottom = 0.5
-	row.offset_top = -12.0
-	row.offset_bottom = 12.0
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 10)
 	timeline_row_host.add_child(row)
 
