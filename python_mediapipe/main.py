@@ -84,7 +84,7 @@ POSE_CONNECTIONS = [
 
 FULL_TRACKING_LANDMARK_IDS = set(range(33))
 OPTIMIZED_TRACKING_LANDMARK_IDS = {
-    0, 2, 5, 7, 8,
+    0, 2, 5,
     11, 12, 13, 14, 15, 16,
     23, 24, 25, 26, 27, 28,
 }
@@ -161,18 +161,24 @@ def draw_landmarks_on_frame(frame, landmarks, connections=True, pose_id=0):
     ]
     skeleton_color = pose_colors[pose_id % len(pose_colors)]
 
+    landmark_by_id = {}
+    for landmark in landmarks:
+        if isinstance(landmark, dict):
+            landmark_by_id[int(landmark.get('id', -1))] = landmark
+
     # Draw connections (skeleton)
     if connections:
         for start_idx, end_idx in POSE_CONNECTIONS:
-            if start_idx < len(landmarks) and end_idx < len(landmarks):
-                start_lm = landmarks[start_idx]
-                end_lm = landmarks[end_idx]
+            start_lm = landmark_by_id.get(start_idx)
+            end_lm = landmark_by_id.get(end_idx)
+            if start_lm is None or end_lm is None:
+                continue
 
-                # Only draw if both landmarks are visible
-                if start_lm.get('v', 1.0) > 0.5 and end_lm.get('v', 1.0) > 0.5:
-                    x1, y1 = int(start_lm['x'] * w), int(start_lm['y'] * h)
-                    x2, y2 = int(end_lm['x'] * w), int(end_lm['y'] * h)
-                    cv2.line(output, (x1, y1), (x2, y2), skeleton_color, 2)
+            # Only draw if both landmarks are visible
+            if start_lm.get('v', 1.0) > 0.5 and end_lm.get('v', 1.0) > 0.5:
+                x1, y1 = int(start_lm['x'] * w), int(start_lm['y'] * h)
+                x2, y2 = int(end_lm['x'] * w), int(end_lm['y'] * h)
+                cv2.line(output, (x1, y1), (x2, y2), skeleton_color, 2)
 
     # Draw landmark points
     for lm in landmarks:
