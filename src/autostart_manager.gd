@@ -129,11 +129,23 @@ func start_server() -> bool:
 	if _is_starting:
 		_debug_log("Server start already in progress")
 		return false
+	while _is_stopping:
+		await get_tree().process_frame
 
 	_is_starting = true
 	var result: bool = await _check_and_start()
 	_is_starting = false
 	return result
+
+func restart_server(new_camera_source_override: String = "") -> bool:
+	var normalized_override := String(new_camera_source_override).strip_edges()
+	if not normalized_override.is_empty():
+		camera_source_override = normalized_override
+	while _is_stopping:
+		await get_tree().process_frame
+	if _has_active_server_state():
+		await stop_server()
+	return await start_server()
 
 func stop_server() -> void:
 	if _is_stopping:

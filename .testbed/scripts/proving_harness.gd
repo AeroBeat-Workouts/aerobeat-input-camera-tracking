@@ -206,6 +206,7 @@ func _refresh_camera_source_controls() -> void:
 		camera_source_controls.visible = show_controls
 	if camera_source_picker == null:
 		return
+	camera_source_picker.disabled = _camera_switch_in_progress
 	if not show_controls:
 		return
 	_camera_devices = _load_available_camera_devices()
@@ -304,18 +305,51 @@ func _on_camera_source_picker_selected(index: int) -> void:
 	var device_id := String(camera_source_picker.get_item_metadata(index)).strip_edges()
 	if device_id.is_empty() or device_id == _selected_live_camera_device_id or _camera_switch_in_progress:
 		return
-	_switch_live_camera_source.call_deferred(device_id)
-
-func _switch_live_camera_source(device_id: String) -> void:
-	await _apply_live_camera_source(device_id)
-
-func _apply_live_camera_source(device_id: String) -> void:
-	if device_id.strip_edges().is_empty() or not _should_show_camera_source_controls():
-		return
 	_camera_switch_in_progress = true
 	_selected_live_camera_device_id = _normalize_live_camera_device_id(device_id)
 	_refresh_camera_source_controls()
 	_update_status("Switching live camera...", Color.YELLOW)
+	_switch_live_camera_source.call_deferred(device_id)
+
+func _switch_live_camera_source(device_id: String) -> void:
+	var success := await _apply_live_camera_source(device_id)
+	_camera_switch_in_progress = false
+	_refresh_camera_source_controls()
+	if success:
+		_record_event("camera_source_switched", {"device_id": _selected_live_camera_device_id})
+		_update_status("Live camera switched", Color.GREEN)
+	elif _should_show_camera_source_controls():
+		_update_status("Live camera switch failed", Color.RED)
+
+func _apply_live_camera_source(device_id: String) -> bool:
+	if device_id.strip_edges().is_empty() or not _should_show_camera_source_controls():
+		return false
+	_selected_live_camera_device_id = _normalize_live_camera_device_id(device_id)
+	_clear_live_camera_runtime_state()
+	_server_ready = false
+	if auto_start_manager == null:
+		return false
+	var camera_source_override := _get_autostart_camera_source_override()
+	var restart_ok := false
+	if auto_start_manager.has_method("restart_server"):
+		restart_ok = bool(await auto_start_manager.restart_server(camera_source_override))
+	else:
+		auto_start_manager.camera_source_override = camera_source_override
+		await auto_start_manager.stop_server()
+		restart_ok = bool(await auto_start_manager.start_server())
+	if not restart_ok:
+		return false
+	return await _await_live_camera_runtime_ready()
+
+func _clear_live_camera_runtime_state() -> void:
+	_latest_landmarks.clear()
+	_latest_state.clear()
+	_left_trail.clear()
+	_right_trail.clear()
+	if landmark_drawer:
+		landmark_drawer.clear_landmarks()
+	if trail_drawer:
+		trail_drawer.clear_trails()
 	if provider != null:
 		provider.stop()
 		if is_instance_valid(provider):
@@ -323,13 +357,25 @@ func _apply_live_camera_source(device_id: String) -> void:
 		provider = null
 	if camera_view != null and camera_view.is_streaming():
 		camera_view.stop_stream()
-	_server_ready = false
-	if auto_start_manager != null:
-		auto_start_manager.camera_source_override = _get_autostart_camera_source_override()
-		await auto_start_manager.stop_server()
-		await auto_start_manager.start_server()
-	_camera_switch_in_progress = false
-	_refresh_camera_source_controls()
+
+func _await_live_camera_runtime_ready(timeout_ms: int = 8000) -> bool:
+	var deadline_ms := Time.get_ticks_msec() + timeout_ms
+	while Time.get_ticks_msec() < deadline_ms:
+		if _is_live_camera_runtime_ready():
+			return true
+		await get_tree().process_frame
+	return _is_live_camera_runtime_ready()
+
+func _is_live_camera_runtime_ready() -> bool:
+	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
+		return true
+	if not _server_ready:
+		return false
+	if camera_view == null or not camera_view.is_streaming():
+		return false
+	if startup_mode == StartupMode.PREVIEW_ONLY_DEBUG:
+		return true
+	return provider != null
 
 func _setup_auto_start() -> void:
 	auto_start_manager = get_node_or_null("AutoStartManager")
