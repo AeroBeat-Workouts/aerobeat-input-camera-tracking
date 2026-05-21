@@ -141,13 +141,15 @@ func restart_server(new_camera_source_override: String = "") -> bool:
 	var normalized_override := String(new_camera_source_override).strip_edges()
 	if not normalized_override.is_empty():
 		camera_source_override = normalized_override
-	while _is_stopping:
+	while _is_stopping or _is_starting:
 		await get_tree().process_frame
 	if _has_active_server_state():
 		await stop_server()
 	return await start_server()
 
 func stop_server() -> void:
+	while _is_starting:
+		await get_tree().process_frame
 	if _is_stopping:
 		return
 	if not _has_active_server_state():

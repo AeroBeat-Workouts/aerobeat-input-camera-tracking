@@ -158,6 +158,7 @@ var _camera_devices: Array = []
 var _selected_live_camera_device_id := ""
 var _suppress_camera_picker_signal := false
 var _camera_switch_in_progress := false
+var _camera_switch_cleanup_pending := false
 
 func _enter_tree() -> void:
 	if startup_mode != StartupMode.GODOT_ONLY_DEBUG:
@@ -325,10 +326,10 @@ func _apply_live_camera_source(device_id: String) -> bool:
 	if device_id.strip_edges().is_empty() or not _should_show_camera_source_controls():
 		return false
 	_selected_live_camera_device_id = _normalize_live_camera_device_id(device_id)
-	_clear_live_camera_runtime_state()
 	_server_ready = false
 	if auto_start_manager == null:
 		return false
+	_camera_switch_cleanup_pending = true
 	var camera_source_override := _get_autostart_camera_source_override()
 	var restart_ok := false
 	if auto_start_manager.has_method("restart_server"):
@@ -338,6 +339,7 @@ func _apply_live_camera_source(device_id: String) -> bool:
 		await auto_start_manager.stop_server()
 		restart_ok = bool(await auto_start_manager.start_server())
 	if not restart_ok:
+		_camera_switch_cleanup_pending = false
 		return false
 	return await _await_live_camera_runtime_ready()
 
@@ -471,6 +473,9 @@ func _on_server_failed(error: String) -> void:
 
 func _on_server_stopped() -> void:
 	_server_ready = false
+	if _camera_switch_cleanup_pending:
+		_clear_live_camera_runtime_state()
+		_camera_switch_cleanup_pending = false
 	_update_status("Server stopped", Color.ORANGE)
 
 func _start_provider() -> void:
