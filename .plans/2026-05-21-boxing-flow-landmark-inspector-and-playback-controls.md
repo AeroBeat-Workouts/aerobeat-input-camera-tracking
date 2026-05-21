@@ -109,7 +109,7 @@ Repo-local validation run:
 **Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface and click-away/close-button behavior; `REF-05` now provides enlarged landmark hit-testing with closest-target resolution; `REF-01`/`REF-02` were smoke-launched headlessly to confirm both proving scenes still boot; `REF-06`'s prior Boxing gesture requirement content was preserved and funneled through the shared inspector body renderer instead of the previous hover-only card.
 
 **Commits:**
-- `630e91f` - Add proving inspector and playback controls
+- `2dbf324` - Add proving inspector and playback controls
 
 **Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. The one validation caveat worth preserving is that `test_proving_harness_trails.gd` still has an unrelated pre-existing failure in `test_resolves_trail_hand_point_by_clamping_near_edge_jitter`, so manual QA should focus on the new inspector/playback slice rather than treating that older failure as a regression from this work.
 
