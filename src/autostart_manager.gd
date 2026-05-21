@@ -32,6 +32,7 @@ signal mediapipe_not_found
 @export var no_filter: bool = true
 @export var heartbeat_interval_ms: int = 500
 @export var camera_source_override: String = ""
+@export_enum("full", "optimized", "off") var tracking_overlay_mode: String = "full"
 @export var debug_logging: bool = false
 @export var skip_sidecar_stop_on_close_debug: bool = false
 @export var skip_sidecar_terminate_sync_on_close_debug: bool = false
@@ -363,6 +364,9 @@ func _start_detached_server() -> int:
 		args.append_array(PackedStringArray(["--stream-camera", "--stream-port", str(stream_port)]))
 	if no_filter:
 		args.append("--no-filter")
+	var normalized_tracking_overlay_mode := String(tracking_overlay_mode).strip_edges().to_lower()
+	if normalized_tracking_overlay_mode in ["full", "optimized", "off"]:
+		args.append_array(PackedStringArray(["--tracking-overlay-mode", normalized_tracking_overlay_mode]))
 	if _sidecar_show_window_requested():
 		args.append("--show-window")
 

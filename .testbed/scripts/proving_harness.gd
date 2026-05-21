@@ -339,6 +339,7 @@ func _setup_auto_start() -> void:
 		return
 
 	auto_start_manager.camera_source_override = _get_autostart_camera_source_override()
+	auto_start_manager.tracking_overlay_mode = tracking_overlay_mode
 	auto_start_manager.debug_logging = steady_state_console_debug or shutdown_console_debug
 	auto_start_manager.skip_sidecar_stop_on_close_debug = skip_sidecar_stop_on_close_debug
 	auto_start_manager.skip_sidecar_terminate_sync_on_close_debug = skip_sidecar_terminate_sync_on_close_debug
