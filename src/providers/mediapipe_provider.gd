@@ -182,12 +182,24 @@ func set_selected_camera_device_id(device_id: String) -> bool:
 	var resolved_config := _ensure_config()
 	if resolved_config == null:
 		return false
+	var previous_device_id := String(resolved_config.get_camera_source()).strip_edges()
 	resolved_config.set_selected_camera_device_id(device_id)
+	var next_device_id := String(resolved_config.get_camera_source()).strip_edges()
 	if _server != null:
 		_server.config = resolved_config
 	if _detector_substrate != null:
 		_detector_substrate.configure(resolved_config)
+	if next_device_id != previous_device_id:
+		_reset_runtime_state_for_camera_change()
 	return true
+
+func _reset_runtime_state_for_camera_change() -> void:
+	if _detector_substrate != null:
+		_detector_substrate.reset()
+	_landmarks.clear()
+	_all_poses.clear()
+	_last_update_time_ms = 0
+	_was_tracking = false
 
 func _get_landmark_position(landmark_id: int, mode: TrackingMode) -> Variant:
 	return get_landmark_position_for_pose(0, landmark_id, mode)

@@ -110,6 +110,7 @@ func start_stream() -> bool:
 	if _stream_thread:
 		_thread_running = false
 		_realize_stream_thread("start cleanup")
+	_reset_preview_surface()
 
 	_debug_log(["Starting stream from:", stream_url])
 
@@ -234,6 +235,32 @@ func _cleanup_tcp_peer() -> void:
 		_tcp.disconnect_from_host()
 		_tcp = null
 
+func _reset_preview_surface() -> void:
+	_update_timer = 0.0
+	_mjpeg_buffer = PackedByteArray()
+	_mjpeg_overflow_count = 0
+	_decoded_frame_count = 0
+	_unique_frame_count = 0
+	_repeat_signature_run = 0
+	_last_frame_signature = 0
+	if _overlay_mutex != null:
+		_overlay_mutex.lock()
+		_overlay_landmarks.clear()
+		_overlay_mutex.unlock()
+	var blank_frame := Image.create(640, 480, false, Image.FORMAT_RGBA8)
+	_frame_mutex.lock()
+	_current_frame = blank_frame
+	var recreate_texture := _frame_texture == null
+	if not recreate_texture:
+		recreate_texture = _frame_texture.get_width() != blank_frame.get_width() or _frame_texture.get_height() != blank_frame.get_height()
+	if recreate_texture:
+		_frame_texture = ImageTexture.create_from_image(blank_frame)
+	else:
+		_frame_texture.update(blank_frame)
+	var frame_texture := _frame_texture
+	_frame_mutex.unlock()
+	self.texture = frame_texture
+
 func stop_stream() -> void:
 	# Always signal thread to stop and reset all flags
 	_thread_running = false
@@ -245,6 +272,7 @@ func stop_stream() -> void:
 		_realize_stream_thread("stop_stream")
 
 	_cleanup_tcp_peer()
+	_reset_preview_surface()
 
 	visible = false
 	stream_stopped.emit()
