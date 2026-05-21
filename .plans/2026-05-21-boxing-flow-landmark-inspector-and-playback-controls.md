@@ -105,7 +105,7 @@ Targeted validation run:
 - `~/.local/bin/godot --headless --path .testbed --check-only --script scripts/boxing_proving_harness.gd` ✅
 - `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` ✅
 
-Commit / push: pending final follow-up commit hash.
+Commit / push: `0e00839` (`Fix proving inspector click-away and width`) pushed to `main`.
 
 ---
 
@@ -131,18 +131,18 @@ Commit / push: pending final follow-up commit hash.
 
 ## Final Results
 
-**Status:** ⚠️ In Progress
+**Status:** ⚠️ Pending Derrick Manual QA
 
-**What We Built:** The Boxing and Flow proving harnesses now share one click-based inspector controller for gesture and landmark debugging, plus a prerecorded-only playback bar with truthful play/pause/seek integration against the Python sidecar. Boxing gesture badges now open the shared inspector instead of a hover-only card, landmark dots now expose enlarged nearest-hit click targets, and prerecorded seeking clears local/provider gesture-history state before pausing on the requested frame. Follow-up manual Cookie testing immediately surfaced two regressions now queued for repair: broken click-away dismissal and insufficient panel width for current Punch text.
+**What We Built:** The Boxing and Flow proving harnesses now share one click-based inspector controller for gesture and landmark debugging, plus a prerecorded-only playback bar with truthful play/pause/seek integration against the Python sidecar. Boxing gesture badges now open the shared inspector instead of a hover-only card, landmark dots now expose enlarged nearest-hit click targets, and prerecorded seeking clears local/provider gesture-history state before pausing on the requested frame. Follow-up manual Cookie testing surfaced two inspector UX regressions, and Task 2 repaired both with a focused shared-harness patch: background click-away dismissal now closes the open panel again, and the shared panel is wider so current Punch rows read on one line.
 
-**Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface and click-away/close-button behavior, though click-away needs a follow-up fix from Task 2; `REF-05` now provides enlarged landmark hit-testing with closest-target resolution; `REF-01`/`REF-02` were smoke-launched headlessly to confirm both proving scenes still boot; `REF-06`'s prior Boxing gesture requirement content was preserved and funneled through the shared inspector body renderer instead of the previous hover-only card.
+**Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface, working click-away dismissal, close-button dismissal, and target-swap behavior through the shared controller; `REF-05` still provides enlarged landmark hit-testing with closest-target resolution; `REF-01` was smoke-launched headlessly after the follow-up fix to confirm the Boxing proving scene still boots; `REF-06`'s prior Boxing gesture requirement content remains preserved through the shared inspector body renderer instead of the previous hover-only card.
 
 **Commits:**
 - `2dbf324` - Add proving inspector and playback controls
 - `3e72292` - Update plan with final commit hash
-- Pending follow-up fix commit for click-away + width regressions
+- `0e00839` - Fix proving inspector click-away and width
 
-**Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught two UX regressions that headless smoke checks did not: background click dismissal and practical readability width. The pre-existing unrelated caveat remains that `test_proving_harness_trails.gd` still has a failure in `test_resolves_trail_hand_point_by_clamping_near_edge_jitter`, so manual QA should focus on the inspector/playback slice rather than treating that older failure as a regression from this work.
+**Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught two UX regressions that headless smoke checks did not: background click dismissal and practical readability width. The shared-harness architecture held up well here because both fixes stayed localized to one controller file instead of needing scene-specific rewrites. The pre-existing unrelated caveat remains that `test_proving_harness_trails.gd` still has a failure in `test_resolves_trail_hand_point_by_clamping_near_edge_jitter`, so manual QA should focus on the inspector/playback slice rather than treating that older failure as a regression from this work.
 
 ---
 
