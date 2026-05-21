@@ -390,9 +390,13 @@ func _ensure_playback_controls() -> void:
 	margin.add_theme_constant_override("margin_bottom", 8)
 	_playback_bar_panel.add_child(margin)
 
+	var centered_row := CenterContainer.new()
+	centered_row.custom_minimum_size = Vector2(0.0, 28.0)
+	margin.add_child(centered_row)
+
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	margin.add_child(row)
+	centered_row.add_child(row)
 
 	_playback_toggle_button = Button.new()
 	_playback_toggle_button.custom_minimum_size = Vector2(PLAYBACK_TOGGLE_BUTTON_WIDTH, 0.0)
@@ -694,6 +698,8 @@ func _input(event: InputEvent) -> void:
 	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if _shared_inspector_panel.get_global_rect().has_point(mouse_event.position):
+		return
+	if _playback_bar_panel != null and _playback_bar_panel.visible and _playback_bar_panel.get_global_rect().has_point(mouse_event.position):
 		return
 	_close_shared_inspector()
 

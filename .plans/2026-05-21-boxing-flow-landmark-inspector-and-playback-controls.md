@@ -1,4 +1,4 @@
-# AeroBeat MediaPipe Python — Boxing / Flow Landmark Inspector and Playback Controls
+# AeroBeat MediaPipe Python - Boxing / Flow Landmark Inspector and Playback Controls
 
 **Date:** 2026-05-21
 **Status:** In Progress
@@ -18,7 +18,7 @@ Derrick wants the proving scenes to become a stronger visual debugging surface r
 
 The same implementation slice should add prerecorded-video playback controls to both proving scenes. The controls should only appear when the scene is running against a prerecorded file, not a live camera source. Playback must support play, pause, and seek. Seeking is intentionally lossy for gesture-debugging purposes: it should reset gesture/history buffers, jump to the requested point, and leave playback paused until the user presses play again.
 
-Derrick will manually test this on Cookie’s terminal after implementation, so this plan treats repo-local validation as required but defers final manual QA truth-pass to Derrick.
+Derrick will manually test this on Cookie's terminal after implementation, so this plan treats repo-local validation as required but defers final manual QA truth-pass to Derrick.
 
 ---
 
@@ -42,7 +42,7 @@ Derrick will manually test this on Cookie’s terminal after implementation, so 
 **Bead ID:** `aerobeat-input-mediapipe-python-w7o`
 **SubAgent:** `primary`
 **Role:** `coder`
-**References:** `REF-01`–`REF-06`
+**References:** `REF-01`-`REF-06`
 **Prompt:** Claim bead `aerobeat-input-mediapipe-python-w7o` with `bd update aerobeat-input-mediapipe-python-w7o --status in_progress --json` before editing. Implement Derrick's approved spec across the Boxing and Flow proving scenes. Reuse/unify the existing gesture info popup system into a shared click-based inspector controller that supports both gesture colliders and new MediaPipe landmark colliders. Rules: only one popup at a time; clicking a new gesture/landmark swaps the popup; clicking away closes it; clicking inside the panel does not close it; `X` button closes it; fixed panel location; enlarged invisible click targets for landmarks; closest target wins when overlap is ambiguous; panel UI gets first click priority. Landmark cards must show landmark name, position, tracking confidence percentage, and useful stable debugging values if easy/truthful to add now. While paused, landmark values freeze to the clicked frame; while playing they live-update for the selected landmark, showing `not currently tracked` while retaining last known values if tracking drops. Add prerecorded-video controls to both scenes at the bottom of the video feed area: play/pause and seek, visible only for prerecorded video sources and hidden for live camera sources. On seek, reset gesture/history buffers, jump to the requested point, and leave playback paused. Keep the implementation reusable for later richer MediaPipe debugging. Run relevant repo-local validation (at minimum headless scene/script smoke checks covering Boxing and Flow if feasible), commit, and push to `main` by default. Update this plan with exact files changed, validation run, and commit hash.
 
 **Folders Created/Deleted/Modified:**
@@ -161,12 +161,41 @@ Commit / push: `5570e82` (`Fix landmark inspector truth and expose smoothing sty
 
 ---
 
-### Task 4: Manual truth-pass on Cookie terminal
+### Task 4: Polish timeline layout and preserve inspector while using playback controls
 
-**Bead ID:** `Deferred to Derrick`
-**SubAgent:** `Deferred to Derrick`
-**Role:** `qa`
-**References:** Task 1-3 output
+**Bead ID:** `aerobeat-input-mediapipe-python-6ca`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** Task 1-3 output  
+**Prompt:** Claim bead `aerobeat-input-mediapipe-python-6ca` with `bd update aerobeat-input-mediapipe-python-6ca --status in_progress --json`. Apply Derrick's latest QA polish feedback to the shared prerecorded playback UI: move the seek bar to the vertical center of the timeline panel instead of hugging the top, and make timeline interaction (seek + play/pause) preserve the currently open info popup instead of dismissing it. Keep the patch focused and shared if possible, run targeted validation, update this plan with exact files changed and commit hash, commit/push to `main`, and close the bead.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.plans/2026-05-21-boxing-flow-landmark-inspector-and-playback-controls.md`
+
+**Status:** ✅ Complete
+
+**Results:** Applied the playback polish as a focused shared-harness patch in `.testbed/scripts/proving_harness.gd`. The prerecorded timeline row now sits inside a `CenterContainer` with a fixed minimum height so the seek slider is visually centered within the playback panel instead of riding the top edge. The shared inspector click-away path in `_input()` now treats the visible playback controls as an allowed interaction zone, so play/pause presses and seek clicks/drags no longer dismiss the currently open info popup while real background clicks still close it.
+
+Targeted validation run:
+- `~/.local/bin/godot --headless --path .testbed --check-only --script scripts/proving_harness.gd` ✅
+- `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` ✅
+- `~/.local/bin/godot --headless --path .testbed res://scenes/flow_proving.tscn --quit-after 1` ✅
+
+Commit / push: `527ea61` (`Polish playback timeline inspector behavior`) pushed to `main`.
+
+---
+
+### Task 5: Manual truth-pass on Cookie terminal
+
+**Bead ID:** `Deferred to Derrick`  
+**SubAgent:** `Deferred to Derrick`  
+**Role:** `qa`  
+**References:** Task 1-4 output  
 **Prompt:** Derrick will manually test the new landmark inspector and prerecorded playback controls on Cookie’s terminal once the follow-up fixes are landed.
 
 **Folders Created/Deleted/Modified:**
@@ -185,9 +214,9 @@ Commit / push: `5570e82` (`Fix landmark inspector truth and expose smoothing sty
 
 **Status:** ⚠️ In Progress
 
-**What We Built:** The Boxing and Flow proving harnesses now share one click-based inspector controller for gesture and landmark debugging, plus a prerecorded-only playback bar with truthful play/pause/seek integration against the Python sidecar. Boxing gesture badges now open the shared inspector instead of a hover-only card, landmark dots expose enlarged nearest-hit click targets, prerecorded seeking clears local/provider gesture-history state before pausing on the requested frame, and the click-away/width regressions found during manual testing are fixed. This follow-up slice repaired the remaining landmark-truth issues by switching the inspector to show raw live normalized position first, relabeling the old `tracking state` line to the truthful `Detector pose lock`, throttling live inspector refresh for readability with an explicit note, polishing the playback toggle to fixed-width play/pause icons, and exposing the real sidecar comparison surface as a public tracking/smoothing enum on both Boxing and Flow proving scenes.
+**What We Built:** The Boxing and Flow proving harnesses now share one click-based inspector controller for gesture and landmark debugging, plus a prerecorded-only playback bar with truthful play/pause/seek integration against the Python sidecar. Boxing gesture badges now open the shared inspector instead of a hover-only card, landmark dots expose enlarged nearest-hit click targets, prerecorded seeking clears local/provider gesture-history state before pausing on the requested frame, and the click-away/width regressions found during manual testing are fixed. The landmark-truth slice then switched the inspector to show raw live normalized position first, relabeled the old `tracking state` line to the truthful `Detector pose lock`, throttled live inspector refresh for readability with an explicit note, polished the playback toggle to fixed-width play/pause icons, and exposed the real sidecar comparison surface as a public tracking/smoothing enum on both Boxing and Flow proving scenes. This final coder polish pass centers the seek row within the timeline panel and preserves the currently open inspector while the user interacts with play/pause or seek controls.
 
-**Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface, working click-away dismissal, close-button dismissal, target-swap behavior, truthful landmark-vs-detector-smoothed readouts, fixed-width playback icon controls, and the new public tracking/smoothing enum wiring. `REF-05` still provides enlarged landmark hit-testing with closest-target resolution. `REF-01` and `REF-02` were smoke-launched headlessly after this slice to confirm both proving scenes still boot with the new enum/property wiring. `REF-06`'s prior Boxing gesture requirement content remains preserved through the shared inspector body renderer instead of the previous hover-only card.
+**Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface, working click-away dismissal, close-button dismissal, target-swap behavior, truthful landmark-vs-detector-smoothed readouts, fixed-width playback icon controls, preserved inspector state during playback-control interaction, vertically centered seek-row layout, and the public tracking/smoothing enum wiring. `REF-05` still provides enlarged landmark hit-testing with closest-target resolution. `REF-01` and `REF-02` were smoke-launched headlessly after the timeline-polish slice to confirm both proving scenes still boot with the shared playback/inspector updates intact. `REF-06`'s prior Boxing gesture requirement content remains preserved through the shared inspector body renderer instead of the previous hover-only card.
 
 **Commits:**
 - `2dbf324` - Add proving inspector and playback controls
@@ -195,8 +224,10 @@ Commit / push: `5570e82` (`Fix landmark inspector truth and expose smoothing sty
 - `0e00839` - Fix proving inspector click-away and width
 - `a34d853` - Update plan for inspector regression fix
 - `5570e82` - Fix landmark inspector truth and expose smoothing style
+- `9e0ac48` - Update plan for landmark truth slice
+- `527ea61` - Polish playback timeline inspector behavior
 
-**Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught UX regressions and then exposed deeper debug-truth problems that headless smoke checks did not: first background click dismissal and practical readability width, then stuck `x/y`, misleading tracking-state behavior, and jitter/smoothing concerns. The shared-harness architecture continues to hold up because these fixes remain localized instead of forcing scene-specific rewrites. The main truth lesson from this slice is that the harness must keep raw live landmark values visually distinct from detector-smoothed/debug state and must name overall pose-lock health explicitly so it is not mistaken for per-landmark tracking truth.
+**Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught UX regressions and then exposed deeper debug-truth problems that headless smoke checks did not: first background click dismissal and practical readability width, then stuck `x/y`, misleading tracking-state behavior, jitter/smoothing concerns, and finally timeline-specific polish around panel affordances and allowed-click zones. The shared-harness architecture continues to hold up because these fixes remain localized instead of forcing scene-specific rewrites. The main UI lesson from this final slice is that click-away dismissal needs a clearly defined allowlist for interactive overlay surfaces, otherwise shared debug panels feel brittle even when the underlying state model is correct.
 
 ---
 
