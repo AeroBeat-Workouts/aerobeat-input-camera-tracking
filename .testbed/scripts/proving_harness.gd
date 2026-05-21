@@ -19,6 +19,59 @@ const MAX_TRAIL_AGE_MS := 1800
 const MAX_TRAIL_FRAME_JUMP := 0.28
 const TRAIL_VISIBILITY_THRESHOLD_FLOOR := 0.18
 const MAX_TRAIL_FALLBACK_SPREAD := 0.18
+const PLAYBACK_STATUS_POLL_INTERVAL_MS := 250
+const INSPECTOR_PANEL_WIDTH := 420.0
+const INSPECTOR_PANEL_MARGIN := 20.0
+const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
+const INSPECTOR_FOOTER_TEXT := "Click away to close"
+const LANDMARK_NAMES := [
+	"Nose",
+	"Left Eye Inner",
+	"Left Eye",
+	"Left Eye Outer",
+	"Right Eye Inner",
+	"Right Eye",
+	"Right Eye Outer",
+	"Left Ear",
+	"Right Ear",
+	"Mouth Left",
+	"Mouth Right",
+	"Left Shoulder",
+	"Right Shoulder",
+	"Left Elbow",
+	"Right Elbow",
+	"Left Wrist",
+	"Right Wrist",
+	"Left Pinky",
+	"Right Pinky",
+	"Left Index",
+	"Right Index",
+	"Left Thumb",
+	"Right Thumb",
+	"Left Hip",
+	"Right Hip",
+	"Left Knee",
+	"Right Knee",
+	"Left Ankle",
+	"Right Ankle",
+	"Left Heel",
+	"Right Heel",
+	"Left Foot Index",
+	"Right Foot Index",
+]
+const LANDMARK_BODY_PART_HINTS := {
+	11: &"left_shoulder",
+	12: &"right_shoulder",
+	13: &"left_elbow",
+	14: &"right_elbow",
+	15: &"left_hand",
+	16: &"right_hand",
+	23: &"left_hip",
+	24: &"right_hip",
+	27: &"left_foot",
+	28: &"right_foot",
+	0: &"head",
+}
 
 const BOXING_EVENT_ORDER := [
 	"punch_left",
@@ -159,6 +212,27 @@ var _selected_live_camera_device_id := ""
 var _suppress_camera_picker_signal := false
 var _camera_switch_in_progress := false
 var _camera_switch_cleanup_pending := false
+var _shared_inspector_panel: PanelContainer = null
+var _shared_inspector_title_label: Label = null
+var _shared_inspector_subtitle_label: Label = null
+var _shared_inspector_body_label: RichTextLabel = null
+var _shared_inspector_footer_label: Label = null
+var _shared_inspector_target_type := ""
+var _shared_inspector_target_key := ""
+var _shared_inspector_frozen_model: Dictionary = {}
+var _shared_inspector_landmark_last_known := {}
+var _playback_overlay_root: Control = null
+var _playback_bar_panel: PanelContainer = null
+var _playback_toggle_button: Button = null
+var _playback_seek_slider: HSlider = null
+var _playback_time_label: Label = null
+var _playback_status_request: HTTPRequest = null
+var _playback_command_request: HTTPRequest = null
+var _playback_status := {}
+var _playback_status_poll_due_ms := 0
+var _playback_status_request_in_flight := false
+var _playback_command_request_in_flight := false
+var _playback_slider_drag_active := false
 
 func _enter_tree() -> void:
 	if startup_mode != StartupMode.GODOT_ONLY_DEBUG:
@@ -178,6 +252,10 @@ func _ready() -> void:
 			label_variant.bbcode_enabled = false
 	if live_status_label:
 		live_status_label.scroll_active = false
+	_ensure_shared_inspector_ui()
+	_ensure_playback_controls()
+	_ensure_playback_http_requests()
+	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
 	_left_trail_debug = _make_trail_debug_state("left")
 	_right_trail_debug = _make_trail_debug_state("right")
@@ -195,6 +273,159 @@ func _ready() -> void:
 	else:
 		_setup_auto_start()
 	_refresh_debug_panels()
+
+func _ensure_shared_inspector_ui() -> void:
+	if _shared_inspector_panel != null:
+		return
+	_shared_inspector_panel = PanelContainer.new()
+	_shared_inspector_panel.name = "SharedInspectorPanel"
+	_shared_inspector_panel.visible = false
+	_shared_inspector_panel.top_level = true
+	_shared_inspector_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_shared_inspector_panel.custom_minimum_size = Vector2(INSPECTOR_PANEL_WIDTH, 0.0)
+	add_child(_shared_inspector_panel)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_bottom", 14)
+	_shared_inspector_panel.add_child(margin)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	margin.add_child(column)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	column.add_child(header)
+
+	var title_column := VBoxContainer.new()
+	title_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_column.add_theme_constant_override("separation", 4)
+	header.add_child(title_column)
+
+	_shared_inspector_title_label = Label.new()
+	_shared_inspector_title_label.add_theme_font_size_override("font_size", 18)
+	_shared_inspector_title_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 1.0))
+	title_column.add_child(_shared_inspector_title_label)
+
+	_shared_inspector_subtitle_label = Label.new()
+	_shared_inspector_subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_shared_inspector_subtitle_label.add_theme_font_size_override("font_size", 14)
+	_shared_inspector_subtitle_label.add_theme_color_override("font_color", Color(0.84, 0.92, 1.0, 0.92))
+	title_column.add_child(_shared_inspector_subtitle_label)
+
+	var close_button := Button.new()
+	close_button.text = "X"
+	close_button.custom_minimum_size = Vector2(INSPECTOR_CLOSE_BUTTON_WIDTH, INSPECTOR_CLOSE_BUTTON_WIDTH)
+	close_button.pressed.connect(_close_shared_inspector)
+	header.add_child(close_button)
+
+	_shared_inspector_body_label = RichTextLabel.new()
+	_shared_inspector_body_label.bbcode_enabled = false
+	_shared_inspector_body_label.fit_content = true
+	_shared_inspector_body_label.scroll_active = false
+	_shared_inspector_body_label.custom_minimum_size = Vector2(INSPECTOR_PANEL_WIDTH - 32.0, 0.0)
+	_shared_inspector_body_label.add_theme_font_size_override("normal_font_size", 13)
+	_shared_inspector_body_label.add_theme_color_override("default_color", Color(1.0, 1.0, 1.0, 0.95))
+	column.add_child(_shared_inspector_body_label)
+
+	_shared_inspector_footer_label = Label.new()
+	_shared_inspector_footer_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_shared_inspector_footer_label.add_theme_font_size_override("font_size", 11)
+	_shared_inspector_footer_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.58))
+	column.add_child(_shared_inspector_footer_label)
+
+	_apply_panel_style(_shared_inspector_panel, Color(0.0, 0.0, 0.0, 0.84), Color(1.0, 1.0, 1.0, 0.16), 18, 1, 0)
+	_reposition_shared_inspector()
+
+func _ensure_playback_controls() -> void:
+	if _playback_overlay_root != null or camera_display == null:
+		return
+	var camera_panel := camera_display.get_parent() as Control
+	if camera_panel == null:
+		return
+	_playback_overlay_root = Control.new()
+	_playback_overlay_root.name = "PlaybackOverlayRoot"
+	_playback_overlay_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_playback_overlay_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	camera_panel.add_child(_playback_overlay_root)
+
+	_playback_bar_panel = PanelContainer.new()
+	_playback_bar_panel.name = "PlaybackControls"
+	_playback_bar_panel.anchor_left = 0.0
+	_playback_bar_panel.anchor_top = 1.0
+	_playback_bar_panel.anchor_right = 1.0
+	_playback_bar_panel.anchor_bottom = 1.0
+	_playback_bar_panel.offset_left = 12.0
+	_playback_bar_panel.offset_top = -48.0
+	_playback_bar_panel.offset_right = -12.0
+	_playback_bar_panel.offset_bottom = -12.0
+	_playback_bar_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_playback_bar_panel.visible = false
+	_playback_overlay_root.add_child(_playback_bar_panel)
+	_apply_panel_style(_playback_bar_panel, Color(0.0, 0.0, 0.0, 0.76), Color(1.0, 1.0, 1.0, 0.14), 16, 1, 0)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	_playback_bar_panel.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	margin.add_child(row)
+
+	_playback_toggle_button = Button.new()
+	_playback_toggle_button.text = "Pause"
+	_playback_toggle_button.pressed.connect(_on_playback_toggle_pressed)
+	row.add_child(_playback_toggle_button)
+
+	_playback_seek_slider = HSlider.new()
+	_playback_seek_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_playback_seek_slider.min_value = 0.0
+	_playback_seek_slider.max_value = 1.0
+	_playback_seek_slider.step = 0.001
+	_playback_seek_slider.drag_ended.connect(_on_playback_seek_drag_ended)
+	_playback_seek_slider.drag_started.connect(func() -> void:
+		_playback_slider_drag_active = true
+	)
+	row.add_child(_playback_seek_slider)
+
+	_playback_time_label = Label.new()
+	_playback_time_label.custom_minimum_size = Vector2(124.0, 0.0)
+	_playback_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_playback_time_label.text = "0:00 / 0:00"
+	row.add_child(_playback_time_label)
+
+func _ensure_playback_http_requests() -> void:
+	if _playback_status_request == null:
+		_playback_status_request = HTTPRequest.new()
+		_playback_status_request.request_completed.connect(_on_playback_status_request_completed)
+		add_child(_playback_status_request)
+	if _playback_command_request == null:
+		_playback_command_request = HTTPRequest.new()
+		_playback_command_request.request_completed.connect(_on_playback_command_request_completed)
+		add_child(_playback_command_request)
+
+func _ensure_landmark_interactions() -> void:
+	if landmark_drawer == null or not landmark_drawer.has_signal("landmark_clicked"):
+		return
+	if not landmark_drawer.landmark_clicked.is_connected(_on_landmark_clicked):
+		landmark_drawer.landmark_clicked.connect(_on_landmark_clicked)
+
+func _apply_panel_style(panel: PanelContainer, bg: Color, border: Color, radius: int, border_width: int, expand_margin: int) -> void:
+	if panel == null:
+		return
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg
+	style.border_color = border
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(radius)
+	style.set_expand_margin_all(expand_margin)
+	panel.add_theme_stylebox_override("panel", style)
 
 func _configure_camera_source_controls() -> void:
 	if camera_source_picker and not camera_source_picker.item_selected.is_connected(_on_camera_source_picker_selected):
@@ -430,8 +661,23 @@ func _process(_delta: float) -> void:
 			_latest_state = provider.get_detector_state()
 		_refresh_debug_panels()
 
+	_refresh_playback_polling()
+	_refresh_shared_inspector()
+
 	if steady_state_console_debug and _frame_count % 30 == 0:
 		_emit_console_snapshot_if_changed()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _shared_inspector_panel == null or not _shared_inspector_panel.visible:
+		return
+	if not (event is InputEventMouseButton):
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if _shared_inspector_panel.get_global_rect().has_point(mouse_event.position):
+		return
+	_close_shared_inspector()
 
 func _on_check_progress(percentage: int, message: String) -> void:
 	_update_status("%d%% - %s" % [percentage, message], Color.YELLOW)
@@ -892,6 +1138,274 @@ func _start_camera_feed() -> void:
 	if not stream_started:
 		_record_event("camera_stream_failed", {})
 
+func _on_landmark_clicked(landmark_id: int) -> void:
+	_open_shared_inspector("landmark", str(landmark_id))
+
+func _open_shared_inspector(target_type: String, target_key: String) -> void:
+	_shared_inspector_target_type = target_type
+	_shared_inspector_target_key = target_key
+	_shared_inspector_frozen_model = {}
+	if _should_freeze_landmark_inspector():
+		_shared_inspector_frozen_model = _build_shared_inspector_model(target_type, target_key)
+	_refresh_shared_inspector(true)
+
+func _close_shared_inspector() -> void:
+	_shared_inspector_target_type = ""
+	_shared_inspector_target_key = ""
+	_shared_inspector_frozen_model = {}
+	if _shared_inspector_panel != null:
+		_shared_inspector_panel.visible = false
+
+func _refresh_shared_inspector(force: bool = false) -> void:
+	if _shared_inspector_panel == null:
+		return
+	if _shared_inspector_target_type.is_empty() or _shared_inspector_target_key.is_empty():
+		_shared_inspector_panel.visible = false
+		return
+	var model := _shared_inspector_frozen_model if _should_use_frozen_landmark_inspector() else _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
+	if model.is_empty() and force:
+		model = _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
+	if model.is_empty():
+		_shared_inspector_panel.visible = false
+		return
+	_shared_inspector_title_label.text = String(model.get("title", "Inspector"))
+	_shared_inspector_subtitle_label.text = String(model.get("subtitle", ""))
+	_shared_inspector_subtitle_label.visible = not _shared_inspector_subtitle_label.text.is_empty()
+	_shared_inspector_body_label.text = String(model.get("body", ""))
+	_shared_inspector_footer_label.text = String(model.get("footer", INSPECTOR_FOOTER_TEXT))
+	_shared_inspector_footer_label.visible = not _shared_inspector_footer_label.text.is_empty()
+	_shared_inspector_panel.visible = true
+	_reposition_shared_inspector()
+
+func _build_shared_inspector_model(target_type: String, target_key: String) -> Dictionary:
+	if target_type == "landmark":
+		return _build_landmark_inspector_model(int(target_key.to_int()))
+	return _build_custom_inspector_model(target_type, target_key)
+
+func _build_custom_inspector_model(_target_type: String, _target_key: String) -> Dictionary:
+	return {}
+
+func _build_landmark_inspector_model(landmark_id: int) -> Dictionary:
+	var snapshot := _capture_landmark_snapshot(landmark_id)
+	var name := _landmark_name(landmark_id)
+	var subtitle := "%s (#%d)" % [name, landmark_id]
+	var lines: Array[String] = []
+	if bool(snapshot.get("tracked", false)):
+		_shared_inspector_landmark_last_known[str(landmark_id)] = snapshot.duplicate(true)
+		lines.append("Status: tracked")
+		lines.append("Confidence: %s" % _fmt_percent(snapshot.get("visibility", 0.0)))
+		lines.append("Position (norm): x=%s  y=%s  z=%s" % [
+			_fmt_float(snapshot.get("x", 0.0)),
+			_fmt_float(snapshot.get("y", 0.0)),
+			_fmt_float(snapshot.get("z", 0.0)),
+		])
+	else:
+		lines.append("Status: not currently tracked")
+		var last_known: Dictionary = _shared_inspector_landmark_last_known.get(str(landmark_id), {})
+		if not last_known.is_empty():
+			lines.append("Last known confidence: %s" % _fmt_percent(last_known.get("visibility", 0.0)))
+			lines.append("Last known position: x=%s  y=%s  z=%s" % [
+				_fmt_float(last_known.get("x", 0.0)),
+				_fmt_float(last_known.get("y", 0.0)),
+				_fmt_float(last_known.get("z", 0.0)),
+			])
+	var body_part: StringName = snapshot.get("body_part", &"")
+	if body_part != StringName():
+		lines.append("Body role: %s" % String(body_part))
+	var velocity: Variant = snapshot.get("velocity", null)
+	if velocity is Vector3 and body_part != StringName():
+		lines.append("Velocity: %s" % _fmt_vec3(velocity))
+	var direction: Variant = snapshot.get("direction", null)
+	if direction is Vector2 and body_part != StringName():
+		lines.append("Direction: %s" % _fmt_vec2(direction))
+	lines.append("Tracking state: %s" % _tracking_status_text(_latest_state))
+	return {
+		"title": "Landmark Inspector",
+		"subtitle": subtitle,
+		"body": "\n".join(lines),
+		"footer": INSPECTOR_FOOTER_TEXT,
+	}
+
+func _capture_landmark_snapshot(landmark_id: int) -> Dictionary:
+	var state: Dictionary = _latest_state
+	var state_landmarks: Dictionary = state.get("landmarks_by_id", {})
+	var state_landmark: Dictionary = state_landmarks.get(landmark_id, {}) if state_landmarks is Dictionary else {}
+	var landmark := state_landmark if not state_landmark.is_empty() else _find_landmark(_latest_landmarks, landmark_id)
+	var tracked := not landmark.is_empty()
+	var body_part: StringName = LANDMARK_BODY_PART_HINTS.get(landmark_id, &"")
+	var velocity: Variant = null
+	var direction: Variant = null
+	if body_part != StringName():
+		var metrics: Dictionary = state.get("metrics", {})
+		velocity = (metrics.get("velocities", {}) as Dictionary).get(String(body_part), null)
+		direction = (metrics.get("directions", {}) as Dictionary).get(String(body_part), null)
+	return {
+		"tracked": tracked,
+		"id": landmark_id,
+		"name": _landmark_name(landmark_id),
+		"x": float(landmark.get("x", 0.0)),
+		"y": float(landmark.get("y", 0.0)),
+		"z": float(landmark.get("z", 0.0)),
+		"visibility": float(landmark.get("v", landmark.get("visibility", 0.0))),
+		"body_part": body_part,
+		"velocity": velocity,
+		"direction": direction,
+	}
+
+func _landmark_name(landmark_id: int) -> String:
+	if landmark_id >= 0 and landmark_id < LANDMARK_NAMES.size():
+		return String(LANDMARK_NAMES[landmark_id])
+	return "Landmark %d" % landmark_id
+
+func _should_freeze_landmark_inspector() -> bool:
+	return _shared_inspector_target_type == "landmark" and _is_prerecorded_source_active() and bool(_playback_status.get("paused", false))
+
+func _should_use_frozen_landmark_inspector() -> bool:
+	return _shared_inspector_target_type == "landmark" and _is_prerecorded_source_active() and bool(_playback_status.get("paused", false)) and not _shared_inspector_frozen_model.is_empty()
+
+func _reposition_shared_inspector() -> void:
+	if _shared_inspector_panel == null:
+		return
+	_shared_inspector_panel.reset_size()
+	var popup_size := _shared_inspector_panel.get_combined_minimum_size()
+	_shared_inspector_panel.size = popup_size
+	var viewport_size := get_viewport_rect().size
+	_shared_inspector_panel.position = Vector2(
+		maxf(INSPECTOR_PANEL_MARGIN, viewport_size.x - popup_size.x - INSPECTOR_PANEL_MARGIN),
+		INSPECTOR_PANEL_MARGIN
+	)
+
+func _refresh_playback_polling() -> void:
+	_refresh_playback_controls_visibility()
+	if not _is_prerecorded_source_active():
+		return
+	var now_ms := Time.get_ticks_msec()
+	if now_ms < _playback_status_poll_due_ms:
+		return
+	_request_playback_status()
+
+func _request_playback_status(force: bool = false) -> void:
+	if _playback_status_request == null or _playback_status_request_in_flight:
+		return
+	if not force and not _is_prerecorded_source_active():
+		return
+	var url := _playback_base_url()
+	if url.is_empty():
+		return
+	var err := _playback_status_request.request("%s/playback" % url)
+	if err != OK:
+		return
+	_playback_status_request_in_flight = true
+	_playback_status_poll_due_ms = Time.get_ticks_msec() + PLAYBACK_STATUS_POLL_INTERVAL_MS
+
+func _send_playback_command(path_suffix: String) -> void:
+	if _playback_command_request == null or _playback_command_request_in_flight:
+		return
+	var url := _playback_base_url()
+	if url.is_empty():
+		return
+	var err := _playback_command_request.request("%s%s" % [url, path_suffix])
+	if err != OK:
+		return
+	_playback_command_request_in_flight = true
+	_refresh_playback_controls_state()
+
+func _playback_base_url() -> String:
+	var source_url := camera_view.stream_url if camera_view != null else "http://127.0.0.1:4243/camera"
+	var slash_index := source_url.rfind("/")
+	if slash_index <= 0:
+		return source_url.strip_edges()
+	return source_url.substr(0, slash_index)
+
+func _refresh_playback_controls_visibility() -> void:
+	var visible := _is_prerecorded_source_active() and startup_mode != StartupMode.GODOT_ONLY_DEBUG
+	if _playback_bar_panel != null:
+		_playback_bar_panel.visible = visible
+	_refresh_playback_controls_state()
+
+func _refresh_playback_controls_state() -> void:
+	if _playback_toggle_button == null or _playback_seek_slider == null or _playback_time_label == null:
+		return
+	var paused := bool(_playback_status.get("paused", false))
+	_playback_toggle_button.text = "Play" if paused else "Pause"
+	var controls_enabled := not _playback_command_request_in_flight
+	_playback_toggle_button.disabled = not _is_prerecorded_source_active() or not controls_enabled
+	_playback_seek_slider.editable = _is_prerecorded_source_active() and controls_enabled
+	if not _playback_slider_drag_active:
+		_playback_seek_slider.value = float(_playback_status.get("progress", 0.0))
+	_playback_time_label.text = "%s / %s" % [
+		_fmt_duration(float(_playback_status.get("current_time_sec", 0.0))),
+		_fmt_duration(float(_playback_status.get("duration_sec", 0.0))),
+	]
+
+func _on_playback_status_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	_playback_status_request_in_flight = false
+	_playback_status_poll_due_ms = Time.get_ticks_msec() + PLAYBACK_STATUS_POLL_INTERVAL_MS
+	if response_code < 200 or response_code >= 300:
+		return
+	var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+	if parsed is Dictionary:
+		_playback_status = parsed
+		if not bool(_playback_status.get("paused", false)):
+			_shared_inspector_frozen_model = {}
+		_refresh_playback_controls_state()
+
+func _on_playback_command_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	_playback_command_request_in_flight = false
+	if response_code >= 200 and response_code < 300:
+		var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+		if parsed is Dictionary:
+			_playback_status = parsed
+	_refresh_playback_controls_state()
+	_request_playback_status(true)
+
+func _on_playback_toggle_pressed() -> void:
+	_send_playback_command("/playback/toggle")
+
+func _on_playback_seek_drag_ended(value_changed: bool) -> void:
+	_playback_slider_drag_active = false
+	if not value_changed:
+		_refresh_playback_controls_state()
+		return
+	var progress := clampf(float(_playback_seek_slider.value), 0.0, 1.0)
+	_reset_runtime_debug_state_for_seek()
+	_shared_inspector_frozen_model = {}
+	_send_playback_command("/playback/seek?progress=%.6f" % progress)
+
+func _reset_runtime_debug_state_for_seek() -> void:
+	_latest_landmarks.clear()
+	_latest_state.clear()
+	_left_trail.clear()
+	_right_trail.clear()
+	_left_trail_debug = _make_trail_debug_state("left")
+	_right_trail_debug = _make_trail_debug_state("right")
+	_reset_last_flow_events()
+	_reset_event_tracking()
+	_fixture_capture_started_at_ms = Time.get_ticks_msec()
+	_fixture_time_origin_ms = _fixture_capture_started_at_ms
+	_fixture_time_origin_reason = "seek"
+	_fixture_time_origin_locked = false
+	if provider != null and provider.has_method("reset_runtime_state"):
+		provider.reset_runtime_state()
+	if landmark_drawer:
+		landmark_drawer.clear_landmarks()
+	if trail_drawer:
+		trail_drawer.clear_trails()
+	_record_fixture_state_snapshot("seek_reset")
+	_refresh_debug_panels()
+
+func _is_prerecorded_source_active() -> bool:
+	return not _is_live_camera_source_value(_get_effective_camera_source())
+
+func _fmt_percent(value: Variant) -> String:
+	return "%d%%" % int(round(clampf(float(value if value != null else 0.0), 0.0, 1.0) * 100.0))
+
+func _fmt_duration(seconds: float) -> String:
+	var total_seconds: int = maxi(int(round(seconds)), 0)
+	var minutes: int = int(total_seconds / 60)
+	var remaining_seconds: int = total_seconds % 60
+	return "%d:%02d" % [minutes, remaining_seconds]
+
 func _refresh_debug_panels() -> void:
 	if live_status_label:
 		live_status_label.text = _build_live_status_text()
@@ -906,6 +1420,7 @@ func _refresh_debug_panels() -> void:
 	if events_label:
 		events_label.text = _build_events_text()
 	_refresh_flow_ring_board()
+	_refresh_playback_controls_state()
 
 func _build_live_status_text() -> String:
 	var state: Dictionary = _latest_state

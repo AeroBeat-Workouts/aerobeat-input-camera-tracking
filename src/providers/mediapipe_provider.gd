@@ -85,6 +85,14 @@ func stop() -> void:
 	if _server != null:
 		_server.stop()
 
+func reset_runtime_state() -> void:
+	_last_update_time_ms = 0
+	_landmarks.clear()
+	_all_poses.clear()
+	_was_tracking = false
+	if _detector_substrate != null:
+		_detector_substrate.reset()
+
 ## Get number of detected poses
 func get_num_poses() -> int:
 	return _all_poses.size()

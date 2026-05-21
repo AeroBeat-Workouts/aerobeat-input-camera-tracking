@@ -245,7 +245,6 @@ var _hover_card_signature := ""
 func _ready() -> void:
 	_resolve_boxing_shell_nodes()
 	_build_tile_grid_if_needed()
-	_ensure_hover_card()
 	_apply_boxing_visual_shell()
 	super._ready()
 	_refresh_debug_panels()
@@ -265,7 +264,6 @@ func _refresh_debug_panels() -> void:
 		if quick_stats_label.has_method("scroll_to_line"):
 			quick_stats_label.scroll_to_line(max(quick_stats_label.get_line_count() - 1, 0))
 	_update_tile_states()
-	_refresh_hover_card()
 
 func _record_event(event_name: String, payload: Dictionary) -> void:
 	if harness_mode == HarnessMode.BOXING:
@@ -275,6 +273,11 @@ func _record_event(event_name: String, payload: Dictionary) -> void:
 			while _boxing_event_feed.size() > MAX_BOXING_FEED_ROWS:
 				_boxing_event_feed.remove_at(0)
 	super._record_event(event_name, payload)
+
+func _reset_runtime_debug_state_for_seek() -> void:
+	super._reset_runtime_debug_state_for_seek()
+	_boxing_event_feed = []
+	_boxing_event_sequence = 0
 
 func _update_status(text: String, color: Color) -> void:
 	if harness_mode != HarnessMode.BOXING:
@@ -490,8 +493,7 @@ func _connect_hover_target(badge: Dictionary, card_key: String) -> void:
 		if panel != null:
 			panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		return
-	panel.mouse_entered.connect(_on_hover_target_entered.bind(card_key))
-	panel.mouse_exited.connect(_on_hover_target_exited.bind(card_key))
+	panel.gui_input.connect(_on_inspector_target_gui_input.bind(card_key))
 
 func _card_key_for_target(tile_id: String, target: String) -> String:
 	var tile: Dictionary = _find_tile_config(tile_id)
@@ -537,6 +539,51 @@ func _refresh_hover_card() -> void:
 	_hover_card_footer_label.visible = not _hover_card_footer_label.text.is_empty()
 	_sync_hover_card_rows(model.get("rows", []))
 	_resize_and_reposition_hover_card(_hovered_card_key)
+
+func _on_inspector_target_gui_input(event: InputEvent, card_key: String) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	accept_event()
+	_open_shared_inspector("gesture", card_key)
+
+func _build_custom_inspector_model(target_type: String, target_key: String) -> Dictionary:
+	if target_type != "gesture":
+		return {}
+	var hover_model := _build_hover_card_model(target_key)
+	return {
+		"title": HOVER_CARD_TITLE,
+		"subtitle": String(hover_model.get("title", _display_name_for_card_key(target_key))),
+		"body": _build_gesture_inspector_body(hover_model),
+		"footer": INSPECTOR_FOOTER_TEXT,
+	}
+
+func _build_gesture_inspector_body(model: Dictionary) -> String:
+	var body_lines: Array[String] = []
+	for row_variant: Variant in model.get("rows", []):
+		if not row_variant is Dictionary:
+			continue
+		var row: Dictionary = row_variant
+		var row_kind := String(row.get("row_kind", "requirement"))
+		match row_kind:
+			"section":
+				if not body_lines.is_empty():
+					body_lines.append("")
+				body_lines.append(String(row.get("label", "")))
+			"info":
+				body_lines.append("• %s" % _build_requirement_row_text(row))
+			_:
+				body_lines.append("[%s] %s" % ["x" if bool(row.get("passed", false)) else " ", _build_requirement_row_text(row)])
+				var suspect_text := String(row.get("suspect_text", ""))
+				if not suspect_text.is_empty():
+					body_lines.append("    %s" % suspect_text)
+	var footer := String(model.get("footer", ""))
+	if not footer.is_empty():
+		body_lines.append("")
+		body_lines.append(footer)
+	return "\n".join(body_lines)
 
 func _build_hover_card_model(card_key: String) -> Dictionary:
 	var spec: Dictionary = HOVER_REQUIREMENT_SPECS.get(card_key, {})

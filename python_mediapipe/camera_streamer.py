@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """MJPEG Camera Streamer - HTTP server for serving camera feed to Godot"""
 
+import json
 import threading
 import socket
 import time
@@ -8,6 +9,7 @@ import cv2
 import numpy as np
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
+from urllib.parse import parse_qs, urlparse
 
 
 class MJPEGHTTPHandler(BaseHTTPRequestHandler):
@@ -23,18 +25,27 @@ class MJPEGHTTPHandler(BaseHTTPRequestHandler):
     boundary = '--frame-boundary'
     content_type = 'multipart/x-mixed-replace; boundary=' + boundary
     jpeg_quality = 50  # Reduced from 70 for faster encoding + lower bandwidth
+    playback_status_callback = None
+    playback_command_callback = None
     
     def log_message(self, format, *args):
         """Suppress default HTTP logging to reduce noise"""
         pass
     
     def do_GET(self):
-        """Handle GET requests - serve MJPEG stream or snapshot"""
-        if self.path == '/camera' or self.path == '/stream':
+        """Handle GET requests - serve MJPEG stream, playback state, or snapshot"""
+        parsed = urlparse(self.path)
+        path = parsed.path
+        query = parse_qs(parsed.query)
+        if path == '/camera' or path == '/stream':
             self._serve_mjpeg_stream()
-        elif self.path == '/snapshot':
+        elif path == '/snapshot':
             self._serve_snapshot()
-        elif self.path == '/':
+        elif path == '/playback' or path == '/playback/status':
+            self._serve_playback_status()
+        elif path.startswith('/playback/'):
+            self._handle_playback_command(path, query)
+        elif path == '/':
             self._serve_status()
         else:
             self.send_error(404, "Not found")
@@ -103,12 +114,51 @@ class MJPEGHTTPHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(frame_data)
     
+    def _serve_playback_status(self):
+        payload = {}
+        if callable(self.playback_status_callback):
+            try:
+                payload = self.playback_status_callback() or {}
+            except Exception as exc:
+                self._send_json({"ok": False, "error": str(exc)}, status=500)
+                return
+        payload.setdefault("ok", True)
+        self._send_json(payload)
+
+    def _handle_playback_command(self, path, query):
+        action = path.removeprefix('/playback/').strip()
+        if not action:
+            self._send_json({"ok": False, "error": "missing playback action"}, status=400)
+            return
+        if not callable(self.playback_command_callback):
+            self._send_json({"ok": False, "error": "playback control unavailable"}, status=404)
+            return
+        try:
+            payload = self.playback_command_callback(action, query) or {}
+        except Exception as exc:
+            self._send_json({"ok": False, "error": str(exc)}, status=500)
+            return
+        payload.setdefault("ok", True)
+        self._send_json(payload)
+
+    def _send_json(self, payload, status=200):
+        encoded = json.dumps(payload).encode('utf-8')
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(encoded)))
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
+        self.end_headers()
+        self.wfile.write(encoded)
+
     def _serve_status(self):
         """Serve status page"""
         status = "<html><body><h1>MJPEG Camera Streamer</h1>"
         status += "<p>Endpoints:</p><ul>"
         status += "<li><a href='/camera'>/camera</a> - MJPEG stream (for Godot)</li>"
         status += "<li><a href='/snapshot'>/snapshot</a> - Single JPEG image</li>"
+        status += "<li><a href='/playback'>/playback</a> - JSON playback status</li>"
         status += "</ul></body></html>"
         
         self.send_response(200)
@@ -180,6 +230,11 @@ class MJPEGStreamer:
         MJPEGHTTPHandler.frame_lock = self._lock
         MJPEGHTTPHandler.frame_ready = self._frame_ready
     
+    def set_playback_callbacks(self, status_callback=None, command_callback=None):
+        """Attach playback status/control callbacks for prerecorded sources."""
+        MJPEGHTTPHandler.playback_status_callback = status_callback
+        MJPEGHTTPHandler.playback_command_callback = command_callback
+
     def start(self) -> bool:
         """
         Start the HTTP server in a background thread.

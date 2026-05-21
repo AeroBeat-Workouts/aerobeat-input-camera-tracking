@@ -230,6 +230,8 @@ class FrameCapture:
         self._last_signature = None
         self._repeat_signature_run = 0
         self._source_total_frames = 0
+        self._frame_sequence = 0
+        self._playback_paused = False
 
         if self._is_file_source:
             detected_fps = float(self.cap.get(cv2.CAP_PROP_FPS) or 0.0)
@@ -307,6 +309,9 @@ class FrameCapture:
     def _capture_loop(self):
         """Continuously capture frames in background thread."""
         while self._running:
+            if self._is_file_source and self._playback_paused:
+                time.sleep(0.01)
+                continue
             if self._is_file_source and self._frame_interval_sec > 0 and self._next_frame_due is not None:
                 now = time.monotonic()
                 if now < self._next_frame_due:
@@ -333,6 +338,7 @@ class FrameCapture:
 
             with self.lock:
                 self.frame = frame
+                self._frame_sequence += 1
                 if not self._ready:
                     self._ready = True
 
@@ -367,6 +373,103 @@ class FrameCapture:
         """Get the latest frame"""
         with self.lock:
             return self.frame.copy() if self.frame is not None else None
+
+    def get_frame_sequence(self):
+        with self.lock:
+            return self._frame_sequence
+
+    def is_playback_paused(self):
+        with self.lock:
+            return bool(self._playback_paused)
+
+    def set_playback_paused(self, paused):
+        if not self._is_file_source:
+            return self.get_playback_status()
+        with self.lock:
+            self._playback_paused = bool(paused)
+            self._next_frame_due = time.monotonic() + self._frame_interval_sec if self._frame_interval_sec > 0 else time.monotonic()
+        return self.get_playback_status()
+
+    def toggle_playback_paused(self):
+        if not self._is_file_source:
+            return self.get_playback_status()
+        with self.lock:
+            self._playback_paused = not self._playback_paused
+            self._next_frame_due = time.monotonic() + self._frame_interval_sec if self._frame_interval_sec > 0 else time.monotonic()
+        return self.get_playback_status()
+
+    def seek_to_seconds(self, seconds):
+        if not self._is_file_source:
+            return self.get_playback_status()
+        with self.lock:
+            duration_sec = self.get_duration_seconds()
+            target_sec = max(0.0, float(seconds))
+            if duration_sec > 0.0:
+                target_sec = min(target_sec, duration_sec)
+            if self._source_total_frames > 0 and self._source_fps > 0:
+                target_frame = int(round(target_sec * self._source_fps))
+                target_frame = max(0, min(target_frame, max(self._source_total_frames - 1, 0)))
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, target_frame)
+            else:
+                self.cap.set(cv2.CAP_PROP_POS_MSEC, target_sec * 1000.0)
+            ret, frame = self.cap.read()
+            if ret and frame is not None:
+                self.frame = frame
+                self._frame_sequence += 1
+                self._captured_frame_count += 1
+                self._record_file_frame_stats(frame)
+                self._ready = True
+            self._playback_paused = True
+            self._next_frame_due = time.monotonic() + self._frame_interval_sec if self._frame_interval_sec > 0 else time.monotonic()
+        return self.get_playback_status()
+
+    def get_duration_seconds(self):
+        if not self._is_file_source or self._source_fps <= 0 or self._source_total_frames <= 0:
+            return 0.0
+        return max(float(self._source_total_frames - 1) / self._source_fps, 0.0)
+
+    def get_playback_status(self):
+        with self.lock:
+            current_frame = max(int(self.cap.get(cv2.CAP_PROP_POS_FRAMES) or 0), 0)
+            current_time_sec = max(float(self.cap.get(cv2.CAP_PROP_POS_MSEC) or 0.0) / 1000.0, 0.0)
+            duration_sec = self.get_duration_seconds()
+            total_frames = int(self._source_total_frames)
+            progress = 0.0
+            if duration_sec > 0.0:
+                progress = max(0.0, min(current_time_sec / duration_sec, 1.0))
+            elif total_frames > 1:
+                progress = max(0.0, min(current_frame / float(total_frames - 1), 1.0))
+            return {
+                "is_file_source": bool(self._is_file_source),
+                "paused": bool(self._playback_paused),
+                "current_frame": current_frame,
+                "total_frames": total_frames,
+                "current_time_sec": current_time_sec,
+                "duration_sec": duration_sec,
+                "progress": progress,
+                "fps": float(self._source_fps),
+                "loop_count": int(self._loop_count),
+                "source": str(self.camera_id),
+            }
+
+    def handle_playback_command(self, action, query):
+        if action == 'play':
+            return self.set_playback_paused(False)
+        if action == 'pause':
+            return self.set_playback_paused(True)
+        if action == 'toggle':
+            return self.toggle_playback_paused()
+        if action == 'seek':
+            seconds_values = query.get('seconds', [])
+            progress_values = query.get('progress', [])
+            if seconds_values:
+                return self.seek_to_seconds(float(seconds_values[0]))
+            if progress_values:
+                progress = max(0.0, min(float(progress_values[0]), 1.0))
+                duration_sec = self.get_duration_seconds()
+                return self.seek_to_seconds(duration_sec * progress)
+            raise ValueError('seek requires seconds or progress query parameter')
+        raise ValueError(f'unsupported playback action: {action}')
 
     def stop(self):
         self._running = False
@@ -683,16 +786,6 @@ def main():
         min_tracking_confidence=args.tracking_confidence
     )
 
-    # Initialize MJPEG streamer if enabled
-    mjpeg_streamer = None
-    if args.stream_camera:
-        mjpeg_streamer = MJPEGStreamer(port=args.stream_port, quality=args.stream_quality)
-        if mjpeg_streamer.start():
-            print(f"Camera streaming enabled on port {args.stream_port}")
-        else:
-            print("Warning: Failed to start camera streamer")
-            mjpeg_streamer = None
-
     # Initialize One-Euro filter bank
     filter_bank = None
     if args.use_filter:
@@ -742,6 +835,21 @@ def main():
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.height)
         cap.set(cv2.CAP_PROP_FPS, args.max_fps)
         frame_capture = None
+
+    # Initialize MJPEG streamer if enabled
+    mjpeg_streamer = None
+    if args.stream_camera:
+        mjpeg_streamer = MJPEGStreamer(port=args.stream_port, quality=args.stream_quality)
+        if frame_capture and frame_capture.is_file_source():
+            mjpeg_streamer.set_playback_callbacks(
+                status_callback=frame_capture.get_playback_status,
+                command_callback=frame_capture.handle_playback_command,
+            )
+        if mjpeg_streamer.start():
+            print(f"Camera streaming enabled on port {args.stream_port}")
+        else:
+            print("Warning: Failed to start camera streamer")
+            mjpeg_streamer = None
 
     # Frame skipping for performance
     skip_frames = args.skip_frames
@@ -808,6 +916,7 @@ def main():
     # Frame counter for skipping and timestamp calculation
     frame_counter = 0
     start_time_ms = int(time.time() * 1000)
+    last_processed_capture_sequence = -1
 
     while _running:
         frame_start = time.time()
@@ -825,14 +934,22 @@ def main():
                 pass  # Ignore other errors
 
         # Capture frame
+        capture_sequence = -1
+        playback_paused = False
         if frame_capture:
             frame = frame_capture.get_frame()
+            capture_sequence = frame_capture.get_frame_sequence()
+            playback_paused = frame_capture.is_playback_paused()
             ret = frame is not None
         else:
             ret, frame = cap.read()
 
         if not ret or frame is None:
             print("Warning: Failed to capture frame")
+            continue
+
+        if frame_capture and frame_capture.is_file_source() and playback_paused and capture_sequence == last_processed_capture_sequence:
+            time.sleep(0.01)
             continue
 
         # Update MJPEG streamer with a truthful preview frame before processing.
@@ -949,6 +1066,8 @@ def main():
         # Record latency metrics
         latency_tracker.record_frame(capture_time, inference_time, serialization_time,
                                      filter_time, total_time)
+        if frame_capture and capture_sequence >= 0:
+            last_processed_capture_sequence = capture_sequence
 
         # Show debug window with landmarks
         if args.show_window:
