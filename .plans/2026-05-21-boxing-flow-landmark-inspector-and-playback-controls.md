@@ -186,7 +186,7 @@ Targeted validation run:
 - `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` ✅
 - `~/.local/bin/godot --headless --path .testbed res://scenes/flow_proving.tscn --quit-after 1` ✅
 
-Commit / push: `527ea61` (`Polish playback timeline inspector behavior`) pushed to `main`.
+Commit / push: `5ba130d` (`Polish playback timeline inspector behavior`) pushed to `main`.
 
 ---
 
@@ -225,7 +225,7 @@ Commit / push: `527ea61` (`Polish playback timeline inspector behavior`) pushed 
 - `a34d853` - Update plan for inspector regression fix
 - `5570e82` - Fix landmark inspector truth and expose smoothing style
 - `9e0ac48` - Update plan for landmark truth slice
-- `527ea61` - Polish playback timeline inspector behavior
+- `5ba130d` - Polish playback timeline inspector behavior
 
 **Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught UX regressions and then exposed deeper debug-truth problems that headless smoke checks did not: first background click dismissal and practical readability width, then stuck `x/y`, misleading tracking-state behavior, jitter/smoothing concerns, and finally timeline-specific polish around panel affordances and allowed-click zones. The shared-harness architecture continues to hold up because these fixes remain localized instead of forcing scene-specific rewrites. The main UI lesson from this final slice is that click-away dismissal needs a clearly defined allowlist for interactive overlay surfaces, otherwise shared debug panels feel brittle even when the underlying state model is correct.
 
