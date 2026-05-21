@@ -20,7 +20,7 @@ const MAX_TRAIL_FRAME_JUMP := 0.28
 const TRAIL_VISIBILITY_THRESHOLD_FLOOR := 0.18
 const MAX_TRAIL_FALLBACK_SPREAD := 0.18
 const PLAYBACK_STATUS_POLL_INTERVAL_MS := 250
-const INSPECTOR_PANEL_WIDTH := 420.0
+const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
 const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
 const INSPECTOR_FOOTER_TEXT := "Click away to close"
@@ -667,7 +667,7 @@ func _process(_delta: float) -> void:
 	if steady_state_console_debug and _frame_count % 30 == 0:
 		_emit_console_snapshot_if_changed()
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if _shared_inspector_panel == null or not _shared_inspector_panel.visible:
 		return
 	if not (event is InputEventMouseButton):

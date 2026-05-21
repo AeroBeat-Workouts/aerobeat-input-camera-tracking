@@ -80,13 +80,42 @@ Repo-local validation run:
 
 ---
 
-### Task 2: Manual truth-pass on Cookie terminal
+### Task 2: Fix post-handoff inspector regressions from Derrick's manual Cookie test
+
+**Bead ID:** `aerobeat-input-mediapipe-python-al0`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** Task 1 output  
+**Prompt:** Claim bead `aerobeat-input-mediapipe-python-al0` with `bd update aerobeat-input-mediapipe-python-al0 --status in_progress --json`. Fix the two regressions Derrick reported during manual Cookie testing of the new proving-scene inspector: (1) click-away dismissal does not currently close the open info panel, and (2) the shared panel width is too narrow, causing Punch-L gesture text to wrap onto two lines unnecessarily. Keep the existing shared inspector architecture, fix click-away behavior without breaking panel clicks or target swaps, widen the panel enough for the current Punch rows to read comfortably, run targeted validation, update this plan with exact changes and validation, then commit/push to `main` and close the bead.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.plans/2026-05-21-boxing-flow-landmark-inspector-and-playback-controls.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed both regressions with a focused shared-harness patch in `.testbed/scripts/proving_harness.gd`. Click-away dismissal now runs from `_input()` instead of `_unhandled_input()`, which lets background/control clicks close the open inspector even when other UI consumes the event later, while still preserving panel clicks, the `X` close button, and click-to-swap target behavior because clicks inside the panel early-return and new target clicks still reopen/swap after the close. Increased `INSPECTOR_PANEL_WIDTH` from `420.0` to `520.0` so current Punch inspector rows fit without the unnecessary wrap Derrick reported.
+
+Targeted validation run:
+- `~/.local/bin/godot --headless --path .testbed --check-only --script scripts/proving_harness.gd` ✅
+- `~/.local/bin/godot --headless --path .testbed --check-only --script scripts/boxing_proving_harness.gd` ✅
+- `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` ✅
+
+Commit / push: pending final follow-up commit hash.
+
+---
+
+### Task 3: Manual truth-pass on Cookie terminal
 
 **Bead ID:** `Deferred to Derrick`  
 **SubAgent:** `Deferred to Derrick`  
 **Role:** `qa`  
-**References:** Task 1 output  
-**Prompt:** Derrick will manually test the new landmark inspector and prerecorded playback controls on Cookie’s terminal once implementation is landed.
+**References:** Task 1-2 output  
+**Prompt:** Derrick will manually test the new landmark inspector and prerecorded playback controls on Cookie’s terminal once the follow-up fixes are landed.
 
 **Folders Created/Deleted/Modified:**
 - none yet
@@ -102,16 +131,18 @@ Repo-local validation run:
 
 ## Final Results
 
-**Status:** ⚠️ Pending Derrick Manual QA
+**Status:** ⚠️ In Progress
 
-**What We Built:** The Boxing and Flow proving harnesses now share one click-based inspector controller for gesture and landmark debugging, plus a prerecorded-only playback bar with truthful play/pause/seek integration against the Python sidecar. Boxing gesture badges now open the shared inspector instead of a hover-only card, landmark dots now expose enlarged nearest-hit click targets, and prerecorded seeking clears local/provider gesture-history state before pausing on the requested frame.
+**What We Built:** The Boxing and Flow proving harnesses now share one click-based inspector controller for gesture and landmark debugging, plus a prerecorded-only playback bar with truthful play/pause/seek integration against the Python sidecar. Boxing gesture badges now open the shared inspector instead of a hover-only card, landmark dots now expose enlarged nearest-hit click targets, and prerecorded seeking clears local/provider gesture-history state before pausing on the requested frame. Follow-up manual Cookie testing immediately surfaced two regressions now queued for repair: broken click-away dismissal and insufficient panel width for current Punch text.
 
-**Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface and click-away/close-button behavior; `REF-05` now provides enlarged landmark hit-testing with closest-target resolution; `REF-01`/`REF-02` were smoke-launched headlessly to confirm both proving scenes still boot; `REF-06`'s prior Boxing gesture requirement content was preserved and funneled through the shared inspector body renderer instead of the previous hover-only card.
+**Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface and click-away/close-button behavior, though click-away needs a follow-up fix from Task 2; `REF-05` now provides enlarged landmark hit-testing with closest-target resolution; `REF-01`/`REF-02` were smoke-launched headlessly to confirm both proving scenes still boot; `REF-06`'s prior Boxing gesture requirement content was preserved and funneled through the shared inspector body renderer instead of the previous hover-only card.
 
 **Commits:**
 - `2dbf324` - Add proving inspector and playback controls
+- `3e72292` - Update plan with final commit hash
+- Pending follow-up fix commit for click-away + width regressions
 
-**Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. The one validation caveat worth preserving is that `test_proving_harness_trails.gd` still has an unrelated pre-existing failure in `test_resolves_trail_hand_point_by_clamping_near_edge_jitter`, so manual QA should focus on the new inspector/playback slice rather than treating that older failure as a regression from this work.
+**Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught two UX regressions that headless smoke checks did not: background click dismissal and practical readability width. The pre-existing unrelated caveat remains that `test_proving_harness_trails.gd` still has a failure in `test_resolves_trail_hand_point_by_clamping_near_edge_jitter`, so manual QA should focus on the inspector/playback slice rather than treating that older failure as a regression from this work.
 
 ---
 
