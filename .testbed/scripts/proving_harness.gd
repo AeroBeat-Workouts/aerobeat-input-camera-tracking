@@ -20,6 +20,10 @@ const MAX_TRAIL_FRAME_JUMP := 0.28
 const TRAIL_VISIBILITY_THRESHOLD_FLOOR := 0.18
 const MAX_TRAIL_FALLBACK_SPREAD := 0.18
 const PLAYBACK_STATUS_POLL_INTERVAL_MS := 250
+const PLAYBACK_TOGGLE_BUTTON_WIDTH := 52.0
+const PLAYBACK_ICON_PLAY := "▶"
+const PLAYBACK_ICON_PAUSE := "⏸"
+const INSPECTOR_LIVE_REFRESH_INTERVAL_MS := 120
 const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
 const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
@@ -141,6 +145,15 @@ enum StartupMode {
 	GODOT_ONLY_DEBUG,
 }
 
+enum TrackingSmoothingStyle {
+	LITE_RAW,
+	FULL_RAW,
+	HEAVY_RAW,
+	LITE_FILTERED,
+	FULL_FILTERED,
+	HEAVY_FILTERED,
+}
+
 @export var harness_mode: HarnessMode = HarnessMode.BOXING
 @export var startup_mode: StartupMode = StartupMode.TRACKING
 @export_file("*.mp4", "*.mov", "*.avi", "*.mkv", "*.webm") var prerecorded_video_source := ""
@@ -148,6 +161,7 @@ enum StartupMode {
 @export_multiline var scene_notes := ""
 @export var overlay_visibility_threshold := 0.35
 @export_enum("full", "optimized", "off") var tracking_overlay_mode := "full"
+@export var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.FULL_RAW
 @export_range(1, 6, 1) var gesture_eval_interval_frames := 1
 @export var show_landmarks := true
 @export var show_trails := true
@@ -220,6 +234,8 @@ var _shared_inspector_footer_label: Label = null
 var _shared_inspector_target_type := ""
 var _shared_inspector_target_key := ""
 var _shared_inspector_frozen_model: Dictionary = {}
+var _shared_inspector_live_model: Dictionary = {}
+var _shared_inspector_live_refresh_due_ms := 0
 var _shared_inspector_landmark_last_known := {}
 var _playback_overlay_root: Control = null
 var _playback_bar_panel: PanelContainer = null
@@ -379,7 +395,8 @@ func _ensure_playback_controls() -> void:
 	margin.add_child(row)
 
 	_playback_toggle_button = Button.new()
-	_playback_toggle_button.text = "Pause"
+	_playback_toggle_button.custom_minimum_size = Vector2(PLAYBACK_TOGGLE_BUTTON_WIDTH, 0.0)
+	_playback_toggle_button.text = PLAYBACK_ICON_PAUSE
 	_playback_toggle_button.pressed.connect(_on_playback_toggle_pressed)
 	row.add_child(_playback_toggle_button)
 
@@ -618,6 +635,7 @@ func _setup_auto_start() -> void:
 		return
 
 	auto_start_manager.camera_source_override = _get_autostart_camera_source_override()
+	_apply_tracking_smoothing_style_to_autostart_manager()
 	auto_start_manager.tracking_overlay_mode = tracking_overlay_mode
 	auto_start_manager.debug_logging = steady_state_console_debug or shutdown_console_debug
 	auto_start_manager.skip_sidecar_stop_on_close_debug = skip_sidecar_stop_on_close_debug
@@ -759,6 +777,8 @@ func _build_runtime_config() -> MediaPipeConfig:
 		config.set_selected_camera_device_id(live_camera_source)
 	config.tracking_overlay_mode = tracking_overlay_mode
 	config.gesture_eval_interval_frames = maxi(1, gesture_eval_interval_frames)
+	var tracking_style := _tracking_smoothing_style_spec()
+	config.model_complexity = int(tracking_style.get("model_complexity", config.model_complexity))
 	return config
 
 func _connect_mode_signals() -> void:
@@ -1145,6 +1165,8 @@ func _open_shared_inspector(target_type: String, target_key: String) -> void:
 	_shared_inspector_target_type = target_type
 	_shared_inspector_target_key = target_key
 	_shared_inspector_frozen_model = {}
+	_shared_inspector_live_model = {}
+	_shared_inspector_live_refresh_due_ms = 0
 	if _should_freeze_landmark_inspector():
 		_shared_inspector_frozen_model = _build_shared_inspector_model(target_type, target_key)
 	_refresh_shared_inspector(true)
@@ -1153,6 +1175,8 @@ func _close_shared_inspector() -> void:
 	_shared_inspector_target_type = ""
 	_shared_inspector_target_key = ""
 	_shared_inspector_frozen_model = {}
+	_shared_inspector_live_model = {}
+	_shared_inspector_live_refresh_due_ms = 0
 	if _shared_inspector_panel != null:
 		_shared_inspector_panel.visible = false
 
@@ -1162,9 +1186,7 @@ func _refresh_shared_inspector(force: bool = false) -> void:
 	if _shared_inspector_target_type.is_empty() or _shared_inspector_target_key.is_empty():
 		_shared_inspector_panel.visible = false
 		return
-	var model := _shared_inspector_frozen_model if _should_use_frozen_landmark_inspector() else _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
-	if model.is_empty() and force:
-		model = _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
+	var model := _resolve_shared_inspector_model(force)
 	if model.is_empty():
 		_shared_inspector_panel.visible = false
 		return
@@ -1176,6 +1198,18 @@ func _refresh_shared_inspector(force: bool = false) -> void:
 	_shared_inspector_footer_label.visible = not _shared_inspector_footer_label.text.is_empty()
 	_shared_inspector_panel.visible = true
 	_reposition_shared_inspector()
+
+func _resolve_shared_inspector_model(force: bool = false) -> Dictionary:
+	if _should_use_frozen_landmark_inspector():
+		return _shared_inspector_frozen_model
+	if _shared_inspector_target_type == "landmark":
+		var now_ms := Time.get_ticks_msec()
+		if not force and not _shared_inspector_live_model.is_empty() and now_ms < _shared_inspector_live_refresh_due_ms:
+			return _shared_inspector_live_model
+		_shared_inspector_live_model = _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
+		_shared_inspector_live_refresh_due_ms = now_ms + INSPECTOR_LIVE_REFRESH_INTERVAL_MS
+		return _shared_inspector_live_model
+	return _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
 
 func _build_shared_inspector_model(target_type: String, target_key: String) -> Dictionary:
 	if target_type == "landmark":
@@ -1192,22 +1226,28 @@ func _build_landmark_inspector_model(landmark_id: int) -> Dictionary:
 	var lines: Array[String] = []
 	if bool(snapshot.get("tracked", false)):
 		_shared_inspector_landmark_last_known[str(landmark_id)] = snapshot.duplicate(true)
-		lines.append("Status: tracked")
+		lines.append("Status: tracked now")
 		lines.append("Confidence: %s" % _fmt_percent(snapshot.get("visibility", 0.0)))
-		lines.append("Position (norm): x=%s  y=%s  z=%s" % [
-			_fmt_float(snapshot.get("x", 0.0)),
-			_fmt_float(snapshot.get("y", 0.0)),
-			_fmt_float(snapshot.get("z", 0.0)),
+		lines.append("Position (norm, raw live): x=%s  y=%s  z=%s" % [
+			_fmt_inspector_float(snapshot.get("x", 0.0)),
+			_fmt_inspector_float(snapshot.get("y", 0.0)),
+			_fmt_inspector_float(snapshot.get("z", 0.0)),
 		])
+		if bool(snapshot.get("has_smoothed_position", false)):
+			lines.append("Detector-smoothed position: x=%s  y=%s  z=%s" % [
+				_fmt_inspector_float(snapshot.get("smoothed_x", 0.0)),
+				_fmt_inspector_float(snapshot.get("smoothed_y", 0.0)),
+				_fmt_inspector_float(snapshot.get("smoothed_z", 0.0)),
+			])
 	else:
 		lines.append("Status: not currently tracked")
 		var last_known: Dictionary = _shared_inspector_landmark_last_known.get(str(landmark_id), {})
 		if not last_known.is_empty():
 			lines.append("Last known confidence: %s" % _fmt_percent(last_known.get("visibility", 0.0)))
-			lines.append("Last known position: x=%s  y=%s  z=%s" % [
-				_fmt_float(last_known.get("x", 0.0)),
-				_fmt_float(last_known.get("y", 0.0)),
-				_fmt_float(last_known.get("z", 0.0)),
+			lines.append("Last known raw position: x=%s  y=%s  z=%s" % [
+				_fmt_inspector_float(last_known.get("x", 0.0)),
+				_fmt_inspector_float(last_known.get("y", 0.0)),
+				_fmt_inspector_float(last_known.get("z", 0.0)),
 			])
 	var body_part: StringName = snapshot.get("body_part", &"")
 	if body_part != StringName():
@@ -1218,19 +1258,23 @@ func _build_landmark_inspector_model(landmark_id: int) -> Dictionary:
 	var direction: Variant = snapshot.get("direction", null)
 	if direction is Vector2 and body_part != StringName():
 		lines.append("Direction: %s" % _fmt_vec2(direction))
-	lines.append("Tracking state: %s" % _tracking_status_text(_latest_state))
+	lines.append("Detector pose lock: %s" % _tracking_status_text(_latest_state))
+	var footer := INSPECTOR_FOOTER_TEXT
+	if _shared_inspector_target_type == "landmark" and not _should_use_frozen_landmark_inspector():
+		footer = "Live values refresh about every %.2fs for readability. %s" % [float(INSPECTOR_LIVE_REFRESH_INTERVAL_MS) / 1000.0, INSPECTOR_FOOTER_TEXT]
 	return {
 		"title": "Landmark Inspector",
 		"subtitle": subtitle,
 		"body": "\n".join(lines),
-		"footer": INSPECTOR_FOOTER_TEXT,
+		"footer": footer,
 	}
 
 func _capture_landmark_snapshot(landmark_id: int) -> Dictionary:
 	var state: Dictionary = _latest_state
 	var state_landmarks: Dictionary = state.get("landmarks_by_id", {})
-	var state_landmark: Dictionary = state_landmarks.get(landmark_id, {}) if state_landmarks is Dictionary else {}
-	var landmark := state_landmark if not state_landmark.is_empty() else _find_landmark(_latest_landmarks, landmark_id)
+	var raw_landmark := _find_landmark(_latest_landmarks, landmark_id)
+	var smoothed_landmark: Dictionary = state_landmarks.get(landmark_id, {}) if state_landmarks is Dictionary else {}
+	var landmark := raw_landmark if not raw_landmark.is_empty() else smoothed_landmark
 	var tracked := not landmark.is_empty()
 	var body_part: StringName = LANDMARK_BODY_PART_HINTS.get(landmark_id, &"")
 	var velocity: Variant = null
@@ -1247,6 +1291,10 @@ func _capture_landmark_snapshot(landmark_id: int) -> Dictionary:
 		"y": float(landmark.get("y", 0.0)),
 		"z": float(landmark.get("z", 0.0)),
 		"visibility": float(landmark.get("v", landmark.get("visibility", 0.0))),
+		"has_smoothed_position": not smoothed_landmark.is_empty(),
+		"smoothed_x": float(smoothed_landmark.get("x", 0.0)),
+		"smoothed_y": float(smoothed_landmark.get("y", 0.0)),
+		"smoothed_z": float(smoothed_landmark.get("z", 0.0)),
 		"body_part": body_part,
 		"velocity": velocity,
 		"direction": direction,
@@ -1327,7 +1375,7 @@ func _refresh_playback_controls_state() -> void:
 	if _playback_toggle_button == null or _playback_seek_slider == null or _playback_time_label == null:
 		return
 	var paused := bool(_playback_status.get("paused", false))
-	_playback_toggle_button.text = "Play" if paused else "Pause"
+	_playback_toggle_button.text = PLAYBACK_ICON_PLAY if paused else PLAYBACK_ICON_PAUSE
 	var controls_enabled := not _playback_command_request_in_flight
 	_playback_toggle_button.disabled = not _is_prerecorded_source_active() or not controls_enabled
 	_playback_seek_slider.editable = _is_prerecorded_source_active() and controls_enabled
@@ -1348,6 +1396,8 @@ func _on_playback_status_request_completed(_result: int, response_code: int, _he
 		_playback_status = parsed
 		if not bool(_playback_status.get("paused", false)):
 			_shared_inspector_frozen_model = {}
+			_shared_inspector_live_model = {}
+			_shared_inspector_live_refresh_due_ms = 0
 		_refresh_playback_controls_state()
 
 func _on_playback_command_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -1370,6 +1420,8 @@ func _on_playback_seek_drag_ended(value_changed: bool) -> void:
 	var progress := clampf(float(_playback_seek_slider.value), 0.0, 1.0)
 	_reset_runtime_debug_state_for_seek()
 	_shared_inspector_frozen_model = {}
+	_shared_inspector_live_model = {}
+	_shared_inspector_live_refresh_due_ms = 0
 	_send_playback_command("/playback/seek?progress=%.6f" % progress)
 
 func _reset_runtime_debug_state_for_seek() -> void:
@@ -1428,7 +1480,7 @@ func _build_live_status_text() -> String:
 	var pose_count := int(provider.get_num_poses()) if provider != null else 0
 	var last_event_name := _latest_event_name()
 	var last_event_age := _last_seen_text(last_event_name) if last_event_name != "" else "never"
-	return "Live | mode=%s srv=%s cam=%s src=%s track=%s poses=%d audit=%s last=%s %s" % [
+	return "Live | mode=%s srv=%s cam=%s src=%s pose_lock=%s poses=%d audit=%s last=%s %s" % [
 		_get_startup_mode_label(),
 		_server_status_text(),
 		_camera_status_text("on", "off"),
@@ -1461,7 +1513,8 @@ func _build_quick_stats_text() -> String:
 		"Server: %s" % _server_status_text(),
 		"Camera: %s" % _camera_status_text("streaming", "offline"),
 		"Source: %s" % _camera_source_summary_text(),
-		"Tracking: %s" % _tracking_status_text(state),
+		"Detector pose lock: %s" % _tracking_status_text(state),
+		"Tracking style: %s" % String(_tracking_smoothing_style_spec().get("label", "unknown")),
 		"Poses: %d" % pose_count,
 		"Preview audit: %s" % _preview_only_audit_text(),
 		"Visible landmarks: %d" % visible_landmarks,
@@ -1503,7 +1556,8 @@ func _build_summary_text() -> String:
 		"Harness: %s" % scene_title,
 		"Startup: %s" % _get_startup_mode_label(),
 		"Video source: %s" % _camera_source_summary_text(),
-		"Tracking state: %s" % _tracking_status_text(state),
+		"Detector pose lock: %s" % _tracking_status_text(state),
+		"Tracking style: %s" % String(_tracking_smoothing_style_spec().get("label", "unknown")),
 		"Preview audit: %s" % _preview_only_audit_text(),
 		"Baseline calibrated: %s" % str(bool(baseline.get("is_calibrated", false))),
 		"Baseline frames: %d" % int(baseline.get("sample_frames", 0)),
@@ -2199,6 +2253,9 @@ func _mode_name() -> String:
 func _fmt_float(value: Variant) -> String:
 	return "%.3f" % float(value if value != null else 0.0)
 
+func _fmt_inspector_float(value: Variant) -> String:
+	return "%.3f" % float(value if value != null else 0.0)
+
 func _fmt_vec2(value: Variant) -> String:
 	if value is Vector2:
 		return "(%.3f, %.3f)" % [value.x, value.y]
@@ -2234,6 +2291,28 @@ func _tracking_status_text(state: Dictionary) -> String:
 	if startup_mode == StartupMode.PREVIEW_ONLY_DEBUG:
 		return "invalid" if not _preview_only_invalid_reason.is_empty() else "preview_only"
 	return String(state.get("tracking_state", &"lost"))
+
+func _tracking_smoothing_style_spec() -> Dictionary:
+	match tracking_smoothing_style:
+		TrackingSmoothingStyle.LITE_RAW:
+			return {"label": "Lite + raw", "model_complexity": 0, "no_filter": true}
+		TrackingSmoothingStyle.HEAVY_RAW:
+			return {"label": "Heavy + raw", "model_complexity": 2, "no_filter": true}
+		TrackingSmoothingStyle.LITE_FILTERED:
+			return {"label": "Lite + One-Euro", "model_complexity": 0, "no_filter": false}
+		TrackingSmoothingStyle.FULL_FILTERED:
+			return {"label": "Full + One-Euro", "model_complexity": 1, "no_filter": false}
+		TrackingSmoothingStyle.HEAVY_FILTERED:
+			return {"label": "Heavy + One-Euro", "model_complexity": 2, "no_filter": false}
+		_:
+			return {"label": "Full + raw", "model_complexity": 1, "no_filter": true}
+
+func _apply_tracking_smoothing_style_to_autostart_manager() -> void:
+	if auto_start_manager == null:
+		return
+	var spec := _tracking_smoothing_style_spec()
+	auto_start_manager.model_complexity = int(spec.get("model_complexity", auto_start_manager.model_complexity))
+	auto_start_manager.no_filter = bool(spec.get("no_filter", auto_start_manager.no_filter))
 
 func _update_status(text: String, color: Color) -> void:
 	var source_suffix := " | src=%s" % _camera_source_compact_text()

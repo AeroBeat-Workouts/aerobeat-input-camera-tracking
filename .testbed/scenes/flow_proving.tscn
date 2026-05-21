@@ -79,6 +79,7 @@ script = ExtResource("1_harness")
 harness_mode = 1
 prerecorded_video_source = "res://assets/fixtures/flow/swings/left-and-right-hands/same-direction/lr3->lr9/flow_swing_lr3->lr9_repeat_04_take_01.mp4"
 scene_title = "FLOW GESTURE DETECTION"
+tracking_smoothing_style = 1
 
 [node name="AutoStartManager" type="Node" parent="." unique_id=681176957]
 script = ExtResource("4_autostart")
