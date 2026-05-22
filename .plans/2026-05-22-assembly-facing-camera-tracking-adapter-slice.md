@@ -1,7 +1,7 @@
 # AeroBeat Input Camera Tracking — Assembly-Facing CameraTracking Adapter Slice
 
 **Date:** 2026-05-22  
-**Status:** Draft / execution ready  
+**Status:** Complete  
 **Agent:** Cookie 🍪
 
 ---
@@ -164,9 +164,26 @@ Validation run from repo root:
 **Files Created/Deleted/Modified:**
 - none required unless a minimal QA artifact becomes necessary
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA pass. Independently verified that `src/input_provider.gd` itself exposes and uses a real contract-first lane when a `CameraTracking` session is supplied or conservatively discoverable, while preserving the current assembly-facing compatibility shell.
+
+Exact QA commands run from repo root:
+- `python3 scripts/refresh_testbed_workbench.py` ✅ exited 0
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_input_provider_adapter.gd -gexit` ✅ 9/9 passed
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` ✅ 4/4 passed
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gexit` ⚠️ exited 1 with pre-existing unrelated failures in legacy/proving tests (`test_mediapipe_process.gd`, `test_mediapipe_provider.gd`, `test_proving_harness_trails.gd`); the new adapter slice tests remained green
+- `git show --stat --name-only --format=fuller f4755c1` ✅ confirmed the implementation commit touched only repo-owned source/docs/tests/plan files (`src/input_provider.gd`, `.testbed/tests/unit/test_input_provider_adapter.gd`, `README.md`, plans) and did not edit generated addon mirrors
+- `git diff --stat -- . ':(exclude).testbed/addons/**'` / `git diff --name-only` ✅ at QA time the only working-tree change was this plan-file update
+
+Evidence gathered:
+- `src/input_provider.gd` resolves a tracking session first in `_ensure_provider()` and switches to `providers/camera_tracking_provider.gd` via `_ensure_camera_tracking_provider(...)` when `_resolve_tracking_session()` returns a session; legacy MediaPipe wiring is only chosen in `_ensure_legacy_mediapipe_provider()` when no session is available
+- adapter-level proofs live in `test_input_provider_adapter.gd`, not only provider-level tests: explicit session injection proves `uses_camera_tracking_contract_path()`, `is_using_legacy_fallback() == false`, contract-mode camera getters, frame-driven tracking/getters, camera switching through `tracker.change(...)`, and provider-session publication metadata `provider_lane = camera_tracking` with `legacy_fallback = false`
+- conservative discovery is separately proven by `test_input_provider_adapter_discovers_camera_tracking_session_before_falling_back()`
+- retained fallback is clearly provisional in both code and docs: top-of-file comments in `src/input_provider.gd`, README migration notes, metadata flag `legacy_fallback`, and provider lane naming `legacy_mediapipe`
+- no backend-factory registration, upstream runtime boot ownership, or addon-mirror editing was added in this slice; the adapter consumes a supplied/discovered session and republishes adapter compatibility only
+
+Notable nuance preserved for audit: in the explicit-session unit test the adapter node is added to the tree before `set_tracking_session(...)`, so `_ready()` may briefly create the legacy provider before the supplied session replaces it. The truthful migrated claim still passed because the started/public adapter lane after session supply is `camera_tracking`, but the auditor may want to note that the current implementation is contract-first at start/use time rather than “never instantiate legacy under any circumstances.”
 
 ---
 
@@ -184,9 +201,35 @@ Validation run from repo root:
 **Files Created/Deleted/Modified:**
 - audit notes only if needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit pass. Independently re-ran the repo-local validation surface, reviewed the implementation diff, and checked the plan’s honesty bars against current source. Commands run from repo root:
+- `bd context --json`
+- `bd show aerobeat-input-camera-tracking-yup --json`
+- `bd ready --json`
+- `bd update aerobeat-input-camera-tracking-yup --status in_progress --json`
+- `git status --short`
+- `git log --oneline -n 8`
+- `git show --stat --name-only --format=fuller f4755c1`
+- `git show --unified=80 --format=medium f4755c1 -- src/input_provider.gd .testbed/tests/unit/test_input_provider_adapter.gd README.md`
+- `python3 scripts/refresh_testbed_workbench.py`
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_input_provider_adapter.gd -gexit`
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit`
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gexit`
+
+What the audit verified:
+- `src/input_provider.gd` now exposes a real assembly-facing migrated lane over `CameraTrackingProvider`: `_ensure_provider()` resolves a tracking session first, `_ensure_camera_tracking_provider(...)` swaps in `providers/camera_tracking_provider.gd`, and adapter-level tests prove contract-mode start/query/signal/session-publication behavior through `input_provider.gd` itself rather than only through the lower provider seam.
+- compatibility shims stayed narrow and honest: `PROVIDER_ID == "mediapipe_python"`, provider-session publication through input-core, and small helper methods for session injection/discovery (`set_tracking_session`, `clear_tracking_session`, `get_tracking_session`, `uses_camera_tracking_contract_path`, `is_using_legacy_fallback`) without reclaiming backend-registration or assembly-architecture ownership.
+- legacy fallback remains explicitly provisional in code and docs: top-of-file scope notes, README wording, and published metadata (`provider_lane`, `legacy_fallback`) all distinguish `camera_tracking` from `legacy_mediapipe` instead of pretending the old lane is the migrated truth.
+- the slice did not reclaim upstream runtime/lifecycle/vendor/preview ownership for the contract lane: `input_provider.gd` consumes a supplied/discoverable session only, and `CameraTrackingProvider` starts/stops the session only when `manage_tracking_session_lifecycle` is explicitly enabled; no backend-factory registration or vendor runtime boot logic was added here.
+- QA’s nuance is real and preserved: in `test_input_provider_adapter_prefers_supplied_camera_tracking_session()`, the adapter is added to the tree before `set_tracking_session(...)`, so `_ready()` can briefly instantiate the legacy provider before the contract session is injected and replaces it. The honest claim after this slice is therefore **a real contract-first migrated lane at start/use time**, not a stronger claim that explicit-session flows can never instantiate the provisional legacy provider before injection.
+
+Validation results matched that assessment:
+- adapter tests: ✅ 9/9 passed
+- contract-provider tests: ✅ 4/4 passed
+- full unit suite: ⚠️ still has pre-existing unrelated failures in `test_mediapipe_process.gd`, `test_mediapipe_provider.gd`, and `test_proving_harness_trails.gd`; these do not contradict the adapter migration claim
+
+Audit verdict: the migrated lane is genuinely proven at the assembly-facing adapter level, with the explicit caveat above about brief pre-injection legacy instantiation in one test setup. Bead closed.
 
 ---
 
@@ -210,17 +253,17 @@ Validation run from repo root:
 
 ## Final Results
 
-**Status:** ✅ Planning complete / execution ready
+**Status:** ✅ Complete
 
-**What We Built:** Created the next repo-local execution plan for the assembly-facing migration step and a serialized coder → QA → auditor bead chain focused on turning `src/input_provider.gd` into a contract-first assembly adapter over `CameraTrackingProvider`, without reclaiming upstream runtime/vendor ownership.
+**What We Built:** Completed the full assembly-facing migration slice through coder → QA → auditor. `src/input_provider.gd` now acts as a contract-first adapter over `CameraTrackingProvider` when a `CameraTracking` session is explicitly supplied or conservatively discoverable, while preserving only narrow compatibility shims and a clearly provisional legacy fallback when no session exists.
 
-**Reference Check:** Planning keeps the continuous upstream contract (`REF-09`, `REF-10`) and existing detector seam (`REF-04`, `REF-05`) as the new truth sources, while treating `src/input_provider.gd` (`REF-03`) and its current tests (`REF-06`) as the narrow migration target. Input-core registry expectations (`REF-08`) are preserved only as compatibility behavior.
+**Reference Check:** The slice now truthfully treats the upstream continuous contract (`REF-09`, `REF-10`) plus the existing detector seam (`REF-04`, `REF-05`) as the new source of truth, while preserving input-core registry behavior (`REF-08`) only as a compatibility shell. QA and audit both confirmed that signals/getters/camera switching/session publication work through the adapter-level migrated lane and that no upstream runtime/vendor/preview ownership was reclaimed here.
 
 **Commits:**
-- None yet in this wave.
+- `f4755c1230d356fcb4b11ff46372402c52c89e34` - Prefer CameraTracking in input provider adapter
 
-**Lessons Learned:** The right next move is smaller than “migrate assembly.” It is “migrate the assembly-facing adapter onto the contract-first provider seam, then prove that old input-core-facing behavior still works on top of it.” That keeps the slice honest and avoids re-owning upstream responsibilities.
+**Lessons Learned:** The honest migration claim is now stronger but still precise: this repo has a real contract-first assembly-facing adapter lane, not full assembly-wide ownership settlement. One explicit nuance remains documented for future work: if the node enters the tree before `set_tracking_session(...)`, `_ready()` can briefly instantiate the provisional legacy provider before the contract lane replaces it, so the truthful claim is contract-first at start/use time rather than “legacy can never instantiate before injection.”
 
 ---
 
-*Prepared on 2026-05-22*
+*Completed on 2026-05-22*

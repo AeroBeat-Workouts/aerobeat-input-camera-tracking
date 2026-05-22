@@ -1,7 +1,7 @@
 # AeroBeat Assembly-Facing Input Migration
 
 **Date:** 2026-05-22  
-**Status:** Draft  
+**Status:** Complete  
 **Agent:** Cookie 🍪
 
 ---
@@ -103,25 +103,27 @@ Blocker notes preserved:
 **Files Created/Deleted/Modified:**
 - assembly-facing input adapter / docs / tests / proving paths as implementation dictates
 
-**Status:** ⚠️ In Progress
+**Status:** ✅ Complete
 
-**Results:** Claimed `aerobeat-input-camera-tracking-0m8`, implemented the assembly-facing contract-first adapter slice in `src/input_provider.gd`, and pushed commit `f4755c1230d356fcb4b11ff46372402c52c89e34` (`Prefer CameraTracking in input provider adapter`). The adapter now prefers `CameraTrackingProvider` when a `CameraTracking` session is explicitly injected or conservatively discoverable in-tree, while preserving `PROVIDER_ID == "mediapipe_python"`, provider-session-registry publication, and a clearly provisional legacy fallback when no session exists. Added narrow helper methods (`set_tracking_session`, `clear_tracking_session`, `get_tracking_session`, `uses_camera_tracking_contract_path`, `is_using_legacy_fallback`) and updated `test_input_provider_adapter.gd` so the assembly-facing adapter itself is the proving surface for contract-mode behavior. Targeted validation passed (`refresh_testbed_workbench.py`, `test_input_provider_adapter.gd` 9/9, `test_camera_tracking_provider.gd` 4/4), but broader repo-local baseline failures remain outside this slice. QA and auditor beads (`aerobeat-input-camera-tracking-bl3`, `aerobeat-input-camera-tracking-yup`) are created and unstarted at this stop point.
+**Results:** The full coder → QA → auditor loop is now closed for this repo-local migration wave. Claimed `aerobeat-input-camera-tracking-0m8`, implemented the assembly-facing contract-first adapter slice in `src/input_provider.gd`, and pushed commit `f4755c1230d356fcb4b11ff46372402c52c89e34` (`Prefer CameraTracking in input provider adapter`). The adapter now prefers `CameraTrackingProvider` when a `CameraTracking` session is explicitly injected or conservatively discoverable in-tree, while preserving `PROVIDER_ID == "mediapipe_python"`, provider-session-registry publication, and a clearly provisional legacy fallback when no session exists. Added narrow helper methods (`set_tracking_session`, `clear_tracking_session`, `get_tracking_session`, `uses_camera_tracking_contract_path`, `is_using_legacy_fallback`) and updated `test_input_provider_adapter.gd` so the assembly-facing adapter itself is the proving surface for contract-mode behavior.
+
+QA passed and closed bead `aerobeat-input-camera-tracking-bl3`: `refresh_testbed_workbench.py` succeeded, `test_input_provider_adapter.gd` passed `9/9`, `test_camera_tracking_provider.gd` passed `4/4`, and commit-scope inspection confirmed no addon-mirror ownership drift. Audit then passed and closed bead `aerobeat-input-camera-tracking-yup`: the adapter-level migrated lane is genuine, compatibility shims stayed narrow/honest, the legacy fallback remains explicitly provisional, and no upstream runtime/vendor/preview ownership was reclaimed. Audit preserved one precise caveat: if the adapter enters the tree before `set_tracking_session(...)`, `_ready()` can briefly instantiate the provisional legacy provider before the injected contract lane replaces it, so the truthful claim is contract-first at start/use time rather than a stronger “legacy can never instantiate before injection.” Broader repo-local baseline failures still remain outside this slice (`test_mediapipe_process.gd`, `test_mediapipe_provider.gd`, `test_proving_harness_trails.gd`), but they do not contradict the migrated adapter claim.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial / coder complete, QA + audit pending
+**Status:** ✅ Complete
 
-**What We Built:** Completed the planning pass and landed the first implementation pass for the next repo-local assembly-facing migration wave. `src/input_provider.gd` is now converted into a contract-first adapter over `CameraTrackingProvider` when a `CameraTracking` session is supplied or discoverable, while keeping narrow compatibility shims and a clearly provisional legacy fallback.
+**What We Built:** Completed the full repo-local assembly-facing migration wave. `src/input_provider.gd` is now a contract-first adapter over `CameraTrackingProvider` when a `CameraTracking` session is supplied or discoverable, while keeping only narrow compatibility shims and a clearly provisional legacy fallback. The adapter-level contract lane is now implemented, QA’d, and independently audited.
 
-**Reference Check:** This wave still keeps the first proving slice intact and targets the next honest consumer seam rather than pretending the repo is fully migrated already. It preserves the upstream continuous contract as the new truth source while keeping input-core registry behavior only as a compatibility shell. QA and audit are still required before claiming the assembly-facing path itself is green.
+**Reference Check:** This wave preserves the upstream continuous contract as the new truth source while keeping input-core registry behavior only as a compatibility shell. The assembly-facing path itself is now green for the planned scope: signals/getters/camera switching/session publication work through the migrated adapter lane, compatibility shims remained narrow/honest, and no upstream runtime/vendor/preview ownership was reclaimed. The explicit-session pre-injection nuance is documented rather than hidden.
 
 **Commits:**
 - `f4755c1230d356fcb4b11ff46372402c52c89e34` - Prefer CameraTracking in input provider adapter
 
-**Lessons Learned:** The proving path is green, so the next risk is no longer “can downstream consume the contract at all?” It is “can the real assembly-facing entry path consume it without smuggling old ownership assumptions back in?” The narrow honest answer is to migrate the adapter before claiming the whole product path, and to judge that adapter with targeted proof instead of broad suite noise.
+**Lessons Learned:** The right scope really was smaller than “migrate assembly.” By migrating the assembly-facing adapter first and judging it with targeted proof, the repo now has an honest product-facing seam without pretending the broader assembly/session-ownership architecture is settled. The next meaningful risk has shifted from adapter wiring to broader temporal semantics and wider product-facing migration/replay work.
 
 ---
 
-*Prepared on 2026-05-22*
+*Completed on 2026-05-22*
