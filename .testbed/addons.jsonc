@@ -2,7 +2,7 @@
   "$schema": "https://chickensoft.games/schemas/addons.schema.json",
   "addons": {
     // This workbench consumes the current repo package from the repo root.
-    "aerobeat-input-mediapipe-python": {
+    "aerobeat-input-camera-tracking": {
       "url": "..",
       "source": "symlink",
       "subfolder": "/"
@@ -10,6 +10,12 @@
     // The input-core repo is mounted under its truthful addon key/path.
     "aerobeat-input-core": {
       "url": "../../aerobeat-input-core",
+      "source": "symlink",
+      "subfolder": "/"
+    },
+    // The camera-tracking contract shell is mounted for contract-driven proving/tests.
+    "aerobeat-tool-camera-tracking": {
+      "url": "../../aerobeat-tool-camera-tracking",
       "source": "symlink",
       "subfolder": "/"
     },

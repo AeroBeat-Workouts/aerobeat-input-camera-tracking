@@ -34,12 +34,8 @@ jobs:
           dotnet tool install --global Chickensoft.GodotEnv
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
-      - name: 🔗 Restore testbed dependencies
-        working-directory: ./.testbed
-        run: godotenv addons install
-
-      - name: 🧭 Import testbed project
-        run: godot --headless --path .testbed --import
+      - name: 🔄 Refresh testbed workbench
+        run: python3 scripts/refresh_testbed_workbench.py
 
       - name: 🧪 Run GUT tests
         run: |

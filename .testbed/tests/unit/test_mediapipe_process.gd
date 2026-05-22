@@ -1,7 +1,7 @@
 extends "res://addons/gut/test.gd"
 
-const MediaPipeProcess = preload("res://addons/aerobeat-input-mediapipe-python/src/process/mediapipe_process.gd")
-const MediaPipeConfig = preload("res://addons/aerobeat-input-mediapipe-python/src/config/mediapipe_config.gd")
+const MediaPipeProcess = preload("res://addons/aerobeat-input-camera-tracking/src/process/mediapipe_process.gd")
+const MediaPipeConfig = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
 
 var _process: MediaPipeProcess = null
 var config: MediaPipeConfig = null

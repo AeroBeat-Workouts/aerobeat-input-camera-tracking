@@ -1,6 +1,6 @@
 extends "res://addons/gut/test.gd"
 
-const MediaPipeCameraView = preload("res://addons/aerobeat-input-mediapipe-python/src/camera_view.gd")
+const MediaPipeCameraView = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
 
 func test_stop_stream_clears_stale_preview_state() -> void:
 	var camera_view = add_child_autoqfree(MediaPipeCameraView.new())

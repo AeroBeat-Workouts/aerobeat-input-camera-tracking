@@ -219,12 +219,41 @@ Commit / push: `2002451` (`Fix playback seek bar centering layout`) pushed to `m
 
 ---
 
-### Task 6: Manual truth-pass on Cookie terminal
+### Task 6: Fix playback controls vertical centering without disturbing restored seek-bar width
+
+**Bead ID:** `aerobeat-input-mediapipe-python-ba8`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** Task 1-5 output  
+**Prompt:** Claim bead `aerobeat-input-mediapipe-python-ba8` with `bd update aerobeat-input-mediapipe-python-ba8 --status in_progress --json`. Fix the remaining playback layout issue Derrick reported from Cookie QA: the playback controls are still not vertically centered within the timeline panel, likely due to their anchor/layout setup. Preserve the restored seek-bar horizontal stretch behavior from Task 5, preserve the rule that playback controls do not dismiss the open inspector, and apply the narrowest layout fix that achieves true vertical centering. Run targeted validation, update this plan with exact files changed and commit hash, commit/push to `main`, and close the bead.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.plans/2026-05-21-boxing-flow-landmark-inspector-and-playback-controls.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the remaining playback-controls centering issue with a narrow shared-harness layout patch in `.testbed/scripts/proving_harness.gd`. Replaced the timeline row's anchor-based host/control setup with a `VBoxContainer` centered on the vertical axis, then kept the playback `HBoxContainer` full-width inside it. That removes the misleading anchor math that was still leaving the controls visually off-center, while preserving the restored seek-bar horizontal stretch behavior from Task 5. The existing `_input()` allowlist for the playback panel was left untouched, so playback interactions still do not dismiss the open inspector.
+
+Targeted validation run:
+- `~/.local/bin/godot --headless --path .testbed --check-only --script scripts/proving_harness.gd` ✅
+- `~/.local/bin/godot --headless --path .testbed res://scenes/boxing_proving.tscn --quit-after 1` ✅
+- `~/.local/bin/godot --headless --path .testbed res://scenes/flow_proving.tscn --quit-after 1` ✅
+
+Commit / push: `cedd7db` (`Center playback controls in timeline panel`) pushed to `main`.
+
+---
+
+### Task 7: Manual truth-pass on Cookie terminal
 
 **Bead ID:** `Deferred to Derrick`  
 **SubAgent:** `Deferred to Derrick`  
 **Role:** `qa`  
-**References:** Task 1-5 output  
+**References:** Task 1-6 output  
 **Prompt:** Derrick will manually test the new landmark inspector and prerecorded playback controls on Cookie’s terminal once the follow-up fixes are landed.
 
 **Folders Created/Deleted/Modified:**
@@ -243,9 +272,9 @@ Commit / push: `2002451` (`Fix playback seek bar centering layout`) pushed to `m
 
 **Status:** ⚠️ In Progress
 
-**What We Built:** The Boxing and Flow proving harnesses now share one click-based inspector controller for gesture and landmark debugging, plus a prerecorded-only playback bar with truthful play/pause/seek integration against the Python sidecar. Boxing gesture badges now open the shared inspector instead of a hover-only card, landmark dots expose enlarged nearest-hit click targets, prerecorded seeking clears local/provider gesture-history state before pausing on the requested frame, and the click-away/width regressions found during manual testing are fixed. The landmark-truth slice then switched the inspector to show raw live normalized position first, relabeled the old `tracking state` line to the truthful `Detector pose lock`, throttled live inspector refresh for readability with an explicit note, polished the playback toggle to fixed-width play/pause icons, and exposed the real sidecar comparison surface as a public tracking/smoothing enum on both Boxing and Flow proving scenes. The latest follow-up fixes the timeline layout regression by restoring full-width seek-bar stretch and vertically centering the playback row inside the timeline panel without breaking the existing behavior where playback-control interaction keeps the inspector open.
+**What We Built:** The Boxing and Flow proving harnesses now share one click-based inspector controller for gesture and landmark debugging, plus a prerecorded-only playback bar with truthful play/pause/seek integration against the Python sidecar. Boxing gesture badges now open the shared inspector instead of a hover-only card, landmark dots expose enlarged nearest-hit click targets, prerecorded seeking clears local/provider gesture-history state before pausing on the requested frame, and the click-away/width regressions found during manual testing are fixed. The landmark-truth slice then switched the inspector to show raw live normalized position first, relabeled the old `tracking state` line to the truthful `Detector pose lock`, throttled live inspector refresh for readability with an explicit note, polished the playback toggle to fixed-width play/pause icons, and exposed the real sidecar comparison surface as a public tracking/smoothing enum on both Boxing and Flow proving scenes. The latest follow-up fixes the remaining playback centering issue by replacing the anchor-based timeline row host with container-driven vertical centering, preserving full-width seek-bar stretch and keeping playback-control interaction from dismissing the inspector.
 
-**Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface, working click-away dismissal, close-button dismissal, target-swap behavior, truthful landmark-vs-detector-smoothed readouts, fixed-width playback icon controls, preserved inspector state during playback-control interaction, vertically centered seek-row layout, and the public tracking/smoothing enum wiring. `REF-05` still provides enlarged landmark hit-testing with closest-target resolution. `REF-01` and `REF-02` were smoke-launched headlessly after the timeline-polish slice to confirm both proving scenes still boot with the shared playback/inspector updates intact. `REF-06`'s prior Boxing gesture requirement content remains preserved through the shared inspector body renderer instead of the previous hover-only card.
+**Reference Check:** `REF-03` and `REF-04` now provide the shared inspector surface, working click-away dismissal, close-button dismissal, target-swap behavior, truthful landmark-vs-detector-smoothed readouts, fixed-width playback icon controls, preserved inspector state during playback-control interaction, truly centered playback controls inside the timeline panel, preserved full-width seek-row layout, and the public tracking/smoothing enum wiring. `REF-05` still provides enlarged landmark hit-testing with closest-target resolution. `REF-01` and `REF-02` were smoke-launched headlessly after the latest playback-centering slice to confirm both proving scenes still boot with the shared playback/inspector updates intact. `REF-06`'s prior Boxing gesture requirement content remains preserved through the shared inspector body renderer instead of the previous hover-only card.
 
 **Commits:**
 - `2dbf324` - Add proving inspector and playback controls
@@ -256,8 +285,11 @@ Commit / push: `2002451` (`Fix playback seek bar centering layout`) pushed to `m
 - `9e0ac48` - Update plan for landmark truth slice
 - `5ba130d` - Polish playback timeline inspector behavior
 - `2002451` - Fix playback seek bar centering layout
+- `cedd7db` - Center playback controls in timeline panel
 
 **Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught UX regressions and then exposed deeper debug-truth problems that headless smoke checks did not: first background click dismissal and practical readability width, then stuck `x/y`, misleading tracking-state behavior, jitter/smoothing concerns, and finally timeline-specific polish around panel affordances and allowed-click zones. The shared-harness architecture continues to hold up because these fixes remain localized instead of forcing scene-specific rewrites. The main UI lesson from this final slice is that click-away dismissal needs a clearly defined allowlist for interactive overlay surfaces, otherwise shared debug panels feel brittle even when the underlying state model is correct.
+
+**Stopping Point:** Derrick is ending the session after the latest playback-centering patch. Next session should start with Derrick’s manual Cookie QA against commit `cedd7db` (plus plan-note commit `06380c7`), specifically verifying that the playback controls now appear truly vertically centered in the timeline panel while preserving full-width seek stretch and keeping the inspector open during playback interaction. If QA passes, the remaining follow-up is deciding whether to keep Derrick’s currently preferred `Lite Filtered + optimized tracking` combination as an explicit default or just as a documented preference.
 
 ---
 

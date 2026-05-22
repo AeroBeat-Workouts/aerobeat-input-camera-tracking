@@ -17,7 +17,7 @@ extends "res://addons/aerobeat-input-core/src/interfaces/boxing_input.gd"
 
 const PROVIDER_ID := "mediapipe_python"
 const PROVIDER_SESSION_REGISTRY_PATH := "res://addons/aerobeat-input-core/src/runtime/provider_session_registry.gd"
-const SHARED_SESSION_OWNER_PREFIX := "aerobeat-input-mediapipe-python:input_provider"
+const SHARED_SESSION_OWNER_PREFIX := "aerobeat-input-camera-tracking:input_provider"
 const SHARED_SESSION_KEY := "mediapipe_python"
 
 signal swing_left(placement: int, direction: int)

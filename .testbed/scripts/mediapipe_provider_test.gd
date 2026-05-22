@@ -2,8 +2,8 @@ extends Node
 ## Standalone test version of MediaPipeProvider
 ## Extends Node for independent runtime validation of the repo-local camera-input path
 
-const MediaPipeConfigScript = preload("res://addons/aerobeat-input-mediapipe-python/src/config/mediapipe_config.gd")
-const MediaPipeServerScript = preload("res://addons/aerobeat-input-mediapipe-python/src/server/mediapipe_server.gd")
+const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
+const MediaPipeServerScript = preload("res://addons/aerobeat-input-camera-tracking/src/server/mediapipe_server.gd")
 
 signal pose_updated(landmarks: Array)
 signal tracking_lost()

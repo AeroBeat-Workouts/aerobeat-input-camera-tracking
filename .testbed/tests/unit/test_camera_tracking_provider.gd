@@ -1,0 +1,116 @@
+extends "res://addons/gut/test.gd"
+
+const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd")
+const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
+const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
+
+func test_camera_tracking_provider_consumes_normalized_tracking_frames() -> void:
+	var tracker = add_child_autoqfree(CameraTrackingScript.new())
+	var backend = CameraTrackingFakeBackendScript.new()
+	tracker.set_backend(backend)
+	tracker.start({
+		"source": {"kind": "live_camera", "camera_id": "/dev/video7"},
+		"preview": {"flip_horizontal": true},
+	})
+
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.set_tracking_session(tracker)
+	assert_true(provider.start())
+
+	var pose_calls: Array = []
+	provider.pose_updated.connect(func(landmarks: Array) -> void:
+		pose_calls.append(landmarks)
+	)
+
+	backend.emit_tracking_frame({
+		"timestamp_ms": 123,
+		"backend": "fake",
+		"source_kind": "live_camera",
+		"source_id": "/dev/video7",
+		"tracking_state": "tracked",
+		"confidence": 0.9,
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": [
+			{"id": 0, "x": 0.50, "y": 0.15, "z": 0.0, "visibility": 0.95},
+			{"id": 11, "x": 0.42, "y": 0.32, "z": 0.0, "visibility": 0.92},
+			{"id": 12, "x": 0.58, "y": 0.32, "z": 0.0, "visibility": 0.92},
+			{"id": 15, "x": 0.36, "y": 0.48, "z": 0.0, "visibility": 0.94},
+			{"id": 16, "x": 0.64, "y": 0.48, "z": 0.0, "visibility": 0.94},
+			{"id": 27, "x": 0.43, "y": 0.86, "z": 0.0, "visibility": 0.90},
+			{"id": 28, "x": 0.57, "y": 0.86, "z": 0.0, "visibility": 0.90},
+		],
+	})
+
+	assert_true(provider.is_tracking())
+	assert_eq(provider.get_num_poses(), 1)
+	assert_eq(pose_calls.size(), 1)
+	assert_eq(provider.get_selected_camera_device_id(), "/dev/video7")
+	assert_eq(provider.get_tracking_state(), &"tracking")
+	assert_eq(provider.get_all_poses().size(), 1)
+	assert_eq(provider.get_detector_state().get("tracking_state", &""), &"tracking")
+
+	var left_hand: Variant = provider.get_left_hand_position(provider.TrackingMode.MODE_2D)
+	assert_true(left_hand is Vector2)
+	assert_true(is_equal_approx(left_hand.x, 0.36))
+	assert_true(is_equal_approx(left_hand.y, 0.48))
+
+func test_camera_tracking_provider_attaches_preview_and_can_change_camera_id() -> void:
+	var tracker = add_child_autoqfree(CameraTrackingScript.new())
+	var backend = CameraTrackingFakeBackendScript.new([
+		{"id": "/dev/video0", "label": "Default camera"},
+		{"id": "/dev/video3", "label": "USB camera"},
+	])
+	tracker.set_backend(backend)
+	tracker.start({
+		"source": {"kind": "live_camera", "camera_id": "/dev/video0"},
+	})
+
+	var preview_slot: Control = add_child_autoqfree(Control.new())
+
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.set_tracking_session(tracker)
+	provider.set_preview_surface(preview_slot)
+	assert_true(provider.start())
+
+	assert_eq(provider.get_available_camera_devices().size(), 2)
+	assert_true(provider.set_selected_camera_device_id("/dev/video3"))
+	assert_eq(String(tracker.get_active_config().get("source", {}).get("camera_id", "")), "/dev/video3")
+
+func test_camera_tracking_provider_emits_tracking_edges_when_frame_state_changes() -> void:
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+
+	var restored: Array = []
+	var lost: Array = []
+	provider.tracking_restored.connect(func() -> void:
+		restored.append(true)
+	)
+	provider.tracking_lost.connect(func() -> void:
+		lost.append(true)
+	)
+
+	provider.ingest_tracking_frame({
+		"timestamp_ms": 10,
+		"tracking_state": "lost",
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": [],
+	})
+	provider.ingest_tracking_frame({
+		"timestamp_ms": 20,
+		"tracking_state": "tracked",
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": [
+			{"id": 0, "x": 0.5, "y": 0.2, "visibility": 0.9},
+			{"id": 15, "x": 0.4, "y": 0.4, "visibility": 0.9},
+			{"id": 16, "x": 0.6, "y": 0.4, "visibility": 0.9},
+		],
+	})
+	provider.ingest_tracking_frame({
+		"timestamp_ms": 30,
+		"tracking_state": "lost",
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": [],
+	})
+
+	assert_eq(restored.size(), 1)
+	assert_eq(lost.size(), 1)
+	assert_false(provider.is_tracking())

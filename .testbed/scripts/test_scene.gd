@@ -91,7 +91,7 @@ func _on_server_failed(error: String) -> void:
 
 You can start Python manually:
 
-1. Open terminal in the aerobeat-input-mediapipe-python repo root
+1. Open terminal in the aerobeat-input-camera-tracking repo root
 2. Make sure pose_landmarker_full.task exists at python_mediapipe/assets/models/
 3. Prepare the linux runtime if needed:
 python3 python_mediapipe/prepare_runtime.py --platform linux-x64 --mode dev --create-venv --validate
@@ -143,7 +143,7 @@ Landmarks appear as green dots when a pose is detected."""
 
 func _start_camera_feed() -> void:
 	# Create camera view for MJPEG stream
-	var CameraViewClass: GDScript = load("res://addons/aerobeat-input-mediapipe-python/src/camera_view.gd")
+	var CameraViewClass: GDScript = load("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
 	if CameraViewClass == null:
 		push_error("[TestScene] Failed to load camera_view.gd")
 		return
