@@ -169,9 +169,18 @@ Commit: `27fa3c5` (`Migrate proving scenes onto live CameraTracking`).
 **Files Created/Deleted/Modified:**
 - validation notes only if needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed `aerobeat-input-camera-tracking-ivf` with `bd update aerobeat-input-camera-tracking-ivf --status in_progress --json` and independently re-verified the slice at the highest repo-local fidelity available here: headless `.testbed` import plus targeted Godot/GUT validation on the mounted workbench. QA re-confirmed that `.testbed/scenes/boxing_proving.tscn` and `.testbed/scenes/flow_proving.tscn` both mount a `CameraTracking` node, set `startup_mode = 2` (`GODOT_ONLY_DEBUG`), and clear `prerecorded_video_source`, so the narrow proving scope now prefers the live contract lane instead of the old local autostart-owned default. `.testbed/scripts/proving_harness.gd` still resolves the seam contract-first by instantiating `CameraTrackingProvider`, registering the paired vendor backend only when a `CameraTracking` session is mounted, and sourcing effective camera truth from `CameraTracking.get_active_config()` before falling back to local autostart state. `src/input_provider.gd` remained untouched as the provisional assembly-facing legacy lane, and the implementation diff did not modify any generated `.testbed/addons/` mirrors.
+
+Exact validation rerun in QA:
+- `git diff --name-status 27fa3c5951b0b795a1e5f84966fc6d3174663e04^ 27fa3c5951b0b795a1e5f84966fc6d3174663e04` ✅ touched plan/workbench/root source files only; no `.testbed/addons/` mirror edits
+- `python3 scripts/refresh_testbed_workbench.py --json` ✅ addon install + cache clear + headless import succeeded; declared mounts include `aerobeat-tool-camera-tracking` and `aerobeat-vendor-mediapipe-python`
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` ✅ `4/4` passed
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd -gexit` ⚠️ `11/12` passed; the new `test_effective_camera_source_prefers_camera_tracking_session_config_when_present` passed, while the long-standing `test_resolves_trail_hand_point_by_clamping_near_edge_jitter` still fails
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` ⚠️ broader suite remains `62/73` passing with `6` failing + `5` pending; failures stay in pre-existing legacy lanes: `test_input_provider_adapter_*` (legacy assembly adapter against fake backend), `test_find_python_returns_prepared_runtime_path`, `test_detector_substrate_populates_velocity_measurements_and_events`, plus the existing proving-harness edge-jitter failure
+
+QA judgment: **pass for this scoped slice**, with honest limits. The contract-first proving lane is validated repo-locally for mounted `CameraTracking` consumption and truthful effective-source resolution, replay/video-file semantics are still explicitly deferred, and no ownership regression was found in `src/input_provider.gd` or generated addon mirrors. Remaining gap: this QA did not exercise a real interactive live camera session in-editor because no connected Godot editor session or human-operated camera run was available in this subagent context.
 
 ---
 
@@ -189,9 +198,22 @@ Commit: `27fa3c5` (`Migrate proving scenes onto live CameraTracking`).
 **Files Created/Deleted/Modified:**
 - audit notes only if needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed `aerobeat-input-camera-tracking-l1k` with `bd update aerobeat-input-camera-tracking-l1k --status in_progress --json` and independently audited the slice against the repo-local plan, implementation diff, touched files, QA evidence, and focused validation reruns. Audit confirmed the proving-scope migration is real at the repo-local contract-consumer layer: both `.testbed/scenes/boxing_proving.tscn` and `.testbed/scenes/flow_proving.tscn` now mount `CameraTracking`, run `startup_mode = 2` (`GODOT_ONLY_DEBUG`), and clear `prerecorded_video_source`, so the narrow proving lane prefers the upstream continuous contract instead of the legacy local autostart default.
+
+` .testbed/scripts/proving_harness.gd` still keeps the detector seam contract-first through `CameraTrackingProvider` + `TrackingFrameAdapter`, registers the paired `mediapipe_python` backend only when a `CameraTracking` proving lane is mounted, and reports effective source truth by preferring `CameraTracking.get_active_config()` before any local fallback. The committed diff did not touch `src/input_provider.gd`, and audit verified no generated `.testbed/addons/` mirrors were treated as owned source; only `.testbed/addons.jsonc` and repo-owned source/test/doc files changed.
+
+Focused audit reruns:
+- `git status --short` → only local post-coder plan update was present
+- `git log --oneline --decorate -n 5` → audited pushed HEAD `da78402` above implementation commit `27fa3c5`
+- `git diff --name-status 27fa3c5951b0b795a1e5f84966fc6d3174663e04^ 27fa3c5951b0b795a1e5f84966fc6d3174663e04` → only planned repo-owned files changed; no `/addons` mirror edits
+- `git diff --stat 27fa3c5951b0b795a1e5f84966fc6d3174663e04^ 27fa3c5951b0b795a1e5f84966fc6d3174663e04 -- src/input_provider.gd .testbed/addons .testbed/addons.jsonc .testbed/scripts/proving_harness.gd .testbed/scenes/boxing_proving.tscn .testbed/scenes/flow_proving.tscn .testbed/tests/unit/test_camera_tracking_provider.gd .testbed/tests/unit/test_proving_harness_trails.gd README.md` → `src/input_provider.gd` and `.testbed/addons/` absent from the diff; 7 owned files changed
+- `python3 scripts/refresh_testbed_workbench.py --json` ✅ succeeded; declared mounts include `aerobeat-tool-camera-tracking` and `aerobeat-vendor-mediapipe-python`
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` ✅ `4/4` passed
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd -gexit` ⚠️ `11/12` passed; the newly added effective-source assertion passed, while the long-standing `test_resolves_trail_hand_point_by_clamping_near_edge_jitter` still failed unchanged
+
+Audit judgment: **pass for the planned first slice**. The repo now truthfully proves mounted `CameraTracking` session consumption for Boxing + Flow in the narrow live-contract lane, preserves the adapter/provider seam, avoids overclaiming replay/video-file semantics, leaves `src/input_provider.gd` provisional, and separates newly proven behavior from pre-existing baseline failures. Remaining provisional truth: no interactive real-camera editor session was performed in this audit context, so physical live-device proving remains a later/manual confirmation rather than part of the completed repo-local slice.
 
 ---
 
@@ -207,16 +229,17 @@ Commit: `27fa3c5` (`Migrate proving scenes onto live CameraTracking`).
 
 ## Final Results
 
-**Status:** ⚠️ Partial — coder slice complete; QA + audit still pending
+**Status:** ✅ Complete for planned repo-local scope
 
-**What We Built:** The coder slice migrated the repo-local Boxing + Flow proving surfaces onto a live `CameraTracking` session for the first honest continuous-contract consumer path. The `.testbed` scenes now mount `CameraTracking` directly, the proving harness can register and start the paired upstream/vendor backend through `CameraTrackingProvider`, and the Flow proving scene no longer overclaims prerecorded replay support in this contract-first wave.
+**What We Built:** The coder slice migrated the repo-local Boxing + Flow proving surfaces onto a mounted `CameraTracking` session for the first honest continuous-contract consumer path. The `.testbed` scenes now mount `CameraTracking` directly, the proving harness can register and start the paired upstream/vendor backend through `CameraTrackingProvider`, and the Flow proving scene no longer overclaims prerecorded replay support in this contract-first wave. QA and audit both re-verified that the mounted proving path is real in repo-local headless validation and that effective source reporting now prefers the mounted `CameraTracking` session config.
 
-**Reference Check:** `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`, `REF-10`, `REF-11`, `REF-12`, and `REF-13` are now reflected in the coder implementation. `REF-04` remains intentionally provisional because `src/input_provider.gd` was not reclaimed in this slice.
+**Reference Check:** `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`, `REF-10`, `REF-11`, `REF-12`, and `REF-13` are reflected in the coder implementation plus QA/audit evidence. `REF-04` remains intentionally provisional because `src/input_provider.gd` was not reclaimed in this slice. Interactive physical live-camera proving is still provisional and was not claimed complete here.
 
 **Commits:**
 - `27fa3c5` - `Migrate proving scenes onto live CameraTracking`
+- `da78402` - `Update contract consumer slice plan results`
 
-**Lessons Learned:** The seam was already present; the real migration work was making proving consume it honestly while keeping runtime/vendor ownership upstream. Repo-local validation also confirmed this repo still carries unrelated legacy test failures, so QA/audit should judge the new contract path against the targeted proofs rather than assume a clean full-suite baseline.
+**Lessons Learned:** The seam was already present; the real migration work was making proving consume it honestly while keeping runtime/vendor ownership upstream. Repo-local validation confirmed the new contract lane without showing new regressions in the touched slice, but it also reconfirmed unrelated legacy failures in old adapter/runtime tests plus a pre-existing proving-harness edge-jitter failure. Audit should judge completion against the scoped contract-lane proofs, while still calling out that a real interactive live-camera editor run remains provisional until someone performs it.
 
 ---
 
