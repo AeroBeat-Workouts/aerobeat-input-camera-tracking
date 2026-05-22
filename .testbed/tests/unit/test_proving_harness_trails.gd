@@ -1,6 +1,8 @@
 extends "res://addons/gut/test.gd"
 
 const ProvingHarness = preload("res://scripts/proving_harness.gd")
+const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
+const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
 var harness: ProvingHarness = null
 
@@ -144,3 +146,15 @@ func test_preview_only_provider_node_drift_invalidates_surface() -> void:
 	harness._audit_preview_only_surface()
 	assert_eq(harness._preview_only_invalid_reason, "provider node active in preview-only rung")
 	assert_eq(harness._event_count("preview_only_invalid"), 1)
+
+func test_effective_camera_source_prefers_camera_tracking_session_config_when_present() -> void:
+	var tracker = CameraTrackingScript.new()
+	tracker.name = "CameraTracking"
+	harness.add_child(tracker)
+	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+	tracker.start({
+		"source": {"kind": "live_camera", "camera_id": "/dev/video9"},
+	})
+
+	assert_true(harness._uses_camera_tracking_contract_path())
+	assert_eq(harness._get_effective_camera_source(), "/dev/video9")

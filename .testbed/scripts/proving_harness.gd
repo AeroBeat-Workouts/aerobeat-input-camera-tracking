@@ -5,6 +5,9 @@ const MediaPipeProviderScript = preload("res://addons/aerobeat-input-camera-trac
 const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd")
 const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
 const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
+const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
+const MediaPipePythonCameraTrackingBackendScript = preload("res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonCameraTrackingBackend.gd")
+const MediaPipePythonRuntimeBridgeScript = preload("res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonRuntimeBridge.gd")
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -286,9 +289,11 @@ func _ready() -> void:
 	_update_status("Initializing...", Color.WHITE)
 	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
 		_server_ready = true
-		_update_status("Godot-only debug mode active", Color.GREEN)
-		if _resolve_camera_tracking_session() != null:
+		if _uses_camera_tracking_contract_path():
+			_update_status("CameraTracking contract proving mode active", Color.GREEN)
 			_start_provider()
+		else:
+			_update_status("Godot-only debug mode active", Color.GREEN)
 	else:
 		_setup_auto_start()
 	_refresh_debug_panels()
@@ -628,6 +633,8 @@ func _await_live_camera_runtime_ready(timeout_ms: int = 8000) -> bool:
 
 func _is_live_camera_runtime_ready() -> bool:
 	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
+		if _uses_camera_tracking_contract_path():
+			return provider != null
 		return true
 	if not _server_ready:
 		return false
@@ -760,9 +767,11 @@ func _start_provider() -> void:
 
 	var tracking_session := _resolve_camera_tracking_session()
 	if tracking_session != null:
+		_register_vendor_camera_tracking_backend_if_needed()
 		provider = CameraTrackingProviderScript.new()
 		provider.name = "CameraTrackingProvider"
 		provider.config = _build_runtime_config()
+		provider.manage_tracking_session_lifecycle = true
 		provider.set_tracking_session(tracking_session)
 		provider.set_preview_surface(camera_display)
 	else:
@@ -803,6 +812,18 @@ func _build_runtime_config() -> MediaPipeConfig:
 
 func _resolve_camera_tracking_session() -> Node:
 	return find_child("CameraTracking", true, false) as Node
+
+func _uses_camera_tracking_contract_path() -> bool:
+	return _resolve_camera_tracking_session() != null
+
+func _register_vendor_camera_tracking_backend_if_needed() -> void:
+	if CameraTrackingScript.get_registered_backend_ids().has("mediapipe_python"):
+		return
+	CameraTrackingScript.register_backend_factory("mediapipe_python", func(_config: Dictionary):
+		var backend = MediaPipePythonCameraTrackingBackendScript.new()
+		backend.set_runtime_bridge(MediaPipePythonRuntimeBridgeScript.new())
+		return backend
+	)
 
 func _connect_mode_signals() -> void:
 	if harness_mode == HarnessMode.BOXING:
@@ -2221,6 +2242,14 @@ func _get_configured_live_camera_source() -> String:
 	return "0"
 
 func _get_effective_camera_source() -> String:
+	var tracking_session := _resolve_camera_tracking_session()
+	if tracking_session != null and tracking_session.has_method("get_active_config"):
+		var active_config_variant: Variant = tracking_session.get_active_config()
+		if active_config_variant is Dictionary:
+			var source: Dictionary = (active_config_variant as Dictionary).get("source", {})
+			var camera_id := String(source.get("camera_id", "")).strip_edges()
+			if not camera_id.is_empty():
+				return camera_id
 	if auto_start_manager != null and auto_start_manager.has_method("get_active_camera_source"):
 		return String(auto_start_manager.get_active_camera_source())
 	var explicit_override := _get_scene_camera_source_override()

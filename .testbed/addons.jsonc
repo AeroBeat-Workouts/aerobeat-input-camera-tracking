@@ -19,6 +19,12 @@
       "source": "symlink",
       "subfolder": "/"
     },
+    // The paired vendor backend is mounted only for repo-local live CameraTracking proving.
+    "aerobeat-vendor-mediapipe-python": {
+      "url": "../../aerobeat-vendor-mediapipe-python",
+      "source": "symlink",
+      "subfolder": "/"
+    },
     // The reusable headless quit manager is consumed like a normal addon package.
     "aerobeat-tool-headless-manager": {
       "url": "git@github.com:AeroBeat-Workouts/aerobeat-tool-headless-manager.git",

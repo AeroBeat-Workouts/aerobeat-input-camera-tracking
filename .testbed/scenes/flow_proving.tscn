@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://d3wj7236jb6nf" path="res://scripts/flow_ring_chart.gd" id="5_flow_ring_chart"]
 [ext_resource type="Texture2D" uid="uid://cv2cmj48bnykt" path="res://assets/backgrounds/perfect-hue-may-08-2026-hd.png" id="6_background"]
 [ext_resource type="Script" uid="uid://biadje5xucy7c" path="res://scripts/flow_brand_mark.gd" id="7_brand_mark"]
+[ext_resource type="Script" path="res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd" id="8_camera_tracking"]
 
 [sub_resource type="StyleBoxFlat" id="4_camera_style"]
 bg_color = Color(1, 1, 1, 0.01)
@@ -77,12 +78,16 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
 harness_mode = 1
-prerecorded_video_source = "res://assets/fixtures/flow/swings/left-and-right-hands/same-direction/lr3->lr9/flow_swing_lr3->lr9_repeat_04_take_01.mp4"
+startup_mode = 2
+prerecorded_video_source = ""
 scene_title = "FLOW GESTURE DETECTION"
 tracking_smoothing_style = 1
 
 [node name="AutoStartManager" type="Node" parent="." unique_id=681176957]
 script = ExtResource("4_autostart")
+
+[node name="CameraTracking" type="Node" parent="." unique_id=2026052202]
+script = ExtResource("8_camera_tracking")
 
 [node name="Background" type="TextureRect" parent="." unique_id=1697466739]
 layout_mode = 1
