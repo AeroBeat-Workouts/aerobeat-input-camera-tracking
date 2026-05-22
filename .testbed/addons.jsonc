@@ -13,6 +13,12 @@
       "source": "symlink",
       "subfolder": "/"
     },
+    // The camera-tracking contract shell is mounted for contract-driven proving/tests.
+    "aerobeat-tool-camera-tracking": {
+      "url": "../../aerobeat-tool-camera-tracking",
+      "source": "symlink",
+      "subfolder": "/"
+    },
     // The reusable headless quit manager is consumed like a normal addon package.
     "aerobeat-tool-headless-manager": {
       "url": "git@github.com:AeroBeat-Workouts/aerobeat-tool-headless-manager.git",

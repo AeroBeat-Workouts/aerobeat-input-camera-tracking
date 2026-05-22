@@ -2,6 +2,7 @@ extends Control
 ## Shared proving harness for live Boxing / Flow detector tuning.
 
 const MediaPipeProviderScript = preload("res://addons/aerobeat-input-mediapipe-python/src/providers/mediapipe_provider.gd")
+const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-mediapipe-python/src/providers/camera_tracking_provider.gd")
 const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-mediapipe-python/src/camera_view.gd")
 const MediaPipeConfigScript = preload("res://addons/aerobeat-input-mediapipe-python/src/config/mediapipe_config.gd")
 
@@ -193,7 +194,7 @@ enum TrackingSmoothingStyle {
 @onready var left_direction_chart: Control = find_child("LeftDirectionChart", true, false) as Control
 @onready var right_direction_chart: Control = find_child("RightDirectionChart", true, false) as Control
 
-var provider: MediaPipeProvider = null
+var provider: Node = null
 var auto_start_manager: Node = null
 var camera_view: MediaPipeCameraView = null
 var _frame_count := 0
@@ -286,6 +287,8 @@ func _ready() -> void:
 	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
 		_server_ready = true
 		_update_status("Godot-only debug mode active", Color.GREEN)
+		if _resolve_camera_tracking_session() != null:
+			_start_provider()
 	else:
 		_setup_auto_start()
 	_refresh_debug_panels()
@@ -755,9 +758,17 @@ func _start_provider() -> void:
 	if provider != null:
 		return
 
-	provider = MediaPipeProviderScript.new()
-	provider.name = "MediaPipeProvider"
-	provider.config = _build_runtime_config()
+	var tracking_session := _resolve_camera_tracking_session()
+	if tracking_session != null:
+		provider = CameraTrackingProviderScript.new()
+		provider.name = "CameraTrackingProvider"
+		provider.config = _build_runtime_config()
+		provider.set_tracking_session(tracking_session)
+		provider.set_preview_surface(camera_display)
+	else:
+		provider = MediaPipeProviderScript.new()
+		provider.name = "MediaPipeProvider"
+		provider.config = _build_runtime_config()
 	add_child(provider)
 
 	provider.pose_updated.connect(_on_pose_updated)
@@ -765,11 +776,11 @@ func _start_provider() -> void:
 	provider.tracking_restored.connect(_on_tracking_restored)
 	_connect_mode_signals()
 
-	var success := provider.start()
+	var success: bool = bool(provider.call("start"))
 	if success:
 		_server_ready = true
 		_refresh_camera_source_controls()
-		_record_event("provider_started", {"mode": _mode_name()})
+		_record_event("provider_started", {"mode": _mode_name(), "provider": provider.name})
 		_record_fixture_state_snapshot("provider_started")
 		_update_status("%s harness live" % _mode_name(), Color.GREEN)
 	else:
@@ -789,6 +800,9 @@ func _build_runtime_config() -> MediaPipeConfig:
 	var tracking_style := _tracking_smoothing_style_spec()
 	config.model_complexity = int(tracking_style.get("model_complexity", config.model_complexity))
 	return config
+
+func _resolve_camera_tracking_session() -> Node:
+	return find_child("CameraTracking", true, false) as Node
 
 func _connect_mode_signals() -> void:
 	if harness_mode == HarnessMode.BOXING:
