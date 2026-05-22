@@ -79,8 +79,9 @@ For every feature family below, try to capture:
 
 ### Launch checklist
 
-- From the repo root, restore the GodotEnv workbench mounts before opening Godot:
-  - `cd .testbed && godotenv addons install && cd ..`
+- From the repo root, refresh the repo-local `.testbed` workbench before opening Godot:
+  - `python3 scripts/refresh_testbed_workbench.py`
+  - this restores declared GodotEnv mounts, prunes stale generated addon identities, clears the relevant `.godot` caches, and re-imports the workbench so proving scenes do not keep loading removed addon names from cache
 - If you also need the local Python sidecar runtime on Cookie, prepare that separately from the repo root:
   - `python3 python_mediapipe/prepare_runtime.py --platform linux-x64 --mode dev --install-requirements --validate`
 - Open `.testbed` in Godot.

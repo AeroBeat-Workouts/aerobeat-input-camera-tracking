@@ -210,9 +210,10 @@ def _get_testbed_addon_restore_warning() -> str | None:
         return None
 
     return (
-        "Runtime prep does not restore GodotEnv addon mounts. If you plan to open the repo-local "
-        ".testbed project or proving scenes, run 'cd .testbed && godotenv addons install' from the "
-        "repo root first so res://addons/aerobeat-input-camera-tracking/... exists again."
+        "Runtime prep does not restore or prune GodotEnv-generated testbed state. If you plan to open "
+        "the repo-local .testbed project or proving scenes, run 'python3 scripts/refresh_testbed_workbench.py' "
+        "from the repo root first so declared addon mounts are restored, stale generated identities are pruned, "
+        "and Godot re-imports the workbench cleanly."
     )
 
 

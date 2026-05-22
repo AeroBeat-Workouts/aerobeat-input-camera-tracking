@@ -63,9 +63,10 @@ Restore dependencies from the repo root:
 
 ```bash
 /home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking
-cd .testbed
-godotenv addons install
+python3 scripts/refresh_testbed_workbench.py
 ```
+
+`refresh_testbed_workbench.py` is the truthful repo-local refresh path after addon-identity changes: it runs `godotenv addons install`, prunes stale generated `.testbed/addons/*` entries that are no longer declared in `.testbed/addons.jsonc`, clears the relevant Godot script/index caches, and re-imports `.testbed` so headless validation does not keep resolving removed addon identities.
 
 Do not patch `.testbed/addons/` mirrors directly.
 
@@ -74,7 +75,7 @@ Do not patch `.testbed/addons/` mirrors directly.
 Import smoke check:
 
 ```bash
-godot --headless --path .testbed --import
+python3 scripts/refresh_testbed_workbench.py
 ```
 
 Run repo-local tests:
