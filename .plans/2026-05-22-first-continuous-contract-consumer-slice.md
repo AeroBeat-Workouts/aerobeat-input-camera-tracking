@@ -150,7 +150,7 @@ Validation actually run in this repo:
 - `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd -gexit` ⚠️ repo baseline remains `11/12` because pre-existing `test_resolves_trail_hand_point_by_clamping_near_edge_jitter` still fails; the new harness assertion passed
 - `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` ⚠️ broader repo suite still has unrelated pre-existing failures in legacy tests (`test_input_provider_adapter`, `test_mediapipe_process`, `test_mediapipe_provider`, plus the existing harness clamp case); no new failure was introduced in the targeted contract-provider coverage
 
-Commit: pending until coder handoff commit is created.
+Commit: `27fa3c5` (`Migrate proving scenes onto live CameraTracking`).
 
 ---
 
@@ -214,7 +214,7 @@ Commit: pending until coder handoff commit is created.
 **Reference Check:** `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`, `REF-10`, `REF-11`, `REF-12`, and `REF-13` are now reflected in the coder implementation. `REF-04` remains intentionally provisional because `src/input_provider.gd` was not reclaimed in this slice.
 
 **Commits:**
-- Pending coder handoff commit.
+- `27fa3c5` - `Migrate proving scenes onto live CameraTracking`
 
 **Lessons Learned:** The seam was already present; the real migration work was making proving consume it honestly while keeping runtime/vendor ownership upstream. Repo-local validation also confirmed this repo still carries unrelated legacy test failures, so QA/audit should judge the new contract path against the targeted proofs rather than assume a clean full-suite baseline.
 
