@@ -289,6 +289,8 @@ Commit / push: `cedd7db` (`Center playback controls in timeline panel`) pushed t
 
 **Lessons Learned:** Reusing the existing MJPEG HTTP surface for playback control/status kept the Godot-side UI honest and lightweight. Immediate human testing on Cookie was valuable because it caught UX regressions and then exposed deeper debug-truth problems that headless smoke checks did not: first background click dismissal and practical readability width, then stuck `x/y`, misleading tracking-state behavior, jitter/smoothing concerns, and finally timeline-specific polish around panel affordances and allowed-click zones. The shared-harness architecture continues to hold up because these fixes remain localized instead of forcing scene-specific rewrites. The main UI lesson from this final slice is that click-away dismissal needs a clearly defined allowlist for interactive overlay surfaces, otherwise shared debug panels feel brittle even when the underlying state model is correct.
 
+**Stopping Point:** Derrick is ending the session after the latest playback-centering patch. Next session should start with Derrick’s manual Cookie QA against commit `cedd7db` (plus plan-note commit `06380c7`), specifically verifying that the playback controls now appear truly vertically centered in the timeline panel while preserving full-width seek stretch and keeping the inspector open during playback interaction. If QA passes, the remaining follow-up is deciding whether to keep Derrick’s currently preferred `Lite Filtered + optimized tracking` combination as an explicit default or just as a documented preference.
+
 ---
 
 *Created on 2026-05-21*
