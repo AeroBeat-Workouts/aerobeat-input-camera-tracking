@@ -4,14 +4,16 @@ Gameplay-interpretation layer for AeroBeat camera input.
 
 This repo is no longer described as the product's vendor-owned "MediaPipe Python" package. Its job is to preserve and evolve AeroBeat's **Boxing + Flow gameplay interpretation** while the platform moves camera lifecycle, preview ownership, and normalized frame production into the upstream `aerobeat-tool-camera-tracking` contract.
 
-Current truthful status for this first migration slice:
+Current truthful status for this migration wave:
 
-- this repo still contains the existing MediaPipe-backed implementation and legacy assembly-facing entrypoint
-- it now also contains a **tracking-frame ingestion seam** that can consume normalized `CameraTracking` frames without re-owning vendor payload shape
+- `src/input_provider.gd` now prefers a supplied or conservatively discoverable `CameraTracking` session and routes the assembly-facing adapter through `src/providers/camera_tracking_provider.gd` when that contract lane exists
+- this repo still contains the existing MediaPipe-backed implementation as a **clearly provisional legacy fallback** when no `CameraTracking` session is available yet
+- the adapter still publishes itself through the input-core provider-session registry with `provider_id = mediapipe_python` for current compatibility
+- the repo contains a **tracking-frame ingestion seam** that consumes normalized `CameraTracking` frames without re-owning vendor payload shape
 - `.testbed/` Boxing + Flow proving now prefer a live `CameraTracking` session for the continuous contract path
 - `.testbed/` mounts the upstream `aerobeat-tool-camera-tracking` contract shell plus the paired vendor backend only for repo-local proving/tests
 - real sharable addon code stays at the repo root; `.testbed/` remains the proving surface only
-- direct preview/lifecycle/runtime ownership is still provisional in the legacy lane and is **not** reclaimed by this repo for the contract proving path
+- direct preview/lifecycle/runtime ownership is still provisional in the legacy lane and is **not** reclaimed by this repo for the contract path
 
 ## First migration-slice architecture
 

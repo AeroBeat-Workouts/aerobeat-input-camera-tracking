@@ -4,21 +4,23 @@ extends "res://addons/aerobeat-input-core/src/interfaces/boxing_input.gd"
 ## This addon entrypoint is for consuming projects that mount this repo under
 ## the live assembly addon alias `res://addons/aerobeat-input-mediapipe/`
 ## alongside `aerobeat-input-core`.
-## The standalone repo testbed continues to exercise `src/providers/mediapipe_provider.gd`
-## directly so this repo can still be worked on without hiding assembly wiring here.
 ##
 ## Current truthful scope:
-## - boxing gameplay intent events plus first-pass Flow motion-family signals from conservative 2D-camera detectors
-## - lifecycle + polling access for head/hands/feet positions
-## - tracking state + confidence queries
-## - shared detector substrate metrics for normalization and body-state estimation
-## - estimated per-limb velocities from 2D landmark deltas
-## - no haptics or 6DOF transform output yet
+## - prefers a supplied/discoverable CameraTracking session and routes gameplay-facing
+##   behavior through CameraTrackingProvider when that contract lane is available
+## - preserves provider-session-registry publication from this adapter for current
+##   input-core compatibility
+## - keeps a clearly provisional legacy MediaPipe fallback only when no CameraTracking
+##   session is available yet
+## - does not reclaim upstream runtime/backend/preview ownership in the contract lane
 
 const PROVIDER_ID := "mediapipe_python"
 const PROVIDER_SESSION_REGISTRY_PATH := "res://addons/aerobeat-input-core/src/runtime/provider_session_registry.gd"
 const SHARED_SESSION_OWNER_PREFIX := "aerobeat-input-camera-tracking:input_provider"
 const SHARED_SESSION_KEY := "mediapipe_python"
+const TRACKING_SESSION_NODE_NAME := "CameraTracking"
+const PROVIDER_LANE_CAMERA_TRACKING := "camera_tracking"
+const PROVIDER_LANE_LEGACY_MEDIAPIPE := "legacy_mediapipe"
 
 signal swing_left(placement: int, direction: int)
 signal swing_right(placement: int, direction: int)
@@ -31,6 +33,8 @@ signal weave_right_end()
 
 var _provider = null
 var _config = null
+var _tracking_session = null
+var _provider_lane := ""
 var _tracking_mode: TrackingMode = TrackingMode.MODE_2D
 var _body_track_flags: int = BodyTrackFlags.ALL
 var _published_session_key := ""
@@ -38,19 +42,43 @@ var _published_session_owner_id := ""
 var _available_camera_devices: Array = []
 
 func _ready() -> void:
+	_tracking_session = _resolve_tracking_session()
 	_ensure_provider()
+
+func set_tracking_session(session) -> void:
+	_tracking_session = session
+	_ensure_provider()
+	if _provider != null and _provider.has_method("set_tracking_session"):
+		_provider.set_tracking_session(session)
+	_refresh_available_camera_devices()
+
+func clear_tracking_session() -> void:
+	set_tracking_session(null)
+
+func get_tracking_session():
+	return _resolve_tracking_session()
+
+func uses_camera_tracking_contract_path() -> bool:
+	return _provider_lane == PROVIDER_LANE_CAMERA_TRACKING
+
+func is_using_legacy_fallback() -> bool:
+	return _provider_lane == PROVIDER_LANE_LEGACY_MEDIAPIPE
 
 func start(settings_json: String = "") -> bool:
 	_ensure_provider()
 	_apply_settings(settings_json)
-	var success: bool = _provider.start()
+	if _provider == null:
+		failed.emit("Input provider could not resolve an implementation")
+		return false
+	var success: bool = bool(_provider.start())
 	if success:
 		_publish_shared_session_if_possible()
 		_refresh_available_camera_devices()
 		camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
 		started.emit()
 	else:
-		failed.emit("MediaPipe provider failed to start")
+		var failure_reason := "CameraTracking provider failed to start" if uses_camera_tracking_contract_path() else "MediaPipe provider failed to start"
+		failed.emit(failure_reason)
 	return success
 
 func stop() -> void:
@@ -81,6 +109,10 @@ func get_available_camera_devices() -> Array:
 	return _available_camera_devices.duplicate(true)
 
 func get_selected_camera_device_id() -> String:
+	if _provider != null and _provider.has_method("get_selected_camera_device_id"):
+		var selected := String(_provider.get_selected_camera_device_id()).strip_edges()
+		if not selected.is_empty():
+			return selected
 	if _config == null:
 		return ""
 	return String(_config.get_camera_source()).strip_edges()
@@ -90,25 +122,25 @@ func set_selected_camera_device_id(device_id: String) -> bool:
 	if _config == null:
 		return false
 	_config.set_selected_camera_device_id(device_id)
-	var ok: bool = _provider != null and bool(_provider.set_selected_camera_device_id(device_id))
+	var ok: bool = _provider != null and _provider.has_method("set_selected_camera_device_id") and bool(_provider.set_selected_camera_device_id(device_id))
 	_refresh_available_camera_devices()
 	camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
 	return ok
 
 func get_head_position(mode: TrackingMode = TrackingMode.MODE_2D) -> Vector3:
-	return _to_vector3(_provider.get_head_position(_to_provider_mode(mode)))
+	return _to_vector3(_provider.get_head_position(_to_provider_mode(mode))) if _provider != null else Vector3.ZERO
 
 func get_left_hand_position(mode: TrackingMode = TrackingMode.MODE_2D) -> Vector3:
-	return _to_vector3(_provider.get_left_hand_position(_to_provider_mode(mode)))
+	return _to_vector3(_provider.get_left_hand_position(_to_provider_mode(mode))) if _provider != null else Vector3.ZERO
 
 func get_right_hand_position(mode: TrackingMode = TrackingMode.MODE_2D) -> Vector3:
-	return _to_vector3(_provider.get_right_hand_position(_to_provider_mode(mode)))
+	return _to_vector3(_provider.get_right_hand_position(_to_provider_mode(mode))) if _provider != null else Vector3.ZERO
 
 func get_left_foot_position(mode: TrackingMode = TrackingMode.MODE_2D) -> Vector3:
-	return _to_vector3(_provider.get_left_foot_position(_to_provider_mode(mode)))
+	return _to_vector3(_provider.get_left_foot_position(_to_provider_mode(mode))) if _provider != null else Vector3.ZERO
 
 func get_right_foot_position(mode: TrackingMode = TrackingMode.MODE_2D) -> Vector3:
-	return _to_vector3(_provider.get_right_foot_position(_to_provider_mode(mode)))
+	return _to_vector3(_provider.get_right_foot_position(_to_provider_mode(mode))) if _provider != null else Vector3.ZERO
 
 func get_head_velocity() -> Vector3:
 	return _provider.get_landmark_velocity_for_body_part(&"head") if _provider != null else Vector3.ZERO
@@ -141,13 +173,13 @@ func get_right_foot_rotation() -> Quaternion:
 	return Quaternion.IDENTITY
 
 func get_tracking_confidence(body_part: StringName) -> float:
-	if _provider == null:
+	if _provider == null or not _provider.has_method("get_detector_state"):
 		return 0.0
 	return _provider.get_detector_state().get("metrics", {}).get("confidences", {}).get(String(body_part), 0.0)
 
 func set_tracking_mode(mode: TrackingMode) -> void:
 	_tracking_mode = mode
-	if _provider != null:
+	if _provider != null and _provider.has_method("set_tracking_mode"):
 		_provider.set_tracking_mode(_to_provider_mode(mode))
 
 func set_body_track_flags(flags: int) -> void:
@@ -220,85 +252,144 @@ func _build_shared_session_metadata() -> Dictionary:
 		"entrypoint": "src/input_provider.gd",
 		"node_path": String(get_path()) if is_inside_tree() else "",
 		"shared_reuse_scope": "same_runtime_only",
+		"provider_lane": _provider_lane,
+		"legacy_fallback": is_using_legacy_fallback(),
 	}
 
 func _ensure_provider() -> void:
-	if _provider != null:
+	var resolved_tracking_session = _resolve_tracking_session()
+	if resolved_tracking_session != null:
+		_ensure_camera_tracking_provider(resolved_tracking_session)
+	else:
+		_ensure_legacy_mediapipe_provider()
+
+	if _provider != null and _provider.has_method("set_tracking_mode"):
+		_provider.set_tracking_mode(_to_provider_mode(_tracking_mode))
+	_refresh_available_camera_devices()
+
+func _ensure_camera_tracking_provider(tracking_session) -> void:
+	if _provider != null and _provider_lane.is_empty():
+		_provider_lane = _infer_provider_lane(_provider)
+	if _provider != null and _provider_lane == PROVIDER_LANE_CAMERA_TRACKING:
+		_provider.set_tracking_session(tracking_session)
+		if _provider.get("config") == null:
+			_provider.config = _ensure_config()
+		_config = _provider.config
 		return
+
+	var provider_script: GDScript = _load_local_script("providers/camera_tracking_provider.gd")
+	if provider_script == null:
+		return
+	var provider = provider_script.new()
+	provider.name = "CameraTrackingProvider"
+	provider.config = _ensure_config()
+	provider.set_tracking_session(tracking_session)
+	_replace_provider(provider, PROVIDER_LANE_CAMERA_TRACKING)
+
+func _ensure_legacy_mediapipe_provider() -> void:
+	if _provider != null and _provider_lane.is_empty():
+		_provider_lane = _infer_provider_lane(_provider)
+	if _provider != null and _provider_lane == PROVIDER_LANE_LEGACY_MEDIAPIPE:
+		if _provider.get("config") == null:
+			_provider.config = _ensure_config()
+		_config = _provider.config
+		_connect_provider_signals()
+		_connect_provider_tracking_lost_signal()
+		return
+
 	var provider_script: GDScript = _load_local_script("providers/mediapipe_provider.gd")
-	_provider = provider_script.new()
-	_provider.name = "MediaPipeProvider"
-	add_child(_provider)
-	_provider.tracking_lost.connect(func() -> void:
-		failed.emit("Tracking lost")
-	)
-	_connect_provider_signals()
-	if _provider.config == null:
-		_provider.config = _new_local_config()
+	if provider_script == null:
+		return
+	var provider = provider_script.new()
+	provider.name = "MediaPipeProvider"
+	provider.config = _ensure_config()
+	_replace_provider(provider, PROVIDER_LANE_LEGACY_MEDIAPIPE)
+
+func _replace_provider(next_provider: Node, lane: String) -> void:
+	var previous_provider = _provider
+	if previous_provider == next_provider:
+		_provider_lane = lane
+		return
+
+	_provider = next_provider
+	_provider_lane = lane
+	if _provider.get_parent() != self:
+		add_child(_provider)
+	if _provider.get("config") == null:
+		_provider.config = _ensure_config()
 	_config = _provider.config
+	_connect_provider_tracking_lost_signal()
+	_connect_provider_signals()
+
+	if previous_provider != null and previous_provider != next_provider:
+		if previous_provider.has_method("stop"):
+			previous_provider.stop()
+		if previous_provider.get_parent() == self:
+			remove_child(previous_provider)
+		previous_provider.queue_free()
+
+func _infer_provider_lane(provider: Variant) -> String:
+	if provider != null and provider.has_method("set_tracking_session"):
+		return PROVIDER_LANE_CAMERA_TRACKING
+	return PROVIDER_LANE_LEGACY_MEDIAPIPE
+
+func _resolve_tracking_session():
+	if _tracking_session != null:
+		return _tracking_session
+	return _discover_tracking_session()
+
+func _discover_tracking_session():
+	if not is_inside_tree():
+		return null
+	return find_child(TRACKING_SESSION_NODE_NAME, true, false)
+
+func _connect_provider_tracking_lost_signal() -> void:
+	if _provider == null or not _provider.has_signal("tracking_lost"):
+		return
+	if not _provider.tracking_lost.is_connected(_on_provider_tracking_lost):
+		_provider.tracking_lost.connect(_on_provider_tracking_lost)
 
 func _connect_provider_signals() -> void:
 	if _provider == null:
 		return
-	if not _provider.punch_left.is_connected(_on_provider_punch_left):
-		_provider.punch_left.connect(_on_provider_punch_left)
-	if not _provider.punch_right.is_connected(_on_provider_punch_right):
-		_provider.punch_right.connect(_on_provider_punch_right)
-	if not _provider.uppercut_left.is_connected(_on_provider_uppercut_left):
-		_provider.uppercut_left.connect(_on_provider_uppercut_left)
-	if not _provider.uppercut_right.is_connected(_on_provider_uppercut_right):
-		_provider.uppercut_right.connect(_on_provider_uppercut_right)
-	if not _provider.hook_left.is_connected(_on_provider_hook_left):
-		_provider.hook_left.connect(_on_provider_hook_left)
-	if not _provider.hook_right.is_connected(_on_provider_hook_right):
-		_provider.hook_right.connect(_on_provider_hook_right)
-	if _provider.has_signal("swing_left") and not _provider.swing_left.is_connected(_on_provider_swing_left):
-		_provider.swing_left.connect(_on_provider_swing_left)
-	if _provider.has_signal("swing_right") and not _provider.swing_right.is_connected(_on_provider_swing_right):
-		_provider.swing_right.connect(_on_provider_swing_right)
-	if _provider.has_signal("trail_left") and not _provider.trail_left.is_connected(_on_provider_trail_left):
-		_provider.trail_left.connect(_on_provider_trail_left)
-	if _provider.has_signal("trail_right") and not _provider.trail_right.is_connected(_on_provider_trail_right):
-		_provider.trail_right.connect(_on_provider_trail_right)
-	if not _provider.guard_start.is_connected(_on_provider_guard_start):
-		_provider.guard_start.connect(_on_provider_guard_start)
-	if not _provider.guard_end.is_connected(_on_provider_guard_end):
-		_provider.guard_end.connect(_on_provider_guard_end)
-	if not _provider.squat_start.is_connected(_on_provider_squat_start):
-		_provider.squat_start.connect(_on_provider_squat_start)
-	if not _provider.squat_end.is_connected(_on_provider_squat_end):
-		_provider.squat_end.connect(_on_provider_squat_end)
-	if _provider.has_signal("weave_left_start") and not _provider.weave_left_start.is_connected(_on_provider_weave_left_start):
-		_provider.weave_left_start.connect(_on_provider_weave_left_start)
-	if _provider.has_signal("weave_left_end") and not _provider.weave_left_end.is_connected(_on_provider_weave_left_end):
-		_provider.weave_left_end.connect(_on_provider_weave_left_end)
-	if _provider.has_signal("weave_right_start") and not _provider.weave_right_start.is_connected(_on_provider_weave_right_start):
-		_provider.weave_right_start.connect(_on_provider_weave_right_start)
-	if _provider.has_signal("weave_right_end") and not _provider.weave_right_end.is_connected(_on_provider_weave_right_end):
-		_provider.weave_right_end.connect(_on_provider_weave_right_end)
-	if not _provider.sidestep_left_start.is_connected(_on_provider_sidestep_left_start):
-		_provider.sidestep_left_start.connect(_on_provider_sidestep_left_start)
-	if not _provider.sidestep_left_end.is_connected(_on_provider_sidestep_left_end):
-		_provider.sidestep_left_end.connect(_on_provider_sidestep_left_end)
-	if not _provider.sidestep_right_start.is_connected(_on_provider_sidestep_right_start):
-		_provider.sidestep_right_start.connect(_on_provider_sidestep_right_start)
-	if not _provider.sidestep_right_end.is_connected(_on_provider_sidestep_right_end):
-		_provider.sidestep_right_end.connect(_on_provider_sidestep_right_end)
-	if not _provider.knee_left.is_connected(_on_provider_knee_left):
-		_provider.knee_left.connect(_on_provider_knee_left)
-	if not _provider.knee_right.is_connected(_on_provider_knee_right):
-		_provider.knee_right.connect(_on_provider_knee_right)
-	if not _provider.leg_lift_left_start.is_connected(_on_provider_leg_lift_left_start):
-		_provider.leg_lift_left_start.connect(_on_provider_leg_lift_left_start)
-	if not _provider.leg_lift_left_end.is_connected(_on_provider_leg_lift_left_end):
-		_provider.leg_lift_left_end.connect(_on_provider_leg_lift_left_end)
-	if not _provider.leg_lift_right_start.is_connected(_on_provider_leg_lift_right_start):
-		_provider.leg_lift_right_start.connect(_on_provider_leg_lift_right_start)
-	if not _provider.leg_lift_right_end.is_connected(_on_provider_leg_lift_right_end):
-		_provider.leg_lift_right_end.connect(_on_provider_leg_lift_right_end)
+	_connect_provider_signal("punch_left", _on_provider_punch_left)
+	_connect_provider_signal("punch_right", _on_provider_punch_right)
+	_connect_provider_signal("uppercut_left", _on_provider_uppercut_left)
+	_connect_provider_signal("uppercut_right", _on_provider_uppercut_right)
+	_connect_provider_signal("hook_left", _on_provider_hook_left)
+	_connect_provider_signal("hook_right", _on_provider_hook_right)
+	_connect_provider_signal("swing_left", _on_provider_swing_left)
+	_connect_provider_signal("swing_right", _on_provider_swing_right)
+	_connect_provider_signal("trail_left", _on_provider_trail_left)
+	_connect_provider_signal("trail_right", _on_provider_trail_right)
+	_connect_provider_signal("guard_start", _on_provider_guard_start)
+	_connect_provider_signal("guard_end", _on_provider_guard_end)
+	_connect_provider_signal("squat_start", _on_provider_squat_start)
+	_connect_provider_signal("squat_end", _on_provider_squat_end)
+	_connect_provider_signal("weave_left_start", _on_provider_weave_left_start)
+	_connect_provider_signal("weave_left_end", _on_provider_weave_left_end)
+	_connect_provider_signal("weave_right_start", _on_provider_weave_right_start)
+	_connect_provider_signal("weave_right_end", _on_provider_weave_right_end)
+	_connect_provider_signal("sidestep_left_start", _on_provider_sidestep_left_start)
+	_connect_provider_signal("sidestep_left_end", _on_provider_sidestep_left_end)
+	_connect_provider_signal("sidestep_right_start", _on_provider_sidestep_right_start)
+	_connect_provider_signal("sidestep_right_end", _on_provider_sidestep_right_end)
+	_connect_provider_signal("knee_left", _on_provider_knee_left)
+	_connect_provider_signal("knee_right", _on_provider_knee_right)
+	_connect_provider_signal("leg_lift_left_start", _on_provider_leg_lift_left_start)
+	_connect_provider_signal("leg_lift_left_end", _on_provider_leg_lift_left_end)
+	_connect_provider_signal("leg_lift_right_start", _on_provider_leg_lift_right_start)
+	_connect_provider_signal("leg_lift_right_end", _on_provider_leg_lift_right_end)
+
+func _connect_provider_signal(signal_name: StringName, callback: Callable) -> void:
+	if _provider == null or not _provider.has_signal(String(signal_name)):
+		return
+	var signal_variant: Variant = _provider.get(String(signal_name))
+	if signal_variant is Signal and not signal_variant.is_connected(callback):
+		signal_variant.connect(callback)
 
 func _refresh_available_camera_devices() -> void:
-	if _provider == null:
+	if _provider == null or not _provider.has_method("get_available_camera_devices"):
 		_available_camera_devices = []
 		return
 	_available_camera_devices = _provider.get_available_camera_devices()
@@ -310,9 +401,7 @@ func _apply_settings(settings_json: String) -> void:
 	if !(parsed is Dictionary):
 		return
 	var settings: Dictionary = parsed
-	if _provider.config == null:
-		_provider.config = _new_local_config()
-	_config = _provider.config
+	_config = _ensure_config()
 	if settings.has("udp_port"):
 		_config.udp_port = int(settings["udp_port"])
 	if settings.has("min_visibility"):
@@ -321,34 +410,47 @@ func _apply_settings(settings_json: String) -> void:
 		_config.tracking_confidence = float(settings["tracking_confidence"])
 	if settings.has("flip_horizontal"):
 		_config.flip_horizontal = bool(settings["flip_horizontal"])
+	var selected_camera_changed := false
 	if settings.has("selected_camera_device_id"):
 		_config.set_selected_camera_device_id(String(settings["selected_camera_device_id"]))
+		selected_camera_changed = true
 	elif settings.has("camera_source"):
 		_config.set_selected_camera_device_id(String(settings["camera_source"]))
+		selected_camera_changed = true
 	if settings.has("tracking_overlay_mode"):
 		_config.tracking_overlay_mode = String(settings["tracking_overlay_mode"]).strip_edges().to_lower()
 	if settings.has("gesture_eval_interval_frames"):
 		_config.gesture_eval_interval_frames = maxi(1, int(settings["gesture_eval_interval_frames"]))
 	if _provider != null:
 		_provider.config = _config
-		_provider.set_selected_camera_device_id(_config.get_camera_source())
+		if selected_camera_changed and _provider.has_method("set_selected_camera_device_id"):
+			_provider.set_selected_camera_device_id(_config.get_camera_source())
 	_refresh_available_camera_devices()
 	camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
+
+func _ensure_config() -> Variant:
+	if _config != null:
+		return _config
+	_config = _new_local_config()
+	return _config
 
 func _load_local_script(relative_path: String) -> GDScript:
 	var script_path := _resolve_local_path(relative_path)
 	var script: Variant = load(script_path)
 	if script == null:
-		push_error("Failed to load MediaPipe addon script: %s" % script_path)
+		push_error("Failed to load camera tracking addon script: %s" % script_path)
 		return null
 	return script
 
 func _new_local_config() -> Variant:
 	var config_script: GDScript = _load_local_script("config/mediapipe_config.gd")
-	return config_script.new()
+	return config_script.new() if config_script != null else null
 
 func _resolve_local_path(relative_path: String) -> String:
 	return "%s/%s" % [get_script().resource_path.get_base_dir(), relative_path]
+
+func _on_provider_tracking_lost() -> void:
+	failed.emit("Tracking lost")
 
 func _on_provider_punch_left(power: float) -> void:
 	punch_left.emit(power)
