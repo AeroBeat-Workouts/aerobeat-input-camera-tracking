@@ -56,7 +56,12 @@ func test_input_provider_adapter_reemits_boxing_signals_from_provider() -> void:
 	assert_eq(punch_calls, [0.75])
 
 func test_input_provider_adapter_publishes_started_session_for_shared_reuse() -> void:
-	var setup := _make_started_legacy_adapter()
+	var setup := _make_started_legacy_adapter({
+		"camera_source": "/dev/video7",
+		"min_visibility": 0.35,
+		"tracking_overlay_mode": "optimized",
+		"gesture_eval_interval_frames": 3,
+	})
 	var adapter := setup["adapter"] as Node
 	assert_true(bool(setup["started"]))
 
@@ -69,11 +74,62 @@ func test_input_provider_adapter_publishes_started_session_for_shared_reuse() ->
 	assert_eq(String(metadata.get("shared_reuse_scope", "")), "same_runtime_only")
 	assert_true(bool(metadata.get("legacy_fallback", false)))
 	assert_eq(String(metadata.get("provider_lane", "")), "legacy_mediapipe")
+	assert_eq(String(metadata.get("runtime_mode", "")), "live")
+	assert_eq(String(metadata.get("camera_source", "")), "/dev/video7")
+	assert_eq(String(metadata.get("tracking_overlay_mode", "")), "optimized")
+	assert_eq(int(metadata.get("gesture_eval_interval_frames", -1)), 3)
+	assert_eq(float(metadata.get("min_visibility", 0.0)), 0.35)
 
-	var acquire: Dictionary = RegistryScript.acquire_session("camera_gesture:testbed", {"session_key": "mediapipe_python"})
+	var acquire: Dictionary = adapter.acquire_shared_session("camera_gesture:testbed", {
+		"provider_id": "mediapipe_python",
+		"metadata_match": {
+			"runtime_mode": "live",
+			"camera_source": "/dev/video7",
+			"tracking_overlay_mode": "optimized",
+			"gesture_eval_interval_frames": 3,
+			"min_visibility": 0.35,
+		},
+	})
 	assert_true(bool(acquire.get("ok", false)), "Published adapter session should be borrowable by downstream consumers")
 	var acquired_session: Dictionary = acquire.get("session", {}) if acquire.get("session", {}) is Dictionary else {}
 	assert_eq(int(acquired_session.get("borrower_count", -1)), 1)
+
+func test_input_provider_adapter_releases_borrower_counts_via_compatibility_helpers() -> void:
+	var setup := _make_started_legacy_adapter({
+		"camera_source": "/dev/video7",
+	})
+	var adapter := setup["adapter"] as Node
+
+	var acquire: Dictionary = adapter.acquire_shared_session("camera_gesture:testbed")
+	assert_true(bool(acquire.get("ok", false)))
+	var acquired_session: Dictionary = acquire.get("session", {}) if acquire.get("session", {}) is Dictionary else {}
+	assert_eq(int(acquired_session.get("borrower_count", -1)), 1)
+
+	var release: Dictionary = adapter.release_shared_session("camera_gesture:testbed")
+	assert_true(bool(release.get("ok", false)))
+	var released_session: Dictionary = release.get("session", {}) if release.get("session", {}) is Dictionary else {}
+	assert_eq(int(released_session.get("borrower_count", -1)), 0)
+
+func test_input_provider_adapter_reports_owned_shared_session_debug_state() -> void:
+	var setup := _make_started_legacy_adapter({
+		"camera_source": "/dev/video3",
+		"min_visibility": 0.42,
+		"tracking_overlay_mode": "full",
+		"gesture_eval_interval_frames": 2,
+	})
+	var adapter := setup["adapter"] as Node
+
+	var debug_state: Dictionary = adapter.get_shared_session_debug_state()
+	assert_eq(String(debug_state.get("session_role", "")), "owned")
+	assert_eq(String(debug_state.get("session_key", "")), "mediapipe_python")
+	assert_eq(String(debug_state.get("provider_id", "")), "mediapipe_python")
+	assert_eq(String(debug_state.get("provider_lane", "")), "legacy_mediapipe")
+	assert_eq(String(debug_state.get("runtime_mode", "")), "live")
+	assert_eq(String(debug_state.get("camera_source", "")), "/dev/video3")
+	assert_eq(float(debug_state.get("min_visibility", 0.0)), 0.42)
+	assert_eq(String(debug_state.get("tracking_overlay_mode", "")), "full")
+	assert_eq(int(debug_state.get("gesture_eval_interval_frames", -1)), 2)
+	assert_false(bool(debug_state.get("borrowed", true)))
 
 func test_input_provider_adapter_unpublishes_owned_session_on_stop() -> void:
 	var setup := _make_started_legacy_adapter()
@@ -150,7 +206,7 @@ func test_input_provider_adapter_discovers_camera_tracking_session_before_fallin
 	assert_false(adapter.is_using_legacy_fallback())
 	assert_same(adapter.get_tracking_session(), tracker)
 
-func _make_started_legacy_adapter() -> Dictionary:
+func _make_started_legacy_adapter(settings: Dictionary = {}) -> Dictionary:
 	var adapter = add_child_autoqfree(InputProviderAdapterScript.new())
 	var backend = FakeProviderBackend.new()
 	backend.name = "FakeProviderBackend"
@@ -162,7 +218,7 @@ func _make_started_legacy_adapter() -> Dictionary:
 	return {
 		"adapter": adapter,
 		"backend": backend,
-		"started": adapter.start("{}"),
+		"started": adapter.start(JSON.stringify(settings)),
 	}
 
 func _make_started_tracking_session() -> Dictionary:

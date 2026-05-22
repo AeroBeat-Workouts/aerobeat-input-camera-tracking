@@ -41,6 +41,47 @@ var _published_session_key := ""
 var _published_session_owner_id := ""
 var _available_camera_devices: Array = []
 
+func request_shared_session(request: Dictionary = {}) -> Dictionary:
+	var registry = _load_provider_session_registry()
+	if registry == null:
+		return {}
+	return registry.request_session(_with_default_shared_session_request(request))
+
+func acquire_shared_session(consumer_id: String, request: Dictionary = {}) -> Dictionary:
+	var registry = _load_provider_session_registry()
+	if registry == null:
+		return {}
+	return registry.acquire_session(consumer_id, _with_default_shared_session_request(request))
+
+func release_shared_session(consumer_id: String, session_key: String = "") -> Dictionary:
+	var registry = _load_provider_session_registry()
+	if registry == null:
+		return {}
+	var target_session_key := String(session_key).strip_edges()
+	if target_session_key.is_empty():
+		target_session_key = _published_session_key
+	return registry.release_session(consumer_id, target_session_key)
+
+func get_shared_session_debug_state() -> Dictionary:
+	var session_role := "inactive"
+	if not _published_session_key.is_empty():
+		session_role = "owned"
+	return {
+		"registry_available": _provider_session_registry_available(),
+		"session_role": session_role,
+		"session_key": _published_session_key,
+		"owner_id": _published_session_owner_id,
+		"borrowed": false,
+		"provider_live": _provider != null and is_instance_valid(_provider),
+		"provider_id": PROVIDER_ID,
+		"provider_lane": _provider_lane,
+		"runtime_mode": _shared_session_runtime_mode(),
+		"camera_source": get_selected_camera_device_id(),
+		"min_visibility": _shared_session_min_visibility(),
+		"tracking_overlay_mode": _shared_session_tracking_overlay_mode(),
+		"gesture_eval_interval_frames": _shared_session_gesture_eval_interval_frames(),
+	}
+
 func _ready() -> void:
 	_tracking_session = _resolve_tracking_session()
 	_ensure_provider()
@@ -51,6 +92,7 @@ func set_tracking_session(session) -> void:
 	if _provider != null and _provider.has_method("set_tracking_session"):
 		_provider.set_tracking_session(session)
 	_refresh_available_camera_devices()
+	_republish_shared_session_if_needed()
 
 func clear_tracking_session() -> void:
 	set_tracking_session(null)
@@ -124,6 +166,7 @@ func set_selected_camera_device_id(device_id: String) -> bool:
 	_config.set_selected_camera_device_id(device_id)
 	var ok: bool = _provider != null and _provider.has_method("set_selected_camera_device_id") and bool(_provider.set_selected_camera_device_id(device_id))
 	_refresh_available_camera_devices()
+	_republish_shared_session_if_needed()
 	camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
 	return ok
 
@@ -252,8 +295,14 @@ func _build_shared_session_metadata() -> Dictionary:
 		"entrypoint": "src/input_provider.gd",
 		"node_path": String(get_path()) if is_inside_tree() else "",
 		"shared_reuse_scope": "same_runtime_only",
+		"provider_id": PROVIDER_ID,
 		"provider_lane": _provider_lane,
 		"legacy_fallback": is_using_legacy_fallback(),
+		"runtime_mode": _shared_session_runtime_mode(),
+		"camera_source": get_selected_camera_device_id(),
+		"min_visibility": _shared_session_min_visibility(),
+		"tracking_overlay_mode": _shared_session_tracking_overlay_mode(),
+		"gesture_eval_interval_frames": _shared_session_gesture_eval_interval_frames(),
 	}
 
 func _ensure_provider() -> void:
@@ -393,6 +442,37 @@ func _refresh_available_camera_devices() -> void:
 		_available_camera_devices = []
 		return
 	_available_camera_devices = _provider.get_available_camera_devices()
+	_republish_shared_session_if_needed()
+
+func _republish_shared_session_if_needed() -> void:
+	if _provider == null or not is_instance_valid(_provider):
+		return
+	if _published_session_owner_id.is_empty() or _published_session_key.is_empty():
+		return
+	_publish_shared_session_if_possible()
+
+func _with_default_shared_session_request(request: Dictionary = {}) -> Dictionary:
+	var normalized_request := request.duplicate(true)
+	if not normalized_request.has("session_key"):
+		normalized_request["session_key"] = SHARED_SESSION_KEY
+	if not normalized_request.has("provider_id"):
+		normalized_request["provider_id"] = PROVIDER_ID
+	return normalized_request
+
+func _shared_session_runtime_mode() -> String:
+	return "live"
+
+func _shared_session_min_visibility() -> float:
+	return float(_config.min_visibility) if _config != null else 0.5
+
+func _shared_session_tracking_overlay_mode() -> String:
+	if _config == null:
+		return "full"
+	var mode := String(_config.tracking_overlay_mode).strip_edges().to_lower()
+	return mode if not mode.is_empty() else "full"
+
+func _shared_session_gesture_eval_interval_frames() -> int:
+	return maxi(1, int(_config.gesture_eval_interval_frames)) if _config != null else 1
 
 func _apply_settings(settings_json: String) -> void:
 	if settings_json.is_empty():
