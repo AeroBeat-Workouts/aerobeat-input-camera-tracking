@@ -1,6 +1,6 @@
 extends "res://addons/gut/test.gd"
 
-const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-mediapipe-python/src/providers/camera_tracking_provider.gd")
+const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 

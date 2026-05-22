@@ -1,6 +1,6 @@
 extends "res://addons/gut/test.gd"
 
-const TrackingFrameAdapter = preload("res://addons/aerobeat-input-mediapipe-python/src/tracking_frame_adapter.gd")
+const TrackingFrameAdapter = preload("res://addons/aerobeat-input-camera-tracking/src/tracking_frame_adapter.gd")
 
 func test_tracking_frame_adapter_normalizes_visibility_keys_without_reflipping_coordinates() -> void:
 	var landmarks := TrackingFrameAdapter.landmarks_from_tracking_frame({

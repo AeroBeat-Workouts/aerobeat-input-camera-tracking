@@ -2,7 +2,7 @@
   "$schema": "https://chickensoft.games/schemas/addons.schema.json",
   "addons": {
     // This workbench consumes the current repo package from the repo root.
-    "aerobeat-input-mediapipe-python": {
+    "aerobeat-input-camera-tracking": {
       "url": "..",
       "source": "symlink",
       "subfolder": "/"

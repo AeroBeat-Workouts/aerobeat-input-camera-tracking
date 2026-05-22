@@ -1,6 +1,6 @@
 extends "res://addons/gut/test.gd"
 
-const InputProviderAdapterScript = preload("res://addons/aerobeat-input-mediapipe-python/src/input_provider.gd")
+const InputProviderAdapterScript = preload("res://addons/aerobeat-input-camera-tracking/src/input_provider.gd")
 const RegistryScript = preload("res://addons/aerobeat-input-core/src/runtime/provider_session_registry.gd")
 
 class FakeProviderBackend:

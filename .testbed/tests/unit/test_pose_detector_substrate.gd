@@ -1,8 +1,8 @@
 extends "res://addons/gut/test.gd"
 
-const PoseDetectorSubstrate = preload("res://addons/aerobeat-input-mediapipe-python/src/detectors/pose_detector_substrate.gd")
-const MediaPipeConfig = preload("res://addons/aerobeat-input-mediapipe-python/src/config/mediapipe_config.gd")
-const PoseLandmarkIds = preload("res://addons/aerobeat-input-mediapipe-python/src/detectors/pose_landmark_ids.gd")
+const PoseDetectorSubstrate = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd")
+const MediaPipeConfig = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
+const PoseLandmarkIds = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/pose_landmark_ids.gd")
 
 var substrate: PoseDetectorSubstrate = null
 var config: MediaPipeConfig = null

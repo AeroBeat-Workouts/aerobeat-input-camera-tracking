@@ -205,14 +205,14 @@ def _get_testbed_addon_restore_warning() -> str | None:
     if not testbed_root.exists():
         return None
 
-    self_addon_mount = testbed_root / "addons" / "aerobeat-input-mediapipe-python"
+    self_addon_mount = testbed_root / "addons" / "aerobeat-input-camera-tracking"
     if self_addon_mount.exists():
         return None
 
     return (
         "Runtime prep does not restore GodotEnv addon mounts. If you plan to open the repo-local "
         ".testbed project or proving scenes, run 'cd .testbed && godotenv addons install' from the "
-        "repo root first so res://addons/aerobeat-input-mediapipe-python/... exists again."
+        "repo root first so res://addons/aerobeat-input-camera-tracking/... exists again."
     )
 
 

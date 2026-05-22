@@ -8,7 +8,7 @@ extends Node
 ## - can attach/detach preview surfaces through CameraTracking when a session is supplied
 ## - does not require this repo to own the camera runtime lifecycle
 
-const TrackingFrameAdapterScript = preload("res://addons/aerobeat-input-mediapipe-python/src/tracking_frame_adapter.gd")
+const TrackingFrameAdapterScript = preload("res://addons/aerobeat-input-camera-tracking/src/tracking_frame_adapter.gd")
 
 signal pose_updated(landmarks: Array)
 signal multi_pose_updated(poses: Array)
@@ -282,7 +282,7 @@ func _ensure_detector_substrate() -> void:
 func _ensure_config() -> Variant:
 	if config != null:
 		return config
-	var config_script: Variant = load("res://addons/aerobeat-input-mediapipe-python/src/config/mediapipe_config.gd")
+	var config_script: Variant = load("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
 	if config_script == null:
 		return null
 	config = config_script.new()

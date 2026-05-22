@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://d2qmw5c7pnoth" path="res://scripts/boxing_proving_harness.gd" id="1_harness"]
 [ext_resource type="Script" uid="uid://b7yrfwv07ycys" path="res://scripts/landmark_drawer.gd" id="2_landmarks"]
 [ext_resource type="Script" uid="uid://cl21tmxhvdd0x" path="res://scripts/hand_trail_drawer.gd" id="3_trails"]
-[ext_resource type="Script" uid="uid://cntshlv75amau" path="res://addons/aerobeat-input-mediapipe-python/src/autostart_manager.gd" id="4_autostart"]
+[ext_resource type="Script" uid="uid://cntshlv75amau" path="res://addons/aerobeat-input-camera-tracking/src/autostart_manager.gd" id="4_autostart"]
 [ext_resource type="Texture2D" uid="uid://cv2cmj48bnykt" path="res://assets/backgrounds/perfect-hue-may-08-2026-hd.png" id="5_background"]
 
 [node name="BoxingProving" type="Control" unique_id=212338292]

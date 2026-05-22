@@ -1,10 +1,10 @@
 extends Control
 ## Shared proving harness for live Boxing / Flow detector tuning.
 
-const MediaPipeProviderScript = preload("res://addons/aerobeat-input-mediapipe-python/src/providers/mediapipe_provider.gd")
-const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-mediapipe-python/src/providers/camera_tracking_provider.gd")
-const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-mediapipe-python/src/camera_view.gd")
-const MediaPipeConfigScript = preload("res://addons/aerobeat-input-mediapipe-python/src/config/mediapipe_config.gd")
+const MediaPipeProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/mediapipe_provider.gd")
+const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd")
+const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
+const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
