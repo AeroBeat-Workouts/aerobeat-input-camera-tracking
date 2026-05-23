@@ -6,7 +6,7 @@ video:
 notes:
   - Boxing clip of Derrick
   - starts in guard, ends in guard, with four repeated right punches
-  - windows below are human validated. No other gestures besides punch_right and guard should be detected
+  - windows below are human validated. No other gestures besides punch_right and guard_start should be detected
 expected_gestures:
   - name: punch_right
     windows:
@@ -47,3 +47,4 @@ forbidden_gestures:
   - name: weave_right
   - name: side_step_left
   - name: side_step_right
+  - name: run_in_place_start

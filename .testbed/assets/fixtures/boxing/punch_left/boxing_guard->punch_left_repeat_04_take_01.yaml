@@ -18,7 +18,7 @@ expected_gestures:
         end_ms: 3833
       - start_ms: 4833
         end_ms: 5088
-  - name: guard_start
+  - name: guard
     surface: state
     windows:
       - start_ms: 0

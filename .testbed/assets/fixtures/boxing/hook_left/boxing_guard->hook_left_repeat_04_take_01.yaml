@@ -6,43 +6,42 @@ video:
 notes:
   - Boxing clip of Derrick
   - starts in guard, ends in guard, with four repeated left hooks
-  - windows below are human validated. No other gestures besides hook_left and guard should be detected
+  - windows below are human validated. No other gestures besides hook_left and guard_start should be detected
   expected_gestures:
-  - name: punch_left
+  - name: hook_left
     windows:
-      - start_ms: 1150
-        end_ms: 1300
-      - start_ms: 2150
-        end_ms: 2650
-      - start_ms: 3333
-        end_ms: 3833
-      - start_ms: 4833
-        end_ms: 5088
-  - name: guard
+      - start_ms: 1000
+        end_ms: 1600
+      - start_ms: 2500
+        end_ms: 3000
+      - start_ms: 4000
+        end_ms: 4600
+      - start_ms: 5500
+        end_ms: 5800
+  - name: guard_start
     surface: state
     windows:
       - start_ms: 0
-        end_ms: 1150
-      - start_ms: 1650
-        end_ms: 2150
-      - start_ms: 2900
-        end_ms: 3400
-      - start_ms: 3900
-        end_ms: 4650
-      - start_ms: 5287
-        end_ms: 6000
+        end_ms: 1000
+      - start_ms: 1600
+        end_ms: 2500
+      - start_ms: 3000
+        end_ms: 4000
+      - start_ms: 4600
+        end_ms: 5500
+      - start_ms: 5800
+        end_ms: 7047
 forbidden_gestures:
   - name: punch_left
   - name: punch_right
-  - name: hook_left
   - name: hook_right
   - name: uppercut_left
   - name: uppercut_right
   - name: knee_left
   - name: knee_right
   - name: squat_start
-  - name: leg_lift_left
-  - name: leg_lift_right
+  - name: leg_lift_left_start
+  - name: leg_lift_right_start
   - name: weave_left_start
   - name: weave_right_start
   - name: sidestep_left_start

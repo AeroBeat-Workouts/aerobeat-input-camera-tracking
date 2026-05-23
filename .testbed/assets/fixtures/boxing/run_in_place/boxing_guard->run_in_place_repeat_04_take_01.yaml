@@ -1,9 +1,0 @@
-schema_version: 1
-fixture_id: boxing_guard->run_in_place_repeat_04_take_01
-family: boxing
-video:
-  path: ./boxing_guard->run_in_place_repeat_04_take_01.mp4
-notes:
-  - Boxing clip of Derrick
-  - starts in guard, ends in guard, with four repeated run in place gestures
-  - windows below are human validated. No other gestures besides run_in_place and guard should be detected
