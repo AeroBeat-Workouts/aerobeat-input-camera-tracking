@@ -23,6 +23,7 @@ const MAX_TRAIL_AGE_MS := 1800
 const MAX_TRAIL_FRAME_JUMP := 0.28
 const TRAIL_VISIBILITY_THRESHOLD_FLOOR := 0.18
 const MAX_TRAIL_FALLBACK_SPREAD := 0.18
+const MAX_TRAIL_FALLBACK_EDGE_CLAMP_OVERSHOOT := 0.05
 const PLAYBACK_STATUS_POLL_INTERVAL_MS := 250
 const PLAYBACK_TOGGLE_BUTTON_WIDTH := 52.0
 const PLAYBACK_ICON_PLAY := "▶"
@@ -940,8 +941,8 @@ func _resolve_trail_hand_point(landmarks: Array, wrist_id: int, fallback_ids: Ar
 
 	var candidates: Array[Dictionary] = []
 	for landmark_id: int in fallback_ids:
-		var candidate := _find_landmark(landmarks, landmark_id)
-		if _trail_landmark_is_candidate(candidate):
+		var candidate := _trail_clamp_candidate_for_fallback(_find_landmark(landmarks, landmark_id))
+		if not candidate.is_empty():
 			candidates.append(candidate)
 	if candidates.is_empty():
 		return wrist
@@ -965,6 +966,28 @@ func _trail_landmark_is_candidate(landmark: Dictionary) -> bool:
 		return false
 	var point := Vector2(float(landmark.get("x", 0.0)), float(landmark.get("y", 0.0)))
 	return _is_normalized_point_in_bounds(point)
+
+func _trail_clamp_candidate_for_fallback(landmark: Dictionary) -> Dictionary:
+	if not _trail_landmark_is_fallback_usable(landmark):
+		return {}
+	var candidate := landmark.duplicate(true)
+	candidate["x"] = clampf(float(candidate.get("x", 0.0)), 0.0, 1.0)
+	candidate["y"] = clampf(float(candidate.get("y", 0.0)), 0.0, 1.0)
+	return candidate
+
+func _trail_landmark_is_fallback_usable(landmark: Dictionary) -> bool:
+	if landmark.is_empty():
+		return false
+	if float(landmark.get("v", 0.0)) < _trail_visibility_threshold():
+		return false
+	var point := Vector2(float(landmark.get("x", 0.0)), float(landmark.get("y", 0.0)))
+	return _is_normalized_point_in_bounds(point) or _is_trail_fallback_point_near_normalized_bounds(point)
+
+func _is_trail_fallback_point_near_normalized_bounds(point: Vector2) -> bool:
+	return point.x >= -MAX_TRAIL_FALLBACK_EDGE_CLAMP_OVERSHOOT \
+		and point.x <= 1.0 + MAX_TRAIL_FALLBACK_EDGE_CLAMP_OVERSHOOT \
+		and point.y >= -MAX_TRAIL_FALLBACK_EDGE_CLAMP_OVERSHOOT \
+		and point.y <= 1.0 + MAX_TRAIL_FALLBACK_EDGE_CLAMP_OVERSHOOT
 
 func _synthesize_trail_hand_point(candidates: Array[Dictionary]) -> Dictionary:
 	if candidates.size() < 2:

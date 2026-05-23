@@ -82,6 +82,14 @@ func test_resolves_trail_hand_point_by_clamping_near_edge_jitter() -> void:
 	assert_true(float(resolved.get("x", 0.0)) >= 0.98 and float(resolved.get("x", 0.0)) <= 1.0)
 	assert_true(float(resolved.get("y", 0.0)) >= 0.39 and float(resolved.get("y", 0.0)) <= 0.43)
 
+func test_fallback_clamp_still_rejects_large_out_of_bounds_overshoot() -> void:
+	var resolved := harness._resolve_trail_hand_point([
+		{"id": 16, "x": 1.20, "y": 0.41, "v": 0.10},
+		{"id": 20, "x": 0.99, "y": 0.43, "v": 0.61},
+		{"id": 18, "x": 1.12, "y": 0.39, "v": 0.57},
+	], harness.RIGHT_WRIST_ID, [harness.RIGHT_INDEX_ID, harness.RIGHT_PINKY_ID, harness.RIGHT_THUMB_ID])
+	assert_true(resolved.is_empty())
+
 func test_low_visibility_gap_breaks_existing_trail_before_reseed() -> void:
 	var trail: Array = []
 	var debug_state := _debug_state()
