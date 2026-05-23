@@ -8,7 +8,9 @@ extends Node
 ## - can attach/detach preview surfaces through CameraTracking when a session is supplied
 ## - does not require this repo to own the camera runtime lifecycle
 
-const TrackingFrameAdapterScript = preload("res://addons/aerobeat-input-camera-tracking/src/tracking_frame_adapter.gd")
+const PROVIDER_SCRIPT_PATH_SUFFIX := "/src/providers/camera_tracking_provider.gd"
+
+var _tracking_frame_adapter_script: Variant = null
 
 signal pose_updated(landmarks: Array)
 signal multi_pose_updated(poses: Array)
@@ -213,17 +215,26 @@ func set_selected_camera_device_id(device_id: String) -> bool:
 	return true
 
 func is_tracking() -> bool:
-	return TrackingFrameAdapterScript.tracking_state_is_active(_last_tracking_frame)
+	var adapter_script := _ensure_tracking_frame_adapter_script()
+	if adapter_script == null:
+		return false
+	return adapter_script.tracking_state_is_active(_last_tracking_frame)
 
 func is_tracking_player(player_idx: int) -> bool:
 	return player_idx >= 0 and player_idx < _all_poses.size() and not (_all_poses[player_idx] as Dictionary).get("landmarks", []).is_empty()
 
 func ingest_tracking_frame(frame: Dictionary) -> void:
 	_last_tracking_frame = frame.duplicate(true)
-	var active := TrackingFrameAdapterScript.tracking_state_is_active(frame)
-	var normalized_landmarks: Array = TrackingFrameAdapterScript.landmarks_from_tracking_frame(frame)
+	var adapter_script := _ensure_tracking_frame_adapter_script()
+	if adapter_script == null:
+		_clear_tracking_runtime_state(false)
+		_multi_pose_from_current_landmarks([])
+		_emit_tracking_edge_signals(false)
+		return
+	var active: bool = bool(adapter_script.tracking_state_is_active(frame))
+	var normalized_landmarks: Array = adapter_script.landmarks_from_tracking_frame(frame)
 	if active and not normalized_landmarks.is_empty():
-		_process_primary_landmarks(normalized_landmarks, true, true, TrackingFrameAdapterScript.get_timestamp_ms(frame))
+		_process_primary_landmarks(normalized_landmarks, true, true, adapter_script.get_timestamp_ms(frame))
 	else:
 		_clear_tracking_runtime_state(active)
 	_multi_pose_from_current_landmarks(normalized_landmarks)
@@ -300,14 +311,34 @@ func _ensure_detector_substrate() -> void:
 		return
 	_detector_substrate = PoseDetectorSubstrate.new().configure(_ensure_config())
 
+func _ensure_tracking_frame_adapter_script() -> Variant:
+	if _tracking_frame_adapter_script != null:
+		return _tracking_frame_adapter_script
+	_tracking_frame_adapter_script = _load_repo_src_script("tracking_frame_adapter.gd")
+	return _tracking_frame_adapter_script
+
 func _ensure_config() -> Variant:
 	if config != null:
 		return config
-	var config_script: Variant = load("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
+	var config_script: Variant = _load_repo_src_script("config/mediapipe_config.gd")
 	if config_script == null:
 		return null
 	config = config_script.new()
 	return config
+
+func _load_repo_src_script(relative_path: String) -> Variant:
+	var script_path := _get_repo_src_root_path().path_join(relative_path)
+	return load(script_path)
+
+func _get_repo_src_root_path() -> String:
+	var script_resource: Variant = get_script()
+	if script_resource == null:
+		return "res://src"
+	var resource_path := String(script_resource.resource_path)
+	if resource_path.ends_with(PROVIDER_SCRIPT_PATH_SUFFIX):
+		return resource_path.substr(0, resource_path.length() - "providers/camera_tracking_provider.gd".length())
+	var parent_dir := resource_path.get_base_dir()
+	return parent_dir.get_base_dir()
 
 func _process_primary_landmarks(landmarks: Array, emit_signal_flag: bool, overwrite_all_poses: bool, timestamp_ms: int = 0) -> void:
 	_ensure_detector_substrate()

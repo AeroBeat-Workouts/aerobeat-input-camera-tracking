@@ -101,9 +101,18 @@ Validation run:
 **Files Created/Deleted/Modified:**
 - none required unless a minimal QA artifact is necessary
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA passed independently against the repo-owned slice. I first verified the bead was unblocked (`bd show aerobeat-input-camera-tracking-gte --json`, dependency `aerobeat-input-camera-tracking-moz` closed) and claimed it with `bd update aerobeat-input-camera-tracking-gte --status in_progress --json`. Diff/ownership review showed the implementation stayed narrow: `git diff --name-only 45a9dfa..HEAD` touched only `src/input_provider.gd`, `.testbed/tests/unit/test_input_provider_adapter.gd`, and this plan file — no edits landed in `src/camera_view.gd`, `src/autostart_manager.gd`, `aerobeat-tool-camera-tracking`, or `aerobeat-vendor-mediapipe-python`, which supports the claim that preview/runtime ownership was not reclaimed.
+
+Validation reruns:
+- `python3 scripts/refresh_testbed_workbench.py` ✅ refreshed `.testbed`, reran `godotenv addons install`, and completed headless import successfully.
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_input_provider_adapter.gd -gexit` ✅ `11/11` passed.
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` ⚠️ still shows the same three unrelated failures already called out by the coder: `test_mediapipe_process.gd`, `test_mediapipe_provider.gd`, and `test_proving_harness_trails.gd`. No new failures appeared in the adapter slice.
+
+Focused extra QA proof beyond the repo test file: I created a temporary minimal Godot project that symlink-mounted this repo as `res://addons/aerobeat-input-mediapipe-python` plus `aerobeat-input-core`, ran `godot --headless --path <tmp> --import --quit-after 1000`, then launched a disposable probe scene. That probe successfully loaded `res://addons/aerobeat-input-mediapipe-python/src/input_provider.gd`, `src/camera_view.gd`, and `src/autostart_manager.gd` under the legacy addon alias, started the provider, and proved the live session contract end to end: `QA_REQUEST_OK=true`, `QA_SESSION_KEY=mediapipe_python`, `QA_PROVIDER_ID=mediapipe_python`, `QA_METADATA_RUNTIME=live`, `QA_METADATA_CAMERA=/dev/video11`, `QA_METADATA_OVERLAY=optimized`, `QA_METADATA_INTERVAL=4`, `QA_METADATA_MIN_VIS=0.41`, `QA_ACQUIRE_OK=true`, `QA_BORROWER_COUNT_AFTER_ACQUIRE=1`, `QA_DEBUG_ROLE=owned`, `QA_DEBUG_BORROWED=false`, `QA_DEBUG_PROVIDER_LANE=legacy_mediapipe`, `QA_SWITCH_OK=true`, `QA_UPDATED_CAMERA=/dev/video12`, `QA_RELEASE_OK=true`, `QA_BORROWER_COUNT_AFTER_RELEASE=0`, `QA_CAMERA_VIEW_LOAD_OK=true`, and `QA_AUTOSTART_LOAD_OK=true`.
+
+That evidence confirms the split adapter now publishes the metadata keys the gesture testbed matches on, preserves the `provider_id/session_key = mediapipe_python` reuse assumption, truthfully exposes owned-session debug state, performs borrower acquire/release bookkeeping through the registry, republish-updates session metadata when the selected camera changes, and still relies on the existing tool/vendor-owned surfaces rather than editing or absorbing them. The only false start in QA was an initial temp-project probe without a prior Godot import; after adding the required `--import` step so class-name registration matched a real consumer boot, the mounted-addon compatibility check passed cleanly.
 
 ---
 
@@ -121,9 +130,18 @@ Validation run:
 **Files Created/Deleted/Modified:**
 - none required unless a minimal audit artifact is necessary
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Auditor verified the slice as planned and kept it inside the repo-owned adapter seam. I first confirmed the bead was genuinely unblocked (`bd show aerobeat-input-camera-tracking-yu1 --json`, dependency `aerobeat-input-camera-tracking-gte` closed) and claimed it with `bd update aerobeat-input-camera-tracking-yu1 --status in_progress --json`.
+
+Independent checks performed:
+- **Diff / scope check:** `git show --name-only --stat --oneline 8565a31 --` and `git diff --name-only 45a9dfa..8565a31` showed the implementation commit only touched `src/input_provider.gd`, `.testbed/tests/unit/test_input_provider_adapter.gd`, and this plan file. No changes landed in `src/camera_view.gd`, `src/autostart_manager.gd`, `aerobeat-tool-camera-tracking`, or `aerobeat-vendor-mediapipe-python`, so preview ownership and vendor runtime ownership were not reclaimed.
+- **Implementation diff check:** `git show --unified=40 8565a31 -- src/input_provider.gd .testbed/tests/unit/test_input_provider_adapter.gd` confirmed the adapter now exposes `request_shared_session`, `acquire_shared_session`, `release_shared_session`, and `get_shared_session_debug_state`; publishes the live metadata keys (`provider_id`, `runtime_mode`, `camera_source`, `tracking_overlay_mode`, `gesture_eval_interval_frames`, `min_visibility`) while preserving `session_key = mediapipe_python`; and republish-updates the published session when camera/device state changes.
+- **Replay scope check:** `git show 8565a31 -- src/input_provider.gd .testbed/tests/unit/test_input_provider_adapter.gd` contained no `replay` or `video_file` additions in the implementation/test changes, so this slice did not drift into replay.
+- **Targeted repo-local validation:** `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_input_provider_adapter.gd -gexit` passed `11/11`, independently re-proving metadata publication, acquire/release bookkeeping, owned-session debug state, stop/unpublish behavior, collision handling, and the camera-tracking lane fallback boundary.
+- **Legacy addon-path truth check:** I created a disposable Godot project mounting this repo as `res://addons/aerobeat-input-mediapipe-python` plus `aerobeat-input-core` and `aerobeat-tool-camera-tracking`, ran `godot --headless --path <tmp> --import --quit-after 1000`, then launched a probe scene. The probe loaded `res://addons/aerobeat-input-mediapipe-python/src/input_provider.gd`, `src/camera_view.gd`, and `src/autostart_manager.gd` successfully and printed: `AUDIT_ALIAS_PROVIDER_LOAD=true`, `AUDIT_ALIAS_CAMERA_VIEW_LOAD=true`, `AUDIT_ALIAS_AUTOSTART_LOAD=true`, `AUDIT_START_OK=true`, `AUDIT_REQUEST_OK=true`, `AUDIT_ACQUIRE_OK=true`, `AUDIT_SESSION_KEY=mediapipe_python`, `AUDIT_PROVIDER_ID=mediapipe_python`, `AUDIT_RUNTIME_MODE=live`, `AUDIT_CAMERA_SOURCE=/dev/video11`, `AUDIT_OVERLAY=optimized`, `AUDIT_INTERVAL=4`, `AUDIT_MIN_VIS=0.41`, `AUDIT_BORROWER_COUNT=1`, `AUDIT_DEBUG_ROLE=owned`, `AUDIT_DEBUG_BORROWED=false`, `AUDIT_DEBUG_PROVIDER_LANE=legacy_mediapipe`, `AUDIT_REPUBLISH_OK=true`, `AUDIT_RELEASE_OK=true`, and `AUDIT_BORROWER_COUNT_AFTER_RELEASE=0`.
+
+Audit conclusion: the live session-compatibility slice is genuinely complete for its planned scope. The adapter now publishes the metadata the downstream live matcher requires, preserves `provider_id/session_key` compatibility, provides real request/acquire/release/debug behavior at the adapter layer, keeps the legacy addon alias route truthful enough for the downstream live path, does not reclaim preview/runtime ownership from tool/vendor repos, and stays out of replay scope.
 
 ---
 
@@ -139,16 +157,20 @@ Cross-repo coordination note: this is the recommended first implementation slice
 
 ## Final Results
 
-**Status:** ⏳ Draft
+**Status:** ✅ Complete
 
-**What We Built:** Planning only so far.
+**What We Built:** The repo-owned live compatibility slice landed in `aerobeat-input-camera-tracking` without stealing tool/vendor responsibilities. `src/input_provider.gd` now publishes the live provider-session metadata the gesture testbed matches on, preserves the canonical `provider_id/session_key = mediapipe_python` reuse contract, exposes adapter-level request/acquire/release/debug helpers for owned shared sessions, and republish-updates metadata when live camera selection changes. Repo-local adapter tests prove the owned/borrowed bookkeeping surface, and the legacy addon alias `aerobeat-input-mediapipe-python` still resolves `input_provider.gd`, `camera_view.gd`, and `autostart_manager.gd` for downstream live consumers.
 
-**Reference Check:** Live session adapter compatibility is not yet implemented; this plan encodes the first repo-owned execution wave needed to satisfy the downstream gesture-testbed contract.
+**Reference Check:**
+- `REF-02` / `REF-03`: satisfied for the live matching/reuse contract — metadata keys now line up with the gesture-testbed live request path, and the adapter presents the borrower/debug seam the downstream testbed expects.
+- `REF-04` / `REF-07`: satisfied — the adapter now truthfully layers on top of the provider session registry without changing the underlying registry contract, and `provider_id/session_key` compatibility remains intact as `mediapipe_python`.
+- `REF-05` / `REF-06`: satisfied for the planned compatibility route — the legacy addon alias can still load `camera_view.gd` and `autostart_manager.gd` from this repo without treating those files as newly owned by this slice.
+- Ownership boundary / scope checks also held: no changes landed in tool-camera-tracking preview code, no vendor-mediapipe-python runtime/source ownership was reclaimed, and no replay behavior was added in this slice.
 
 **Commits:**
-- None yet.
+- `8565a31` - Add live session adapter compatibility helpers
 
-**Lessons Learned:** The live parity blocker here is not generic tracking output. It is exact session publication/borrowing compatibility plus legacy path continuity.
+**Lessons Learned:** The honest fix here was narrow adapter compatibility, not broader runtime takeover. Publishing the exact live metadata and borrower bookkeeping at the adapter seam was enough to unlock downstream live reuse while keeping preview/runtime ownership where it already belongs.
 
 ---
 

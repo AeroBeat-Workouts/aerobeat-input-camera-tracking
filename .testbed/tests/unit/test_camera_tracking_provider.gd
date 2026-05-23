@@ -4,6 +4,12 @@ const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-camera
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
+func test_camera_tracking_provider_resolves_repo_owned_scripts_relative_to_its_mount() -> void:
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	assert_eq(provider._get_repo_src_root_path(), "res://addons/aerobeat-input-camera-tracking/src/")
+	assert_not_null(provider._ensure_tracking_frame_adapter_script())
+	assert_not_null(provider._ensure_config())
+
 func test_camera_tracking_provider_consumes_normalized_tracking_frames() -> void:
 	var tracker = add_child_autoqfree(CameraTrackingScript.new())
 	var backend = CameraTrackingFakeBackendScript.new()
