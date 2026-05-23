@@ -6,7 +6,6 @@ video:
 notes:
   - Boxing clip of Derrick
   - starts in guard, ends in guard, with four repeated side step left gestures
-  - windows below are human validated. No other gestures besides sidestep_left_start and guard_start should be detected
   expected_gestures:
   - name: sidestep_left_start
     windows:

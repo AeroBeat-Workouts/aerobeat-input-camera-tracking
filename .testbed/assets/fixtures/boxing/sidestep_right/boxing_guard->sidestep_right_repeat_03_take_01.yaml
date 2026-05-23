@@ -1,22 +1,25 @@
 schema_version: 1
-fixture_id: boxing_guard->sidestep_right_repeat_04_take_01
+fixture_id: boxing_guard->sidestep_right_repeat_03_take_01
 family: boxing
 video:
-  path: ./boxing_guard->sidestep_right_repeat_04_take_01.mp4
+  path: ./boxing_guard->sidestep_right_repeat_03_take_01.mp4
 notes:
   - Boxing clip of Derrick
-  - starts in guard, ends in guard, with four repeated side step right gestures
-  - windows below are human validated. No other gestures besides sidestep_right_start and guard_start should be detected
+  - starts in guard, ends in guard, with three repeated side step right gestures
   expected_gestures:
   - name: sidestep_right_start
     windows:
-      - start_ms: 150
-        end_ms: 3100
+      - start_ms: 900
+        end_ms: 2650
+      - start_ms: 4400
+        end_ms: 6650
+      - start_ms: 7800
+        end_ms: 10000
   - name: guard_start
     surface: state
     windows:
       - start_ms: 0
-        end_ms: 16000
+        end_ms: 11000
 forbidden_gestures:
   - name: punch_left
   - name: punch_right

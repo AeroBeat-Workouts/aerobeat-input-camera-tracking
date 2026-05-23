@@ -5,8 +5,7 @@ video:
   path: ./boxing_guard->run_in_place_repeat_01_take_01.mp4
 notes:
   - Boxing clip of Derrick
-  - starts in guard, ends in guard, with four repeated run in place gestures
-  - windows below are human validated. No other gestures besides run_in_place_start and guard_start should be detected
+  - starts in guard, ends in guard, with one run in place gesture
   expected_gestures:
   - name: run_in_place_start
     windows:

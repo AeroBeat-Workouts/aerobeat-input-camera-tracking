@@ -6,7 +6,6 @@ video:
 notes:
   - Boxing clip of Derrick
   - starts in guard, ends in guard, with four repeated right knee strikes
-  - windows below are human validated. No other gestures besides knee_right and guard_start should be detected
   expected_gestures:
   - name: knee_right
     windows:

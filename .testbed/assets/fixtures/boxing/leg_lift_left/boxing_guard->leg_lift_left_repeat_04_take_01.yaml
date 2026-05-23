@@ -5,8 +5,7 @@ video:
   path: ./boxing_guard->leg_lift_left_repeat_04_take_01.mp4
 notes:
   - Boxing clip of Derrick
-  - starts in guard, ends in guard, with four repeated leg lift left gestures
-  - windows below are human validated. No other gestures besides leg_lift_left_start and guard_start should be detected
+  - starts in guard, ends in guard, with four repeated leg lift left gestures detected
   expected_gestures:
   - name: leg_lift_left_start
     windows:

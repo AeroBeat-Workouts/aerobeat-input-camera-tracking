@@ -6,7 +6,6 @@ video:
 notes:
   - Boxing clip of Derrick
   - starts in guard, ends in guard, with four repeated left punches
-  - windows below are human validated. No other gestures besides punch_left and guard_start should be detected
 expected_gestures:
   - name: punch_left
     windows:
