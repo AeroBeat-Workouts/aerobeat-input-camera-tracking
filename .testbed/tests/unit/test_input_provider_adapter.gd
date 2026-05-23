@@ -206,6 +206,51 @@ func test_input_provider_adapter_discovers_camera_tracking_session_before_fallin
 	assert_false(adapter.is_using_legacy_fallback())
 	assert_same(adapter.get_tracking_session(), tracker)
 
+func test_input_provider_adapter_publishes_replay_metadata_from_camera_tracking_session() -> void:
+	var fixture_path := "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
+	var tracker_setup := _make_started_tracking_session({
+		"source": {"kind": "video_file", "path": fixture_path},
+		"preview": {"flip_horizontal": false},
+	})
+	var tracker: Node = tracker_setup["tracker"]
+	var adapter = add_child_autoqfree(InputProviderAdapterScript.new())
+	adapter.set_tracking_session(tracker)
+
+	assert_true(adapter.start("{}"))
+	assert_true(adapter.uses_camera_tracking_contract_path())
+	assert_false(adapter.is_using_legacy_fallback())
+	assert_eq(adapter.get_selected_camera_device_id(), fixture_path)
+	assert_false(adapter.set_selected_camera_device_id("/dev/video3"))
+
+	var request: Dictionary = RegistryScript.request_session({"session_key": "mediapipe_python"})
+	assert_true(bool(request.get("ok", false)))
+	var session: Dictionary = request.get("session", {}) if request.get("session", {}) is Dictionary else {}
+	var metadata: Dictionary = session.get("metadata", {}) if session.get("metadata", {}) is Dictionary else {}
+	assert_eq(String(metadata.get("runtime_mode", "")), "replay")
+	assert_eq(String(metadata.get("source_kind", "")), "video_file")
+	assert_eq(String(metadata.get("camera_source", "")), fixture_path)
+	assert_eq(String(metadata.get("fixture_video_path", "")), fixture_path)
+	assert_eq(String(metadata.get("provider_lane", "")), "camera_tracking")
+	assert_false(bool(metadata.get("legacy_fallback", true)))
+
+	var acquire: Dictionary = adapter.acquire_shared_session("camera_gesture:testbed", {
+		"provider_id": "mediapipe_python",
+		"metadata_match": {
+			"runtime_mode": "replay",
+			"source_kind": "video_file",
+			"camera_source": fixture_path,
+			"fixture_video_path": fixture_path,
+		},
+	})
+	assert_true(bool(acquire.get("ok", false)), "Replay adapter session should be borrowable by downstream consumers using replay metadata")
+
+	var debug_state: Dictionary = adapter.get_shared_session_debug_state()
+	assert_eq(String(debug_state.get("runtime_mode", "")), "replay")
+	assert_eq(String(debug_state.get("source_kind", "")), "video_file")
+	assert_eq(String(debug_state.get("camera_source", "")), fixture_path)
+	assert_eq(String(debug_state.get("fixture_video_path", "")), fixture_path)
+	assert_eq(String(debug_state.get("provider_lane", "")), "camera_tracking")
+
 func _make_started_legacy_adapter(settings: Dictionary = {}) -> Dictionary:
 	var adapter = add_child_autoqfree(InputProviderAdapterScript.new())
 	var backend = FakeProviderBackend.new()
@@ -221,7 +266,7 @@ func _make_started_legacy_adapter(settings: Dictionary = {}) -> Dictionary:
 		"started": adapter.start(JSON.stringify(settings)),
 	}
 
-func _make_started_tracking_session() -> Dictionary:
+func _make_started_tracking_session(config: Dictionary = {}) -> Dictionary:
 	var tracker = CameraTrackingScript.new()
 	tracker.name = "CameraTracking"
 	var backend = CameraTrackingFakeBackendScript.new([
@@ -230,10 +275,13 @@ func _make_started_tracking_session() -> Dictionary:
 	])
 	tracker.set_backend(backend)
 	add_child_autoqfree(tracker)
-	tracker.start({
+	var start_config := {
 		"source": {"kind": "live_camera", "camera_id": "/dev/video7"},
 		"preview": {"flip_horizontal": true},
-	})
+	}
+	for key in config.keys():
+		start_config[key] = config[key]
+	tracker.start(start_config)
 	return {
 		"tracker": tracker,
 		"backend": backend,

@@ -66,6 +66,8 @@ func get_shared_session_debug_state() -> Dictionary:
 	var session_role := "inactive"
 	if not _published_session_key.is_empty():
 		session_role = "owned"
+	var source_identity := _shared_session_source_identity()
+	var source_kind := _shared_session_source_kind()
 	return {
 		"registry_available": _provider_session_registry_available(),
 		"session_role": session_role,
@@ -76,7 +78,9 @@ func get_shared_session_debug_state() -> Dictionary:
 		"provider_id": PROVIDER_ID,
 		"provider_lane": _provider_lane,
 		"runtime_mode": _shared_session_runtime_mode(),
-		"camera_source": get_selected_camera_device_id(),
+		"source_kind": source_kind,
+		"camera_source": source_identity,
+		"fixture_video_path": source_identity if source_kind == "video_file" else "",
 		"min_visibility": _shared_session_min_visibility(),
 		"tracking_overlay_mode": _shared_session_tracking_overlay_mode(),
 		"gesture_eval_interval_frames": _shared_session_gesture_eval_interval_frames(),
@@ -290,6 +294,8 @@ func _build_shared_session_owner_id() -> String:
 	return "%s:%s" % [SHARED_SESSION_OWNER_PREFIX, node_identity]
 
 func _build_shared_session_metadata() -> Dictionary:
+	var source_identity := _shared_session_source_identity()
+	var source_kind := _shared_session_source_kind()
 	return {
 		"lane": "input_provider",
 		"entrypoint": "src/input_provider.gd",
@@ -299,7 +305,9 @@ func _build_shared_session_metadata() -> Dictionary:
 		"provider_lane": _provider_lane,
 		"legacy_fallback": is_using_legacy_fallback(),
 		"runtime_mode": _shared_session_runtime_mode(),
-		"camera_source": get_selected_camera_device_id(),
+		"source_kind": source_kind,
+		"camera_source": source_identity,
+		"fixture_video_path": source_identity if source_kind == "video_file" else "",
 		"min_visibility": _shared_session_min_visibility(),
 		"tracking_overlay_mode": _shared_session_tracking_overlay_mode(),
 		"gesture_eval_interval_frames": _shared_session_gesture_eval_interval_frames(),
@@ -460,7 +468,35 @@ func _with_default_shared_session_request(request: Dictionary = {}) -> Dictionar
 	return normalized_request
 
 func _shared_session_runtime_mode() -> String:
-	return "live"
+	var source_kind := _shared_session_source_kind()
+	return "replay" if source_kind == "video_file" else "live"
+
+func _shared_session_source_kind() -> String:
+	var tracking_session = _resolve_tracking_session()
+	if tracking_session != null and tracking_session.has_method("get_active_config"):
+		var active_config: Variant = tracking_session.get_active_config()
+		if active_config is Dictionary:
+			var source: Variant = active_config.get("source", {})
+			if source is Dictionary:
+				var source_kind := String(source.get("kind", "")).strip_edges()
+				if not source_kind.is_empty():
+					return source_kind
+	return "live_camera"
+
+func _shared_session_source_identity() -> String:
+	var tracking_session = _resolve_tracking_session()
+	if tracking_session != null and tracking_session.has_method("get_active_config"):
+		var active_config: Variant = tracking_session.get_active_config()
+		if active_config is Dictionary:
+			var source: Variant = active_config.get("source", {})
+			if source is Dictionary:
+				var source_kind := String(source.get("kind", "")).strip_edges()
+				if source_kind == "video_file":
+					return String(source.get("path", "")).strip_edges()
+				var camera_id := String(source.get("camera_id", "")).strip_edges()
+				if not camera_id.is_empty():
+					return camera_id
+	return get_selected_camera_device_id()
 
 func _shared_session_min_visibility() -> float:
 	return float(_config.min_visibility) if _config != null else 0.5

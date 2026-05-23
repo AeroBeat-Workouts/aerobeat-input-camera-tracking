@@ -186,12 +186,12 @@ func get_available_camera_devices() -> Array:
 	return devices.duplicate(true) if devices is Array else []
 
 func get_selected_camera_device_id() -> String:
-	if _tracking_session == null or not _tracking_session.has_method("get_active_config"):
+	var source := _get_tracking_source_config()
+	if source.is_empty():
 		return ""
-	var active_config: Variant = _tracking_session.get_active_config()
-	if not active_config is Dictionary:
-		return ""
-	var source: Dictionary = active_config.get("source", {})
+	var source_kind := String(source.get("kind", "")).strip_edges()
+	if source_kind == "video_file":
+		return String(source.get("path", "")).strip_edges()
 	return String(source.get("camera_id", "")).strip_edges()
 
 func set_selected_camera_device_id(device_id: String) -> bool:
@@ -203,8 +203,12 @@ func set_selected_camera_device_id(device_id: String) -> bool:
 	var next_config: Dictionary = (active_config as Dictionary).duplicate(true)
 	if not next_config.has("source") or not next_config["source"] is Dictionary:
 		next_config["source"] = {}
-	(next_config["source"] as Dictionary)["kind"] = "live_camera"
-	(next_config["source"] as Dictionary)["camera_id"] = device_id
+	var source := next_config["source"] as Dictionary
+	var source_kind := String(source.get("kind", "live_camera")).strip_edges()
+	if source_kind == "video_file":
+		return false
+	source["kind"] = "live_camera"
+	source["camera_id"] = device_id
 	_tracking_session.change(next_config)
 	return true
 
@@ -256,12 +260,20 @@ func _sync_from_tracking_session() -> void:
 func _build_tracking_config() -> Dictionary:
 	var active_config = _ensure_config()
 	var source_id := String(active_config.get_camera_source()).strip_edges() if active_config != null and active_config.has_method("get_camera_source") else ""
+	var source_kind := "live_camera"
+	var source_payload := {
+		"kind": source_kind,
+		"camera_id": source_id,
+	}
+	if not source_id.is_empty() and not source_id.is_valid_int() and not source_id.begins_with("/dev/video"):
+		source_kind = "video_file"
+		source_payload = {
+			"kind": source_kind,
+			"path": source_id,
+		}
 	return {
 		"backend": "mediapipe_python",
-		"source": {
-			"kind": "live_camera",
-			"camera_id": source_id,
-		},
+		"source": source_payload,
 		"tracking": {
 			"overlay_mode": String(active_config.tracking_overlay_mode).strip_edges() if active_config != null else "optimized",
 			"gesture_eval_interval_frames": int(active_config.gesture_eval_interval_frames) if active_config != null else 1,
@@ -273,6 +285,15 @@ func _build_tracking_config() -> Dictionary:
 			"flip_horizontal": bool(active_config.flip_horizontal) if active_config != null else true,
 		}
 	}
+
+func _get_tracking_source_config() -> Dictionary:
+	if _tracking_session == null or not _tracking_session.has_method("get_active_config"):
+		return {}
+	var active_config: Variant = _tracking_session.get_active_config()
+	if not active_config is Dictionary:
+		return {}
+	var source: Variant = active_config.get("source", {})
+	return source.duplicate(true) if source is Dictionary else {}
 
 func _ensure_detector_substrate() -> void:
 	if _detector_substrate != null:
