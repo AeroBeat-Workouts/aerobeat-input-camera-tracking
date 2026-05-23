@@ -66,11 +66,11 @@ That means the test case with slight right-edge jitter (`x=1.02`, `x=1.03`) neve
 - none expected
 
 **Files Created/Deleted/Modified:**
-- none expected
+- `/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-05-22-proving-harness-near-edge-trail-clamp-fix.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed `aerobeat-input-camera-tracking-lo2` after verifying its blocker `aerobeat-input-camera-tracking-caw` was already closed. QA re-ran the targeted trail test file with `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd -gexit` and got `13/13 passed` (`58` asserts, `0.4s`), including both `test_resolves_trail_hand_point_by_clamping_near_edge_jitter` and `test_out_of_bounds_point_still_clears_trail` from `REF-02`. Code inspection of `REF-01` confirmed the direct path in `_append_trail_point()` still rejects any out-of-bounds normalized point unchanged, while `_resolve_trail_hand_point()` now routes fallback candidates through `_trail_clamp_candidate_for_fallback()` before `_synthesize_trail_hand_point()`, with `_trail_landmark_is_fallback_usable()` allowing only small near-edge overshoot. An additional headless probe script (`godot --headless --path .testbed --script /tmp/aerobeat_trail_qa_probe.gd`) verified that a direct slight overshoot sample at `x=1.02` still clears the trail (`trail_size=0`, `last_action=clear_oob`, `out_of_bounds_clears=1`), the fallback near-edge case resolves to an in-bounds blended point (`x=0.994830548763275`, `y=0.410677999258041`), and the larger overshoot fallback case still returns empty. No QA gaps found; ready for independent audit.
 
 ---
 
@@ -86,26 +86,26 @@ That means the test case with slight right-edge jitter (`x=1.02`, `x=1.03`) neve
 - none expected
 
 **Files Created/Deleted/Modified:**
-- none expected
+- `/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-05-22-proving-harness-near-edge-trail-clamp-fix.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed `aerobeat-input-camera-tracking-2se` after verifying blocker `aerobeat-input-camera-tracking-lo2` was closed. Audited commit `abca9c1` and confirmed the code scope stayed narrow to `REF-01`, `REF-02`, and this repo-local plan file; there were no changes in `aerobeat-tool-camera-tracking`, vendor/runtime repos, or unrelated runtime surfaces. In `REF-01`, `_append_trail_point()` remains unchanged in its direct out-of-bounds branch (`if not _is_normalized_point_in_bounds(point): trail.clear(); ... last_action = "clear_oob"`), while only `_resolve_trail_hand_point()` fallback candidates now pass through `_trail_clamp_candidate_for_fallback()` with `_trail_landmark_is_fallback_usable()` and `_is_trail_fallback_point_near_normalized_bounds()` enforcing a tight `MAX_TRAIL_FALLBACK_EDGE_CLAMP_OVERSHOOT := 0.05` window before the existing spread/blend checks in `_synthesize_trail_hand_point()`. Re-ran `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd -gexit` and got `13/13 passed` (`58` asserts, `0.406s`). A separate headless probe script confirmed direct slight overshoot still clears (`trail_size=0`, `last_action=clear_oob`, `clears=1`), fallback near-edge jitter synthesizes an in-bounds point (`x=0.994830548763275`, `y=0.410677999258041`), and larger overshoot still returns empty. The slice is complete for the planned scope, so the audit bead was closed.
 
 ---
 
 ## Final Results
 
-**Status:** ⏳ In Progress
+**Status:** ✅ Complete
 
-**What We Built:** Planning only so far; execution beads created next.
+**What We Built:** The proving harness now preserves near-edge trail continuity only in the fallback synthesis path by clamping tiny overshoot into normalized bounds before the existing spread/blend validation, while keeping direct `_append_trail_point()` out-of-bounds clearing behavior strict and unchanged.
 
-**Reference Check:** The intended fix is scoped to the proving-harness-owned fallback trail synthesis path in `REF-01`, with acceptance anchored by `REF-02`.
+**Reference Check:** `REF-01` satisfied: only the proving-harness fallback path changed, with direct out-of-bounds rejection preserved. `REF-02` satisfied: the target near-edge regression test passes and the new guardrail test proves larger overshoot is still rejected. `REF-03` satisfied: the bead/plan handoff IDs stayed aligned and the fix remained repo-owned.
 
 **Commits:**
-- None yet.
+- `abca9c1` - Fix near-edge trail fallback clamp
 
-**Lessons Learned:** The bug is not a broad camera-tracking contract problem; it is a local proving-harness continuity rule mismatch between direct trail point validation and fallback hand-point synthesis near normalized edges.
+**Lessons Learned:** This bug really was a narrow continuity mismatch inside fallback synthesis. Keeping strict direct-point validation intact while adding a tiny tolerance window only for synthesized fallback candidates fixed the regression without broadening ownership or weakening the trail clear contract.
 
 ---
 

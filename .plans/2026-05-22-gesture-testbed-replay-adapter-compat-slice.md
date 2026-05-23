@@ -1,7 +1,7 @@
 # AeroBeat Input Camera Tracking — Gesture-Testbed Replay Adapter Compatibility Slice
 
 **Date:** 2026-05-22  
-**Status:** In Progress  
+**Status:** Complete  
 **Agent:** Cookie 🍪
 
 ---
@@ -102,29 +102,29 @@ Validation run:
 
 **Folders Created/Deleted/Modified:**
 - validation-only use of repo-local proving surfaces
+- `/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.temp/qa-replay-alias-only/` (disposable alias-only replay probe project)
 
 **Files Created/Deleted/Modified:**
-- none required unless a minimal QA artifact is necessary
+- `/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.temp/qa-replay-alias-only/project.godot`
+- `/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.temp/qa-replay-alias-only/probe.gd`
 
-**Status:** ❌ Failed
+**Status:** ✅ Complete
 
-**Results:** QA did **not** pass yet, so bead `aerobeat-input-camera-tracking-0bt` remains open. I first verified the bead was unblocked (`bd show aerobeat-input-camera-tracking-0bt --json`, dependency `aerobeat-input-camera-tracking-0fg` closed) and claimed it with `bd update aerobeat-input-camera-tracking-0bt --status in_progress --json`.
+**Results:** QA rerun passed after fix commit `1a03204`, and bead `aerobeat-input-camera-tracking-0bt` is now eligible to close. I re-claimed the existing QA bead with `bd update aerobeat-input-camera-tracking-0bt --status in_progress --json`, refreshed the repo-local workbench, reran the targeted replay adapter/provider tests, then reran the alias-only disposable consumer probe under a project that mounted this repo only as `res://addons/aerobeat-input-mediapipe-python` plus `aerobeat-input-core`, `aerobeat-tool-camera-tracking`, and the vendor repo — with **no** parallel `aerobeat-input-camera-tracking` self-mount.
 
-Focused validation that **passed**:
+Exact validation run:
 - `python3 scripts/refresh_testbed_workbench.py` ✅ refreshed `.testbed`, reran `godotenv addons install`, and completed headless import successfully.
+- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` ✅ `5/5` passed (`25` asserts).
 - `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_input_provider_adapter.gd -gexit` ✅ `12/12` passed (`78` asserts).
-- `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` ✅ `4/4` passed (`22` asserts).
-- Code / downstream matcher review showed the repo-local slice now publishes truthful replay metadata in the adapter/provider layer: `runtime_mode = replay`, `source_kind = video_file`, `camera_source = <fixture path>`, `fixture_video_path = <fixture path>`, and `provider_id/session_key = mediapipe_python`. `src/providers/camera_tracking_provider.gd` also correctly refuses live-camera mutation during replay by returning `false` from `set_selected_camera_device_id()` when the active source kind is `video_file`.
+- `godot --headless --path .temp/qa-replay-alias-only --import --quit-after 1000` ✅ completed successfully after updating script-class caches for the alias-only mounted project.
+- `godot --headless --path .temp/qa-replay-alias-only --script res://probe.gd` ✅ alias-only replay probe passed and printed the decisive proof points:
+  - load path continuity: `QA_ALIAS_INPUT_PROVIDER_LOAD_OK=true`, `QA_ALIAS_CAMERA_TRACKING_PROVIDER_LOAD_OK=true`, `QA_ALIAS_CAMERA_VIEW_LOAD_OK=true`, `QA_ALIAS_AUTOSTART_LOAD_OK=true`
+  - replay startup/publication: `QA_REPLAY_START_OK=true`, `QA_REQUEST_OK=true`, `QA_SESSION_KEY=mediapipe_python`, `QA_PROVIDER_ID=mediapipe_python`
+  - truthful replay metadata: `QA_METADATA_RUNTIME=replay`, `QA_METADATA_SOURCE_KIND=video_file`, `QA_METADATA_CAMERA_SOURCE=res://assets/fixtures/replay/head_rotate_left_repeat_04_take_01.mp4`, `QA_METADATA_FIXTURE_VIDEO_PATH=res://assets/fixtures/replay/head_rotate_left_repeat_04_take_01.mp4`, `QA_METADATA_PROVIDER_LANE=camera_tracking`, `QA_METADATA_LEGACY_FALLBACK=false`
+  - borrowability/coherence: `QA_ACQUIRE_OK=true`, `QA_BORROWER_COUNT_AFTER_ACQUIRE=1`, `QA_RELEASE_OK=true`, `QA_BORROWER_COUNT_AFTER_RELEASE=0`, `QA_REQUEST_AFTER_RELEASE_OK=true`, `QA_REQUEST_AFTER_STOP_OK=false`
+  - replay mutation refusal/debug truth: `QA_SET_LIVE_MUTATION_OK=false`, `QA_SOURCE_AFTER_MUTATION=res://assets/fixtures/replay/head_rotate_left_repeat_04_take_01.mp4`, `QA_DEBUG_ROLE=owned`, `QA_DEBUG_BORROWED=false`, `QA_DEBUG_PROVIDER_ID=mediapipe_python`, `QA_DEBUG_PROVIDER_LANE=camera_tracking`, `QA_DEBUG_RUNTIME=replay`, `QA_DEBUG_SOURCE_KIND=video_file`, `QA_DEBUG_CAMERA=res://assets/fixtures/replay/head_rotate_left_repeat_04_take_01.mp4`, `QA_DEBUG_FIXTURE_VIDEO_PATH=res://assets/fixtures/replay/head_rotate_left_repeat_04_take_01.mp4`
 
-Focused validation that **failed** and blocks QA closure:
-- I created a disposable consumer-shaped Godot probe project that mounted this repo only under the legacy addon alias `res://addons/aerobeat-input-mediapipe-python/` plus `aerobeat-input-core` and `aerobeat-tool-camera-tracking`, then ran `godot --headless --path <tmp> --import --quit-after 1000` followed by `godot --headless --path <tmp> --script res://probe.gd`.
-- In that replay-shaped alias mount, provider startup failed before session publication/borrowing could succeed. The decisive runtime parse error was:
-  - `Parse Error: Preload file "res://addons/aerobeat-input-camera-tracking/src/tracking_frame_adapter.gd" does not exist.`
-  - originating from `res://addons/aerobeat-input-mediapipe-python/src/providers/camera_tracking_provider.gd:11`
-- Because replay uses `camera_tracking_provider.gd`, the legacy alias alone is currently insufficient for the replay flow. The same probe printed `QA_REPLAY_START_OK=false`, `QA_REQUEST_OK=false`, `QA_ACQUIRE_OK=false`, `QA_REQUEST_AFTER_RELEASE_OK=false`, and `QA_REQUEST_AFTER_STOP_OK=false` even though the adapter’s debug state still reflected replay metadata truth (`QA_DEBUG_RUNTIME=replay`, `QA_DEBUG_SOURCE_KIND=video_file`, `QA_DEBUG_CAMERA=<fixture path>`).
-- I also confirmed the downstream consumer repo currently mounts only `aerobeat-input-mediapipe-python` under `.testbed/addons/` and does **not** mount a parallel `aerobeat-input-camera-tracking` addon path there, so this is not just a synthetic temp-project issue. In other words: repo-local tests prove the replay metadata/mutation behavior, but the claimed legacy addon-path continuity for replay is still broken in the actual consumer-shaped mount because the replay provider path still hard-references the canonical addon name.
-
-QA conclusion: the replay adapter/provider metadata behavior is good, replay mutation refusal is good, and borrow/release semantics are good in the repo-local testbed, but the slice is **not** yet QA-complete because the replay flow still breaks when consumed through the legacy addon alias the gesture testbed uses. Bead `aerobeat-input-camera-tracking-0bt` must stay open until that alias-path replay break is repaired and re-verified.
+QA conclusion: this repo’s provider layer now publishes truthful replay adapter/session metadata, keeps `runtime_mode` / `source_kind` / source identity coherent for replay, refuses live-camera mutation while replay is active, keeps publication/borrow/release/unpublish behavior coherent, and the legacy alias-only consumer shape now works without requiring a parallel canonical self-mount. The earlier alias-path failure is resolved in the current codebase.
 
 ---
 
@@ -142,9 +142,19 @@ QA conclusion: the replay adapter/provider metadata behavior is good, replay mut
 **Files Created/Deleted/Modified:**
 - none required unless a minimal audit artifact is necessary
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit passed and bead `aerobeat-input-camera-tracking-ub6` is eligible to close. I first verified the dependency gate was genuinely open (`bd show aerobeat-input-camera-tracking-ub6 --json` showed QA bead `aerobeat-input-camera-tracking-0bt` already closed), then claimed the audit bead with `bd update aerobeat-input-camera-tracking-ub6 --status in_progress --json`.
+
+Independent audit checks and evidence:
+- **Planned scope / diff check:** `git diff --stat 79eb485^ 1a03204` and targeted `git diff` showed source changes stayed limited to `src/input_provider.gd`, `src/providers/camera_tracking_provider.gd`, and the two focused unit test files, plus plan documentation. No vendor runtime, tool public-service, camera view, or autostart source behavior was broadened in this replay slice.
+- **Truthful replay metadata through the provider layer:** source inspection of `src/input_provider.gd` confirms provider-session publication/debug state now derive replay truth from the active `CameraTracking` config via `_shared_session_source_kind()` / `_shared_session_source_identity()`, publishing `runtime_mode`, `source_kind`, `camera_source`, and `fixture_video_path` instead of hard-coding live-camera semantics.
+- **Replay source identity correctness:** source inspection of `src/providers/camera_tracking_provider.gd` confirms `get_selected_camera_device_id()` returns `source.path` for `video_file`, `_build_tracking_config()` emits replay `source = { kind = video_file, path = ... }` when the configured source is a file path, and `set_selected_camera_device_id()` refuses mutation while the active source kind is replay/video-file.
+- **Repo-local validation rerun:** reran `python3 scripts/refresh_testbed_workbench.py` ✅, `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` ✅ (`5/5`, `25` asserts), and `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gtest=res://tests/unit/test_input_provider_adapter.gd -gexit` ✅ (`12/12`, `78` asserts). The replay-focused unit coverage directly proves replay metadata publication, borrowability via replay metadata match, and live-mutation refusal.
+- **Original QA failure / fix truth check:** `git show 1a03204` confirms the follow-up repair was narrowly the alias-mount compatibility seam in `src/providers/camera_tracking_provider.gd` (swap hard-coded canonical addon loads for mount-relative repo-root resolution via `_get_repo_src_root_path()` / `_load_repo_src_script()`), plus the minimal proving test `test_camera_tracking_provider_resolves_repo_owned_scripts_relative_to_its_mount()`.
+- **Alias-only consumer rerun:** reran `godot --headless --path .temp/qa-replay-alias-only --import --quit-after 1000` ✅ and `godot --headless --path .temp/qa-replay-alias-only --script res://probe.gd` ✅. The probe printed decisive proof that the legacy alias-only consumer shape now works with only `addons/aerobeat-input-mediapipe-python` mounted: `QA_ALIAS_INPUT_PROVIDER_LOAD_OK=true`, `QA_ALIAS_CAMERA_TRACKING_PROVIDER_LOAD_OK=true`, `QA_ALIAS_CAMERA_VIEW_LOAD_OK=true`, `QA_ALIAS_AUTOSTART_LOAD_OK=true`, `QA_REPLAY_START_OK=true`, `QA_REQUEST_OK=true`, `QA_METADATA_RUNTIME=replay`, `QA_METADATA_SOURCE_KIND=video_file`, `QA_METADATA_CAMERA_SOURCE=res://assets/fixtures/replay/head_rotate_left_repeat_04_take_01.mp4`, `QA_METADATA_FIXTURE_VIDEO_PATH=res://assets/fixtures/replay/head_rotate_left_repeat_04_take_01.mp4`, `QA_METADATA_PROVIDER_LANE=camera_tracking`, `QA_METADATA_LEGACY_FALLBACK=false`, `QA_ACQUIRE_OK=true`, `QA_BORROWER_COUNT_AFTER_ACQUIRE=1`, `QA_SET_LIVE_MUTATION_OK=false`, `QA_SOURCE_AFTER_MUTATION=res://assets/fixtures/replay/head_rotate_left_repeat_04_take_01.mp4`, `QA_DEBUG_RUNTIME=replay`, `QA_DEBUG_SOURCE_KIND=video_file`, `QA_RELEASE_OK=true`, `QA_BORROWER_COUNT_AFTER_RELEASE=0`, `QA_REQUEST_AFTER_RELEASE_OK=true`, and `QA_REQUEST_AFTER_STOP_OK=false`.
+
+Audit conclusion: the replay-capable adapter/provider layer now publishes truthful session metadata for replay, runtime/source identity stays coherent, live-camera mutation is refused during replay, publication/borrow/release/unpublish behavior remains coherent, and the alias-only consumer mount shape is repaired without reclaiming vendor/tool ownership. This slice is complete for its planned scope.
 
 ---
 
@@ -160,16 +170,17 @@ Cross-repo coordination note: this replay input slice should begin after tool re
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** The coder slice is implemented and the concrete QA-found alias-path replay break is now repaired in repo-owned code, but an independent QA rerun and audit rerun are still pending. `aerobeat-input-camera-tracking` now consumes replay-capable `CameraTracking` source truth through its adapter/provider layer, publishes replay-compatible provider-session metadata/debug facts for downstream borrowing, and resolves its provider-owned helper scripts from its own mount-relative path so replay can boot/start/borrow successfully even when the consumer mounts only `aerobeat-input-mediapipe-python`.
+**What We Built:** `aerobeat-input-camera-tracking` now truthfully adapts replay-capable `CameraTracking` sessions through its assembly-facing provider layer. Replay sessions publish correct provider-session/debug metadata (`runtime_mode = replay`, `source_kind = video_file`, replay source identity in both `camera_source` and `fixture_video_path`), remain borrowable through the existing `provider_id/session_key = mediapipe_python` compatibility shell, refuse live-camera mutation while replay is active, and unpublish cleanly on stop. The repo also now resolves its provider-owned helper scripts relative to its mounted addon path, so downstream consumers can mount only `addons/aerobeat-input-mediapipe-python` without also mounting a parallel canonical `aerobeat-input-camera-tracking` alias.
 
-**Reference Check:** `REF-03`, `REF-04`, `REF-07`, `REF-08`, and `REF-09` are satisfied for coder scope: replay source truth crosses the assembly-facing adapter seam honestly, the provider-session compatibility shell distinguishes live vs replay, and the replay provider no longer assumes a parallel canonical addon mount for its own helper scripts. `REF-05` and `REF-06` remain unchanged. Final completion still depends on independent QA/audit reruns at the planned fidelity.
+**Reference Check:** Auditor rerun satisfied `REF-03`, `REF-04`, `REF-07`, `REF-08`, and `REF-09` with independent source review plus command reruns. `REF-04` now publishes truthful replay metadata/session facts through the provider-session compatibility shell; `REF-07` borrow/release/unpublish behavior remains coherent under replay; `REF-08` ownership boundaries remain strict because no tool public-service or vendor runtime behavior was reclaimed here; and `REF-09` continuity is preserved because the live-session adapter shell and reuse contract remain intact. `REF-05` and `REF-06` source files remain unchanged, which is consistent with the planned narrow scope.
 
 **Commits:**
-- Pending coder commit
+- `79eb485` - Add replay adapter compatibility metadata
+- `1a03204` - Fix replay provider alias mount compatibility
 
-**Lessons Learned:** The replay gap here was not new tracking math. It was compatibility at two seams: provider-session metadata had to follow the active `CameraTracking` source mode, and provider-owned helper loads had to follow the mounted addon path actually used by downstream consumers instead of assuming the canonical repo name is always mounted in parallel.
+**Lessons Learned:** The replay break was entirely about compatibility truth at the adapter seam, not new tracking behavior. Two details mattered: provider-session metadata must derive from the active `CameraTracking` source contract instead of assuming live camera, and provider-owned helper loads must resolve from the actual mounted addon path consumers use in practice.
 
 ---
 
