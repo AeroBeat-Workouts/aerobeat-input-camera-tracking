@@ -25,6 +25,17 @@
       "source": "symlink",
       "subfolder": "/"
     },
+    // Shared playback contract + facade are mounted so replay transport UI delegates through tool-video-player.
+    "aerobeat-tool-core": {
+      "url": "../../aerobeat-tool-core",
+      "source": "symlink",
+      "subfolder": "/"
+    },
+    "aerobeat-tool-video-player": {
+      "url": "../../aerobeat-tool-video-player",
+      "source": "symlink",
+      "subfolder": "/"
+    },
     // The reusable headless quit manager is consumed like a normal addon package.
     "aerobeat-tool-headless-manager": {
       "url": "git@github.com:AeroBeat-Workouts/aerobeat-tool-headless-manager.git",

@@ -8,6 +8,8 @@ const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracki
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const MediaPipePythonCameraTrackingBackendScript = preload("res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonCameraTrackingBackend.gd")
 const MediaPipePythonRuntimeBridgeScript = preload("res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonRuntimeBridge.gd")
+const AeroVideoPlayerManagerScript = preload("res://addons/aerobeat-tool-video-player/src/AeroVideoPlayerManager.gd")
+const AeroMediaPipeReplayPlaybackBackendScript = preload("res://addons/aerobeat-input-camera-tracking/src/AeroMediaPipeReplayPlaybackBackend.gd")
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -247,12 +249,10 @@ var _playback_bar_panel: PanelContainer = null
 var _playback_toggle_button: Button = null
 var _playback_seek_slider: HSlider = null
 var _playback_time_label: Label = null
-var _playback_status_request: HTTPRequest = null
-var _playback_command_request: HTTPRequest = null
+var _playback_manager = null
+var _playback_backend = null
 var _playback_status := {}
 var _playback_status_poll_due_ms := 0
-var _playback_status_request_in_flight := false
-var _playback_command_request_in_flight := false
 var _playback_slider_drag_active := false
 
 func _enter_tree() -> void:
@@ -275,7 +275,7 @@ func _ready() -> void:
 		live_status_label.scroll_active = false
 	_ensure_shared_inspector_ui()
 	_ensure_playback_controls()
-	_ensure_playback_http_requests()
+	_ensure_playback_manager()
 	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
 	_left_trail_debug = _make_trail_debug_state("left")
@@ -433,15 +433,13 @@ func _ensure_playback_controls() -> void:
 	_playback_time_label.text = "0:00 / 0:00"
 	row.add_child(_playback_time_label)
 
-func _ensure_playback_http_requests() -> void:
-	if _playback_status_request == null:
-		_playback_status_request = HTTPRequest.new()
-		_playback_status_request.request_completed.connect(_on_playback_status_request_completed)
-		add_child(_playback_status_request)
-	if _playback_command_request == null:
-		_playback_command_request = HTTPRequest.new()
-		_playback_command_request.request_completed.connect(_on_playback_command_request_completed)
-		add_child(_playback_command_request)
+func _ensure_playback_manager() -> void:
+	if _playback_manager != null:
+		return
+	_playback_manager = AeroVideoPlayerManagerScript.new()
+	_playback_backend = AeroMediaPipeReplayPlaybackBackendScript.new()
+	_playback_manager.set_backend(_playback_backend)
+	add_child(_playback_manager)
 
 func _ensure_landmark_interactions() -> void:
 	if landmark_drawer == null or not landmark_drawer.has_signal("landmark_clicked"):
@@ -1397,33 +1395,41 @@ func _refresh_playback_polling() -> void:
 	var now_ms := Time.get_ticks_msec()
 	if now_ms < _playback_status_poll_due_ms:
 		return
-	_request_playback_status()
+	_refresh_playback_status()
 
-func _request_playback_status(force: bool = false) -> void:
-	if _playback_status_request == null or _playback_status_request_in_flight:
+func _refresh_playback_status(force: bool = false) -> void:
+	if _playback_manager == null or _playback_backend == null:
 		return
 	if not force and not _is_prerecorded_source_active():
 		return
-	var url := _playback_base_url()
-	if url.is_empty():
+	if not _load_playback_source_if_needed():
 		return
-	var err := _playback_status_request.request("%s/playback" % url)
-	if err != OK:
-		return
-	_playback_status_request_in_flight = true
+	if _playback_backend.has_method("refresh_status"):
+		_playback_backend.refresh_status()
+	_sync_playback_status_from_manager()
 	_playback_status_poll_due_ms = Time.get_ticks_msec() + PLAYBACK_STATUS_POLL_INTERVAL_MS
 
-func _send_playback_command(path_suffix: String) -> void:
-	if _playback_command_request == null or _playback_command_request_in_flight:
-		return
-	var url := _playback_base_url()
-	if url.is_empty():
-		return
-	var err := _playback_command_request.request("%s%s" % [url, path_suffix])
-	if err != OK:
-		return
-	_playback_command_request_in_flight = true
-	_refresh_playback_controls_state()
+func _load_playback_source_if_needed() -> bool:
+	if _playback_manager == null:
+		return false
+	var playback_base_url := _playback_base_url()
+	if playback_base_url.is_empty():
+		return false
+	var state: Dictionary = _playback_manager.get_state()
+	var loaded_source: Dictionary = state.get("source", {}) if typeof(state.get("source", {})) == TYPE_DICTIONARY else {}
+	if String(loaded_source.get("path", "")) == playback_base_url and bool(state.get("media_loaded", false)):
+		return true
+	_playback_manager.load({
+		"path": playback_base_url,
+		"kind": "url",
+		"loop": false,
+		"autoplay": false,
+		"rate": 1.0,
+		"metadata": {
+			"source": "input_camera_tracking_replay_http",
+		},
+	})
+	return bool(_playback_manager.get_state().get("media_loaded", false))
 
 func _playback_base_url() -> String:
 	var source_url := camera_view.stream_url if camera_view != null else "http://127.0.0.1:4243/camera"
@@ -1436,16 +1442,44 @@ func _refresh_playback_controls_visibility() -> void:
 	var visible := _is_prerecorded_source_active() and startup_mode != StartupMode.GODOT_ONLY_DEBUG
 	if _playback_bar_panel != null:
 		_playback_bar_panel.visible = visible
+	if not visible and _playback_manager != null:
+		_playback_manager.unload()
+		_playback_status = {}
+	_refresh_playback_controls_state()
+
+func _sync_playback_status_from_manager() -> void:
+	if _playback_manager == null:
+		return
+	var state: Dictionary = _playback_manager.get_state()
+	var duration := float(state.get("duration", 0.0))
+	var position := float(state.get("position", 0.0))
+	var normalized := 0.0
+	if duration > 0.0:
+		normalized = clampf(position / duration, 0.0, 1.0)
+	_playback_status = {
+		"paused": String(state.get("state", "idle")) != "playing",
+		"current_time_sec": position,
+		"duration_sec": duration,
+		"progress": normalized,
+	}
+	var backend_state: Variant = state.get("status", {})
+	if backend_state is Dictionary:
+		for key in backend_state.keys():
+			_playback_status[key] = backend_state[key]
+	if not bool(_playback_status.get("paused", false)):
+		_shared_inspector_frozen_model = {}
+		_shared_inspector_live_model = {}
+		_shared_inspector_live_refresh_due_ms = 0
 	_refresh_playback_controls_state()
 
 func _refresh_playback_controls_state() -> void:
 	if _playback_toggle_button == null or _playback_seek_slider == null or _playback_time_label == null:
 		return
-	var paused := bool(_playback_status.get("paused", false))
+	var paused := bool(_playback_status.get("paused", true))
 	_playback_toggle_button.text = PLAYBACK_ICON_PLAY if paused else PLAYBACK_ICON_PAUSE
-	var controls_enabled := not _playback_command_request_in_flight
-	_playback_toggle_button.disabled = not _is_prerecorded_source_active() or not controls_enabled
-	_playback_seek_slider.editable = _is_prerecorded_source_active() and controls_enabled
+	var controls_enabled := _is_prerecorded_source_active() and _playback_manager != null and bool(_playback_manager.get_state().get("media_loaded", false))
+	_playback_toggle_button.disabled = not controls_enabled
+	_playback_seek_slider.editable = controls_enabled
 	if not _playback_slider_drag_active:
 		_playback_seek_slider.value = float(_playback_status.get("progress", 0.0))
 	_playback_time_label.text = "%s / %s" % [
@@ -1453,43 +1487,33 @@ func _refresh_playback_controls_state() -> void:
 		_fmt_duration(float(_playback_status.get("duration_sec", 0.0))),
 	]
 
-func _on_playback_status_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
-	_playback_status_request_in_flight = false
-	_playback_status_poll_due_ms = Time.get_ticks_msec() + PLAYBACK_STATUS_POLL_INTERVAL_MS
-	if response_code < 200 or response_code >= 300:
-		return
-	var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
-	if parsed is Dictionary:
-		_playback_status = parsed
-		if not bool(_playback_status.get("paused", false)):
-			_shared_inspector_frozen_model = {}
-			_shared_inspector_live_model = {}
-			_shared_inspector_live_refresh_due_ms = 0
-		_refresh_playback_controls_state()
-
-func _on_playback_command_request_completed(_result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
-	_playback_command_request_in_flight = false
-	if response_code >= 200 and response_code < 300:
-		var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
-		if parsed is Dictionary:
-			_playback_status = parsed
-	_refresh_playback_controls_state()
-	_request_playback_status(true)
-
 func _on_playback_toggle_pressed() -> void:
-	_send_playback_command("/playback/toggle")
+	if _playback_manager == null or not _load_playback_source_if_needed():
+		return
+	if bool(_playback_status.get("paused", true)):
+		_playback_manager.play()
+	else:
+		_playback_manager.pause()
+	_sync_playback_status_from_manager()
+	_refresh_playback_status(true)
 
 func _on_playback_seek_drag_ended(value_changed: bool) -> void:
 	_playback_slider_drag_active = false
 	if not value_changed:
 		_refresh_playback_controls_state()
 		return
+	if _playback_manager == null or not _load_playback_source_if_needed():
+		return
+	var duration := float(_playback_status.get("duration_sec", 0.0))
 	var progress := clampf(float(_playback_seek_slider.value), 0.0, 1.0)
+	var seconds := duration * progress
 	_reset_runtime_debug_state_for_seek()
 	_shared_inspector_frozen_model = {}
 	_shared_inspector_live_model = {}
 	_shared_inspector_live_refresh_due_ms = 0
-	_send_playback_command("/playback/seek?progress=%.6f" % progress)
+	_playback_manager.seek(seconds)
+	_sync_playback_status_from_manager()
+	_refresh_playback_status(true)
 
 func _reset_runtime_debug_state_for_seek() -> void:
 	_latest_landmarks.clear()
