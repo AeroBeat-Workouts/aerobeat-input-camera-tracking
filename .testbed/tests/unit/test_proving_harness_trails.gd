@@ -2,6 +2,8 @@ extends "res://addons/gut/test.gd"
 
 const ProvingHarness = preload("res://scripts/proving_harness.gd")
 const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
+const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
+const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
 class TestProvingHarness:
 	extends "res://scripts/proving_harness.gd"
@@ -170,10 +172,17 @@ func test_preview_only_provider_node_drift_invalidates_surface() -> void:
 func test_effective_camera_source_prefers_repo_singleton_tracking_session_config_when_present() -> void:
 	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
 	assert_not_null(singleton)
+
+	var tracker = CameraTrackingScript.new()
+	tracker.set_backend(CameraTrackingFakeBackendScript.new([
+		{"id": "/dev/video0", "label": "Default camera"},
+		{"id": "/dev/video9", "label": "USB camera"},
+	]))
+	singleton.set_tracking_session(tracker)
+
 	add_child(harness)
 	assert_true(harness._uses_camera_tracking_contract_path())
 
-	var tracker = singleton.get_tracking_session()
 	tracker.start({
 		"source": {"kind": "live_camera", "camera_id": "/dev/video9"},
 	})
