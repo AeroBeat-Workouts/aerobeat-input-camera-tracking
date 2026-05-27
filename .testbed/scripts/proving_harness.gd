@@ -2,13 +2,10 @@ extends Control
 ## Shared proving harness for live Boxing / Flow detector tuning.
 
 const MediaPipeProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/mediapipe_provider.gd")
-const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd")
 const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
 const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
-const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
-const MediaPipePythonCameraTrackingBackendScript = preload("res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonCameraTrackingBackend.gd")
-const MediaPipePythonRuntimeBridgeScript = preload("res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonRuntimeBridge.gd")
 const AeroVideoPlayerManagerScript = preload("res://addons/aerobeat-tool-video-player/src/AeroVideoPlayerManager.gd")
+const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const AeroMediaPipeReplayPlaybackBackendScript = preload("res://addons/aerobeat-input-camera-tracking/src/AeroMediaPipeReplayPlaybackBackend.gd")
 
 const LEFT_WRIST_ID := 15
@@ -764,27 +761,31 @@ func _start_provider() -> void:
 	if provider != null:
 		return
 
-	var tracking_session := _resolve_camera_tracking_session()
-	if tracking_session != null:
-		_register_vendor_camera_tracking_backend_if_needed()
-		provider = CameraTrackingProviderScript.new()
-		provider.name = "CameraTrackingProvider"
-		provider.config = _build_runtime_config()
-		provider.manage_tracking_session_lifecycle = true
-		provider.set_tracking_session(tracking_session)
-		provider.set_preview_surface(camera_display)
+	var runtime_config := _build_runtime_config()
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null:
+		provider = tracking_singleton
+		if provider.has_method("attach_preview_surface"):
+			provider.attach_preview_surface(camera_display)
 	else:
 		provider = MediaPipeProviderScript.new()
 		provider.name = "MediaPipeProvider"
-		provider.config = _build_runtime_config()
-	add_child(provider)
+		provider.config = runtime_config
+		add_child(provider)
 
 	provider.pose_updated.connect(_on_pose_updated)
 	provider.tracking_lost.connect(_on_tracking_lost)
 	provider.tracking_restored.connect(_on_tracking_restored)
 	_connect_mode_signals()
 
-	var success: bool = bool(provider.call("start"))
+	var success := false
+	if tracking_singleton != null:
+		if _is_prerecorded_source_active() and provider.has_method("start_replay"):
+			success = bool(provider.start_replay(_get_scene_camera_source_override(), runtime_config))
+		elif provider.has_method("start_live_camera"):
+			success = bool(provider.start_live_camera(_get_configured_live_camera_source(), runtime_config))
+	else:
+		success = bool(provider.call("start"))
 	if success:
 		_server_ready = true
 		_refresh_camera_source_controls()
@@ -809,20 +810,21 @@ func _build_runtime_config() -> MediaPipeConfig:
 	config.model_complexity = int(tracking_style.get("model_complexity", config.model_complexity))
 	return config
 
+func _resolve_camera_tracking_singleton() -> Node:
+	if not is_inside_tree():
+		return null
+	return get_tree().root.get_node_or_null(TRACKING_SINGLETON_NODE_NAME) as Node
+
 func _resolve_camera_tracking_session() -> Node:
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null and tracking_singleton.has_method("get_tracking_session_if_ready"):
+		var session = tracking_singleton.get_tracking_session_if_ready()
+		if session != null:
+			return session as Node
 	return find_child("CameraTracking", true, false) as Node
 
 func _uses_camera_tracking_contract_path() -> bool:
-	return _resolve_camera_tracking_session() != null
-
-func _register_vendor_camera_tracking_backend_if_needed() -> void:
-	if CameraTrackingScript.get_registered_backend_ids().has("mediapipe_python"):
-		return
-	CameraTrackingScript.register_backend_factory("mediapipe_python", func(_config: Dictionary):
-		var backend = MediaPipePythonCameraTrackingBackendScript.new()
-		backend.set_runtime_bridge(MediaPipePythonRuntimeBridgeScript.new())
-		return backend
-	)
+	return _resolve_camera_tracking_singleton() != null or _resolve_camera_tracking_session() != null
 
 func _connect_mode_signals() -> void:
 	if harness_mode == HarnessMode.BOXING:
@@ -2508,7 +2510,8 @@ func _stop_everything(reason: String = "unknown") -> void:
 
 	if provider:
 		provider.stop()
-		if is_instance_valid(provider):
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if is_instance_valid(provider) and provider != tracking_singleton:
 			provider.queue_free()
 		provider = null
 

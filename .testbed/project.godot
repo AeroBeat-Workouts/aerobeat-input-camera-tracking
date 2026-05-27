@@ -17,6 +17,7 @@ config/features=PackedStringArray("4.6")
 [autoload]
 
 AeroHeadlessManager="*res://addons/aerobeat-tool-headless-manager/src/AeroHeadlessManager.gd"
+AeroCameraTracking="*res://addons/aerobeat-input-camera-tracking/src/AeroCameraTracking.gd"
 
 [config]
 

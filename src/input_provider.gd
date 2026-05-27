@@ -19,6 +19,7 @@ const PROVIDER_SESSION_REGISTRY_PATH := "res://addons/aerobeat-input-core/src/ru
 const SHARED_SESSION_OWNER_PREFIX := "aerobeat-input-camera-tracking:input_provider"
 const SHARED_SESSION_KEY := "mediapipe_python"
 const TRACKING_SESSION_NODE_NAME := "CameraTracking"
+const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const PROVIDER_LANE_CAMERA_TRACKING := "camera_tracking"
 const PROVIDER_LANE_LEGACY_MEDIAPIPE := "legacy_mediapipe"
 
@@ -398,6 +399,11 @@ func _resolve_tracking_session():
 func _discover_tracking_session():
 	if not is_inside_tree():
 		return null
+	var singleton := get_node_or_null("/root/%s" % TRACKING_SINGLETON_NODE_NAME)
+	if singleton != null and singleton.has_method("get_tracking_session_if_ready"):
+		var session = singleton.get_tracking_session_if_ready()
+		if session != null:
+			return session
 	return find_child(TRACKING_SESSION_NODE_NAME, true, false)
 
 func _connect_provider_tracking_lost_signal() -> void:

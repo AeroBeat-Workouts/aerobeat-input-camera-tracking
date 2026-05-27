@@ -1,6 +1,7 @@
 extends "res://addons/gut/test.gd"
 
 const InputProviderAdapterScript = preload("res://addons/aerobeat-input-camera-tracking/src/input_provider.gd")
+const AeroCameraTrackingScript = preload("res://addons/aerobeat-input-camera-tracking/src/AeroCameraTracking.gd")
 const RegistryScript = preload("res://addons/aerobeat-input-core/src/runtime/provider_session_registry.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
@@ -250,6 +251,20 @@ func test_input_provider_adapter_publishes_replay_metadata_from_camera_tracking_
 	assert_eq(String(debug_state.get("camera_source", "")), fixture_path)
 	assert_eq(String(debug_state.get("fixture_video_path", "")), fixture_path)
 	assert_eq(String(debug_state.get("provider_lane", "")), "camera_tracking")
+
+func test_input_provider_adapter_discovers_tracking_session_from_repo_singleton_when_ready() -> void:
+	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
+	assert_not_null(singleton)
+	var tracker_setup := _make_started_tracking_session({
+		"source": {"kind": "live_camera", "camera_id": "/dev/video7"},
+	})
+	singleton.set_tracking_session(tracker_setup["tracker"])
+
+	var adapter = add_child_autoqfree(InputProviderAdapterScript.new())
+	assert_true(adapter.start("{}"))
+	assert_true(adapter.uses_camera_tracking_contract_path())
+	assert_same(adapter.get_tracking_session(), tracker_setup["tracker"])
+	singleton.stop()
 
 func _make_started_legacy_adapter(settings: Dictionary = {}) -> Dictionary:
 	var adapter = add_child_autoqfree(InputProviderAdapterScript.new())

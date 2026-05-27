@@ -1,0 +1,474 @@
+extends Node
+## Repo-owned camera-tracking singleton facade.
+##
+## Current truthful scope:
+## - owns the high-level start/stop contract for live-camera and replay/video-file tracking
+## - delegates normalized tracking + gesture interpretation through CameraTrackingProvider
+## - re-emits tracking-session state plus Boxing/Flow detector signals for consumer scenes
+## - keeps legacy local python_mediapipe fallback code elsewhere intact until the remaining
+##   preview/playback/runtime seams can be retired safely
+
+const CAMERA_TRACKING_SCRIPT_PATH := "res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd"
+const CAMERA_TRACKING_PROVIDER_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd"
+const MEDIAPIPE_CONFIG_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd"
+const VENDOR_BACKEND_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonCameraTrackingBackend.gd"
+const VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonRuntimeBridge.gd"
+const DEFAULT_BACKEND_ID := "mediapipe_python"
+const INTERNAL_TRACKING_NODE_NAME := "CameraTracking"
+const INTERNAL_PROVIDER_NODE_NAME := "CameraTrackingProvider"
+
+signal state_changed(state: String, detail: Dictionary)
+signal tracking_updated(frame: Dictionary)
+signal preview_changed(descriptor: Dictionary)
+signal cameras_changed(cameras: Array)
+signal error_raised(error_info: Dictionary)
+
+signal pose_updated(landmarks: Array)
+signal multi_pose_updated(poses: Array)
+signal tracking_lost()
+signal tracking_restored()
+
+signal punch_left(power: float)
+signal punch_right(power: float)
+signal uppercut_left(power: float)
+signal uppercut_right(power: float)
+signal hook_left(power: float)
+signal hook_right(power: float)
+signal swing_left(placement: int, direction: int)
+signal swing_right(placement: int, direction: int)
+signal trail_left(placement: int, direction: int)
+signal trail_right(placement: int, direction: int)
+signal guard_start()
+signal guard_end()
+signal squat_start()
+signal squat_end()
+signal weave_left_start()
+signal weave_left_end()
+signal weave_right_start()
+signal weave_right_end()
+signal sidestep_left_start()
+signal sidestep_left_end()
+signal sidestep_right_start()
+signal sidestep_right_end()
+signal knee_left(power: float)
+signal knee_right(power: float)
+signal leg_lift_left_start()
+signal leg_lift_left_end()
+signal leg_lift_right_start()
+signal leg_lift_right_end()
+
+var _tracking_session: Node = null
+var _provider: Node = null
+var _preview_surface: Node = null
+var _last_runtime_config = null
+
+func has_tracking_contract() -> bool:
+	return _tracking_session != null and is_instance_valid(_tracking_session)
+
+func is_tracking_session_discoverable() -> bool:
+	return has_tracking_contract()
+
+func get_tracking_session_if_ready() -> Node:
+	return _tracking_session if has_tracking_contract() else null
+
+func get_tracking_session() -> Node:
+	return _ensure_tracking_session()
+
+func get_provider() -> Node:
+	return _ensure_provider()
+
+func start_live_camera(camera_id: String = "", config_variant: Variant = null) -> bool:
+	var runtime_config = _coerce_runtime_config(config_variant)
+	if runtime_config == null:
+		return false
+	var normalized_camera_id := camera_id.strip_edges()
+	if not normalized_camera_id.is_empty() and runtime_config.has_method("set_selected_camera_device_id"):
+		runtime_config.set_selected_camera_device_id(normalized_camera_id)
+	return _start_with_config(runtime_config)
+
+func start_replay(source_path: String, config_variant: Variant = null) -> bool:
+	var normalized_source := source_path.strip_edges()
+	if normalized_source.is_empty():
+		push_warning("[AeroCameraTracking] Replay start requested without a source path")
+		return false
+	var runtime_config = _coerce_runtime_config(config_variant)
+	if runtime_config == null:
+		return false
+	if runtime_config.has_method("set_selected_camera_device_id"):
+		runtime_config.set_selected_camera_device_id(normalized_source)
+	return _start_with_config(runtime_config)
+
+func start(config_variant: Variant = null) -> bool:
+	var runtime_config = _coerce_runtime_config(config_variant)
+	if runtime_config == null:
+		return false
+	return _start_with_config(runtime_config)
+
+func stop() -> void:
+	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
+		_provider.stop()
+
+func attach_preview_surface(surface: Node) -> void:
+	_preview_surface = surface
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("set_preview_surface"):
+		provider.set_preview_surface(surface)
+	elif has_tracking_contract() and _tracking_session.has_method("attach_preview_surface") and surface != null:
+		_tracking_session.attach_preview_surface(surface)
+
+func set_preview_surface(surface: Node) -> void:
+	attach_preview_surface(surface)
+
+func detach_preview_surface() -> void:
+	_preview_surface = null
+	if has_tracking_contract() and _tracking_session.has_method("detach_preview_surface"):
+		_tracking_session.detach_preview_surface()
+
+func get_state() -> Dictionary:
+	if has_tracking_contract() and _tracking_session.has_method("get_state"):
+		return _tracking_session.get_state()
+	return {}
+
+func get_active_config() -> Dictionary:
+	if has_tracking_contract() and _tracking_session.has_method("get_active_config"):
+		return _tracking_session.get_active_config()
+	return {}
+
+func get_tracking_frame() -> Dictionary:
+	if has_tracking_contract() and _tracking_session.has_method("get_tracking_frame"):
+		return _tracking_session.get_tracking_frame()
+	return {}
+
+func get_last_error() -> Dictionary:
+	if has_tracking_contract() and _tracking_session.has_method("get_last_error"):
+		return _tracking_session.get_last_error()
+	return {}
+
+func list_cameras() -> Array:
+	if has_tracking_contract() and _tracking_session.has_method("list_cameras"):
+		return _tracking_session.list_cameras()
+	return []
+
+func get_available_camera_devices() -> Array:
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("get_available_camera_devices"):
+		return provider.get_available_camera_devices()
+	return list_cameras()
+
+func get_selected_camera_device_id() -> String:
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("get_selected_camera_device_id"):
+		return String(provider.get_selected_camera_device_id()).strip_edges()
+	var source: Dictionary = get_active_config().get("source", {})
+	if String(source.get("kind", "")).strip_edges() == "video_file":
+		return String(source.get("path", "")).strip_edges()
+	return String(source.get("camera_id", "")).strip_edges()
+
+func set_selected_camera_device_id(device_id: String) -> bool:
+	var provider := _ensure_provider()
+	if provider == null or not provider.has_method("set_selected_camera_device_id"):
+		return false
+	return bool(provider.set_selected_camera_device_id(device_id))
+
+func is_tracking() -> bool:
+	var provider := _ensure_provider()
+	return provider != null and provider.has_method("is_tracking") and bool(provider.is_tracking())
+
+func get_detector_state() -> Dictionary:
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("get_detector_state"):
+		return provider.get_detector_state()
+	return {}
+
+func get_body_measurements() -> Dictionary:
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("get_body_measurements"):
+		return provider.get_body_measurements()
+	return {}
+
+func set_tracking_session(session: Node) -> void:
+	if _tracking_session == session:
+		return
+	_disconnect_tracking_session_signals()
+	_tracking_session = session
+	if _tracking_session != null and _tracking_session.get_parent() == null:
+		add_child(_tracking_session)
+	_connect_tracking_session_signals()
+	if _provider != null and is_instance_valid(_provider) and _provider.has_method("set_tracking_session"):
+		_provider.set_tracking_session(_tracking_session)
+
+func _start_with_config(runtime_config) -> bool:
+	_register_vendor_camera_tracking_backend_if_needed()
+	var session := _ensure_tracking_session()
+	var provider := _ensure_provider()
+	if session == null or provider == null:
+		return false
+	_last_runtime_config = runtime_config
+	provider.config = runtime_config
+	provider.manage_tracking_session_lifecycle = true
+	provider.set_tracking_session(session)
+	if _preview_surface != null and provider.has_method("set_preview_surface"):
+		provider.set_preview_surface(_preview_surface)
+	return bool(provider.start())
+
+func _ensure_tracking_session() -> Node:
+	if has_tracking_contract():
+		return _tracking_session
+	var camera_tracking_script: Variant = _load_script(CAMERA_TRACKING_SCRIPT_PATH)
+	if camera_tracking_script == null:
+		push_error("[AeroCameraTracking] CameraTracking contract addon is not mounted")
+		return null
+	_tracking_session = camera_tracking_script.new()
+	_tracking_session.name = INTERNAL_TRACKING_NODE_NAME
+	add_child(_tracking_session)
+	_connect_tracking_session_signals()
+	return _tracking_session
+
+func _ensure_provider() -> Node:
+	if _provider != null and is_instance_valid(_provider):
+		return _provider
+	var provider_script: Variant = _load_script(CAMERA_TRACKING_PROVIDER_SCRIPT_PATH)
+	if provider_script == null:
+		push_error("[AeroCameraTracking] CameraTrackingProvider script is not available")
+		return null
+	_provider = provider_script.new()
+	_provider.name = INTERNAL_PROVIDER_NODE_NAME
+	_provider.manage_tracking_session_lifecycle = true
+	if _tracking_session != null and is_instance_valid(_tracking_session) and _provider.has_method("set_tracking_session"):
+		_provider.set_tracking_session(_tracking_session)
+	if _preview_surface != null and _provider.has_method("set_preview_surface"):
+		_provider.set_preview_surface(_preview_surface)
+	add_child(_provider)
+	_connect_provider_signals()
+	return _provider
+
+func _coerce_runtime_config(config_variant: Variant):
+	if typeof(config_variant) == TYPE_OBJECT and config_variant.has_method("get_camera_source"):
+		return config_variant
+	var config_script: Variant = _load_script(MEDIAPIPE_CONFIG_SCRIPT_PATH)
+	if config_script == null:
+		push_error("[AeroCameraTracking] MediaPipe config script is not available")
+		return null
+	var config = config_script.new()
+	if config_variant is Dictionary:
+		_apply_dictionary_config(config, config_variant)
+	return config
+
+func _apply_dictionary_config(config, values: Dictionary) -> void:
+	if values.has("min_visibility"):
+		config.min_visibility = float(values["min_visibility"])
+	if values.has("tracking_confidence"):
+		config.tracking_confidence = float(values["tracking_confidence"])
+	if values.has("flip_horizontal"):
+		config.flip_horizontal = bool(values["flip_horizontal"])
+	if values.has("tracking_overlay_mode"):
+		config.tracking_overlay_mode = String(values["tracking_overlay_mode"]).strip_edges().to_lower()
+	if values.has("gesture_eval_interval_frames"):
+		config.gesture_eval_interval_frames = maxi(1, int(values["gesture_eval_interval_frames"]))
+	if values.has("model_complexity"):
+		config.model_complexity = int(values["model_complexity"])
+	if values.has("camera_source") and config.has_method("set_selected_camera_device_id"):
+		config.set_selected_camera_device_id(String(values["camera_source"]))
+	elif values.has("selected_camera_device_id") and config.has_method("set_selected_camera_device_id"):
+		config.set_selected_camera_device_id(String(values["selected_camera_device_id"]))
+
+func _register_vendor_camera_tracking_backend_if_needed() -> void:
+	var camera_tracking_script: Variant = _load_script(CAMERA_TRACKING_SCRIPT_PATH)
+	if camera_tracking_script == null:
+		return
+	if camera_tracking_script.get_registered_backend_ids().has(DEFAULT_BACKEND_ID):
+		return
+	camera_tracking_script.register_backend_factory(DEFAULT_BACKEND_ID, func(_config: Dictionary):
+		var backend_script: Variant = _load_script(VENDOR_BACKEND_SCRIPT_PATH)
+		var runtime_bridge_script: Variant = _load_script(VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH)
+		if backend_script == null or runtime_bridge_script == null:
+			return null
+		var backend = backend_script.new()
+		backend.set_runtime_bridge(runtime_bridge_script.new())
+		return backend
+	)
+
+func _connect_tracking_session_signals() -> void:
+	if not has_tracking_contract():
+		return
+	if _tracking_session.has_signal("state_changed") and not _tracking_session.state_changed.is_connected(_on_tracking_session_state_changed):
+		_tracking_session.state_changed.connect(_on_tracking_session_state_changed)
+	if _tracking_session.has_signal("tracking_updated") and not _tracking_session.tracking_updated.is_connected(_on_tracking_session_tracking_updated):
+		_tracking_session.tracking_updated.connect(_on_tracking_session_tracking_updated)
+	if _tracking_session.has_signal("preview_changed") and not _tracking_session.preview_changed.is_connected(_on_tracking_session_preview_changed):
+		_tracking_session.preview_changed.connect(_on_tracking_session_preview_changed)
+	if _tracking_session.has_signal("cameras_changed") and not _tracking_session.cameras_changed.is_connected(_on_tracking_session_cameras_changed):
+		_tracking_session.cameras_changed.connect(_on_tracking_session_cameras_changed)
+	if _tracking_session.has_signal("error_raised") and not _tracking_session.error_raised.is_connected(_on_tracking_session_error_raised):
+		_tracking_session.error_raised.connect(_on_tracking_session_error_raised)
+
+func _disconnect_tracking_session_signals() -> void:
+	if _tracking_session == null or not is_instance_valid(_tracking_session):
+		return
+	if _tracking_session.has_signal("state_changed") and _tracking_session.state_changed.is_connected(_on_tracking_session_state_changed):
+		_tracking_session.state_changed.disconnect(_on_tracking_session_state_changed)
+	if _tracking_session.has_signal("tracking_updated") and _tracking_session.tracking_updated.is_connected(_on_tracking_session_tracking_updated):
+		_tracking_session.tracking_updated.disconnect(_on_tracking_session_tracking_updated)
+	if _tracking_session.has_signal("preview_changed") and _tracking_session.preview_changed.is_connected(_on_tracking_session_preview_changed):
+		_tracking_session.preview_changed.disconnect(_on_tracking_session_preview_changed)
+	if _tracking_session.has_signal("cameras_changed") and _tracking_session.cameras_changed.is_connected(_on_tracking_session_cameras_changed):
+		_tracking_session.cameras_changed.disconnect(_on_tracking_session_cameras_changed)
+	if _tracking_session.has_signal("error_raised") and _tracking_session.error_raised.is_connected(_on_tracking_session_error_raised):
+		_tracking_session.error_raised.disconnect(_on_tracking_session_error_raised)
+
+func _connect_provider_signals() -> void:
+	if _provider == null or not is_instance_valid(_provider):
+		return
+	_connect_provider_signal("pose_updated", _on_provider_pose_updated)
+	_connect_provider_signal("multi_pose_updated", _on_provider_multi_pose_updated)
+	_connect_provider_signal("tracking_lost", _on_provider_tracking_lost)
+	_connect_provider_signal("tracking_restored", _on_provider_tracking_restored)
+	_connect_provider_signal("punch_left", _on_provider_punch_left)
+	_connect_provider_signal("punch_right", _on_provider_punch_right)
+	_connect_provider_signal("uppercut_left", _on_provider_uppercut_left)
+	_connect_provider_signal("uppercut_right", _on_provider_uppercut_right)
+	_connect_provider_signal("hook_left", _on_provider_hook_left)
+	_connect_provider_signal("hook_right", _on_provider_hook_right)
+	_connect_provider_signal("swing_left", _on_provider_swing_left)
+	_connect_provider_signal("swing_right", _on_provider_swing_right)
+	_connect_provider_signal("trail_left", _on_provider_trail_left)
+	_connect_provider_signal("trail_right", _on_provider_trail_right)
+	_connect_provider_signal("guard_start", _on_provider_guard_start)
+	_connect_provider_signal("guard_end", _on_provider_guard_end)
+	_connect_provider_signal("squat_start", _on_provider_squat_start)
+	_connect_provider_signal("squat_end", _on_provider_squat_end)
+	_connect_provider_signal("weave_left_start", _on_provider_weave_left_start)
+	_connect_provider_signal("weave_left_end", _on_provider_weave_left_end)
+	_connect_provider_signal("weave_right_start", _on_provider_weave_right_start)
+	_connect_provider_signal("weave_right_end", _on_provider_weave_right_end)
+	_connect_provider_signal("sidestep_left_start", _on_provider_sidestep_left_start)
+	_connect_provider_signal("sidestep_left_end", _on_provider_sidestep_left_end)
+	_connect_provider_signal("sidestep_right_start", _on_provider_sidestep_right_start)
+	_connect_provider_signal("sidestep_right_end", _on_provider_sidestep_right_end)
+	_connect_provider_signal("knee_left", _on_provider_knee_left)
+	_connect_provider_signal("knee_right", _on_provider_knee_right)
+	_connect_provider_signal("leg_lift_left_start", _on_provider_leg_lift_left_start)
+	_connect_provider_signal("leg_lift_left_end", _on_provider_leg_lift_left_end)
+	_connect_provider_signal("leg_lift_right_start", _on_provider_leg_lift_right_start)
+	_connect_provider_signal("leg_lift_right_end", _on_provider_leg_lift_right_end)
+
+func _connect_provider_signal(signal_name: String, callback: Callable) -> void:
+	if _provider == null or not _provider.has_signal(signal_name):
+		return
+	var signal_variant: Variant = _provider.get(signal_name)
+	if signal_variant is Signal and not signal_variant.is_connected(callback):
+		signal_variant.connect(callback)
+
+func _load_script(path: String) -> Variant:
+	return load(path)
+
+func _on_tracking_session_state_changed(state: String, detail: Dictionary) -> void:
+	state_changed.emit(state, detail.duplicate(true))
+
+func _on_tracking_session_tracking_updated(frame: Dictionary) -> void:
+	tracking_updated.emit(frame.duplicate(true))
+
+func _on_tracking_session_preview_changed(descriptor: Dictionary) -> void:
+	preview_changed.emit(descriptor.duplicate(true))
+
+func _on_tracking_session_cameras_changed(cameras: Array) -> void:
+	cameras_changed.emit(cameras.duplicate(true))
+
+func _on_tracking_session_error_raised(error_info: Dictionary) -> void:
+	error_raised.emit(error_info.duplicate(true))
+
+func _on_provider_pose_updated(landmarks: Array) -> void:
+	pose_updated.emit(landmarks.duplicate(true))
+
+func _on_provider_multi_pose_updated(poses: Array) -> void:
+	multi_pose_updated.emit(poses.duplicate(true))
+
+func _on_provider_tracking_lost() -> void:
+	tracking_lost.emit()
+
+func _on_provider_tracking_restored() -> void:
+	tracking_restored.emit()
+
+func _on_provider_punch_left(power: float) -> void:
+	punch_left.emit(power)
+
+func _on_provider_punch_right(power: float) -> void:
+	punch_right.emit(power)
+
+func _on_provider_uppercut_left(power: float) -> void:
+	uppercut_left.emit(power)
+
+func _on_provider_uppercut_right(power: float) -> void:
+	uppercut_right.emit(power)
+
+func _on_provider_hook_left(power: float) -> void:
+	hook_left.emit(power)
+
+func _on_provider_hook_right(power: float) -> void:
+	hook_right.emit(power)
+
+func _on_provider_swing_left(placement: int, direction: int) -> void:
+	swing_left.emit(placement, direction)
+
+func _on_provider_swing_right(placement: int, direction: int) -> void:
+	swing_right.emit(placement, direction)
+
+func _on_provider_trail_left(placement: int, direction: int) -> void:
+	trail_left.emit(placement, direction)
+
+func _on_provider_trail_right(placement: int, direction: int) -> void:
+	trail_right.emit(placement, direction)
+
+func _on_provider_guard_start() -> void:
+	guard_start.emit()
+
+func _on_provider_guard_end() -> void:
+	guard_end.emit()
+
+func _on_provider_squat_start() -> void:
+	squat_start.emit()
+
+func _on_provider_squat_end() -> void:
+	squat_end.emit()
+
+func _on_provider_weave_left_start() -> void:
+	weave_left_start.emit()
+
+func _on_provider_weave_left_end() -> void:
+	weave_left_end.emit()
+
+func _on_provider_weave_right_start() -> void:
+	weave_right_start.emit()
+
+func _on_provider_weave_right_end() -> void:
+	weave_right_end.emit()
+
+func _on_provider_sidestep_left_start() -> void:
+	sidestep_left_start.emit()
+
+func _on_provider_sidestep_left_end() -> void:
+	sidestep_left_end.emit()
+
+func _on_provider_sidestep_right_start() -> void:
+	sidestep_right_start.emit()
+
+func _on_provider_sidestep_right_end() -> void:
+	sidestep_right_end.emit()
+
+func _on_provider_knee_left(power: float) -> void:
+	knee_left.emit(power)
+
+func _on_provider_knee_right(power: float) -> void:
+	knee_right.emit(power)
+
+func _on_provider_leg_lift_left_start() -> void:
+	leg_lift_left_start.emit()
+
+func _on_provider_leg_lift_left_end() -> void:
+	leg_lift_left_end.emit()
+
+func _on_provider_leg_lift_right_start() -> void:
+	leg_lift_right_start.emit()
+
+func _on_provider_leg_lift_right_end() -> void:
+	leg_lift_right_end.emit()

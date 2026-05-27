@@ -5,7 +5,6 @@
 [ext_resource type="Script" uid="uid://cl21tmxhvdd0x" path="res://scripts/hand_trail_drawer.gd" id="3_trails"]
 [ext_resource type="Script" uid="uid://cntshlv75amau" path="res://addons/aerobeat-input-camera-tracking/src/autostart_manager.gd" id="4_autostart"]
 [ext_resource type="Texture2D" uid="uid://cv2cmj48bnykt" path="res://assets/backgrounds/perfect-hue-may-08-2026-hd.png" id="5_background"]
-[ext_resource type="Script" uid="uid://csj0xkiqjxenv" path="res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd" id="6_camera_tracking"]
 
 [node name="BoxingProving" type="Control" unique_id=212338292]
 layout_mode = 3
@@ -22,9 +21,6 @@ show_trails = false
 
 [node name="AutoStartManager" type="Node" parent="." unique_id=343298553]
 script = ExtResource("4_autostart")
-
-[node name="CameraTracking" type="Node" parent="." unique_id=2026052201]
-script = ExtResource("6_camera_tracking")
 
 [node name="Background" type="TextureRect" parent="." unique_id=2072136514]
 layout_mode = 1
