@@ -398,16 +398,12 @@ func _ensure_playback_controls() -> void:
 	margin.add_theme_constant_override("margin_bottom", 8)
 	_playback_bar_panel.add_child(margin)
 
-	var timeline_row_host := CenterContainer.new()
-	timeline_row_host.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
-	timeline_row_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_child(timeline_row_host)
-
 	var row := HBoxContainer.new()
+	row.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_theme_constant_override("separation", 10)
-	timeline_row_host.add_child(row)
+	margin.add_child(row)
 
 	var toggle_host := CenterContainer.new()
 	toggle_host.custom_minimum_size = Vector2(PLAYBACK_TOGGLE_BUTTON_WIDTH, PLAYBACK_CONTROL_ROW_HEIGHT)
@@ -697,7 +693,8 @@ func _clear_live_camera_runtime_state() -> void:
 		trail_drawer.clear_trails()
 	if provider != null:
 		provider.stop()
-		if is_instance_valid(provider):
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if is_instance_valid(provider) and provider != tracking_singleton:
 			provider.queue_free()
 		provider = null
 	if camera_view != null and camera_view.is_streaming():
@@ -723,6 +720,9 @@ func _is_live_camera_runtime_ready() -> bool:
 	if startup_mode == StartupMode.PREVIEW_ONLY_DEBUG:
 		return true
 	return provider != null
+
+func _should_poll_sidecar_runtime_health() -> bool:
+	return auto_start_manager != null and startup_mode != StartupMode.GODOT_ONLY_DEBUG and _should_show_camera_source_controls()
 
 func _setup_auto_start() -> void:
 	auto_start_manager = get_node_or_null("AutoStartManager")
@@ -766,7 +766,7 @@ func _process(_delta: float) -> void:
 	if _is_preview_only_mode():
 		_audit_preview_only_surface()
 
-	if _frame_count % 60 == 0 and auto_start_manager and auto_start_manager.server_pid > 0:
+	if _frame_count % 60 == 0 and _should_poll_sidecar_runtime_health() and auto_start_manager and auto_start_manager.server_pid > 0:
 		if not auto_start_manager.is_server_running():
 			_update_status("Python server died", Color.RED)
 			_server_ready = false
@@ -845,7 +845,7 @@ func _start_provider() -> void:
 	if provider != null:
 		return
 
-	var runtime_config := _build_runtime_config()
+	var runtime_config: Variant = _build_runtime_config()
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	if tracking_singleton == null:
 		push_error("[ProvingHarness] AeroCameraTracking singleton is required for .testbed proving flows")
@@ -877,7 +877,7 @@ func _start_provider() -> void:
 	else:
 		_update_status("Provider failed to start", Color.RED)
 
-func _build_runtime_config() -> MediaPipeConfig:
+func _build_runtime_config() -> Variant:
 	var config := MediaPipeConfigScript.new()
 	config.min_visibility = overlay_visibility_threshold
 	config.track_left_foot = true
@@ -890,6 +890,12 @@ func _build_runtime_config() -> MediaPipeConfig:
 	config.gesture_eval_interval_frames = maxi(1, gesture_eval_interval_frames)
 	var tracking_style := _tracking_smoothing_style_spec()
 	config.model_complexity = int(tracking_style.get("model_complexity", config.model_complexity))
+	if auto_start_manager != null and auto_start_manager.has_method("get_model_asset_path"):
+		var model_asset_path := String(auto_start_manager.get_model_asset_path()).strip_edges()
+		if not model_asset_path.is_empty():
+			config.runtime = {
+				"pose_landmarker_model_path": model_asset_path,
+			}
 	return config
 
 func _resolve_camera_tracking_singleton() -> Node:
@@ -900,9 +906,9 @@ func _resolve_camera_tracking_singleton() -> Node:
 func _resolve_camera_tracking_session() -> Node:
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	if tracking_singleton != null and tracking_singleton.has_method("get_tracking_session_if_ready"):
-		var session = tracking_singleton.get_tracking_session_if_ready()
-		if session != null:
-			return session as Node
+		var tracking_session: Node = tracking_singleton.get_tracking_session_if_ready() as Node
+		if tracking_session != null:
+			return tracking_session
 	return null
 
 func _uses_camera_tracking_contract_path() -> bool:
@@ -1371,8 +1377,8 @@ func _build_custom_inspector_model(_target_type: String, _target_key: String) ->
 
 func _build_landmark_inspector_model(landmark_id: int) -> Dictionary:
 	var snapshot := _capture_landmark_snapshot(landmark_id)
-	var name := _landmark_name(landmark_id)
-	var subtitle := "%s (#%d)" % [name, landmark_id]
+	var landmark_name := _landmark_name(landmark_id)
+	var subtitle := "%s (#%d)" % [landmark_name, landmark_id]
 	var lines: Array[String] = []
 	if bool(snapshot.get("tracked", false)):
 		_shared_inspector_landmark_last_known[str(landmark_id)] = snapshot.duplicate(true)
@@ -1529,18 +1535,18 @@ func _playback_base_url() -> String:
 	return source_url.substr(0, slash_index)
 
 func _refresh_playback_controls_visibility() -> void:
-	var visible := _is_prerecorded_source_active()
+	var playback_visible := _is_prerecorded_source_active()
 	if _playback_bar_panel != null:
-		_playback_bar_panel.visible = visible
-	if visible and not _playback_visibility_active:
+		_playback_bar_panel.visible = playback_visible
+	if playback_visible and not _playback_visibility_active:
 		_playback_autoplay_pending = true
 		_playback_autoplay_base_url = ""
-	elif not visible and _playback_visibility_active:
+	elif not playback_visible and _playback_visibility_active:
 		_playback_controller_unload()
 		_playback_status = {}
 		_playback_autoplay_pending = false
 		_playback_autoplay_base_url = ""
-	_playback_visibility_active = visible
+	_playback_visibility_active = playback_visible
 	_refresh_playback_controls_state()
 
 func _sync_playback_status_from_manager() -> void:
@@ -1548,20 +1554,20 @@ func _sync_playback_status_from_manager() -> void:
 	if state.is_empty():
 		return
 	var duration := float(state.get("duration", 0.0))
-	var position := float(state.get("position", 0.0))
+	var playback_position := float(state.get("position", 0.0))
 	var normalized := 0.0
 	if duration > 0.0:
-		normalized = clampf(position / duration, 0.0, 1.0)
+		normalized = clampf(playback_position / duration, 0.0, 1.0)
 	_playback_status = {
 		"paused": String(state.get("state", "idle")) != "playing",
-		"current_time_sec": position,
+		"current_time_sec": playback_position,
 		"duration_sec": duration,
 		"progress": normalized,
 	}
 	var backend_state: Variant = state.get("status", {})
 	if backend_state is Dictionary:
-		for key in backend_state.keys():
-			_playback_status[key] = backend_state[key]
+		for status_key: Variant in backend_state.keys():
+			_playback_status[status_key] = backend_state[status_key]
 	if not bool(_playback_status.get("paused", false)):
 		_shared_inspector_frozen_model = {}
 		_shared_inspector_live_model = {}
@@ -1641,7 +1647,7 @@ func _fmt_percent(value: Variant) -> String:
 
 func _fmt_duration(seconds: float) -> String:
 	var total_seconds: int = maxi(int(round(seconds)), 0)
-	var minutes: int = int(total_seconds / 60)
+	var minutes: int = int(total_seconds / 60.0)
 	var remaining_seconds: int = total_seconds % 60
 	return "%d:%02d" % [minutes, remaining_seconds]
 

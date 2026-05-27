@@ -55,6 +55,7 @@ var _detector_substrate: PoseDetectorSubstrate = null
 var _landmarks: Dictionary = {}
 var _all_poses: Array = []
 var _last_tracking_frame: Dictionary = {}
+var _last_tracking_frame_signature := ""
 var _was_tracking := false
 
 enum TrackingMode {
@@ -71,6 +72,7 @@ const LANDMARK_RIGHT_ANKLE = PoseLandmarkIds.RIGHT_ANKLE
 func _ready() -> void:
 	config = _ensure_config()
 	_ensure_detector_substrate()
+	set_process(true)
 
 func set_tracking_session(session) -> void:
 	if _tracking_session == session:
@@ -106,6 +108,7 @@ func reset_runtime_state() -> void:
 	_landmarks.clear()
 	_all_poses.clear()
 	_last_tracking_frame = {}
+	_last_tracking_frame_signature = ""
 	_was_tracking = false
 	if _detector_substrate != null:
 		_detector_substrate.reset()
@@ -240,6 +243,9 @@ func ingest_tracking_frame(frame: Dictionary) -> void:
 	_multi_pose_from_current_landmarks(normalized_landmarks)
 	_emit_tracking_edge_signals(active)
 
+func _process(_delta: float) -> void:
+	_poll_tracking_session_frame()
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_EXIT_TREE:
 		stop()
@@ -262,11 +268,31 @@ func _disconnect_tracking_session() -> void:
 		_tracking_session.state_changed.disconnect(_on_tracking_session_state_changed)
 
 func _sync_from_tracking_session() -> void:
+	_poll_tracking_session_frame(true)
+
+func _poll_tracking_session_frame(force: bool = false) -> void:
 	if _tracking_session == null or not _tracking_session.has_method("get_tracking_frame"):
 		return
 	var frame: Variant = _tracking_session.get_tracking_frame()
-	if frame is Dictionary:
-		ingest_tracking_frame(frame)
+	if not frame is Dictionary:
+		return
+	var frame_dict: Dictionary = frame
+	var signature := _build_tracking_frame_signature(frame_dict)
+	if not force and signature == _last_tracking_frame_signature:
+		return
+	_last_tracking_frame_signature = signature
+	ingest_tracking_frame(frame_dict)
+
+func _build_tracking_frame_signature(frame: Dictionary) -> String:
+	var raw_landmarks: Variant = frame.get("landmarks", [])
+	var landmark_count: int = raw_landmarks.size() if raw_landmarks is Array else 0
+	return "%s|%s|%s|%d|%s" % [
+		str(frame.get("timestamp_ms", "")),
+		str(frame.get("frame_index", "")),
+		str(frame.get("tracking_state", "")),
+		landmark_count,
+		str(frame.get("source_id", "")),
+	]
 
 func _build_tracking_config() -> Dictionary:
 	var active_config = _ensure_config()
@@ -282,7 +308,7 @@ func _build_tracking_config() -> Dictionary:
 			"kind": source_kind,
 			"path": source_id,
 		}
-	return {
+	var tracking_config := {
 		"backend": "mediapipe_python",
 		"source": source_payload,
 		"tracking": {
@@ -296,6 +322,17 @@ func _build_tracking_config() -> Dictionary:
 			"flip_horizontal": bool(active_config.flip_horizontal) if active_config != null else true,
 		}
 	}
+	if active_config != null:
+		var runtime_config: Variant = active_config.get("runtime")
+		if runtime_config is Dictionary and not runtime_config.is_empty():
+			tracking_config["runtime"] = (runtime_config as Dictionary).duplicate(true)
+		var diagnostics_config: Variant = active_config.get("diagnostics")
+		if diagnostics_config is Dictionary and not diagnostics_config.is_empty():
+			tracking_config["diagnostics"] = (diagnostics_config as Dictionary).duplicate(true)
+		var vendor_config: Variant = active_config.get("vendor")
+		if vendor_config is Dictionary and not vendor_config.is_empty():
+			tracking_config["vendor"] = (vendor_config as Dictionary).duplicate(true)
+	return tracking_config
 
 func _get_tracking_source_config() -> Dictionary:
 	if _tracking_session == null or not _tracking_session.has_method("get_active_config"):

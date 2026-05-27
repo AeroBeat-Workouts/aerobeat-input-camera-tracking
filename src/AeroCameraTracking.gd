@@ -196,6 +196,23 @@ func get_body_measurements() -> Dictionary:
 		return provider.get_body_measurements()
 	return {}
 
+func get_num_poses() -> int:
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("get_num_poses"):
+		return int(provider.get_num_poses())
+	return 0
+
+func get_all_poses() -> Array:
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("get_all_poses"):
+		return provider.get_all_poses()
+	return []
+
+func reset_runtime_state() -> void:
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("reset_runtime_state"):
+		provider.reset_runtime_state()
+
 func ensure_replay_playback_loaded(base_url: String) -> bool:
 	var normalized_base_url := _normalize_replay_playback_base_url(base_url)
 	if normalized_base_url.is_empty():
@@ -408,6 +425,12 @@ func _apply_dictionary_config(config, values: Dictionary) -> void:
 		config.set_selected_camera_device_id(String(values["camera_source"]))
 	elif values.has("selected_camera_device_id") and config.has_method("set_selected_camera_device_id"):
 		config.set_selected_camera_device_id(String(values["selected_camera_device_id"]))
+	if values.has("runtime") and config.get("runtime") is Dictionary and values["runtime"] is Dictionary:
+		config.runtime = (values["runtime"] as Dictionary).duplicate(true)
+	if values.has("diagnostics") and config.get("diagnostics") is Dictionary and values["diagnostics"] is Dictionary:
+		config.diagnostics = (values["diagnostics"] as Dictionary).duplicate(true)
+	if values.has("vendor") and config.get("vendor") is Dictionary and values["vendor"] is Dictionary:
+		config.vendor = (values["vendor"] as Dictionary).duplicate(true)
 
 func _register_vendor_camera_tracking_backend_if_needed() -> void:
 	var camera_tracking_script: Variant = _load_script(CAMERA_TRACKING_SCRIPT_PATH)

@@ -77,10 +77,11 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
 harness_mode = 1
-startup_mode = 2
-prerecorded_video_source = ""
+prerecorded_video_source = "res://assets/fixtures/flow/swings/left-and-right-hands/same-direction/lr1->lr7/flow_swing_lr1->lr7_repeat_04_take_01.mp4"
 scene_title = "FLOW GESTURE DETECTION"
-tracking_smoothing_style = 1
+tracking_overlay_mode = "optimized"
+tracking_smoothing_style = 3
+show_trails = true
 
 [node name="AutoStartManager" type="Node" parent="." unique_id=681176957]
 script = ExtResource("4_autostart")

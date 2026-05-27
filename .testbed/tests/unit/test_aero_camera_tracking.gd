@@ -64,6 +64,8 @@ func test_aero_camera_tracking_starts_live_camera_and_reemits_tracking_and_flow_
 	assert_true(tracking_frames.size() >= 1)
 	assert_true(pose_frames.size() >= 1)
 	assert_true(singleton.is_tracking())
+	assert_eq(singleton.get_num_poses(), 1)
+	assert_eq(singleton.get_all_poses().size(), 1)
 
 	singleton.get_provider().swing_left.emit(9, 3)
 	assert_eq(swing_events, [[9, 3]])

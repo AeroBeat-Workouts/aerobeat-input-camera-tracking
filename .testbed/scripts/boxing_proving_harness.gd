@@ -645,7 +645,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var forward_delta_min := float(straight_side.get("forward_delta_min", 0.0))
 	var raw_forward_velocity := float(straight_side.get("raw_forward_velocity", 0.0))
 	var forward_velocity_min := float(straight_side.get("forward_velocity_min", 0.0))
-	var threshold_shoulder_width := float(straight_side.get("threshold_shoulder_width", 0.0))
+	var _threshold_shoulder_width := float(straight_side.get("threshold_shoulder_width", 0.0))
 	var threshold_shoulder_width_latched := bool(straight_side.get("threshold_shoulder_width_latched", false))
 	var latched_threshold_shoulder_width := float(straight_side.get("latched_threshold_shoulder_width", 0.0))
 	var live_shoulder_width := float(straight_side.get("live_shoulder_width", 0.0))

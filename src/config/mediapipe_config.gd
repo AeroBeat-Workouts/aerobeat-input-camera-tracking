@@ -17,6 +17,9 @@ extends Resource
 @export var track_right_hand: bool = true
 @export var track_left_foot: bool = false
 @export var track_right_foot: bool = false
+@export var runtime: Dictionary = {}
+@export var diagnostics: Dictionary = {}
+@export var vendor: Dictionary = {}
 
 func get_camera_source() -> String:
 	var source := String(camera_source).strip_edges()

@@ -111,6 +111,9 @@ func _get_required_model_name() -> String:
 func _get_model_asset_path() -> String:
 	return _desktop_sidecar_runtime().get_model_asset_path(get_script().resource_path, _get_required_model_name())
 
+func get_model_asset_path() -> String:
+	return _get_model_asset_path()
+
 func _validate_sidecar_runtime() -> Dictionary:
 	return _desktop_sidecar_runtime().validate_runtime(get_script().resource_path, _get_required_model_name())
 

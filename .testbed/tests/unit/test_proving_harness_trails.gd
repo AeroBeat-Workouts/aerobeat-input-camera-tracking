@@ -8,8 +8,14 @@ const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-came
 class TestProvingHarness:
 	extends "res://scripts/proving_harness.gd"
 
+	var last_status_message := ""
+
 	func _ready() -> void:
 		pass
+
+	func _update_status(text: String, color: Color) -> void:
+		last_status_message = text
+		super._update_status(text, color)
 
 class PlaybackTrackingHarness:
 	extends TestProvingHarness
@@ -40,6 +46,19 @@ class FakeOverlayDrawer:
 
 	func clear_trails() -> void:
 		clear_calls += 1
+
+class FakeAutoStartManager:
+	extends Node
+
+	var server_pid := 1234
+	var running := false
+	var model_asset_path := "/tmp/test-pose.task"
+
+	func is_server_running() -> bool:
+		return running
+
+	func get_model_asset_path() -> String:
+		return model_asset_path
 
 var harness: ProvingHarness = null
 var _replay_requests: Array[String] = []
@@ -326,6 +345,42 @@ func test_overlay_drawers_are_forced_full_rect_and_receive_pose_updates() -> voi
 	assert_eq(landmark_drawer.update_calls.size(), 1)
 	assert_eq(float(landmark_drawer.update_calls[0].get("min_visibility", 0.0)), harness.overlay_visibility_threshold)
 	assert_eq(trail_drawer.update_calls.size(), 1)
+
+func test_clearing_live_runtime_state_keeps_repo_singleton_alive() -> void:
+	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
+	assert_not_null(singleton)
+	harness.provider = singleton
+	add_child(harness)
+
+	harness._clear_live_camera_runtime_state()
+	assert_null(harness.provider)
+	assert_same(get_tree().root.get_node_or_null("AeroCameraTracking"), singleton)
+	assert_true(is_instance_valid(singleton))
+
+func test_singleton_runtime_config_includes_resolved_pose_landmarker_model_path() -> void:
+	var auto_start_manager: FakeAutoStartManager = add_child_autoqfree(FakeAutoStartManager.new()) as FakeAutoStartManager
+	harness.auto_start_manager = auto_start_manager
+	add_child(harness)
+
+	var runtime_config = harness._build_runtime_config()
+	assert_true(runtime_config is Resource)
+	assert_eq((runtime_config as Resource).get("runtime").get("pose_landmarker_model_path", ""), auto_start_manager.model_asset_path)
+
+func test_prerecorded_replay_does_not_poll_sidecar_health_as_live_camera_failure() -> void:
+	if harness != null:
+		harness.free()
+	harness = TestProvingHarness.new()
+	harness.prerecorded_video_source = "res://fixtures/replay/example.mp4"
+	harness.startup_mode = harness.StartupMode.TRACKING
+	var auto_start_manager: FakeAutoStartManager = add_child_autoqfree(FakeAutoStartManager.new()) as FakeAutoStartManager
+	auto_start_manager.running = false
+	harness.auto_start_manager = auto_start_manager
+	add_child(harness)
+
+	assert_false(harness._should_poll_sidecar_runtime_health())
+	harness._frame_count = 59
+	harness._process(0.016)
+	assert_false(harness.last_status_message.to_lower().contains("python server died"))
 
 func _fake_replay_transport_request(url: String) -> Dictionary:
 	_replay_requests.append(url)

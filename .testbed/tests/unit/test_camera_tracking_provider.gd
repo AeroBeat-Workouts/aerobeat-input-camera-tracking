@@ -4,6 +4,20 @@ const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-camera
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
+class PollOnlyTrackingSession:
+	extends Node
+
+	signal tracking_updated(frame: Dictionary)
+	signal state_changed(state: String, detail: Dictionary)
+
+	var frame: Dictionary = {}
+
+	func get_tracking_frame() -> Dictionary:
+		return frame.duplicate(true)
+
+	func get_active_config() -> Dictionary:
+		return {"source": {"kind": "video_file", "path": "res://fixtures/replay/test.mp4"}}
+
 func test_camera_tracking_provider_resolves_repo_owned_scripts_relative_to_its_mount() -> void:
 	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
 	assert_eq(provider._get_repo_src_root_path(), "res://addons/aerobeat-input-camera-tracking/src/")
@@ -139,3 +153,26 @@ func test_camera_tracking_provider_can_manage_minimal_session_lifecycle_for_prov
 	assert_eq(String(tracker.get_state().get("state", "")), CameraTrackingScript.STATE_RUNNING)
 	assert_eq(String(tracker.get_active_config().get("source", {}).get("camera_id", "")), "/dev/video5")
 	assert_eq(provider.get_selected_camera_device_id(), "/dev/video5")
+
+func test_camera_tracking_provider_polls_tracking_session_frames_between_signals() -> void:
+	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.set_tracking_session(tracker)
+
+	tracker.frame = {
+		"timestamp_ms": 100,
+		"frame_index": 3,
+		"tracking_state": "tracked",
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": [
+			{"id": 0, "x": 0.50, "y": 0.15, "z": 0.0, "visibility": 0.95},
+			{"id": 15, "x": 0.36, "y": 0.48, "z": 0.0, "visibility": 0.94},
+			{"id": 16, "x": 0.64, "y": 0.48, "z": 0.0, "visibility": 0.94},
+		],
+	}
+	provider._process(0.016)
+
+	assert_true(provider.is_tracking())
+	assert_eq(provider.get_num_poses(), 1)
+	assert_eq(provider.get_all_poses().size(), 1)
+	assert_ne(provider.get_detector_state().get("tracking_state", &""), &"lost")

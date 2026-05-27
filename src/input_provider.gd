@@ -401,9 +401,9 @@ func _discover_tracking_session():
 		return null
 	var singleton := get_node_or_null("/root/%s" % TRACKING_SINGLETON_NODE_NAME)
 	if singleton != null and singleton.has_method("get_tracking_session_if_ready"):
-		var session = singleton.get_tracking_session_if_ready()
-		if session != null:
-			return session
+		var tracking_session: Node = singleton.get_tracking_session_if_ready() as Node
+		if tracking_session != null:
+			return tracking_session
 	return find_child(TRACKING_SESSION_NODE_NAME, true, false)
 
 func _connect_provider_tracking_lost_signal() -> void:
