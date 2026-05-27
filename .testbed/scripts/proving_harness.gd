@@ -23,8 +23,11 @@ const MAX_TRAIL_FALLBACK_SPREAD := 0.18
 const MAX_TRAIL_FALLBACK_EDGE_CLAMP_OVERSHOOT := 0.05
 const PLAYBACK_STATUS_POLL_INTERVAL_MS := 250
 const PLAYBACK_TOGGLE_BUTTON_WIDTH := 52.0
+const PLAYBACK_CONTROL_ROW_HEIGHT := 32.0
 const PLAYBACK_ICON_PLAY := "▶"
 const PLAYBACK_ICON_PAUSE := "⏸"
+const LANDMARK_DRAWER_Z_INDEX := 20
+const TRAIL_DRAWER_Z_INDEX := 19
 const INSPECTOR_LIVE_REFRESH_INTERVAL_MS := 120
 const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
@@ -268,6 +271,7 @@ func _ready() -> void:
 		live_status_label.scroll_active = false
 	_ensure_shared_inspector_ui()
 	_ensure_playback_controls()
+	_ensure_overlay_drawers_ready()
 	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
 	_left_trail_debug = _make_trail_debug_state("left")
@@ -391,25 +395,29 @@ func _ensure_playback_controls() -> void:
 	margin.add_theme_constant_override("margin_bottom", 8)
 	_playback_bar_panel.add_child(margin)
 
-	var timeline_row_host := VBoxContainer.new()
-	timeline_row_host.custom_minimum_size = Vector2(0.0, 28.0)
+	var timeline_row_host := CenterContainer.new()
+	timeline_row_host.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	timeline_row_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	timeline_row_host.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(timeline_row_host)
 
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_theme_constant_override("separation", 10)
 	timeline_row_host.add_child(row)
 
 	_playback_toggle_button = Button.new()
-	_playback_toggle_button.custom_minimum_size = Vector2(PLAYBACK_TOGGLE_BUTTON_WIDTH, 0.0)
+	_playback_toggle_button.custom_minimum_size = Vector2(PLAYBACK_TOGGLE_BUTTON_WIDTH, PLAYBACK_CONTROL_ROW_HEIGHT)
+	_playback_toggle_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_playback_toggle_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	_playback_toggle_button.text = PLAYBACK_ICON_PAUSE
 	_playback_toggle_button.pressed.connect(_on_playback_toggle_pressed)
 	row.add_child(_playback_toggle_button)
 
 	_playback_seek_slider = HSlider.new()
+	_playback_seek_slider.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	_playback_seek_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_playback_seek_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_playback_seek_slider.min_value = 0.0
 	_playback_seek_slider.max_value = 1.0
 	_playback_seek_slider.step = 0.001
@@ -420,7 +428,9 @@ func _ensure_playback_controls() -> void:
 	row.add_child(_playback_seek_slider)
 
 	_playback_time_label = Label.new()
-	_playback_time_label.custom_minimum_size = Vector2(124.0, 0.0)
+	_playback_time_label.custom_minimum_size = Vector2(124.0, PLAYBACK_CONTROL_ROW_HEIGHT)
+	_playback_time_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_playback_time_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_playback_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_playback_time_label.text = "0:00 / 0:00"
 	row.add_child(_playback_time_label)
@@ -474,6 +484,27 @@ func _playback_controller_unload() -> void:
 	var tracking_singleton := _resolve_playback_controller()
 	if tracking_singleton != null and tracking_singleton.has_method("unload_replay_playback"):
 		tracking_singleton.unload_replay_playback()
+
+func _ensure_overlay_drawers_ready() -> void:
+	_configure_overlay_drawer(landmark_drawer, LANDMARK_DRAWER_Z_INDEX)
+	_configure_overlay_drawer(trail_drawer, TRAIL_DRAWER_Z_INDEX)
+
+func _configure_overlay_drawer(drawer: Control, z_index_value: int) -> void:
+	if drawer == null:
+		return
+	drawer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	drawer.offset_left = 0.0
+	drawer.offset_top = 0.0
+	drawer.offset_right = 0.0
+	drawer.offset_bottom = 0.0
+	drawer.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	drawer.grow_vertical = Control.GROW_DIRECTION_BOTH
+	drawer.mouse_filter = Control.MOUSE_FILTER_PASS if drawer == landmark_drawer else Control.MOUSE_FILTER_IGNORE
+	drawer.z_as_relative = true
+	drawer.z_index = z_index_value
+	drawer.visible = true
+	if drawer.get_parent() != null:
+		drawer.queue_redraw()
 
 func _ensure_landmark_interactions() -> void:
 	if landmark_drawer == null or not landmark_drawer.has_signal("landmark_clicked"):
@@ -1252,6 +1283,7 @@ func _start_camera_feed() -> void:
 		landmark_drawer.reparent(camera_display)
 	if trail_drawer:
 		trail_drawer.reparent(camera_display)
+	_ensure_overlay_drawers_ready()
 	if previous_display and previous_display != camera_view:
 		previous_display.queue_free()
 
@@ -1453,7 +1485,11 @@ func _load_playback_source_if_needed() -> bool:
 	var playback_base_url := _playback_base_url()
 	if playback_base_url.is_empty():
 		return false
-	return _playback_controller_ensure_loaded(playback_base_url)
+	var was_loaded := _playback_controller_has_loaded_media()
+	var loaded := _playback_controller_ensure_loaded(playback_base_url)
+	if loaded and not was_loaded:
+		_playback_controller_play()
+	return loaded
 
 func _playback_base_url() -> String:
 	var source_url := camera_view.stream_url if camera_view != null else "http://127.0.0.1:4243/camera"

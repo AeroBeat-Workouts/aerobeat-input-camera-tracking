@@ -17,7 +17,7 @@ script = ExtResource("1_harness")
 scene_title = "BOXING GESTURE DETECTION"
 tracking_overlay_mode = "optimized"
 tracking_smoothing_style = 3
-show_trails = false
+show_trails = true
 
 [node name="AutoStartManager" type="Node" parent="." unique_id=343298553]
 script = ExtResource("4_autostart")

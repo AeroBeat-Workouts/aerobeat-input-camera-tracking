@@ -11,6 +11,27 @@ class TestProvingHarness:
 	func _ready() -> void:
 		pass
 
+class FakeOverlayDrawer:
+	extends Control
+
+	var update_calls: Array = []
+	var clear_calls := 0
+
+	func update_landmarks(landmarks: Array, min_visibility: float = 0.5) -> void:
+		update_calls.append({"landmarks": landmarks.duplicate(true), "min_visibility": min_visibility})
+
+	func update_trails(left_points: Array, right_points: Array) -> void:
+		update_calls.append({
+			"left_points": left_points.duplicate(true),
+			"right_points": right_points.duplicate(true),
+		})
+
+	func clear_landmarks() -> void:
+		clear_calls += 1
+
+	func clear_trails() -> void:
+		clear_calls += 1
+
 var harness: ProvingHarness = null
 var _replay_requests: Array[String] = []
 var _replay_responses: Dictionary = {}
@@ -196,7 +217,11 @@ func test_replay_proving_prefers_singleton_playback_controller() -> void:
 	singleton.set_replay_playback_transport_request(Callable(self, "_fake_replay_transport_request"))
 	_replay_responses["http://127.0.0.1:4243/playback"] = {
 		"success": true,
-		"body": {"paused": true, "current_time_sec": 2.0, "duration_sec": 8.0, "progress": 0.25},
+		"body": {"paused": false, "current_time_sec": 2.0, "duration_sec": 8.0, "progress": 0.25},
+	}
+	_replay_responses["http://127.0.0.1:4243/playback/play"] = {
+		"success": true,
+		"body": {"paused": false, "current_time_sec": 2.0, "duration_sec": 8.0, "progress": 0.25},
 	}
 
 	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
@@ -211,7 +236,42 @@ func test_replay_proving_prefers_singleton_playback_controller() -> void:
 	harness._refresh_playback_status(true)
 	assert_true(singleton.has_replay_playback_loaded())
 	assert_eq(float(harness._playback_status.get("current_time_sec", 0.0)), 2.0)
-	assert_eq(["http://127.0.0.1:4243/playback", "http://127.0.0.1:4243/playback"], _replay_requests)
+	assert_eq([
+		"http://127.0.0.1:4243/playback",
+		"http://127.0.0.1:4243/playback/play",
+		"http://127.0.0.1:4243/playback",
+	], _replay_requests)
+	assert_false(bool(harness._playback_status.get("paused", true)))
+
+func test_overlay_drawers_are_forced_full_rect_and_receive_pose_updates() -> void:
+	var landmark_drawer := FakeOverlayDrawer.new()
+	landmark_drawer.name = "LandmarkDrawer"
+	var trail_drawer := FakeOverlayDrawer.new()
+	trail_drawer.name = "TrailDrawer"
+	var camera_host := TextureRect.new()
+	camera_host.name = "CameraDisplay"
+	camera_host.size = Vector2(640, 360)
+	camera_host.custom_minimum_size = camera_host.size
+	camera_host.add_child(landmark_drawer)
+	camera_host.add_child(trail_drawer)
+	harness.add_child(camera_host)
+	add_child(harness)
+
+	harness._ensure_overlay_drawers_ready()
+	assert_eq(landmark_drawer.anchor_right, 1.0)
+	assert_eq(landmark_drawer.anchor_bottom, 1.0)
+	assert_eq(landmark_drawer.offset_left, 0.0)
+	assert_eq(landmark_drawer.offset_bottom, 0.0)
+	assert_eq(landmark_drawer.z_index, harness.LANDMARK_DRAWER_Z_INDEX)
+	assert_eq(trail_drawer.z_index, harness.TRAIL_DRAWER_Z_INDEX)
+
+	harness._on_pose_updated([
+		{"id": 15, "x": 0.25, "y": 0.40, "v": 0.95},
+		{"id": 16, "x": 0.75, "y": 0.42, "v": 0.97},
+	])
+	assert_eq(landmark_drawer.update_calls.size(), 1)
+	assert_eq(float(landmark_drawer.update_calls[0].get("min_visibility", 0.0)), harness.overlay_visibility_threshold)
+	assert_eq(trail_drawer.update_calls.size(), 1)
 
 func _fake_replay_transport_request(url: String) -> Dictionary:
 	_replay_requests.append(url)
