@@ -4,9 +4,7 @@ extends Control
 const MediaPipeProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/mediapipe_provider.gd")
 const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
 const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
-const AeroVideoPlayerManagerScript = preload("res://addons/aerobeat-tool-video-player/src/AeroVideoPlayerManager.gd")
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
-const AeroMediaPipeReplayPlaybackBackendScript = preload("res://addons/aerobeat-input-camera-tracking/src/AeroMediaPipeReplayPlaybackBackend.gd")
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -246,8 +244,6 @@ var _playback_bar_panel: PanelContainer = null
 var _playback_toggle_button: Button = null
 var _playback_seek_slider: HSlider = null
 var _playback_time_label: Label = null
-var _fallback_playback_manager = null
-var _fallback_playback_backend = null
 var _playback_status := {}
 var _playback_status_poll_due_ms := 0
 var _playback_slider_drag_active := false
@@ -429,104 +425,55 @@ func _ensure_playback_controls() -> void:
 	_playback_time_label.text = "0:00 / 0:00"
 	row.add_child(_playback_time_label)
 
-func _ensure_fallback_playback_manager() -> void:
-	if _fallback_playback_manager != null:
-		return
-	_fallback_playback_manager = AeroVideoPlayerManagerScript.new()
-	_fallback_playback_backend = AeroMediaPipeReplayPlaybackBackendScript.new()
-	_fallback_playback_manager.set_backend(_fallback_playback_backend)
-	add_child(_fallback_playback_manager)
-
 func _resolve_playback_controller() -> Node:
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	if tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded"):
 		return tracking_singleton
-	_ensure_fallback_playback_manager()
-	return _fallback_playback_manager
+	if is_inside_tree():
+		push_error("[ProvingHarness] Replay playback requires the AeroCameraTracking singleton")
+	return null
 
 func _playback_controller_uses_singleton() -> bool:
-	var tracking_singleton := _resolve_camera_tracking_singleton()
-	return tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded")
+	return _resolve_playback_controller() != null
 
 func _get_playback_controller_state() -> Dictionary:
-	if _playback_controller_uses_singleton():
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		return tracking_singleton.get_replay_playback_state() if tracking_singleton != null and tracking_singleton.has_method("get_replay_playback_state") else {}
-	if _fallback_playback_manager == null:
-		return {}
-	return _fallback_playback_manager.get_state()
+	var tracking_singleton := _resolve_playback_controller()
+	if tracking_singleton != null and tracking_singleton.has_method("get_replay_playback_state"):
+		return tracking_singleton.get_replay_playback_state()
+	return {}
 
 func _playback_controller_has_loaded_media() -> bool:
 	return bool(_get_playback_controller_state().get("media_loaded", false))
 
 func _playback_controller_ensure_loaded(base_url: String) -> bool:
-	if _playback_controller_uses_singleton():
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		return tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded") and bool(tracking_singleton.ensure_replay_playback_loaded(base_url))
-	_ensure_fallback_playback_manager()
-	if _fallback_playback_manager == null:
-		return false
-	var state: Dictionary = _fallback_playback_manager.get_state()
-	var loaded_source: Dictionary = state.get("source", {}) if typeof(state.get("source", {})) == TYPE_DICTIONARY else {}
-	if String(loaded_source.get("path", "")) == base_url and bool(state.get("media_loaded", false)):
-		return true
-	_fallback_playback_manager.load({
-		"path": base_url,
-		"kind": "url",
-		"loop": false,
-		"autoplay": false,
-		"rate": 1.0,
-		"metadata": {
-			"source": "input_camera_tracking_replay_http",
-		},
-	})
-	return bool(_fallback_playback_manager.get_state().get("media_loaded", false))
+	var tracking_singleton := _resolve_playback_controller()
+	return tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded") and bool(tracking_singleton.ensure_replay_playback_loaded(base_url))
 
 func _playback_controller_refresh_status() -> Dictionary:
-	if _playback_controller_uses_singleton():
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		if tracking_singleton != null and tracking_singleton.has_method("refresh_replay_playback_status"):
-			return tracking_singleton.refresh_replay_playback_status()
-		return {}
-	if _fallback_playback_backend != null and _fallback_playback_backend.has_method("refresh_status"):
-		return _fallback_playback_backend.refresh_status()
+	var tracking_singleton := _resolve_playback_controller()
+	if tracking_singleton != null and tracking_singleton.has_method("refresh_replay_playback_status"):
+		return tracking_singleton.refresh_replay_playback_status()
 	return {}
 
 func _playback_controller_play() -> void:
-	if _playback_controller_uses_singleton():
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		if tracking_singleton != null and tracking_singleton.has_method("play_replay_playback"):
-			tracking_singleton.play_replay_playback()
-		return
-	if _fallback_playback_manager != null:
-		_fallback_playback_manager.play()
+	var tracking_singleton := _resolve_playback_controller()
+	if tracking_singleton != null and tracking_singleton.has_method("play_replay_playback"):
+		tracking_singleton.play_replay_playback()
 
 func _playback_controller_pause() -> void:
-	if _playback_controller_uses_singleton():
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		if tracking_singleton != null and tracking_singleton.has_method("pause_replay_playback"):
-			tracking_singleton.pause_replay_playback()
-		return
-	if _fallback_playback_manager != null:
-		_fallback_playback_manager.pause()
+	var tracking_singleton := _resolve_playback_controller()
+	if tracking_singleton != null and tracking_singleton.has_method("pause_replay_playback"):
+		tracking_singleton.pause_replay_playback()
 
 func _playback_controller_seek(seconds: float) -> void:
-	if _playback_controller_uses_singleton():
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		if tracking_singleton != null and tracking_singleton.has_method("seek_replay_playback"):
-			tracking_singleton.seek_replay_playback(seconds)
-		return
-	if _fallback_playback_manager != null:
-		_fallback_playback_manager.seek(seconds)
+	var tracking_singleton := _resolve_playback_controller()
+	if tracking_singleton != null and tracking_singleton.has_method("seek_replay_playback"):
+		tracking_singleton.seek_replay_playback(seconds)
 
 func _playback_controller_unload() -> void:
-	if _playback_controller_uses_singleton():
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		if tracking_singleton != null and tracking_singleton.has_method("unload_replay_playback"):
-			tracking_singleton.unload_replay_playback()
-		return
-	if _fallback_playback_manager != null:
-		_fallback_playback_manager.unload()
+	var tracking_singleton := _resolve_playback_controller()
+	if tracking_singleton != null and tracking_singleton.has_method("unload_replay_playback"):
+		tracking_singleton.unload_replay_playback()
 
 func _ensure_landmark_interactions() -> void:
 	if landmark_drawer == null or not landmark_drawer.has_signal("landmark_clicked"):
@@ -853,15 +800,13 @@ func _start_provider() -> void:
 
 	var runtime_config := _build_runtime_config()
 	var tracking_singleton := _resolve_camera_tracking_singleton()
-	if tracking_singleton != null:
-		provider = tracking_singleton
-		if provider.has_method("attach_preview_surface"):
-			provider.attach_preview_surface(camera_display)
-	else:
-		provider = MediaPipeProviderScript.new()
-		provider.name = "MediaPipeProvider"
-		provider.config = runtime_config
-		add_child(provider)
+	if tracking_singleton == null:
+		push_error("[ProvingHarness] AeroCameraTracking singleton is required for .testbed proving flows")
+		_update_status("AeroCameraTracking singleton missing", Color.RED)
+		return
+	provider = tracking_singleton
+	if provider.has_method("attach_preview_surface"):
+		provider.attach_preview_surface(camera_display)
 
 	provider.pose_updated.connect(_on_pose_updated)
 	provider.tracking_lost.connect(_on_tracking_lost)
@@ -911,10 +856,10 @@ func _resolve_camera_tracking_session() -> Node:
 		var session = tracking_singleton.get_tracking_session_if_ready()
 		if session != null:
 			return session as Node
-	return find_child("CameraTracking", true, false) as Node
+	return null
 
 func _uses_camera_tracking_contract_path() -> bool:
-	return _resolve_camera_tracking_singleton() != null or _resolve_camera_tracking_session() != null
+	return _resolve_camera_tracking_singleton() != null
 
 func _connect_mode_signals() -> void:
 	if harness_mode == HarnessMode.BOXING:

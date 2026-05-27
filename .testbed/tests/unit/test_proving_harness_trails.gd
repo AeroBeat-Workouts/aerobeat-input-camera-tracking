@@ -1,8 +1,6 @@
 extends "res://addons/gut/test.gd"
 
 const ProvingHarness = preload("res://scripts/proving_harness.gd")
-const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
-const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
 
 class TestProvingHarness:
@@ -169,17 +167,19 @@ func test_preview_only_provider_node_drift_invalidates_surface() -> void:
 	assert_eq(harness._preview_only_invalid_reason, "provider node active in preview-only rung")
 	assert_eq(harness._event_count("preview_only_invalid"), 1)
 
-func test_effective_camera_source_prefers_camera_tracking_session_config_when_present() -> void:
-	var tracker = CameraTrackingScript.new()
-	tracker.name = "CameraTracking"
-	harness.add_child(tracker)
-	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+func test_effective_camera_source_prefers_repo_singleton_tracking_session_config_when_present() -> void:
+	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
+	assert_not_null(singleton)
+	add_child(harness)
+	assert_true(harness._uses_camera_tracking_contract_path())
+
+	var tracker = singleton.get_tracking_session()
 	tracker.start({
 		"source": {"kind": "live_camera", "camera_id": "/dev/video9"},
 	})
 
-	assert_true(harness._uses_camera_tracking_contract_path())
 	assert_eq(harness._get_effective_camera_source(), "/dev/video9")
+	singleton.stop()
 
 func test_replay_proving_prefers_singleton_playback_controller() -> void:
 	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
@@ -200,7 +200,6 @@ func test_replay_proving_prefers_singleton_playback_controller() -> void:
 	assert_true(harness._playback_controller_uses_singleton())
 	assert_true(harness._load_playback_source_if_needed())
 	harness._refresh_playback_status(true)
-	assert_eq(harness._fallback_playback_manager, null)
 	assert_true(singleton.has_replay_playback_loaded())
 	assert_eq(float(harness._playback_status.get("current_time_sec", 0.0)), 2.0)
 	assert_eq(["http://127.0.0.1:4243/playback", "http://127.0.0.1:4243/playback"], _replay_requests)
