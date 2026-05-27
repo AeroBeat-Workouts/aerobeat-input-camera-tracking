@@ -14,8 +14,12 @@ const MEDIAPIPE_CONFIG_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracki
 const VENDOR_BACKEND_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonCameraTrackingBackend.gd"
 const VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonRuntimeBridge.gd"
 const DEFAULT_BACKEND_ID := "mediapipe_python"
+const AERO_VIDEO_PLAYER_MANAGER_SCRIPT_PATH := "res://addons/aerobeat-tool-video-player/src/AeroVideoPlayerManager.gd"
+const REPLAY_PLAYBACK_BACKEND_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/AeroMediaPipeReplayPlaybackBackend.gd"
 const INTERNAL_TRACKING_NODE_NAME := "CameraTracking"
 const INTERNAL_PROVIDER_NODE_NAME := "CameraTrackingProvider"
+const INTERNAL_REPLAY_PLAYBACK_MANAGER_NODE_NAME := "ReplayPlaybackManager"
+const INTERNAL_REPLAY_PLAYBACK_BACKEND_NODE_NAME := "ReplayPlaybackBackend"
 
 signal state_changed(state: String, detail: Dictionary)
 signal tracking_updated(frame: Dictionary)
@@ -61,6 +65,9 @@ var _tracking_session: Node = null
 var _provider: Node = null
 var _preview_surface: Node = null
 var _last_runtime_config = null
+var _replay_playback_manager: Node = null
+var _replay_playback_backend = null
+var _replay_playback_base_url := ""
 
 func has_tracking_contract() -> bool:
 	return _tracking_session != null and is_instance_valid(_tracking_session)
@@ -78,6 +85,7 @@ func get_provider() -> Node:
 	return _ensure_provider()
 
 func start_live_camera(camera_id: String = "", config_variant: Variant = null) -> bool:
+	_clear_replay_playback()
 	var runtime_config = _coerce_runtime_config(config_variant)
 	if runtime_config == null:
 		return false
@@ -87,6 +95,7 @@ func start_live_camera(camera_id: String = "", config_variant: Variant = null) -
 	return _start_with_config(runtime_config)
 
 func start_replay(source_path: String, config_variant: Variant = null) -> bool:
+	_clear_replay_playback()
 	var normalized_source := source_path.strip_edges()
 	if normalized_source.is_empty():
 		push_warning("[AeroCameraTracking] Replay start requested without a source path")
@@ -107,6 +116,7 @@ func start(config_variant: Variant = null) -> bool:
 func stop() -> void:
 	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
 		_provider.stop()
+	_clear_replay_playback()
 
 func attach_preview_surface(surface: Node) -> void:
 	_preview_surface = surface
@@ -186,6 +196,90 @@ func get_body_measurements() -> Dictionary:
 		return provider.get_body_measurements()
 	return {}
 
+func ensure_replay_playback_loaded(base_url: String) -> bool:
+	var normalized_base_url := _normalize_replay_playback_base_url(base_url)
+	if normalized_base_url.is_empty():
+		return false
+	var manager := _ensure_replay_playback_manager()
+	if manager == null:
+		return false
+	var state: Dictionary = manager.get_state()
+	var loaded_source: Dictionary = state.get("source", {}) if typeof(state.get("source", {})) == TYPE_DICTIONARY else {}
+	if String(loaded_source.get("path", "")) == normalized_base_url and bool(state.get("media_loaded", false)):
+		_replay_playback_base_url = normalized_base_url
+		return true
+	manager.load({
+		"path": normalized_base_url,
+		"kind": "url",
+		"loop": false,
+		"autoplay": false,
+		"rate": 1.0,
+		"metadata": {
+			"source": "input_camera_tracking_replay_http",
+		},
+	})
+	state = manager.get_state()
+	if bool(state.get("media_loaded", false)):
+		_replay_playback_base_url = normalized_base_url
+		return true
+	return false
+
+func refresh_replay_playback_status() -> Dictionary:
+	var backend = _ensure_replay_playback_backend()
+	if backend == null or not backend.has_method("refresh_status"):
+		return {}
+	var result: Dictionary = backend.refresh_status()
+	return result.duplicate(true)
+
+func get_replay_playback_state() -> Dictionary:
+	var manager := _ensure_replay_playback_manager()
+	if manager == null:
+		return {}
+	return manager.get_state()
+
+func get_replay_playback_status() -> Dictionary:
+	var state := get_replay_playback_state()
+	var status_variant: Variant = state.get("status", {})
+	if status_variant is Dictionary:
+		return status_variant.duplicate(true)
+	return {}
+
+func play_replay_playback() -> bool:
+	var manager := _ensure_replay_playback_manager()
+	if manager == null:
+		return false
+	manager.play()
+	return String(manager.get_state().get("state", "")) == "playing"
+
+func pause_replay_playback() -> bool:
+	var manager := _ensure_replay_playback_manager()
+	if manager == null:
+		return false
+	manager.pause()
+	return String(manager.get_state().get("state", "")) == "paused"
+
+func seek_replay_playback(seconds: float) -> bool:
+	var manager := _ensure_replay_playback_manager()
+	if manager == null:
+		return false
+	manager.seek(seconds)
+	return _approx_eq(float(manager.get_state().get("position", -1.0)), maxf(seconds, 0.0))
+
+func unload_replay_playback() -> void:
+	_clear_replay_playback()
+
+func set_replay_playback_transport_request(transport_request: Callable) -> void:
+	var backend = _ensure_replay_playback_backend()
+	if backend != null and backend.has_method("set_transport_request"):
+		backend.set_transport_request(transport_request)
+
+func get_replay_playback_backend():
+	return _ensure_replay_playback_backend()
+
+func has_replay_playback_loaded() -> bool:
+	var state := get_replay_playback_state()
+	return bool(state.get("media_loaded", false))
+
 func set_tracking_session(session: Node) -> void:
 	if _tracking_session == session:
 		return
@@ -241,6 +335,49 @@ func _ensure_provider() -> Node:
 	add_child(_provider)
 	_connect_provider_signals()
 	return _provider
+
+func _ensure_replay_playback_manager() -> Node:
+	if _replay_playback_manager != null and is_instance_valid(_replay_playback_manager):
+		return _replay_playback_manager
+	var manager_script: Variant = _load_script(AERO_VIDEO_PLAYER_MANAGER_SCRIPT_PATH)
+	if manager_script == null:
+		push_error("[AeroCameraTracking] AeroVideoPlayerManager script is not available")
+		return null
+	_replay_playback_manager = manager_script.new()
+	_replay_playback_manager.name = INTERNAL_REPLAY_PLAYBACK_MANAGER_NODE_NAME
+	var backend = _ensure_replay_playback_backend()
+	if backend == null:
+		_replay_playback_manager = null
+		return null
+	_replay_playback_manager.set_backend(backend)
+	add_child(_replay_playback_manager)
+	return _replay_playback_manager
+
+func _ensure_replay_playback_backend():
+	if _replay_playback_backend != null and is_instance_valid(_replay_playback_backend):
+		return _replay_playback_backend
+	var backend_script: Variant = _load_script(REPLAY_PLAYBACK_BACKEND_SCRIPT_PATH)
+	if backend_script == null:
+		push_error("[AeroCameraTracking] Replay playback backend script is not available")
+		return null
+	_replay_playback_backend = backend_script.new()
+	return _replay_playback_backend
+
+func _clear_replay_playback() -> void:
+	_replay_playback_base_url = ""
+	if _replay_playback_manager != null and is_instance_valid(_replay_playback_manager) and _replay_playback_manager.has_method("unload"):
+		_replay_playback_manager.unload()
+
+func _normalize_replay_playback_base_url(base_url: String) -> String:
+	var trimmed := base_url.strip_edges().trim_suffix("/")
+	if trimmed.ends_with("/playback"):
+		trimmed = trimmed.trim_suffix("/playback")
+	if trimmed.ends_with("/camera"):
+		trimmed = trimmed.trim_suffix("/camera")
+	return trimmed
+
+func _approx_eq(a: float, b: float, epsilon: float = 0.0001) -> bool:
+	return absf(a - b) <= epsilon
 
 func _coerce_runtime_config(config_variant: Variant):
 	if typeof(config_variant) == TYPE_OBJECT and config_variant.has_method("get_camera_source"):

@@ -246,8 +246,8 @@ var _playback_bar_panel: PanelContainer = null
 var _playback_toggle_button: Button = null
 var _playback_seek_slider: HSlider = null
 var _playback_time_label: Label = null
-var _playback_manager = null
-var _playback_backend = null
+var _fallback_playback_manager = null
+var _fallback_playback_backend = null
 var _playback_status := {}
 var _playback_status_poll_due_ms := 0
 var _playback_slider_drag_active := false
@@ -272,7 +272,6 @@ func _ready() -> void:
 		live_status_label.scroll_active = false
 	_ensure_shared_inspector_ui()
 	_ensure_playback_controls()
-	_ensure_playback_manager()
 	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
 	_left_trail_debug = _make_trail_debug_state("left")
@@ -430,13 +429,104 @@ func _ensure_playback_controls() -> void:
 	_playback_time_label.text = "0:00 / 0:00"
 	row.add_child(_playback_time_label)
 
-func _ensure_playback_manager() -> void:
-	if _playback_manager != null:
+func _ensure_fallback_playback_manager() -> void:
+	if _fallback_playback_manager != null:
 		return
-	_playback_manager = AeroVideoPlayerManagerScript.new()
-	_playback_backend = AeroMediaPipeReplayPlaybackBackendScript.new()
-	_playback_manager.set_backend(_playback_backend)
-	add_child(_playback_manager)
+	_fallback_playback_manager = AeroVideoPlayerManagerScript.new()
+	_fallback_playback_backend = AeroMediaPipeReplayPlaybackBackendScript.new()
+	_fallback_playback_manager.set_backend(_fallback_playback_backend)
+	add_child(_fallback_playback_manager)
+
+func _resolve_playback_controller() -> Node:
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded"):
+		return tracking_singleton
+	_ensure_fallback_playback_manager()
+	return _fallback_playback_manager
+
+func _playback_controller_uses_singleton() -> bool:
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	return tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded")
+
+func _get_playback_controller_state() -> Dictionary:
+	if _playback_controller_uses_singleton():
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		return tracking_singleton.get_replay_playback_state() if tracking_singleton != null and tracking_singleton.has_method("get_replay_playback_state") else {}
+	if _fallback_playback_manager == null:
+		return {}
+	return _fallback_playback_manager.get_state()
+
+func _playback_controller_has_loaded_media() -> bool:
+	return bool(_get_playback_controller_state().get("media_loaded", false))
+
+func _playback_controller_ensure_loaded(base_url: String) -> bool:
+	if _playback_controller_uses_singleton():
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		return tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded") and bool(tracking_singleton.ensure_replay_playback_loaded(base_url))
+	_ensure_fallback_playback_manager()
+	if _fallback_playback_manager == null:
+		return false
+	var state: Dictionary = _fallback_playback_manager.get_state()
+	var loaded_source: Dictionary = state.get("source", {}) if typeof(state.get("source", {})) == TYPE_DICTIONARY else {}
+	if String(loaded_source.get("path", "")) == base_url and bool(state.get("media_loaded", false)):
+		return true
+	_fallback_playback_manager.load({
+		"path": base_url,
+		"kind": "url",
+		"loop": false,
+		"autoplay": false,
+		"rate": 1.0,
+		"metadata": {
+			"source": "input_camera_tracking_replay_http",
+		},
+	})
+	return bool(_fallback_playback_manager.get_state().get("media_loaded", false))
+
+func _playback_controller_refresh_status() -> Dictionary:
+	if _playback_controller_uses_singleton():
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if tracking_singleton != null and tracking_singleton.has_method("refresh_replay_playback_status"):
+			return tracking_singleton.refresh_replay_playback_status()
+		return {}
+	if _fallback_playback_backend != null and _fallback_playback_backend.has_method("refresh_status"):
+		return _fallback_playback_backend.refresh_status()
+	return {}
+
+func _playback_controller_play() -> void:
+	if _playback_controller_uses_singleton():
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if tracking_singleton != null and tracking_singleton.has_method("play_replay_playback"):
+			tracking_singleton.play_replay_playback()
+		return
+	if _fallback_playback_manager != null:
+		_fallback_playback_manager.play()
+
+func _playback_controller_pause() -> void:
+	if _playback_controller_uses_singleton():
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if tracking_singleton != null and tracking_singleton.has_method("pause_replay_playback"):
+			tracking_singleton.pause_replay_playback()
+		return
+	if _fallback_playback_manager != null:
+		_fallback_playback_manager.pause()
+
+func _playback_controller_seek(seconds: float) -> void:
+	if _playback_controller_uses_singleton():
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if tracking_singleton != null and tracking_singleton.has_method("seek_replay_playback"):
+			tracking_singleton.seek_replay_playback(seconds)
+		return
+	if _fallback_playback_manager != null:
+		_fallback_playback_manager.seek(seconds)
+
+func _playback_controller_unload() -> void:
+	if _playback_controller_uses_singleton():
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if tracking_singleton != null and tracking_singleton.has_method("unload_replay_playback"):
+			tracking_singleton.unload_replay_playback()
+		return
+	if _fallback_playback_manager != null:
+		_fallback_playback_manager.unload()
 
 func _ensure_landmark_interactions() -> void:
 	if landmark_drawer == null or not landmark_drawer.has_signal("landmark_clicked"):
@@ -1400,38 +1490,25 @@ func _refresh_playback_polling() -> void:
 	_refresh_playback_status()
 
 func _refresh_playback_status(force: bool = false) -> void:
-	if _playback_manager == null or _playback_backend == null:
+	var controller := _resolve_playback_controller()
+	if controller == null:
 		return
 	if not force and not _is_prerecorded_source_active():
 		return
 	if not _load_playback_source_if_needed():
 		return
-	if _playback_backend.has_method("refresh_status"):
-		_playback_backend.refresh_status()
+	_playback_controller_refresh_status()
 	_sync_playback_status_from_manager()
 	_playback_status_poll_due_ms = Time.get_ticks_msec() + PLAYBACK_STATUS_POLL_INTERVAL_MS
 
 func _load_playback_source_if_needed() -> bool:
-	if _playback_manager == null:
+	var controller := _resolve_playback_controller()
+	if controller == null:
 		return false
 	var playback_base_url := _playback_base_url()
 	if playback_base_url.is_empty():
 		return false
-	var state: Dictionary = _playback_manager.get_state()
-	var loaded_source: Dictionary = state.get("source", {}) if typeof(state.get("source", {})) == TYPE_DICTIONARY else {}
-	if String(loaded_source.get("path", "")) == playback_base_url and bool(state.get("media_loaded", false)):
-		return true
-	_playback_manager.load({
-		"path": playback_base_url,
-		"kind": "url",
-		"loop": false,
-		"autoplay": false,
-		"rate": 1.0,
-		"metadata": {
-			"source": "input_camera_tracking_replay_http",
-		},
-	})
-	return bool(_playback_manager.get_state().get("media_loaded", false))
+	return _playback_controller_ensure_loaded(playback_base_url)
 
 func _playback_base_url() -> String:
 	var source_url := camera_view.stream_url if camera_view != null else "http://127.0.0.1:4243/camera"
@@ -1444,15 +1521,15 @@ func _refresh_playback_controls_visibility() -> void:
 	var visible := _is_prerecorded_source_active() and startup_mode != StartupMode.GODOT_ONLY_DEBUG
 	if _playback_bar_panel != null:
 		_playback_bar_panel.visible = visible
-	if not visible and _playback_manager != null:
-		_playback_manager.unload()
+	if not visible:
+		_playback_controller_unload()
 		_playback_status = {}
 	_refresh_playback_controls_state()
 
 func _sync_playback_status_from_manager() -> void:
-	if _playback_manager == null:
+	var state: Dictionary = _get_playback_controller_state()
+	if state.is_empty():
 		return
-	var state: Dictionary = _playback_manager.get_state()
 	var duration := float(state.get("duration", 0.0))
 	var position := float(state.get("position", 0.0))
 	var normalized := 0.0
@@ -1479,7 +1556,7 @@ func _refresh_playback_controls_state() -> void:
 		return
 	var paused := bool(_playback_status.get("paused", true))
 	_playback_toggle_button.text = PLAYBACK_ICON_PLAY if paused else PLAYBACK_ICON_PAUSE
-	var controls_enabled := _is_prerecorded_source_active() and _playback_manager != null and bool(_playback_manager.get_state().get("media_loaded", false))
+	var controls_enabled := _is_prerecorded_source_active() and _playback_controller_has_loaded_media()
 	_playback_toggle_button.disabled = not controls_enabled
 	_playback_seek_slider.editable = controls_enabled
 	if not _playback_slider_drag_active:
@@ -1490,12 +1567,12 @@ func _refresh_playback_controls_state() -> void:
 	]
 
 func _on_playback_toggle_pressed() -> void:
-	if _playback_manager == null or not _load_playback_source_if_needed():
+	if not _load_playback_source_if_needed():
 		return
 	if bool(_playback_status.get("paused", true)):
-		_playback_manager.play()
+		_playback_controller_play()
 	else:
-		_playback_manager.pause()
+		_playback_controller_pause()
 	_sync_playback_status_from_manager()
 	_refresh_playback_status(true)
 
@@ -1504,7 +1581,7 @@ func _on_playback_seek_drag_ended(value_changed: bool) -> void:
 	if not value_changed:
 		_refresh_playback_controls_state()
 		return
-	if _playback_manager == null or not _load_playback_source_if_needed():
+	if not _load_playback_source_if_needed():
 		return
 	var duration := float(_playback_status.get("duration_sec", 0.0))
 	var progress := clampf(float(_playback_seek_slider.value), 0.0, 1.0)
@@ -1513,7 +1590,7 @@ func _on_playback_seek_drag_ended(value_changed: bool) -> void:
 	_shared_inspector_frozen_model = {}
 	_shared_inspector_live_model = {}
 	_shared_inspector_live_refresh_due_ms = 0
-	_playback_manager.seek(seconds)
+	_playback_controller_seek(seconds)
 	_sync_playback_status_from_manager()
 	_refresh_playback_status(true)
 
@@ -2502,6 +2579,7 @@ func _log_shutdown_summary_once(reason: String) -> void:
 
 func _stop_everything(reason: String = "unknown") -> void:
 	_log_shutdown_summary_once(reason)
+	_playback_controller_unload()
 	if camera_view and camera_view.is_streaming():
 		camera_view.stop_stream()
 	if camera_view and is_instance_valid(camera_view):

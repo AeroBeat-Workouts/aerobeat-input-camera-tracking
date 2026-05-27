@@ -3,11 +3,22 @@ extends "res://addons/gut/test.gd"
 const ProvingHarness = preload("res://scripts/proving_harness.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
+const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
+
+class TestProvingHarness:
+	extends "res://scripts/proving_harness.gd"
+
+	func _ready() -> void:
+		pass
 
 var harness: ProvingHarness = null
+var _replay_requests: Array[String] = []
+var _replay_responses: Dictionary = {}
 
 func before_each() -> void:
-	harness = ProvingHarness.new()
+	_replay_requests.clear()
+	_replay_responses.clear()
+	harness = TestProvingHarness.new()
 	harness.overlay_visibility_threshold = 0.35
 	harness._reset_last_flow_events()
 	harness._reset_event_tracking()
@@ -18,6 +29,9 @@ func _debug_state(side: String = "test") -> Dictionary:
 	return harness._make_trail_debug_state(side)
 
 func after_each() -> void:
+	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
+	if singleton != null and singleton.has_method("unload_replay_playback"):
+		singleton.unload_replay_playback()
 	if harness != null:
 		harness.free()
 		harness = null
@@ -166,3 +180,38 @@ func test_effective_camera_source_prefers_camera_tracking_session_config_when_pr
 
 	assert_true(harness._uses_camera_tracking_contract_path())
 	assert_eq(harness._get_effective_camera_source(), "/dev/video9")
+
+func test_replay_proving_prefers_singleton_playback_controller() -> void:
+	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
+	assert_not_null(singleton)
+	singleton.set_replay_playback_transport_request(Callable(self, "_fake_replay_transport_request"))
+	_replay_responses["http://127.0.0.1:4243/playback"] = {
+		"success": true,
+		"body": {"paused": true, "current_time_sec": 2.0, "duration_sec": 8.0, "progress": 0.25},
+	}
+
+	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
+	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
+	harness.camera_view = MediaPipeCameraViewScript.new()
+	harness.camera_view.stream_url = "http://127.0.0.1:4243/camera"
+	harness.add_child(harness.camera_view)
+	add_child(harness)
+
+	assert_true(harness._playback_controller_uses_singleton())
+	assert_true(harness._load_playback_source_if_needed())
+	harness._refresh_playback_status(true)
+	assert_eq(harness._fallback_playback_manager, null)
+	assert_true(singleton.has_replay_playback_loaded())
+	assert_eq(float(harness._playback_status.get("current_time_sec", 0.0)), 2.0)
+	assert_eq(["http://127.0.0.1:4243/playback", "http://127.0.0.1:4243/playback"], _replay_requests)
+
+func _fake_replay_transport_request(url: String) -> Dictionary:
+	_replay_requests.append(url)
+	if _replay_responses.has(url):
+		return _replay_responses[url]
+	return {
+		"success": false,
+		"code": "missing_stub",
+		"message": "No stubbed response for %s" % url,
+		"detail": {"url": url},
+	}
