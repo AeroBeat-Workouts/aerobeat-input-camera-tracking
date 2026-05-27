@@ -11,6 +11,15 @@ class TestProvingHarness:
 	func _ready() -> void:
 		pass
 
+class PlaybackTrackingHarness:
+	extends TestProvingHarness
+
+	var unload_calls := 0
+
+	func _playback_controller_unload() -> void:
+		unload_calls += 1
+		super._playback_controller_unload()
+
 class FakeOverlayDrawer:
 	extends Control
 
@@ -242,6 +251,51 @@ func test_replay_proving_prefers_singleton_playback_controller() -> void:
 		"http://127.0.0.1:4243/playback",
 	], _replay_requests)
 	assert_false(bool(harness._playback_status.get("paused", true)))
+
+func test_replay_proving_autoplays_when_same_source_is_already_loaded_but_paused() -> void:
+	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
+	assert_not_null(singleton)
+	singleton.set_replay_playback_transport_request(Callable(self, "_fake_replay_transport_request"))
+	_replay_responses["http://127.0.0.1:4243/playback"] = {
+		"success": true,
+		"body": {"paused": true, "current_time_sec": 0.0, "duration_sec": 8.0, "progress": 0.0},
+	}
+	_replay_responses["http://127.0.0.1:4243/playback/play"] = {
+		"success": true,
+		"body": {"paused": false, "current_time_sec": 0.0, "duration_sec": 8.0, "progress": 0.0},
+	}
+	assert_true(singleton.ensure_replay_playback_loaded("http://127.0.0.1:4243/camera"))
+	assert_true(singleton.has_replay_playback_loaded())
+
+	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
+	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
+	harness.camera_view = MediaPipeCameraViewScript.new()
+	harness.camera_view.stream_url = "http://127.0.0.1:4243/camera"
+	harness.add_child(harness.camera_view)
+	add_child(harness)
+
+	assert_true(harness._load_playback_source_if_needed())
+	assert_eq([
+		"http://127.0.0.1:4243/playback",
+		"http://127.0.0.1:4243/playback/play",
+	], _replay_requests)
+	assert_false(harness._playback_autoplay_pending)
+
+func test_prerecorded_visibility_refresh_stays_active_in_godot_only_replay_mode() -> void:
+	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
+	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
+	harness._refresh_playback_controls_visibility()
+	assert_true(harness._playback_visibility_active)
+	assert_true(harness._playback_autoplay_pending)
+
+func test_live_camera_visibility_refresh_does_not_unload_playback_controller() -> void:
+	if harness != null:
+		harness.free()
+	harness = PlaybackTrackingHarness.new()
+	harness.startup_mode = harness.StartupMode.TRACKING
+	harness._refresh_playback_controls_visibility()
+	assert_eq(harness.unload_calls, 0)
+	assert_false(harness._playback_visibility_active)
 
 func test_overlay_drawers_are_forced_full_rect_and_receive_pose_updates() -> void:
 	var landmark_drawer := FakeOverlayDrawer.new()

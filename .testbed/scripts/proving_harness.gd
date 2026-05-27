@@ -250,6 +250,9 @@ var _playback_time_label: Label = null
 var _playback_status := {}
 var _playback_status_poll_due_ms := 0
 var _playback_slider_drag_active := false
+var _playback_visibility_active := false
+var _playback_autoplay_pending := false
+var _playback_autoplay_base_url := ""
 
 func _enter_tree() -> void:
 	if startup_mode != StartupMode.GODOT_ONLY_DEBUG:
@@ -406,18 +409,27 @@ func _ensure_playback_controls() -> void:
 	row.add_theme_constant_override("separation", 10)
 	timeline_row_host.add_child(row)
 
+	var toggle_host := CenterContainer.new()
+	toggle_host.custom_minimum_size = Vector2(PLAYBACK_TOGGLE_BUTTON_WIDTH, PLAYBACK_CONTROL_ROW_HEIGHT)
+	toggle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(toggle_host)
+
 	_playback_toggle_button = Button.new()
 	_playback_toggle_button.custom_minimum_size = Vector2(PLAYBACK_TOGGLE_BUTTON_WIDTH, PLAYBACK_CONTROL_ROW_HEIGHT)
-	_playback_toggle_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_playback_toggle_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	_playback_toggle_button.text = PLAYBACK_ICON_PAUSE
 	_playback_toggle_button.pressed.connect(_on_playback_toggle_pressed)
-	row.add_child(_playback_toggle_button)
+	toggle_host.add_child(_playback_toggle_button)
+
+	var slider_host := CenterContainer.new()
+	slider_host.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
+	slider_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(slider_host)
 
 	_playback_seek_slider = HSlider.new()
 	_playback_seek_slider.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	_playback_seek_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_playback_seek_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_playback_seek_slider.min_value = 0.0
 	_playback_seek_slider.max_value = 1.0
 	_playback_seek_slider.step = 0.001
@@ -425,29 +437,33 @@ func _ensure_playback_controls() -> void:
 	_playback_seek_slider.drag_started.connect(func() -> void:
 		_playback_slider_drag_active = true
 	)
-	row.add_child(_playback_seek_slider)
+	slider_host.add_child(_playback_seek_slider)
+
+	var time_host := CenterContainer.new()
+	time_host.custom_minimum_size = Vector2(124.0, PLAYBACK_CONTROL_ROW_HEIGHT)
+	time_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(time_host)
 
 	_playback_time_label = Label.new()
 	_playback_time_label.custom_minimum_size = Vector2(124.0, PLAYBACK_CONTROL_ROW_HEIGHT)
-	_playback_time_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_playback_time_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_playback_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_playback_time_label.text = "0:00 / 0:00"
-	row.add_child(_playback_time_label)
+	time_host.add_child(_playback_time_label)
 
-func _resolve_playback_controller() -> Node:
+func _resolve_playback_controller(log_missing: bool = true) -> Node:
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	if tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded"):
 		return tracking_singleton
-	if is_inside_tree():
+	if log_missing and is_inside_tree():
 		push_error("[ProvingHarness] Replay playback requires the AeroCameraTracking singleton")
 	return null
 
 func _playback_controller_uses_singleton() -> bool:
-	return _resolve_playback_controller() != null
+	return _resolve_playback_controller(false) != null
 
 func _get_playback_controller_state() -> Dictionary:
-	var tracking_singleton := _resolve_playback_controller()
+	var tracking_singleton := _resolve_playback_controller(false)
 	if tracking_singleton != null and tracking_singleton.has_method("get_replay_playback_state"):
 		return tracking_singleton.get_replay_playback_state()
 	return {}
@@ -481,7 +497,7 @@ func _playback_controller_seek(seconds: float) -> void:
 		tracking_singleton.seek_replay_playback(seconds)
 
 func _playback_controller_unload() -> void:
-	var tracking_singleton := _resolve_playback_controller()
+	var tracking_singleton := _resolve_playback_controller(false)
 	if tracking_singleton != null and tracking_singleton.has_method("unload_replay_playback"):
 		tracking_singleton.unload_replay_playback()
 
@@ -1487,9 +1503,23 @@ func _load_playback_source_if_needed() -> bool:
 		return false
 	var was_loaded := _playback_controller_has_loaded_media()
 	var loaded := _playback_controller_ensure_loaded(playback_base_url)
-	if loaded and not was_loaded:
+	if not loaded:
+		return false
+	if _playback_autoplay_base_url != playback_base_url:
+		_playback_autoplay_base_url = playback_base_url
+		_playback_autoplay_pending = true
+	var playback_state := _get_playback_controller_state()
+	var playback_state_name := String(playback_state.get("state", ""))
+	if not was_loaded:
+		_playback_autoplay_pending = true
+	if _playback_autoplay_pending and playback_state_name != "playing":
+		_playback_autoplay_pending = false
 		_playback_controller_play()
-	return loaded
+		playback_state = _get_playback_controller_state()
+		playback_state_name = String(playback_state.get("state", ""))
+	if playback_state_name == "playing":
+		_playback_autoplay_pending = false
+	return true
 
 func _playback_base_url() -> String:
 	var source_url := camera_view.stream_url if camera_view != null else "http://127.0.0.1:4243/camera"
@@ -1499,12 +1529,18 @@ func _playback_base_url() -> String:
 	return source_url.substr(0, slash_index)
 
 func _refresh_playback_controls_visibility() -> void:
-	var visible := _is_prerecorded_source_active() and startup_mode != StartupMode.GODOT_ONLY_DEBUG
+	var visible := _is_prerecorded_source_active()
 	if _playback_bar_panel != null:
 		_playback_bar_panel.visible = visible
-	if not visible:
+	if visible and not _playback_visibility_active:
+		_playback_autoplay_pending = true
+		_playback_autoplay_base_url = ""
+	elif not visible and _playback_visibility_active:
 		_playback_controller_unload()
 		_playback_status = {}
+		_playback_autoplay_pending = false
+		_playback_autoplay_base_url = ""
+	_playback_visibility_active = visible
 	_refresh_playback_controls_state()
 
 func _sync_playback_status_from_manager() -> void:
@@ -2561,6 +2597,9 @@ func _log_shutdown_summary_once(reason: String) -> void:
 func _stop_everything(reason: String = "unknown") -> void:
 	_log_shutdown_summary_once(reason)
 	_playback_controller_unload()
+	_playback_visibility_active = false
+	_playback_autoplay_pending = false
+	_playback_autoplay_base_url = ""
 	if camera_view and camera_view.is_streaming():
 		camera_view.stop_stream()
 	if camera_view and is_instance_valid(camera_view):
