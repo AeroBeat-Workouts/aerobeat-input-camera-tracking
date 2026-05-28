@@ -31,6 +31,7 @@ signal weave_left_start()
 signal weave_left_end()
 signal weave_right_start()
 signal weave_right_end()
+signal camera_devices_changed(devices: Array, selected_device_id: String)
 
 var _provider = null
 var _config = null
