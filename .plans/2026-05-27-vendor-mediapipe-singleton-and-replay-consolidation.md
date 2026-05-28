@@ -1,9 +1,9 @@
 # AeroBeat Input Camera Tracking
 
 **Date:** 2026-05-27  
-**Status:** In Progress  
-**Last Updated:** 2026-05-27 12:54 EDT  
-**Blocked Reason:** None  
+**Status:** Blocked  
+**Last Updated:** 2026-05-27 19:24 EDT  
+**Blocked Reason:** Session wrap-up while awaiting Derrick's next manual `.testbed` verification pass on the latest proving-scene fixes  
 **Agent:** `cookie`
 
 ---
@@ -228,9 +228,59 @@ This plan therefore proceeds in five layers: first audit vendor parity vs the ol
 **Files Created/Deleted/Modified:**
 - no durable source changes expected unless a minimal test/handoff artifact is needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Active next slice. The singleton migration, replay proving migration, fallback removal, stale legacy test retirement, and singleton-first proving-harness test repair are all landed. This bead should now run automated validation on the current truth, refresh dependencies/workbench via the approved sync path if needed, and prepare Derrick's exact manual `.testbed` Boxing/Flow MediaPipe QA handoff.
+**Results:** Automated validation completed cleanly: repo-local workbench refresh used the approved `godotenv-sync` + `refresh_testbed_workbench.py` path, and the full `.testbed` GUT suite passed `75/75` tests / `369` asserts before the known ignorable Godot 4.6 shutdown-abort noise. Derrick then ran the manual `.testbed` QA gate and reported three real product issues: (1) Boxing replay loads but does not autoplay, even though that scene should autoplay replay clips; (2) the visible replay timeline bar is not vertically centered with the other playback controls; and (3) tracking landmarks/overlay dots+lines are not showing in either replay or live camera proving. Those findings unblock the plan from 'waiting for QA' and create a new approved bug-fix seam inside the same plan.
+
+---
+
+### Task 5b: Fix QA-found replay autoplay, playback-bar alignment, and missing landmark overlays
+
+**Bead ID:** `aerobeat-input-camera-tracking-uvt`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-10`  
+**Prompt:** In `/home/derrick/Documents/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `aerobeat-input-camera-tracking-uvt` on start. Derrick's manual `.testbed` QA surfaced three concrete issues to fix within the approved plan: (1) Boxing replay loads but does not autoplay, even though the proving replay scene should autoplay; (2) the visible replay timeline/playback bar is not vertically centered with the other playback controls; and (3) tracking landmarks/overlay dots+lines do not appear in either replay or live camera proving. Fix those product issues in the narrowest truthful way, keep `.testbed` singleton-first, avoid `/addons/` edits, run relevant validation, and commit/push by default.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/Documents/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/`
+- `/home/derrick/Documents/projects/aerobeat/aerobeat-input-camera-tracking/src/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/scenes/boxing_proving.tscn`
+- `.testbed/scenes/flow_proving.tscn`
+- `src/AeroCameraTracking.gd`
+- related overlay/playback tests as needed
+
+**Status:** ✅ Complete
+
+**Results:** Completed in `aerobeat-input-camera-tracking` and pushed as commit `9927b62` (`Fix proving replay autoplay and overlays`). Root causes/fixes: (1) boxing replay was loading the singleton playback source with `autoplay: false`, so the proving replay never started on first load; `src/AeroCameraTracking.gd` now loads replay playback with `autoplay: true`; (2) the playback bar row host used a shorter fixed height than the control row, which left the visible timeline slightly off-center; `.testbed/scripts/proving_harness.gd` now centers the row using a matched control-row height constant; (3) landmark/trail overlays were not being re-established robustly as full-rect visible overlay controls in the proving harness runtime, so live/replay dots+lines could disappear after the camera surface swap path; the harness now explicitly reconfigures overlay drawers as full-rect top overlays and added regression coverage around that setup. The follow-on live-camera switch spam about missing replay playback controller was also fixed in the same seam by making live-camera visibility teardown stop calling the singleton-required replay unload path. Validation: targeted GUT runs for `test_proving_harness_trails.gd` and `test_aero_camera_tracking.gd` passed; the known Godot/GUT shutdown-abort noise still appears after passing assertions. Subsequent manual QA showed this seam was not fully done: warnings still appear in the proving scenes, landmarks/trails still are not visibly rendering in the real scenes, Boxing proving remains stuck at `Waiting for Boxing Gestures`, one-shot singleton/camera-switch failure is still visible, the playback row became horizontally squashed even though vertical centering improved, and prerecorded replay can spam `Python server died` on first load.
+
+---
+
+### Task 5c: Fix remaining proving-scene QA bugs with desktop-control screenshot proof
+
+**Bead ID:** `aerobeat-input-camera-tracking-xko`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-10`  
+**Prompt:** In `/home/derrick/Documents/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `aerobeat-input-camera-tracking-xko` on start. Continue the same approved proving-scene fix seam using Derrick's latest manual QA feedback and prove any visual fixes with desktop-control screenshots captured from the actual running scene. Current bugs to fix: (1) Boxing proving scene warnings visible in-editor/log UI, likely mirrored in Flow; (2) landmarks/trails still do not visibly render in real replay/live proving and the next attempt must be proven with a screenshot showing replay overlays actually visible; (3) Boxing proving never leaves `Waiting for Boxing Gestures`; (4) live-camera switching still shows a one-shot `[ProvingHarness] AeroCameraTracking singleton is required for .testbed proving flows` and in-game `Live camera switch failed`; (5) the playback row is now horizontally squashed even though vertically centered; and (6) prerecorded playback can spam `[ProvingHarness][Boxing] Python server died | src=...` on first load. Important QA constraint: if you use desktop-control / Godot scene QA for proof, close scenes/editor through the aero-tool-headless-manager singleton / safe Godot scene-exit path rather than ad-hoc termination so MediaPipe exits safely. Avoid `/addons/` edits, keep `.testbed` singleton-first, add/update targeted tests where practical, run relevant validation, and commit/push by default.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/Documents/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/`
+- `/home/derrick/Documents/projects/aerobeat/aerobeat-input-camera-tracking/src/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/scenes/boxing_proving.tscn`
+- `.testbed/scenes/flow_proving.tscn`
+- `src/AeroCameraTracking.gd`
+- targeted tests and proof artifacts as needed
+
+**Status:** ✅ Complete
+
+**Results:** Completed in `aerobeat-input-camera-tracking` and pushed as commit `2be2119` (`Fix proving-scene singleton replay and overlay wiring`). Root causes/fixes: (1) visible proving warnings came from repo-owned GDScript warning sites and were cleaned up with typed/renamed locals and minor script hygiene; (2) overlays were still absent in real proving because singleton replay runtime was starting without a valid `pose_landmarker_model_path`, provider ingestion only reacted to backend signals instead of polling between updates, and the proving scenes still had trails disabled; the fix propagated the resolved model asset path, added provider polling, enabled trails, and added singleton pose passthrough helpers; (3) Boxing proving stayed at `Waiting for Boxing Gestures` because tracked replay frames/events were not actually making it through the singleton/provider path, which the runtime/model-path + polling fix restored; (4) live-camera switching still showed a one-shot singleton failure because `_clear_live_camera_runtime_state()` queue-freed the `AeroCameraTracking` autoload during teardown, so the next switch saw a missing singleton; the fix preserves the singleton instance during teardown; (5) the playback row was horizontally squashed because it sat inside a `CenterContainer` that collapsed width to minimum size, so the row now fills width directly; and (6) prerecorded playback was still polling sidecar health as if replay were a live-camera sidecar failure, which caused the first-load `Python server died` spam, so sidecar-health polling is now limited to actual live-camera flows. Validation: full unit GUT suite passed `75/75`; the fix pass also confirmed headless boxing replay state `running`, replay state `playing`, `TRACKING_FRAME` populated, and `LANDMARKS=33`. Desktop-control screenshot proof was obtained at `/home/derrick/.openclaw/workspace/.temp/proof/boxing-proof-window-4.png`, showing replay overlays visible and boxing events detected. Remaining manual QA: Derrick should still verify live-camera switching on actual hardware and run a focused Flow proving pass, though both now share the repaired harness/provider/runtime path.
 
 ---
 
@@ -248,9 +298,9 @@ This plan therefore proceeds in five layers: first audit vendor parity vs the ol
 **Files Created/Deleted/Modified:**
 - `README.md`
 
-**Status:** ⏳ Pending
+**Status:** ⏸️ Deferred
 
-**Results:** Pending.
+**Results:** Deferred for the next session. The implementation seam moved faster than the documentation/audit follow-through, and Derrick asked to land the plane after the latest proving-scene fix pass. README still needs a truthful update once Derrick completes the next manual `.testbed` verification pass on the latest fixes so the docs can reflect the settled real scene behavior rather than a moving target.
 
 ---
 
@@ -268,9 +318,9 @@ This plan therefore proceeds in five layers: first audit vendor parity vs the ol
 **Files Created/Deleted/Modified:**
 - none required unless a minimal audit artifact is necessary
 
-**Status:** ⏳ Pending
+**Status:** ⏸️ Deferred
 
-**Results:** Pending.
+**Results:** Deferred for the next session. Final audit should happen only after Derrick's next manual `.testbed` verification pass and the README update, because the remaining question is no longer core implementation churn but truth-checking the latest real-scene behavior and deciding whether local `python_mediapipe` ownership can be reduced further.
 
 ---
 
@@ -293,17 +343,25 @@ This plan therefore proceeds in five layers: first audit vendor parity vs the ol
 
 ## Final Results
 
-**Status:** ⚠️ Planned / awaiting approval
+**Status:** ⚠️ Partial / blocked on follow-up manual verification
 
-**What We Built:** A repo-local execution plan for consolidating MediaPipe vendor ownership into `aerobeat-vendor-mediapipe-python`, introducing `src/AeroCameraTracking.gd` as the public tracking singleton in `aerobeat-input-camera-tracking`, and rewiring `.testbed` replay/live flows to depend on GodotEnv-managed packages and singleton-owned coordination instead of direct local sidecar/video-player ownership.
+**What We Built:** The vendor/runtime split is materially in place and the repo boundary moved to a truthful `AeroCameraTracking.gd` singleton. `aerobeat-vendor-mediapipe-python` now owns model-complexity-aware runtime truth (`adc5175`), while `aerobeat-input-camera-tracking` now owns the repo-level live/replay tracking surface (`6144e84`), singleton-first `.testbed` replay/live proving migration (`10b8dfb`, `d65bba7`, `7b1a61f`), automated validation cleanup and stale legacy-test retirement (`8c5ef4c`), replay/autoplay/alignment follow-up (`9927b62`, `5c07d70`), and the latest proving-scene singleton replay/overlay/runtime wiring fixes with screenshot proof (`2be2119`). Full automated validation later reached `75/75` passing tests / `369` asserts, ignoring the known Godot 4.6 shutdown-abort noise.
 
-**Reference Check:** The plan matches the previously approved split boundaries in `REF-01` and `REF-02`, reflects the current mixed-state truth in `REF-03` through `REF-06`, and uses the current upstream singleton/video-player/vendor surfaces in `REF-07` through `REF-10` as the concrete comparison points.
+**Reference Check:** `REF-01` and `REF-02` are materially satisfied at the architecture level: vendor-side runtime truth now lives in `aerobeat-vendor-mediapipe-python`, and this repo now exposes a repo-owned singleton boundary instead of letting proving scenes own the top-level contract directly. `REF-03` through `REF-10` are only partially closed because the README and final independent audit were intentionally deferred at wrap-up, and Derrick still needs one more manual `.testbed` verification pass on the latest proving-scene fixes—especially live-camera switching on real hardware and a focused Flow proving pass—before the final documentation/audit can honestly call the slice done.
 
 **Commits:**
-- Pending.
+- `adc5175` - Add model complexity parity to vendor runtime
+- `6144e84` - Add repo-owned AeroCameraTracking singleton
+- `10b8dfb` - singleton-first replay/live proving migration slice
+- `d65bba7` - Require proving harness singleton playback contract
+- `8c5ef4c` - Retire stale legacy MediaPipe provider test
+- `7b1a61f` - Repair singleton-first proving-harness camera-source test
+- `9927b62` - Fix proving replay autoplay and overlays
+- `5c07d70` - Fix proving harness replay visibility and autoplay
+- `2be2119` - Fix proving-scene singleton replay and overlay wiring
 
-**Lessons Learned:** The current bug is probably not “one broken function.” It looks more like duplicated ownership: local sidecar residue, vendor-sidecar incompleteness, and proving scenes still bypassing the intended singleton boundary.
+**Lessons Learned:** The main failure mode was duplicated ownership and mid-refactor truth drift, not one isolated defect. Every time the proving scenes still directly owned lifecycle/playback/runtime assumptions, new bugs appeared. The winning pattern was to keep pushing behavior through the repo-owned singleton boundary, then verify with repo tests and finally real-scene proof. Also: `git-sync` assumes correct remotes but does not auto-repair HTTPS GitHub Desktop clones, and the Godot 4.6 shutdown abort after green tests is noise on this host rather than a trustworthy failure signal.
 
 ---
 
-*Prepared on 2026-05-27*
+*Updated at wrap-up on 2026-05-27*
