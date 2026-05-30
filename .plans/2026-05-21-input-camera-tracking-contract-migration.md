@@ -1,7 +1,9 @@
 # AeroBeat Input Camera Tracking — First Contract Migration Plan
 
 **Date:** 2026-05-21  
-**Status:** In Progress  
+**Status:** Blocked  
+**Last Updated:** 2026-05-28 23:37 EDT  
+**Blocked Reason:** QA found repo-local validation gaps: full-suite MediaPipe runtime test failure, Godot/GUT abort on exit, and fixture-runner dependency gap; Beads DB also unavailable in this repo  
 **Agent:** Cookie 🍪
 
 ---
@@ -62,9 +64,9 @@ The repo also arrived in a truly fresh/rough state on this machine: the local ch
 - additional adapter/seam files as needed under `src/`
 - any test files required under `.testbed/tests/`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending. This task is execution-ready but partially externally gated by upstream contract stabilization. It should proceed only within the stable slice boundaries listed below.
+**Results:** The first contract-driven slice was already largely present in repo state when this coder pass began: the repo-root tracking-frame seam (`src/tracking_frame_adapter.gd`), the contract-driven provider (`src/providers/camera_tracking_provider.gd`), the updated repo identity/docs, and the `.testbed/` proving path that prefers the upstream `CameraTracking` contract were all in place and aligned with `REF-01` through `REF-09`. This coder pass finished the slice by fixing two contract-path regressions uncovered by repo-local validation: (1) `src/input_provider.gd` was redeclaring `camera_devices_changed`, which now already exists upstream in the input-core parent contract, causing the assembly-facing adapter tests to fail to compile; and (2) `src/AeroMediaPipeReplayPlaybackBackend.gd` did not implement `set_cover_mode` / `set_audio_level`, which pushed replay playback through the singleton into an error state even though the transport-backed contract path itself was otherwise working. After removing the duplicate signal redeclaration and making those replay-surface config hooks explicit no-op successes for the HTTP replay backend, the focused contract-path test coverage passed again. Bead claim was attempted but could not be recorded because `bd update aerobeat-input-camera-tracking-ane --status in_progress --json` failed with `Error: no beads database found`; this repo currently has a `.beads` directory but no initialized Beads database, so no bead state was invented or closed. Upstream/deferred items from the plan remain honest deferrals rather than coder blockers for this slice: final contract schema details, preview semantics, replay semantics beyond the current proving seam, and broader input-core reconciliation still need future slices.
 
 ---
 
@@ -83,9 +85,9 @@ The repo also arrived in a truly fresh/rough state on this machine: the local ch
 **Files Created/Deleted/Modified:**
 - validation notes only if needed
 
-**Status:** ⏳ Pending (depends on `aerobeat-input-camera-tracking-ane`)
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** QA attempted to claim `aerobeat-input-camera-tracking-3gz`, but `bd update aerobeat-input-camera-tracking-3gz --status in_progress --json` failed with `Error: no beads database found`, so no Beads state was recorded or closed. Repo-local restore guidance is correctly pointed at `/home/derrick/.openclaw/workspace/scripts/godotenv-sync` plus `python3 scripts/refresh_testbed_workbench.py`, and the README explicitly says not to patch `.testbed/addons/` mirrors directly. That refresh path succeeded on this host and reported a clean `.testbed` re-import. Slice-specific contract-path validation is good: focused headless GUT coverage passed for `test_replay_playback_backend.gd` (3/3), `test_aero_camera_tracking.gd` (3/3), `test_camera_tracking_provider.gd` (6/6), `test_input_provider_adapter.gd` (13/13), `test_tracking_frame_adapter.gd` (2/2), and the proving-harness trail/contract coverage inside `test_proving_harness_trails.gd` already passed during the full-suite run (21/21). Those tests are concrete evidence that the first migration slice still routes Boxing + Flow proving through the new seam: replay starts via the `CameraTracking` contract, the provider consumes normalized tracking frames, the input-provider adapter prefers or discovers the tracking session before falling back, and the proving harness prefers the `AeroCameraTracking` singleton for replay/live flows. The `.testbed` proving surface itself is wired consistently with that seam: `.testbed/addons.jsonc` mounts `aerobeat-tool-camera-tracking` as the contract shell and the MediaPipe vendor backend only for repo-local proving, `.testbed/scripts/proving_harness.gd` now requires the `AeroCameraTracking` singleton for proving flows, and the Boxing/Flow proving scenes still point at prerecorded fixture assets. However, QA did not clear the repo as audit-ready because broad repo-local validation still fails outside the migration slice: the full `godot --headless --path .testbed --script addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` run finished with 83 tests, 77 passing tests, 1 failing test, and 5 pending/risky tests. The failing test is `res://tests/unit/test_mediapipe_process.gd::test_find_python_returns_prepared_runtime_path`, which asserts that `_find_python()` returns a non-empty path but currently gets `""`; the other MediaPipe process lifecycle checks then downgrade to pending because the prepared runtime is unavailable on this host. After the GUT summary, Godot aborted with `malloc(): mismatching next->prev_size (unsorted)` / signal 6; a focused rerun of migration-slice tests also reproduced an exit abort (`corrupted size vs. prev_size in fastbins`) after otherwise passing assertions, so the Godot/GUT abort still reproduces in repo-local QA. Fixture/test evidence is only partial in this checkout: fixture YAML/MP4 assets exist for Boxing and Flow and the scenes reference them, but `.testbed/test-results/` was absent, so there was no fresh saved proving artifact directory to inspect here. Attempting to invoke the fixture-runner entrypoint (`python3 scripts/proving_fixture_runner.py --help`) also failed immediately with `ModuleNotFoundError: No module named 'yaml'`, which means the scripted fixture-capture path is not presently self-validating on this host without extra Python deps. Net: the migration seam itself looks sound and Boxing + Flow proving still makes architectural sense under it, but QA found enough whole-repo validation and proving-tooling gaps that this task must stay failed/open for follow-up before audit.
 
 ---
 
@@ -103,9 +105,9 @@ The repo also arrived in a truly fresh/rough state on this machine: the local ch
 **Files Created/Deleted/Modified:**
 - audit notes only if needed
 
-**Status:** ⏳ Pending (depends on `aerobeat-input-camera-tracking-3gz`)
+**Status:** ⏳ Pending (blocked by QA gaps on `aerobeat-input-camera-tracking-3gz`)
 
-**Results:** Pending.
+**Results:** Audit is not ready yet. QA found that the first contract-migration slice passes its focused seam/proving tests, but the repo still has a broader failing MediaPipe runtime-path test, a reproducible Godot/GUT abort on exit, no fresh `.testbed/test-results/` artifacts in this checkout, and a fixture-runner dependency gap (`yaml` missing) that blocks stronger fixture-capture evidence on this host.
 
 ---
 
@@ -169,17 +171,17 @@ These items should be treated as blocked or deferred until `aerobeat-tool-camera
 
 ## Final Results
 
-**Status:** ⚠️ Planned / ready for execution
+**Status:** ⚠️ Partial — coder slice is validated at the seam level, but QA found blocking repo-local validation gaps before audit
 
-**What We Built:** A repo-local first migration plan plus executable coder → QA → auditor Beads for `aerobeat-input-camera-tracking`, with stable slice boundaries and explicit upstream blockers.
+**What We Built:** The repo now has a first-pass contract-consumer lane that keeps Boxing + Flow interpretation rooted here while consuming normalized `CameraTracking` frames through the upstream seam. QA confirmed the seam-level pieces work together under focused coverage: the assembly-facing adapter compiles against the current input-core parent signal surface, replay playback delegates through the singleton-backed contract path, the provider consumes normalized tracking frames, and `.testbed` proving is wired around `AeroCameraTracking` rather than re-owning runtime truth directly.
 
-**Reference Check:** The plan aligns this repo to the approved platform split in `REF-01` through `REF-03` while grounding migration work in the repo’s current MediaPipe-specific reality from `REF-06` through `REF-09`.
+**Reference Check:** `REF-01` and `REF-02` are still honored by keeping vendor/runtime ownership out of the detector lane and consuming the upstream tracking/replay contracts instead. `REF-04` through `REF-07` remain satisfied for the current compatibility slice because the repo still exposes the input-core-facing adapter while routing the preferred proving/runtime path through `CameraTracking`. `REF-08` and `REF-09` were already aligned in repo state when this coder pass started. QA also confirmed that dependency restore guidance now points to `/home/derrick/.openclaw/workspace/scripts/godotenv-sync` / normal GodotEnv flows instead of direct `/addons/` edits.
 
 **Commits:**
 - Pending.
 
-**Lessons Learned:** The first meaningful move here is not “port code.” It is “stop this repo from pretending it still owns the vendor/runtime stack.” Once that seam is honest, the actual detector logic can survive the platform split with much less churn.
+**Lessons Learned:** The migration slice was mostly landed already; the real value in coder+QA was truth-checking the seam under executable coverage and separating slice-specific health from repo-wide health. Right now those are different stories: the contract seam itself looks good, but the broader repo still carries a failing MediaPipe runtime-path test, the headless Godot/GUT path can abort on exit even after passing targeted assertions, fixture-capture tooling is missing a Python `yaml` dependency on this host, and this repo’s Beads state is not actually initialized, so orchestration status has to stay in the plan until the repo gets a real Beads database again.
 
 ---
 
-*Last updated on 2026-05-21*
+*Last updated on 2026-05-28 23:37 EDT*
