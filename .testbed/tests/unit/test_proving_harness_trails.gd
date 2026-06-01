@@ -239,6 +239,26 @@ func test_effective_camera_source_prefers_repo_singleton_tracking_session_config
 	assert_eq(harness._get_effective_camera_source(), "/dev/video9")
 	singleton.stop()
 
+func test_load_available_camera_devices_prefers_repo_singleton_contract_lane() -> void:
+	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
+	assert_not_null(singleton)
+
+	var tracker = CameraTrackingScript.new()
+	tracker.set_backend(CameraTrackingFakeBackendScript.new([
+		{"id": "/dev/video7", "label": "Front camera"},
+		{"id": "/dev/video3", "label": "USB camera"},
+	]))
+	singleton.set_tracking_session(tracker)
+	tracker.start({
+		"source": {"kind": "live_camera", "camera_id": "/dev/video7"},
+	})
+	add_child(harness)
+
+	var singleton_devices: Array = singleton.get_available_camera_devices()
+	var harness_devices: Array = harness._load_available_camera_devices()
+	assert_eq(harness_devices, singleton_devices)
+	singleton.stop()
+
 func test_replay_proving_prefers_singleton_playback_controller() -> void:
 	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
 	assert_not_null(singleton)

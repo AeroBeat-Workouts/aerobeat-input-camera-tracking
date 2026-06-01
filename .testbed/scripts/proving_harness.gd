@@ -558,12 +558,19 @@ func _should_show_camera_source_controls() -> bool:
 	return startup_mode != StartupMode.GODOT_ONLY_DEBUG and _get_scene_camera_source_override().is_empty()
 
 func _load_available_camera_devices() -> Array:
-	var temp_provider: Variant = MediaPipeProviderScript.new()
 	var devices: Array = []
-	if temp_provider != null and temp_provider.has_method("get_available_camera_devices"):
-		devices = temp_provider.get_available_camera_devices()
-	if temp_provider is Node and is_instance_valid(temp_provider):
-		temp_provider.free()
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null:
+		if tracking_singleton.has_method("get_available_camera_devices"):
+			devices = tracking_singleton.get_available_camera_devices()
+		elif tracking_singleton.has_method("list_cameras"):
+			devices = tracking_singleton.list_cameras()
+	if devices.is_empty():
+		var temp_provider: Variant = MediaPipeProviderScript.new()
+		if temp_provider != null and temp_provider.has_method("get_available_camera_devices"):
+			devices = temp_provider.get_available_camera_devices()
+		if temp_provider is Node and is_instance_valid(temp_provider):
+			temp_provider.free()
 	if devices.is_empty():
 		devices.append({
 			"id": "/dev/video0",

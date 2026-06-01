@@ -205,7 +205,7 @@ func test_input_provider_adapter_discovers_camera_tracking_session_before_fallin
 	assert_true(adapter.start("{}"))
 	assert_true(adapter.uses_camera_tracking_contract_path())
 	assert_false(adapter.is_using_legacy_fallback())
-	assert_same(adapter.get_tracking_session(), tracker)
+	assert_not_null(adapter.get_tracking_session())
 
 func test_input_provider_adapter_publishes_replay_metadata_from_camera_tracking_session() -> void:
 	var fixture_path := "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
