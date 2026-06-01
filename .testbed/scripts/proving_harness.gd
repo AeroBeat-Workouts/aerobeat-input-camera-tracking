@@ -2456,7 +2456,7 @@ func _get_configured_live_camera_source() -> String:
 
 func _get_effective_camera_source() -> String:
 	var explicit_override := _get_scene_camera_source_override()
-	if _is_prerecorded_source_active() and not explicit_override.is_empty():
+	if not explicit_override.is_empty() and not _is_live_camera_source_value(explicit_override):
 		return ProjectSettings.globalize_path(explicit_override) if not explicit_override.is_valid_int() else explicit_override
 	var tracking_session := _resolve_camera_tracking_session()
 	if tracking_session != null and tracking_session.has_method("get_active_config"):
