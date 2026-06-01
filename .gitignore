@@ -71,6 +71,7 @@ test_report*.json
 # Tests
 .temp/
 .testbed/test-results/
+.artifacts/
 
 .claude/
 CLAUDE.md
