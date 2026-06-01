@@ -66,19 +66,18 @@ Restore dependencies from the repo root:
 
 ```bash
 /home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking
-python3 scripts/refresh_testbed_workbench.py
 ```
 
-`refresh_testbed_workbench.py` is the truthful repo-local refresh path after addon-identity changes: it runs `godotenv addons install`, prunes stale generated `.testbed/addons/*` entries that are no longer declared in `.testbed/addons.jsonc`, clears the relevant Godot script/index caches, and re-imports `.testbed` so headless validation does not keep resolving removed addon identities.
+This checkout currently does **not** ship a repo-local `scripts/refresh_testbed_workbench.py` helper. Treat `.testbed/addons/` as generated install output from `.testbed/addons.jsonc`, not as sharable source.
 
 Do not patch `.testbed/addons/` mirrors directly.
 
 ## Validation
 
-Import smoke check:
+Dependency/workbench refresh:
 
 ```bash
-python3 scripts/refresh_testbed_workbench.py
+/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking
 ```
 
 Run repo-local tests:
@@ -96,7 +95,7 @@ Still intentionally deferred after this first continuous consumer slice:
 
 - final addon/session discovery pattern for runtime consumers outside proving/tests
 - shrinking or replacing the old assembly-facing `src/input_provider.gd` seam once input-core reconciliation is decided
-- replay/video-file semantics through the upstream contract
+- broader replay/video-file ergonomics outside the current `AeroCameraTracking` proving/manual-audit path
 - richer public body/head/confidence semantics beyond the current minimal landmark contract
 - any broader removal of the legacy local runtime lane outside the narrow proving path
 
