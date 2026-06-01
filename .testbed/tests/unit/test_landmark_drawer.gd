@@ -46,3 +46,9 @@ func test_click_ignores_empty_space_outside_hit_radius() -> void:
 	click.position = Vector2(400.0, 240.0)
 	drawer._gui_input(click)
 	assert_eq(clicked_landmark_id, -1)
+
+func test_bottom_left_gameplay_space_maps_back_to_top_left_screen_space() -> void:
+	var upper_body_point := {"id": 0, "x": 0.50, "y": 0.85, "v": 0.99}
+	var screen_point: Vector2 = drawer._landmark_to_screen(upper_body_point, 640.0, 480.0)
+	assert_true(is_equal_approx(screen_point.x, 320.0))
+	assert_true(is_equal_approx(screen_point.y, 72.0))

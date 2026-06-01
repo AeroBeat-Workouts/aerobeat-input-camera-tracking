@@ -73,6 +73,13 @@ func test_camera_tracking_provider_consumes_normalized_tracking_frames() -> void
 	assert_true(left_hand is Vector2)
 	assert_true(left_hand.x >= 0.0 and left_hand.x <= 1.0)
 	assert_true(left_hand.y >= 0.0 and left_hand.y <= 1.0)
+	var emitted_pose: Array = pose_calls[0]
+	var emitted_left_hand := emitted_pose.filter(func(lm: Variant) -> bool:
+		return lm is Dictionary and int((lm as Dictionary).get("id", -1)) == 15
+	)
+	assert_eq(emitted_left_hand.size(), 1)
+	assert_true(is_equal_approx(float((emitted_left_hand[0] as Dictionary).get("x", 0.0)), 0.64))
+	assert_true(is_equal_approx(float((emitted_left_hand[0] as Dictionary).get("y", 0.0)), 0.52), "Provider should emit bottom-left gameplay-normalized y for overlays and detector math")
 
 func test_camera_tracking_provider_attaches_preview_and_can_change_camera_id() -> void:
 	var tracker = add_child_autoqfree(CameraTrackingScript.new())

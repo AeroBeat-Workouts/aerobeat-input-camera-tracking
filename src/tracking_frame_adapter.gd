@@ -3,10 +3,12 @@ extends RefCounted
 ## Adapts vendor-neutral CameraTracking frames into the legacy landmark payload shape
 ## consumed by this repo's existing Boxing + Flow detector substrate.
 ##
-## Important first-slice truth:
-## - this adapter trusts `preview_transform.space = gameplay_normalized`
-## - it does not apply another horizontal flip; that decision belongs to the
-##   upstream CameraTracking contract once per backend/source, not here per consumer
+## Important seam truth:
+## - upstream CameraTracking frames already own horizontal mirroring, so this
+##   adapter must not apply another x flip
+## - this repo's legacy detector + proving surfaces still consume bottom-left
+##   gameplay-normalized y, so the adapter converts top-left normalized y into
+##   AeroBeat's bottom-left gameplay space exactly once here
 ## - landmark payload details remain intentionally conservative until the upstream
 ##   contract locks richer skeleton/body-part schemas
 
@@ -39,7 +41,7 @@ static func _normalize_landmark(landmark: Dictionary) -> Dictionary:
 	var normalized := landmark.duplicate(true)
 	normalized["id"] = int(landmark.get("id", -1))
 	normalized["x"] = float(landmark.get("x", 0.0))
-	normalized["y"] = float(landmark.get("y", 0.0))
+	normalized["y"] = 1.0 - float(landmark.get("y", 0.0))
 	normalized["z"] = float(landmark.get("z", 0.0))
 	normalized["v"] = _resolve_visibility(landmark)
 	return normalized
