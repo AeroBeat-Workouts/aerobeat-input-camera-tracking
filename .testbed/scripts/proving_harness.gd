@@ -5,6 +5,11 @@ const MediaPipeProviderScript = preload("res://addons/aerobeat-input-camera-trac
 const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
 const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
+const VENDOR_REPO_ROOT := "res://addons/aerobeat-vendor-mediapipe-python"
+const VENDOR_RUNTIME_ENTRYPOINT := "runtime/mediapipe_runtime_probe.py"
+const VENDOR_RUNTIME_LINUX_PYTHON := ".venv/bin/python"
+const VENDOR_RUNTIME_WINDOWS_PYTHON := ".venv/Scripts/python.exe"
+const VENDOR_DEFAULT_MODEL := "models/pose_landmarker_lite.task"
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -287,13 +292,13 @@ func _ready() -> void:
 	_fixture_time_origin_locked = false
 	_record_fixture_state_snapshot("ready")
 	_update_status("Initializing...", Color.WHITE)
-	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
+	if _uses_camera_tracking_contract_path():
 		_server_ready = true
-		if _uses_camera_tracking_contract_path():
-			_update_status("CameraTracking contract proving mode active", Color.GREEN)
-			_start_provider()
-		else:
-			_update_status("Godot-only debug mode active", Color.GREEN)
+		_update_status("CameraTracking contract proving mode active", Color.GREEN)
+		_start_provider()
+	elif startup_mode == StartupMode.GODOT_ONLY_DEBUG:
+		_server_ready = true
+		_update_status("Godot-only debug mode active", Color.GREEN)
 	else:
 		_setup_auto_start()
 	_refresh_debug_panels()
@@ -716,9 +721,9 @@ func _await_live_camera_runtime_ready(timeout_ms: int = 8000) -> bool:
 	return _is_live_camera_runtime_ready()
 
 func _is_live_camera_runtime_ready() -> bool:
+	if _uses_camera_tracking_contract_path():
+		return provider != null
 	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
-		if _uses_camera_tracking_contract_path():
-			return provider != null
 		return true
 	if not _server_ready:
 		return false
@@ -729,6 +734,8 @@ func _is_live_camera_runtime_ready() -> bool:
 	return provider != null
 
 func _should_poll_sidecar_runtime_health() -> bool:
+	if _uses_camera_tracking_contract_path():
+		return false
 	return auto_start_manager != null and startup_mode != StartupMode.GODOT_ONLY_DEBUG and _should_show_camera_source_controls()
 
 func _setup_auto_start() -> void:
@@ -897,13 +904,18 @@ func _build_runtime_config() -> Variant:
 	config.gesture_eval_interval_frames = maxi(1, gesture_eval_interval_frames)
 	var tracking_style := _tracking_smoothing_style_spec()
 	config.model_complexity = int(tracking_style.get("model_complexity", config.model_complexity))
-	if auto_start_manager != null and auto_start_manager.has_method("get_model_asset_path"):
-		var model_asset_path := String(auto_start_manager.get_model_asset_path()).strip_edges()
-		if not model_asset_path.is_empty():
-			config.runtime = {
-				"pose_landmarker_model_path": model_asset_path,
-			}
+	config.runtime = _build_vendor_runtime_config(config.model_complexity)
 	return config
+
+func _build_vendor_runtime_config(_model_complexity: int) -> Dictionary:
+	var vendor_root := ProjectSettings.globalize_path(VENDOR_REPO_ROOT)
+	var python_relpath := VENDOR_RUNTIME_WINDOWS_PYTHON if OS.get_name() == "Windows" else VENDOR_RUNTIME_LINUX_PYTHON
+	return {
+		"python_executable": vendor_root.path_join(python_relpath),
+		"entrypoint": vendor_root.path_join(VENDOR_RUNTIME_ENTRYPOINT),
+		"working_directory": vendor_root,
+		"pose_landmarker_model_path": vendor_root.path_join(VENDOR_DEFAULT_MODEL),
+	}
 
 func _resolve_camera_tracking_singleton() -> Node:
 	if not is_inside_tree():

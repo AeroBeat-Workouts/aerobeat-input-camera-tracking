@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://ddn217ux4dqr3" path="res://scripts/proving_harness.gd" id="1_harness"]
 [ext_resource type="Script" uid="uid://b7yrfwv07ycys" path="res://scripts/landmark_drawer.gd" id="2_landmarks"]
 [ext_resource type="Script" uid="uid://cl21tmxhvdd0x" path="res://scripts/hand_trail_drawer.gd" id="3_trails"]
-[ext_resource type="Script" uid="uid://cntshlv75amau" path="res://addons/aerobeat-input-camera-tracking/src/autostart_manager.gd" id="4_autostart"]
 [ext_resource type="Script" uid="uid://d3wj7236jb6nf" path="res://scripts/flow_ring_chart.gd" id="5_flow_ring_chart"]
 [ext_resource type="Texture2D" uid="uid://cv2cmj48bnykt" path="res://assets/backgrounds/perfect-hue-may-08-2026-hd.png" id="6_background"]
 [ext_resource type="Script" uid="uid://biadje5xucy7c" path="res://scripts/flow_brand_mark.gd" id="7_brand_mark"]
@@ -82,9 +81,6 @@ scene_title = "FLOW GESTURE DETECTION"
 tracking_overlay_mode = "optimized"
 tracking_smoothing_style = 3
 show_trails = true
-
-[node name="AutoStartManager" type="Node" parent="." unique_id=681176957]
-script = ExtResource("4_autostart")
 
 [node name="Background" type="TextureRect" parent="." unique_id=1697466739]
 layout_mode = 1

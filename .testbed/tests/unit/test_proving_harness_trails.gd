@@ -377,14 +377,27 @@ func test_clearing_live_runtime_state_keeps_repo_singleton_alive() -> void:
 	assert_same(get_tree().root.get_node_or_null("AeroCameraTracking"), singleton)
 	assert_true(is_instance_valid(singleton))
 
-func test_singleton_runtime_config_includes_resolved_pose_landmarker_model_path() -> void:
+func test_singleton_runtime_config_includes_prepared_vendor_runtime_facts() -> void:
 	var auto_start_manager: FakeAutoStartManager = add_child_autoqfree(FakeAutoStartManager.new()) as FakeAutoStartManager
 	harness.auto_start_manager = auto_start_manager
 	add_child(harness)
 
 	var runtime_config = harness._build_runtime_config()
 	assert_true(runtime_config is Resource)
-	assert_eq((runtime_config as Resource).get("runtime").get("pose_landmarker_model_path", ""), auto_start_manager.model_asset_path)
+	var runtime: Dictionary = (runtime_config as Resource).get("runtime")
+	var vendor_root := ProjectSettings.globalize_path("res://addons/aerobeat-vendor-mediapipe-python")
+	assert_eq(runtime.get("python_executable", ""), vendor_root.path_join(".venv/bin/python"))
+	assert_eq(runtime.get("entrypoint", ""), vendor_root.path_join("runtime/mediapipe_runtime_probe.py"))
+	assert_eq(runtime.get("working_directory", ""), vendor_root)
+	assert_eq(runtime.get("pose_landmarker_model_path", ""), vendor_root.path_join("models/pose_landmarker_lite.task"))
+
+func test_live_runtime_ready_uses_singleton_lane_without_sidecar_preview_stream() -> void:
+	add_child(harness)
+	harness.provider = Node.new()
+	harness._server_ready = false
+	harness.camera_view = null
+	assert_true(harness._is_live_camera_runtime_ready())
+	assert_false(harness._should_poll_sidecar_runtime_health())
 
 func test_prerecorded_replay_does_not_poll_sidecar_health_as_live_camera_failure() -> void:
 	if harness != null:
