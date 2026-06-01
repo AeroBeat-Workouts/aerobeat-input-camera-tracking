@@ -14,12 +14,8 @@ const MEDIAPIPE_CONFIG_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracki
 const VENDOR_BACKEND_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonCameraTrackingBackend.gd"
 const VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonRuntimeBridge.gd"
 const DEFAULT_BACKEND_ID := "mediapipe_python"
-const AERO_VIDEO_PLAYER_MANAGER_SCRIPT_PATH := "res://addons/aerobeat-tool-video-player/src/AeroVideoPlayerManager.gd"
-const REPLAY_PLAYBACK_BACKEND_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/AeroMediaPipeReplayPlaybackBackend.gd"
 const INTERNAL_TRACKING_NODE_NAME := "CameraTracking"
 const INTERNAL_PROVIDER_NODE_NAME := "CameraTrackingProvider"
-const INTERNAL_REPLAY_PLAYBACK_MANAGER_NODE_NAME := "ReplayPlaybackManager"
-const INTERNAL_REPLAY_PLAYBACK_BACKEND_NODE_NAME := "ReplayPlaybackBackend"
 
 signal state_changed(state: String, detail: Dictionary)
 signal tracking_updated(frame: Dictionary)
@@ -65,9 +61,12 @@ var _tracking_session: Node = null
 var _provider: Node = null
 var _preview_surface: Node = null
 var _last_runtime_config = null
-var _replay_playback_manager: Node = null
-var _replay_playback_backend = null
-var _replay_playback_base_url := ""
+var _replay_source_path := ""
+var _replay_duration_sec := 0.0
+var _replay_position_sec := 0.0
+var _replay_loaded := false
+var _replay_playing := false
+var _replay_started_at_msec := 0
 
 func has_tracking_contract() -> bool:
 	return _tracking_session != null and is_instance_valid(_tracking_session)
@@ -85,7 +84,6 @@ func get_provider() -> Node:
 	return _ensure_provider()
 
 func start_live_camera(camera_id: String = "", config_variant: Variant = null) -> bool:
-	_clear_replay_playback()
 	var runtime_config = _coerce_runtime_config(config_variant)
 	if runtime_config == null:
 		return false
@@ -95,7 +93,6 @@ func start_live_camera(camera_id: String = "", config_variant: Variant = null) -
 	return _start_with_config(runtime_config)
 
 func start_replay(source_path: String, config_variant: Variant = null) -> bool:
-	_clear_replay_playback()
 	var normalized_source := source_path.strip_edges()
 	if normalized_source.is_empty():
 		push_warning("[AeroCameraTracking] Replay start requested without a source path")
@@ -116,8 +113,7 @@ func start(config_variant: Variant = null) -> bool:
 func stop() -> void:
 	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
 		_provider.stop()
-	_clear_replay_playback()
-
+	
 func attach_preview_surface(surface: Node) -> void:
 	_preview_surface = surface
 	var provider := _ensure_provider()
@@ -213,89 +209,91 @@ func reset_runtime_state() -> void:
 	if provider != null and provider.has_method("reset_runtime_state"):
 		provider.reset_runtime_state()
 
-func ensure_replay_playback_loaded(base_url: String) -> bool:
-	var normalized_base_url := _normalize_replay_playback_base_url(base_url)
-	if normalized_base_url.is_empty():
+func ensure_replay_playback_loaded(source_path: String) -> bool:
+	var normalized_source := source_path.strip_edges()
+	if normalized_source.is_empty():
 		return false
-	var manager := _ensure_replay_playback_manager()
-	if manager == null:
-		return false
-	var state: Dictionary = manager.get_state()
-	var loaded_source: Dictionary = state.get("source", {}) if typeof(state.get("source", {})) == TYPE_DICTIONARY else {}
-	if String(loaded_source.get("path", "")) == normalized_base_url and bool(state.get("media_loaded", false)):
-		_replay_playback_base_url = normalized_base_url
-		return true
-	manager.load({
-		"path": normalized_base_url,
-		"kind": "url",
-		"loop": false,
-		"autoplay": false,
-		"rate": 1.0,
-		"metadata": {
-			"source": "input_camera_tracking_replay_http",
-		},
-	})
-	state = manager.get_state()
-	if bool(state.get("media_loaded", false)):
-		_replay_playback_base_url = normalized_base_url
-		return true
-	return false
+	_replay_source_path = normalized_source
+	_replay_loaded = true
+	_replay_duration_sec = maxf(_probe_replay_duration_seconds(normalized_source), _replay_duration_sec)
+	_replay_position_sec = clampf(_replay_position_sec, 0.0, _replay_duration_sec if _replay_duration_sec > 0.0 else _replay_position_sec)
+	return true
 
 func refresh_replay_playback_status() -> Dictionary:
-	var backend = _ensure_replay_playback_backend()
-	if backend == null or not backend.has_method("refresh_status"):
-		return {}
-	var result: Dictionary = backend.refresh_status()
-	return result.duplicate(true)
+	_refresh_replay_playback_state_from_tracking_session()
+	return get_replay_playback_state()
 
 func get_replay_playback_state() -> Dictionary:
-	var manager := _ensure_replay_playback_manager()
-	if manager == null:
-		return {}
-	return manager.get_state()
+	_refresh_replay_playback_state_from_tracking_session()
+	var state_name := "idle"
+	if _replay_loaded:
+		state_name = "playing" if _replay_playing else "paused"
+	return {
+		"state": state_name,
+		"position": _replay_position_sec,
+		"duration": _replay_duration_sec,
+		"media_loaded": _replay_loaded,
+		"source": {
+			"path": _replay_source_path,
+			"kind": "file",
+		},
+		"status": {
+			"current_time_sec": _replay_position_sec,
+			"duration_sec": _replay_duration_sec,
+			"progress": (_replay_position_sec / _replay_duration_sec) if _replay_duration_sec > 0.0 else 0.0,
+			"paused": not _replay_playing,
+			"is_file_source": true,
+		},
+	}
 
 func get_replay_playback_status() -> Dictionary:
-	var state := get_replay_playback_state()
-	var status_variant: Variant = state.get("status", {})
-	if status_variant is Dictionary:
-		return status_variant.duplicate(true)
-	return {}
+	return get_replay_playback_state().get("status", {}).duplicate(true)
 
 func play_replay_playback() -> bool:
-	var manager := _ensure_replay_playback_manager()
-	if manager == null:
+	if not _replay_loaded and _replay_source_path.is_empty():
 		return false
-	manager.play()
-	return String(manager.get_state().get("state", "")) == "playing"
+	if _replay_source_path.is_empty():
+		return false
+	var config = _make_replay_runtime_config(_replay_source_path, _replay_position_sec)
+	if config == null:
+		return false
+	_replay_playing = start_replay(_replay_source_path, config)
+	if _replay_playing:
+		_replay_started_at_msec = Time.get_ticks_msec()
+		_refresh_replay_playback_state_from_tracking_session()
+	return _replay_playing
 
 func pause_replay_playback() -> bool:
-	var manager := _ensure_replay_playback_manager()
-	if manager == null:
-		return false
-	manager.pause()
-	return String(manager.get_state().get("state", "")) == "paused"
+	_refresh_replay_playback_state_from_tracking_session()
+	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
+		_provider.stop()
+	_replay_playing = false
+	return true
 
 func seek_replay_playback(seconds: float) -> bool:
-	var manager := _ensure_replay_playback_manager()
-	if manager == null:
+	if not _replay_loaded and _replay_source_path.is_empty():
 		return false
-	manager.seek(seconds)
-	return _approx_eq(float(manager.get_state().get("position", -1.0)), maxf(seconds, 0.0))
+	_replay_position_sec = maxf(seconds, 0.0)
+	return play_replay_playback()
 
 func unload_replay_playback() -> void:
-	_clear_replay_playback()
+	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
+		_provider.stop()
+	_replay_source_path = ""
+	_replay_duration_sec = 0.0
+	_replay_position_sec = 0.0
+	_replay_loaded = false
+	_replay_playing = false
+	_replay_started_at_msec = 0
 
-func set_replay_playback_transport_request(transport_request: Callable) -> void:
-	var backend = _ensure_replay_playback_backend()
-	if backend != null and backend.has_method("set_transport_request"):
-		backend.set_transport_request(transport_request)
+func set_replay_playback_transport_request(_transport_request: Callable) -> void:
+	pass
 
 func get_replay_playback_backend():
-	return _ensure_replay_playback_backend()
+	return null
 
 func has_replay_playback_loaded() -> bool:
-	var state := get_replay_playback_state()
-	return bool(state.get("media_loaded", false))
+	return _replay_loaded
 
 func set_tracking_session(session: Node) -> void:
 	if _tracking_session == session:
@@ -353,45 +351,52 @@ func _ensure_provider() -> Node:
 	_connect_provider_signals()
 	return _provider
 
-func _ensure_replay_playback_manager() -> Node:
-	if _replay_playback_manager != null and is_instance_valid(_replay_playback_manager):
-		return _replay_playback_manager
-	var manager_script: Variant = _load_script(AERO_VIDEO_PLAYER_MANAGER_SCRIPT_PATH)
-	if manager_script == null:
-		push_error("[AeroCameraTracking] AeroVideoPlayerManager script is not available")
-		return null
-	_replay_playback_manager = manager_script.new()
-	_replay_playback_manager.name = INTERNAL_REPLAY_PLAYBACK_MANAGER_NODE_NAME
-	var backend = _ensure_replay_playback_backend()
-	if backend == null:
-		_replay_playback_manager = null
-		return null
-	_replay_playback_manager.set_backend(backend)
-	add_child(_replay_playback_manager)
-	return _replay_playback_manager
+func get_current_preview_descriptor() -> Dictionary:
+	if has_tracking_contract() and _tracking_session.has_method("get_preview_descriptor"):
+		return _tracking_session.get_preview_descriptor()
+	return {}
 
-func _ensure_replay_playback_backend():
-	if _replay_playback_backend != null and is_instance_valid(_replay_playback_backend):
-		return _replay_playback_backend
-	var backend_script: Variant = _load_script(REPLAY_PLAYBACK_BACKEND_SCRIPT_PATH)
-	if backend_script == null:
-		push_error("[AeroCameraTracking] Replay playback backend script is not available")
+func get_current_playback_status() -> Dictionary:
+	var backend = _tracking_session.get("_backend") if has_tracking_contract() else null
+	if backend != null and backend.has_method("get_playback_status"):
+		return backend.get_playback_status()
+	return {}
+
+func _refresh_replay_playback_state_from_tracking_session() -> void:
+	var status := get_current_playback_status()
+	if status.is_empty():
+		return
+	_replay_duration_sec = maxf(float(status.get("duration_sec", _replay_duration_sec)), _replay_duration_sec)
+	_replay_position_sec = maxf(float(status.get("current_time_sec", _replay_position_sec)), 0.0)
+	_replay_playing = not bool(status.get("paused", false)) and String(status.get("state", "playing")) != "ended"
+	_replay_loaded = _replay_loaded or bool(status.get("is_file_source", false))
+
+func _make_replay_runtime_config(source_path: String, start_time_sec: float):
+	var config = _coerce_runtime_config(_last_runtime_config if _last_runtime_config != null else {})
+	if config == null:
 		return null
-	_replay_playback_backend = backend_script.new()
-	return _replay_playback_backend
+	if config.has_method("set_selected_camera_device_id"):
+		config.set_selected_camera_device_id(source_path)
+	if config.get("vendor") is Dictionary:
+		var vendor_config: Dictionary = config.vendor.duplicate(true)
+		if not vendor_config.has("source") or not vendor_config["source"] is Dictionary:
+			vendor_config["source"] = {}
+		(vendor_config["source"] as Dictionary)["start_time_sec"] = maxf(start_time_sec, 0.0)
+		config.vendor = vendor_config
+	return config
 
-func _clear_replay_playback() -> void:
-	_replay_playback_base_url = ""
-	if _replay_playback_manager != null and is_instance_valid(_replay_playback_manager) and _replay_playback_manager.has_method("unload"):
-		_replay_playback_manager.unload()
-
-func _normalize_replay_playback_base_url(base_url: String) -> String:
-	var trimmed := base_url.strip_edges().trim_suffix("/")
-	if trimmed.ends_with("/playback"):
-		trimmed = trimmed.trim_suffix("/playback")
-	if trimmed.ends_with("/camera"):
-		trimmed = trimmed.trim_suffix("/camera")
-	return trimmed
+func _probe_replay_duration_seconds(source_path: String) -> float:
+	var output: Array = []
+	var args := PackedStringArray([
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		source_path,
+	])
+	var exit_code := OS.execute("ffprobe", args, output, true)
+	if exit_code != 0 or output.is_empty():
+		return 0.0
+	return maxf(String(output[0]).strip_edges().to_float(), 0.0)
 
 func _approx_eq(a: float, b: float, epsilon: float = 0.0001) -> bool:
 	return absf(a - b) <= epsilon

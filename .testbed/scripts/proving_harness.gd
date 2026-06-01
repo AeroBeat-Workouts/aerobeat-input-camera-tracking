@@ -3,6 +3,7 @@ extends Control
 
 const MediaPipeProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/mediapipe_provider.gd")
 const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
+const TruthfulPreviewSurfaceScript = preload("res://scripts/truthful_preview_surface.gd")
 const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const VENDOR_REPO_ROOT := "res://addons/aerobeat-vendor-mediapipe-python"
@@ -205,7 +206,7 @@ enum TrackingSmoothingStyle {
 
 var provider: Node = null
 var auto_start_manager: Node = null
-var camera_view: MediaPipeCameraView = null
+var camera_view: TextureRect = null
 var _frame_count := 0
 var _server_ready := false
 var _latest_landmarks: Array = []
@@ -678,6 +679,10 @@ func _apply_live_camera_source(device_id: String) -> bool:
 		return false
 	_selected_live_camera_device_id = _normalize_live_camera_device_id(device_id)
 	_server_ready = false
+	if _uses_camera_tracking_contract_path():
+		_clear_live_camera_runtime_state()
+		_start_provider()
+		return await _await_live_camera_runtime_ready()
 	if auto_start_manager == null:
 		return false
 	_camera_switch_cleanup_pending = true
@@ -709,7 +714,7 @@ func _clear_live_camera_runtime_state() -> void:
 		if is_instance_valid(provider) and provider != tracking_singleton:
 			provider.queue_free()
 		provider = null
-	if camera_view != null and camera_view.is_streaming():
+	if camera_view != null and camera_view.has_method("is_streaming") and camera_view.is_streaming():
 		camera_view.stop_stream()
 
 func _await_live_camera_runtime_ready(timeout_ms: int = 8000) -> bool:
@@ -722,7 +727,7 @@ func _await_live_camera_runtime_ready(timeout_ms: int = 8000) -> bool:
 
 func _is_live_camera_runtime_ready() -> bool:
 	if _uses_camera_tracking_contract_path():
-		return provider != null
+		return provider != null and _resolve_camera_tracking_singleton() != null
 	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
 		return true
 	if not _server_ready:
@@ -776,6 +781,7 @@ func _setup_auto_start() -> void:
 
 func _process(_delta: float) -> void:
 	_frame_count += 1
+	_refresh_contract_preview_surface()
 
 	if _is_preview_only_mode():
 		_audit_preview_only_surface()
@@ -866,8 +872,12 @@ func _start_provider() -> void:
 		_update_status("AeroCameraTracking singleton missing", Color.RED)
 		return
 	provider = tracking_singleton
+	if _uses_camera_tracking_contract_path():
+		_ensure_contract_preview_surface()
 	if provider.has_method("attach_preview_surface"):
 		provider.attach_preview_surface(camera_display)
+	if provider.has_signal("preview_changed") and not provider.preview_changed.is_connected(_on_contract_preview_changed):
+		provider.preview_changed.connect(_on_contract_preview_changed)
 
 	provider.pose_updated.connect(_on_pose_updated)
 	provider.tracking_lost.connect(_on_tracking_lost)
@@ -1298,6 +1308,45 @@ func _on_tracking_restored() -> void:
 	_record_event("tracking_restored", {})
 	_record_fixture_state_snapshot("tracking_restored")
 
+func _ensure_contract_preview_surface() -> void:
+	if camera_display != null and camera_display.get_script() == TruthfulPreviewSurfaceScript:
+		return
+	var preview_surface := TruthfulPreviewSurfaceScript.new()
+	preview_surface.name = "CameraDisplay"
+	var previous_display := camera_display
+	if previous_display:
+		preview_surface.custom_minimum_size = previous_display.custom_minimum_size
+		preview_surface.layout_mode = previous_display.layout_mode
+		preview_surface.size_flags_horizontal = previous_display.size_flags_horizontal
+		preview_surface.size_flags_vertical = previous_display.size_flags_vertical
+		preview_surface.size_flags_stretch_ratio = previous_display.size_flags_stretch_ratio
+		preview_surface.expand_mode = previous_display.expand_mode
+		preview_surface.stretch_mode = previous_display.stretch_mode
+		previous_display.replace_by(preview_surface)
+		if landmark_drawer:
+			landmark_drawer.reparent(preview_surface)
+		if trail_drawer:
+			trail_drawer.reparent(preview_surface)
+		previous_display.queue_free()
+	camera_display = preview_surface
+	camera_view = preview_surface
+	_ensure_overlay_drawers_ready()
+
+func _on_contract_preview_changed(descriptor: Dictionary) -> void:
+	if camera_display != null and camera_display.has_method("apply_preview_descriptor"):
+		camera_display.apply_preview_descriptor(descriptor)
+
+func _refresh_contract_preview_surface() -> void:
+	if not _uses_camera_tracking_contract_path():
+		return
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton == null or not tracking_singleton.has_method("get_current_preview_descriptor"):
+		return
+	var descriptor: Dictionary = tracking_singleton.get_current_preview_descriptor()
+	if descriptor.is_empty():
+		return
+	_on_contract_preview_changed(descriptor)
+
 func _start_camera_feed() -> void:
 	camera_view = MediaPipeCameraViewScript.new()
 	camera_view.name = "CameraView"
@@ -1329,7 +1378,7 @@ func _start_camera_feed() -> void:
 		previous_display.queue_free()
 
 	await get_tree().process_frame
-	var stream_started := await camera_view.start_stream()
+	var stream_started: bool = bool(await camera_view.start_stream())
 	if not stream_started:
 		_record_event("camera_stream_failed", {})
 
@@ -1547,11 +1596,7 @@ func _load_playback_source_if_needed() -> bool:
 	return true
 
 func _playback_base_url() -> String:
-	var source_url := camera_view.stream_url if camera_view != null else "http://127.0.0.1:4243/camera"
-	var slash_index := source_url.rfind("/")
-	if slash_index <= 0:
-		return source_url.strip_edges()
-	return source_url.substr(0, slash_index)
+	return _get_effective_camera_source().strip_edges()
 
 func _refresh_playback_controls_visibility() -> void:
 	var playback_visible := _is_prerecorded_source_active()
@@ -2410,17 +2455,22 @@ func _get_configured_live_camera_source() -> String:
 	return "0"
 
 func _get_effective_camera_source() -> String:
+	var explicit_override := _get_scene_camera_source_override()
+	if _is_prerecorded_source_active() and not explicit_override.is_empty():
+		return ProjectSettings.globalize_path(explicit_override) if not explicit_override.is_valid_int() else explicit_override
 	var tracking_session := _resolve_camera_tracking_session()
 	if tracking_session != null and tracking_session.has_method("get_active_config"):
 		var active_config_variant: Variant = tracking_session.get_active_config()
 		if active_config_variant is Dictionary:
 			var source: Dictionary = (active_config_variant as Dictionary).get("source", {})
+			var source_path := String(source.get("path", "")).strip_edges()
+			if not source_path.is_empty():
+				return source_path
 			var camera_id := String(source.get("camera_id", "")).strip_edges()
 			if not camera_id.is_empty():
 				return camera_id
 	if auto_start_manager != null and auto_start_manager.has_method("get_active_camera_source"):
 		return String(auto_start_manager.get_active_camera_source())
-	var explicit_override := _get_scene_camera_source_override()
 	if not explicit_override.is_empty():
 		return ProjectSettings.globalize_path(explicit_override) if not explicit_override.is_valid_int() else explicit_override
 	return _get_configured_live_camera_source()
@@ -2503,7 +2553,9 @@ func _server_status_text() -> String:
 func _camera_status_text(active_label: String, inactive_label: String) -> String:
 	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
 		return "disabled"
-	return active_label if camera_view and camera_view.is_streaming() else inactive_label
+	if _uses_camera_tracking_contract_path():
+		return active_label if provider != null else inactive_label
+	return active_label if camera_view and camera_view.has_method("is_streaming") and camera_view.is_streaming() else inactive_label
 
 func _tracking_status_text(state: Dictionary) -> String:
 	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
@@ -2625,14 +2677,15 @@ func _stop_everything(reason: String = "unknown") -> void:
 	_playback_visibility_active = false
 	_playback_autoplay_pending = false
 	_playback_autoplay_base_url = ""
-	if camera_view and camera_view.is_streaming():
+	if camera_view and camera_view.has_method("is_streaming") and camera_view.is_streaming():
 		camera_view.stop_stream()
 	if camera_view and is_instance_valid(camera_view):
 		camera_view.queue_free()
 	camera_view = null
 
 	if provider:
-		provider.stop()
+		if provider.has_method("stop"):
+			provider.stop()
 		var tracking_singleton := _resolve_camera_tracking_singleton()
 		if is_instance_valid(provider) and provider != tracking_singleton:
 			provider.queue_free()

@@ -262,15 +262,6 @@ func test_load_available_camera_devices_prefers_repo_singleton_contract_lane() -
 func test_replay_proving_prefers_singleton_playback_controller() -> void:
 	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
 	assert_not_null(singleton)
-	singleton.set_replay_playback_transport_request(Callable(self, "_fake_replay_transport_request"))
-	_replay_responses["http://127.0.0.1:4243/playback"] = {
-		"success": true,
-		"body": {"paused": false, "current_time_sec": 2.0, "duration_sec": 8.0, "progress": 0.25},
-	}
-	_replay_responses["http://127.0.0.1:4243/playback/play"] = {
-		"success": true,
-		"body": {"paused": false, "current_time_sec": 2.0, "duration_sec": 8.0, "progress": 0.25},
-	}
 
 	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
 	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
@@ -283,27 +274,15 @@ func test_replay_proving_prefers_singleton_playback_controller() -> void:
 	assert_true(harness._load_playback_source_if_needed())
 	harness._refresh_playback_status(true)
 	assert_true(singleton.has_replay_playback_loaded())
-	assert_eq(float(harness._playback_status.get("current_time_sec", 0.0)), 2.0)
-	assert_eq([
-		"http://127.0.0.1:4243/playback",
-		"http://127.0.0.1:4243/playback/play",
-		"http://127.0.0.1:4243/playback",
-	], _replay_requests)
+	assert_eq(String(singleton.get_replay_playback_state().get("source", {}).get("path", "")), ProjectSettings.globalize_path(harness.prerecorded_video_source))
+	assert_eq([], _replay_requests)
 	assert_false(bool(harness._playback_status.get("paused", true)))
 
 func test_replay_proving_autoplays_when_same_source_is_already_loaded_but_paused() -> void:
 	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")
 	assert_not_null(singleton)
-	singleton.set_replay_playback_transport_request(Callable(self, "_fake_replay_transport_request"))
-	_replay_responses["http://127.0.0.1:4243/playback"] = {
-		"success": true,
-		"body": {"paused": true, "current_time_sec": 0.0, "duration_sec": 8.0, "progress": 0.0},
-	}
-	_replay_responses["http://127.0.0.1:4243/playback/play"] = {
-		"success": true,
-		"body": {"paused": false, "current_time_sec": 0.0, "duration_sec": 8.0, "progress": 0.0},
-	}
-	assert_true(singleton.ensure_replay_playback_loaded("http://127.0.0.1:4243/camera"))
+	var replay_path := ProjectSettings.globalize_path("res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+	assert_true(singleton.ensure_replay_playback_loaded(replay_path))
 	assert_true(singleton.has_replay_playback_loaded())
 
 	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
@@ -314,10 +293,7 @@ func test_replay_proving_autoplays_when_same_source_is_already_loaded_but_paused
 	add_child(harness)
 
 	assert_true(harness._load_playback_source_if_needed())
-	assert_eq([
-		"http://127.0.0.1:4243/playback",
-		"http://127.0.0.1:4243/playback/play",
-	], _replay_requests)
+	assert_eq([], _replay_requests)
 	assert_false(harness._playback_autoplay_pending)
 
 func test_prerecorded_visibility_refresh_stays_active_in_godot_only_replay_mode() -> void:

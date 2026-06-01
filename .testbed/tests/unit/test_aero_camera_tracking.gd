@@ -4,13 +4,8 @@ const AeroCameraTrackingScript = preload("res://addons/aerobeat-input-camera-tra
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
-var _replay_requests: Array[String] = []
-var _replay_responses: Dictionary = {}
-
 func before_each() -> void:
-	_replay_requests.clear()
-	_replay_responses.clear()
-
+	pass
 
 func test_aero_camera_tracking_starts_live_camera_and_reemits_tracking_and_flow_updates() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
@@ -86,51 +81,22 @@ func test_aero_camera_tracking_starts_replay_sources_through_camera_tracking_con
 	assert_eq(String(source.get("kind", "")), "video_file")
 	assert_eq(String(source.get("path", "")), "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
 
-func test_aero_camera_tracking_owns_replay_playback_facade_for_proving_consumers() -> void:
-	_replay_responses["http://127.0.0.1:4243/playback"] = {
-		"success": true,
-		"body": {"paused": true, "current_time_sec": 1.5, "duration_sec": 10.0, "progress": 0.15},
-	}
-	_replay_responses["http://127.0.0.1:4243/playback/play"] = {
-		"success": true,
-		"body": {"paused": false, "current_time_sec": 1.5, "duration_sec": 10.0, "progress": 0.15},
-	}
-	_replay_responses["http://127.0.0.1:4243/playback/pause"] = {
-		"success": true,
-		"body": {"paused": true, "current_time_sec": 1.5, "duration_sec": 10.0, "progress": 0.15},
-	}
-	_replay_responses["http://127.0.0.1:4243/playback/seek?seconds=4.000000"] = {
-		"success": true,
-		"body": {"paused": true, "current_time_sec": 4.0, "duration_sec": 10.0, "progress": 0.4},
-	}
-
+func test_aero_camera_tracking_owns_replay_playback_facade_for_vendor_backed_proving_consumers() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
-	singleton.set_replay_playback_transport_request(Callable(self, "_fake_replay_transport_request"))
+	var tracker = CameraTrackingScript.new()
+	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+	singleton.set_tracking_session(tracker)
 
-	assert_true(singleton.ensure_replay_playback_loaded("http://127.0.0.1:4243/camera"))
+	var replay_path := ProjectSettings.globalize_path("res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+	assert_true(singleton.ensure_replay_playback_loaded(replay_path))
 	assert_true(singleton.has_replay_playback_loaded())
-	assert_eq(String(singleton.get_replay_playback_state().get("source", {}).get("path", "")), "http://127.0.0.1:4243")
+	assert_eq(String(singleton.get_replay_playback_state().get("source", {}).get("path", "")), replay_path)
 	assert_true(singleton.play_replay_playback())
+	assert_eq(String(tracker.get_active_config().get("source", {}).get("path", "")), replay_path)
 	assert_true(singleton.pause_replay_playback())
 	assert_true(singleton.seek_replay_playback(4.0))
-	assert_eq(float(singleton.get_replay_playback_state().get("position", 0.0)), 4.0)
-	assert_eq([
-		"http://127.0.0.1:4243/playback",
-		"http://127.0.0.1:4243/playback/play",
-		"http://127.0.0.1:4243/playback/pause",
-		"http://127.0.0.1:4243/playback/seek?seconds=4.000000",
-	], _replay_requests)
+	assert_eq(String(tracker.get_active_config().get("source", {}).get("path", "")), replay_path)
+	assert_true(float((tracker.get_active_config().get("vendor", {}) as Dictionary).get("source", {}).get("start_time_sec", 0.0)) >= 4.0)
 
 	singleton.unload_replay_playback()
 	assert_false(singleton.has_replay_playback_loaded())
-
-func _fake_replay_transport_request(url: String) -> Dictionary:
-	_replay_requests.append(url)
-	if _replay_responses.has(url):
-		return _replay_responses[url]
-	return {
-		"success": false,
-		"code": "missing_stub",
-		"message": "No stubbed response for %s" % url,
-		"detail": {"url": url},
-	}
