@@ -60,6 +60,41 @@ class FakeAutoStartManager:
 	func get_model_asset_path() -> String:
 		return model_asset_path
 
+class FakeSignalProvider:
+	extends Node
+
+	signal punch_left(power: float)
+	signal preview_changed(descriptor: Dictionary)
+	signal pose_updated(landmarks: Array)
+	signal tracking_lost()
+	signal tracking_restored()
+
+class ContractAwareHarness:
+	extends TestProvingHarness
+
+	var fake_singleton: Node = null
+
+	func _resolve_camera_tracking_singleton() -> Node:
+		return fake_singleton
+
+class FakeTrackingSingleton:
+	extends Node
+
+	var selected_camera_device_id := "/dev/video0"
+	var set_selected_calls := 0
+	var stop_calls := 0
+
+	func set_selected_camera_device_id(device_id: String) -> bool:
+		set_selected_calls += 1
+		selected_camera_device_id = device_id
+		return true
+
+	func get_selected_camera_device_id() -> String:
+		return selected_camera_device_id
+
+	func stop() -> void:
+		stop_calls += 1
+
 var harness: ProvingHarness = null
 var _replay_requests: Array[String] = []
 var _replay_responses: Dictionary = {}
@@ -365,11 +400,64 @@ func test_singleton_runtime_config_includes_prepared_vendor_runtime_facts() -> v
 	assert_eq(runtime.get("python_executable", ""), vendor_root.path_join(".venv/bin/python"))
 	assert_eq(runtime.get("entrypoint", ""), vendor_root.path_join("runtime/mediapipe_runtime_probe.py"))
 	assert_eq(runtime.get("working_directory", ""), vendor_root)
-	assert_eq(runtime.get("pose_landmarker_model_path", ""), vendor_root.path_join("models/pose_landmarker_lite.task"))
+	assert_eq(runtime.get("pose_landmarker_model_path", ""), vendor_root.path_join("models/pose_landmarker_full.task"))
+	assert_eq(int(runtime.get("model_complexity", -1)), 1)
+
+func test_singleton_runtime_config_tracks_selected_model_complexity_truthfully() -> void:
+	add_child(harness)
+	harness.tracking_smoothing_style = harness.TrackingSmoothingStyle.HEAVY_FILTERED
+	var heavy_runtime: Dictionary = (harness._build_runtime_config() as Resource).get("runtime")
+	assert_eq(int(heavy_runtime.get("model_complexity", -1)), 2)
+	assert_true(String(heavy_runtime.get("pose_landmarker_model_path", "")).ends_with("models/pose_landmarker_heavy.task"))
+
+	harness.tracking_smoothing_style = harness.TrackingSmoothingStyle.LITE_RAW
+	var lite_runtime: Dictionary = (harness._build_runtime_config() as Resource).get("runtime")
+	assert_eq(int(lite_runtime.get("model_complexity", -1)), 0)
+	assert_true(String(lite_runtime.get("pose_landmarker_model_path", "")).ends_with("models/pose_landmarker_lite.task"))
+
+func test_camera_picker_accepts_camera_id_only_device_entries() -> void:
+	harness._camera_devices = [
+		{"camera_id": "/dev/video7", "label": "USB camera"},
+		{"camera_id": "/dev/video9", "label": "Second USB camera"},
+	]
+	assert_eq(harness._first_camera_device_id(harness._camera_devices), "/dev/video7")
+	assert_true(harness._device_list_has_id(harness._camera_devices, "/dev/video9"))
+	assert_eq(harness._camera_device_label(harness._camera_devices[0]), "USB camera (/dev/video7)")
+
+func test_connect_mode_signals_does_not_stack_boxing_relays() -> void:
+	var signal_provider := add_child_autoqfree(FakeSignalProvider.new()) as FakeSignalProvider
+	harness.provider = signal_provider
+	harness.harness_mode = harness.HarnessMode.BOXING
+	harness._connect_mode_signals()
+	harness._connect_mode_signals()
+	signal_provider.punch_left.emit(0.75)
+	assert_eq(harness._event_count("punch_left"), 1)
+
+func test_contract_camera_switch_uses_in_session_change_seam_without_restart_churn() -> void:
+	if harness != null:
+		harness.free()
+	harness = ContractAwareHarness.new()
+	var fake_singleton := FakeTrackingSingleton.new()
+	harness.fake_singleton = fake_singleton
+	harness.provider = fake_singleton
+	harness._selected_live_camera_device_id = "/dev/video0"
+	add_child(harness)
+	harness.add_child(fake_singleton)
+	var controls := Control.new()
+	var picker := OptionButton.new()
+	harness.add_child(controls)
+	harness.add_child(picker)
+	harness.camera_source_controls = controls
+	harness.camera_source_picker = picker
+
+	assert_true(await harness._apply_live_camera_source("/dev/video7"))
+	assert_eq(fake_singleton.set_selected_calls, 1)
+	assert_eq(fake_singleton.stop_calls, 0)
+	assert_eq(harness._selected_live_camera_device_id, "/dev/video7")
 
 func test_live_runtime_ready_uses_singleton_lane_without_sidecar_preview_stream() -> void:
 	add_child(harness)
-	harness.provider = Node.new()
+	harness.provider = add_child_autoqfree(Node.new())
 	harness._server_ready = false
 	harness.camera_view = null
 	assert_true(harness._is_live_camera_runtime_ready())

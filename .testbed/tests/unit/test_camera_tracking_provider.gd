@@ -102,6 +102,21 @@ func test_camera_tracking_provider_attaches_preview_and_can_change_camera_id() -
 	assert_eq(provider.get_available_camera_devices().size(), 2)
 	assert_true(provider.set_selected_camera_device_id("/dev/video3"))
 	assert_eq(String(tracker.get_active_config().get("source", {}).get("camera_id", "")), "/dev/video3")
+	assert_eq(String(tracker.get_active_config().get("source", {}).get("id", "")), "/dev/video3")
+
+func test_camera_tracking_provider_reads_and_normalizes_legacy_live_camera_source_id_shape() -> void:
+	var tracker = add_child_autoqfree(CameraTrackingScript.new())
+	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+	tracker.start({
+		"source": {"kind": "live_camera", "id": "/dev/video7"},
+	})
+
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.set_tracking_session(tracker)
+	assert_eq(provider.get_selected_camera_device_id(), "/dev/video7")
+	assert_true(provider.set_selected_camera_device_id("/dev/video9"))
+	assert_eq(String(tracker.get_active_config().get("source", {}).get("camera_id", "")), "/dev/video9")
+	assert_eq(String(tracker.get_active_config().get("source", {}).get("id", "")), "/dev/video9")
 
 func test_camera_tracking_provider_emits_tracking_edges_when_frame_state_changes() -> void:
 	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())

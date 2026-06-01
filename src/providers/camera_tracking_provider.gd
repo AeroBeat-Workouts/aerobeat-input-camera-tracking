@@ -197,7 +197,7 @@ func get_selected_camera_device_id() -> String:
 	var source_kind := String(source.get("kind", "")).strip_edges()
 	if source_kind == "video_file":
 		return String(source.get("path", "")).strip_edges()
-	return String(source.get("camera_id", "")).strip_edges()
+	return _get_live_camera_source_id(source)
 
 func set_selected_camera_device_id(device_id: String) -> bool:
 	if _tracking_session == null or not _tracking_session.has_method("get_active_config") or not _tracking_session.has_method("change"):
@@ -214,6 +214,7 @@ func set_selected_camera_device_id(device_id: String) -> bool:
 		return false
 	source["kind"] = "live_camera"
 	source["camera_id"] = device_id
+	source["id"] = device_id
 	_tracking_session.change(next_config)
 	return true
 
@@ -342,6 +343,15 @@ func _get_tracking_source_config() -> Dictionary:
 		return {}
 	var source: Variant = active_config.get("source", {})
 	return source.duplicate(true) if source is Dictionary else {}
+
+func _get_live_camera_source_id(source: Dictionary) -> String:
+	var camera_id := String(source.get("camera_id", "")).strip_edges()
+	if not camera_id.is_empty():
+		return camera_id
+	var legacy_id := String(source.get("id", "")).strip_edges()
+	if not legacy_id.is_empty():
+		return legacy_id
+	return String(source.get("path", "")).strip_edges()
 
 func _ensure_detector_substrate() -> void:
 	if _detector_substrate != null:

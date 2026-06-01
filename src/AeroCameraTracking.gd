@@ -168,7 +168,7 @@ func get_selected_camera_device_id() -> String:
 	var source: Dictionary = get_active_config().get("source", {})
 	if String(source.get("kind", "")).strip_edges() == "video_file":
 		return String(source.get("path", "")).strip_edges()
-	return String(source.get("camera_id", "")).strip_edges()
+	return _get_live_camera_source_id(source)
 
 func set_selected_camera_device_id(device_id: String) -> bool:
 	var provider := _ensure_provider()
@@ -370,6 +370,15 @@ func _refresh_replay_playback_state_from_tracking_session() -> void:
 	_replay_position_sec = maxf(float(status.get("current_time_sec", _replay_position_sec)), 0.0)
 	_replay_playing = not bool(status.get("paused", false)) and String(status.get("state", "playing")) != "ended"
 	_replay_loaded = _replay_loaded or bool(status.get("is_file_source", false))
+
+func _get_live_camera_source_id(source: Dictionary) -> String:
+	var camera_id := String(source.get("camera_id", "")).strip_edges()
+	if not camera_id.is_empty():
+		return camera_id
+	var legacy_id := String(source.get("id", "")).strip_edges()
+	if not legacy_id.is_empty():
+		return legacy_id
+	return String(source.get("path", "")).strip_edges()
 
 func _make_replay_runtime_config(source_path: String, start_time_sec: float):
 	var config = _coerce_runtime_config(_last_runtime_config if _last_runtime_config != null else {})

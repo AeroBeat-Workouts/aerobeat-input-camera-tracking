@@ -10,7 +10,9 @@ const VENDOR_REPO_ROOT := "res://addons/aerobeat-vendor-mediapipe-python"
 const VENDOR_RUNTIME_ENTRYPOINT := "runtime/mediapipe_runtime_probe.py"
 const VENDOR_RUNTIME_LINUX_PYTHON := ".venv/bin/python"
 const VENDOR_RUNTIME_WINDOWS_PYTHON := ".venv/Scripts/python.exe"
-const VENDOR_DEFAULT_MODEL := "models/pose_landmarker_lite.task"
+const VENDOR_MODEL_LITE := "models/pose_landmarker_lite.task"
+const VENDOR_MODEL_FULL := "models/pose_landmarker_full.task"
+const VENDOR_MODEL_HEAVY := "models/pose_landmarker_heavy.task"
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -207,6 +209,7 @@ enum TrackingSmoothingStyle {
 var provider: Node = null
 var auto_start_manager: Node = null
 var camera_view: TextureRect = null
+var _provider_mode_signal_relays: Dictionary = {}
 var _frame_count := 0
 var _server_ready := false
 var _latest_landmarks: Array = []
@@ -599,12 +602,20 @@ func _resolve_default_live_camera_device_id(devices: Array) -> String:
 		return normalized
 	return _first_camera_device_id(devices)
 
+func _camera_device_id(device: Dictionary) -> String:
+	var device_id := String(device.get("id", "")).strip_edges()
+	if not device_id.is_empty():
+		return device_id
+	var camera_id := String(device.get("camera_id", "")).strip_edges()
+	if not camera_id.is_empty():
+		return camera_id
+	return String(device.get("path", "")).strip_edges()
+
 func _first_camera_device_id(devices: Array) -> String:
 	for device_variant: Variant in devices:
 		if not device_variant is Dictionary:
 			continue
-		var device: Dictionary = device_variant
-		var device_id := String(device.get("id", "")).strip_edges()
+		var device_id := _camera_device_id(device_variant as Dictionary)
 		if not device_id.is_empty():
 			return device_id
 	return ""
@@ -613,7 +624,7 @@ func _device_list_has_id(devices: Array, device_id: String) -> bool:
 	for device_variant: Variant in devices:
 		if not device_variant is Dictionary:
 			continue
-		if String((device_variant as Dictionary).get("id", "")).strip_edges() == device_id:
+		if _camera_device_id(device_variant as Dictionary) == device_id:
 			return true
 	return false
 
@@ -628,7 +639,7 @@ func _populate_camera_source_picker() -> void:
 		if not device_variant is Dictionary:
 			continue
 		var device: Dictionary = device_variant
-		var device_id := String(device.get("id", "")).strip_edges()
+		var device_id := _camera_device_id(device)
 		var label := _camera_device_label(device)
 		camera_source_picker.add_item(label)
 		var item_index := camera_source_picker.item_count - 1
@@ -645,7 +656,7 @@ func _populate_camera_source_picker() -> void:
 
 func _camera_device_label(device: Dictionary) -> String:
 	var label := String(device.get("label", "")).strip_edges()
-	var device_id := String(device.get("id", "")).strip_edges()
+	var device_id := _camera_device_id(device)
 	if label.is_empty():
 		label = device_id
 	if label == device_id or device_id.is_empty():
@@ -680,9 +691,7 @@ func _apply_live_camera_source(device_id: String) -> bool:
 	_selected_live_camera_device_id = _normalize_live_camera_device_id(device_id)
 	_server_ready = false
 	if _uses_camera_tracking_contract_path():
-		_clear_live_camera_runtime_state()
-		_start_provider()
-		return await _await_live_camera_runtime_ready()
+		return await _apply_contract_live_camera_source(_selected_live_camera_device_id)
 	if auto_start_manager == null:
 		return false
 	_camera_switch_cleanup_pending = true
@@ -699,7 +708,22 @@ func _apply_live_camera_source(device_id: String) -> bool:
 		return false
 	return await _await_live_camera_runtime_ready()
 
-func _clear_live_camera_runtime_state() -> void:
+func _apply_contract_live_camera_source(device_id: String) -> bool:
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton == null or not tracking_singleton.has_method("set_selected_camera_device_id"):
+		return false
+	_clear_live_camera_runtime_visual_state()
+	var switched := bool(tracking_singleton.set_selected_camera_device_id(device_id))
+	if not switched:
+		return false
+	if tracking_singleton.has_method("get_selected_camera_device_id"):
+		_selected_live_camera_device_id = _normalize_live_camera_device_id(String(tracking_singleton.get_selected_camera_device_id()))
+	_server_ready = true
+	await get_tree().process_frame
+	_refresh_contract_preview_surface()
+	return await _await_live_camera_runtime_ready()
+
+func _clear_live_camera_runtime_visual_state() -> void:
 	_latest_landmarks.clear()
 	_latest_state.clear()
 	_left_trail.clear()
@@ -708,7 +732,11 @@ func _clear_live_camera_runtime_state() -> void:
 		landmark_drawer.clear_landmarks()
 	if trail_drawer:
 		trail_drawer.clear_trails()
+
+func _clear_live_camera_runtime_state() -> void:
+	_clear_live_camera_runtime_visual_state()
 	if provider != null:
+		_disconnect_provider_signals(provider)
 		provider.stop()
 		var tracking_singleton := _resolve_camera_tracking_singleton()
 		if is_instance_valid(provider) and provider != tracking_singleton:
@@ -767,14 +795,22 @@ func _setup_auto_start() -> void:
 		or skip_linux_video0_fuser_cleanup_on_close_debug:
 		print("[ProvingHarness][%s] Narrow close-path debug enabled: stop_mode=%s" % [_mode_name(), _get_close_path_stop_mode_label()])
 
-	auto_start_manager.server_started.connect(_on_server_started)
-	auto_start_manager.server_failed.connect(_on_server_failed)
-	auto_start_manager.server_stopped.connect(_on_server_stopped)
-	auto_start_manager.python_not_found.connect(_on_python_not_found)
-	auto_start_manager.mediapipe_not_found.connect(_on_mediapipe_not_found)
-	auto_start_manager.check_progress.connect(_on_check_progress)
-	auto_start_manager.installation_progress.connect(_on_install_progress)
-	auto_start_manager.installation_complete.connect(_on_install_complete)
+	if not auto_start_manager.server_started.is_connected(_on_server_started):
+		auto_start_manager.server_started.connect(_on_server_started)
+	if not auto_start_manager.server_failed.is_connected(_on_server_failed):
+		auto_start_manager.server_failed.connect(_on_server_failed)
+	if not auto_start_manager.server_stopped.is_connected(_on_server_stopped):
+		auto_start_manager.server_stopped.connect(_on_server_stopped)
+	if not auto_start_manager.python_not_found.is_connected(_on_python_not_found):
+		auto_start_manager.python_not_found.connect(_on_python_not_found)
+	if not auto_start_manager.mediapipe_not_found.is_connected(_on_mediapipe_not_found):
+		auto_start_manager.mediapipe_not_found.connect(_on_mediapipe_not_found)
+	if not auto_start_manager.check_progress.is_connected(_on_check_progress):
+		auto_start_manager.check_progress.connect(_on_check_progress)
+	if not auto_start_manager.installation_progress.is_connected(_on_install_progress):
+		auto_start_manager.installation_progress.connect(_on_install_progress)
+	if not auto_start_manager.installation_complete.is_connected(_on_install_complete):
+		auto_start_manager.installation_complete.connect(_on_install_complete)
 
 	if not auto_start_manager.auto_start:
 		await auto_start_manager.start_server()
@@ -876,13 +912,7 @@ func _start_provider() -> void:
 		_ensure_contract_preview_surface()
 	if provider.has_method("attach_preview_surface"):
 		provider.attach_preview_surface(camera_display)
-	if provider.has_signal("preview_changed") and not provider.preview_changed.is_connected(_on_contract_preview_changed):
-		provider.preview_changed.connect(_on_contract_preview_changed)
-
-	provider.pose_updated.connect(_on_pose_updated)
-	provider.tracking_lost.connect(_on_tracking_lost)
-	provider.tracking_restored.connect(_on_tracking_restored)
-	_connect_mode_signals()
+	_connect_provider_signals()
 
 	var success := false
 	if tracking_singleton != null:
@@ -901,6 +931,47 @@ func _start_provider() -> void:
 	else:
 		_update_status("Provider failed to start", Color.RED)
 
+func _connect_provider_signals() -> void:
+	if provider == null:
+		return
+	_connect_provider_signal("preview_changed", _on_contract_preview_changed)
+	_connect_provider_signal("pose_updated", _on_pose_updated)
+	_connect_provider_signal("tracking_lost", _on_tracking_lost)
+	_connect_provider_signal("tracking_restored", _on_tracking_restored)
+	_connect_mode_signals()
+
+func _connect_provider_signal(signal_name: String, callback: Callable) -> void:
+	if provider == null or not provider.has_signal(signal_name):
+		return
+	var provider_signal: Signal = provider.get(signal_name)
+	if not provider_signal.is_connected(callback):
+		provider_signal.connect(callback)
+
+func _disconnect_provider_signal(target_provider: Node, signal_name: String, callback: Callable) -> void:
+	if target_provider == null or not is_instance_valid(target_provider) or not target_provider.has_signal(signal_name):
+		return
+	var provider_signal: Signal = target_provider.get(signal_name)
+	if provider_signal.is_connected(callback):
+		provider_signal.disconnect(callback)
+
+func _disconnect_provider_signals(target_provider: Node = provider) -> void:
+	if target_provider == null:
+		_provider_mode_signal_relays.clear()
+		return
+	_disconnect_provider_signal(target_provider, "preview_changed", _on_contract_preview_changed)
+	_disconnect_provider_signal(target_provider, "pose_updated", _on_pose_updated)
+	_disconnect_provider_signal(target_provider, "tracking_lost", _on_tracking_lost)
+	_disconnect_provider_signal(target_provider, "tracking_restored", _on_tracking_restored)
+	for signal_name: String in _provider_mode_signal_relays.keys():
+		var relay: Variant = _provider_mode_signal_relays[signal_name]
+		if relay is Callable:
+			_disconnect_provider_signal(target_provider, signal_name, relay)
+	_provider_mode_signal_relays.clear()
+
+func _remember_mode_signal_relay(signal_name: String, callback: Callable) -> void:
+	_provider_mode_signal_relays[signal_name] = callback
+	_connect_provider_signal(signal_name, callback)
+
 func _build_runtime_config() -> Variant:
 	var config := MediaPipeConfigScript.new()
 	config.min_visibility = overlay_visibility_threshold
@@ -917,15 +988,25 @@ func _build_runtime_config() -> Variant:
 	config.runtime = _build_vendor_runtime_config(config.model_complexity)
 	return config
 
-func _build_vendor_runtime_config(_model_complexity: int) -> Dictionary:
+func _build_vendor_runtime_config(model_complexity: int) -> Dictionary:
 	var vendor_root := ProjectSettings.globalize_path(VENDOR_REPO_ROOT)
 	var python_relpath := VENDOR_RUNTIME_WINDOWS_PYTHON if OS.get_name() == "Windows" else VENDOR_RUNTIME_LINUX_PYTHON
 	return {
 		"python_executable": vendor_root.path_join(python_relpath),
 		"entrypoint": vendor_root.path_join(VENDOR_RUNTIME_ENTRYPOINT),
 		"working_directory": vendor_root,
-		"pose_landmarker_model_path": vendor_root.path_join(VENDOR_DEFAULT_MODEL),
+		"model_complexity": model_complexity,
+		"pose_landmarker_model_path": vendor_root.path_join(_vendor_model_relpath_for_complexity(model_complexity)),
 	}
+
+func _vendor_model_relpath_for_complexity(model_complexity: int) -> String:
+	match model_complexity:
+		2:
+			return VENDOR_MODEL_HEAVY
+		1:
+			return VENDOR_MODEL_FULL
+		_:
+			return VENDOR_MODEL_LITE
 
 func _resolve_camera_tracking_singleton() -> Node:
 	if not is_inside_tree():
@@ -956,28 +1037,34 @@ func _connect_mode_signals() -> void:
 func _connect_simple_signal(signal_name: String) -> void:
 	if provider == null or not provider.has_signal(signal_name):
 		return
-	provider.connect(signal_name, func() -> void:
+	if _provider_mode_signal_relays.has(signal_name):
+		return
+	var relay := func() -> void:
 		_record_event(signal_name, {})
-	)
+	_remember_mode_signal_relay(signal_name, relay)
 
 func _connect_power_signal(signal_name: String) -> void:
 	if provider == null or not provider.has_signal(signal_name):
 		return
-	provider.connect(signal_name, func(power: float) -> void:
+	if _provider_mode_signal_relays.has(signal_name):
+		return
+	var relay := func(power: float) -> void:
 		_record_event(signal_name, {"power": power})
-	)
+	_remember_mode_signal_relay(signal_name, relay)
 
 func _connect_flow_signal(signal_name: String) -> void:
 	if provider == null or not provider.has_signal(signal_name):
 		return
-	provider.connect(signal_name, func(placement: int, direction: int) -> void:
+	if _provider_mode_signal_relays.has(signal_name):
+		return
+	var relay := func(placement: int, direction: int) -> void:
 		_last_flow_events[signal_name] = {
 			"placement": placement,
 			"direction": direction,
 			"timestamp_ms": Time.get_ticks_msec(),
 		}
 		_record_event(signal_name, {"placement": placement, "direction": direction})
-	)
+	_remember_mode_signal_relay(signal_name, relay)
 
 func _on_pose_updated(landmarks: Array) -> void:
 	if _is_preview_only_mode():
@@ -2467,6 +2554,8 @@ func _get_effective_camera_source() -> String:
 			if not source_path.is_empty():
 				return source_path
 			var camera_id := String(source.get("camera_id", "")).strip_edges()
+			if camera_id.is_empty():
+				camera_id = String(source.get("id", "")).strip_edges()
 			if not camera_id.is_empty():
 				return camera_id
 	if auto_start_manager != null and auto_start_manager.has_method("get_active_camera_source"):
@@ -2493,7 +2582,7 @@ func _camera_label_for_device_id(device_id: String) -> String:
 		if not device_variant is Dictionary:
 			continue
 		var device: Dictionary = device_variant
-		if String(device.get("id", "")).strip_edges() == normalized:
+		if _camera_device_id(device) == normalized:
 			return _camera_device_label(device)
 	return normalized.get_file() if normalized.get_file() != "" else normalized
 
@@ -2684,6 +2773,7 @@ func _stop_everything(reason: String = "unknown") -> void:
 	camera_view = null
 
 	if provider:
+		_disconnect_provider_signals(provider)
 		if provider.has_method("stop"):
 			provider.stop()
 		var tracking_singleton := _resolve_camera_tracking_singleton()
