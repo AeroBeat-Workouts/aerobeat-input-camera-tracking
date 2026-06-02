@@ -424,13 +424,14 @@ func _ensure_playback_controls() -> void:
 	_playback_toggle_button.pressed.connect(_on_playback_toggle_pressed)
 	toggle_host.add_child(_playback_toggle_button)
 
-	var slider_host := CenterContainer.new()
+	var slider_host := Control.new()
 	slider_host.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	slider_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slider_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(slider_host)
 
 	_playback_seek_slider = HSlider.new()
+	_playback_seek_slider.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_playback_seek_slider.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	_playback_seek_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_playback_seek_slider.min_value = 0.0

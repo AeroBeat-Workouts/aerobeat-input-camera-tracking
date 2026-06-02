@@ -475,6 +475,34 @@ func test_prerecorded_replay_does_not_poll_sidecar_health_as_live_camera_failure
 	harness._process(0.016)
 	assert_false(harness.last_status_message.to_lower().contains("python server died"))
 
+func test_playback_seek_slider_expands_without_losing_vertical_alignment() -> void:
+	if harness != null:
+		harness.free()
+	harness = TestProvingHarness.new()
+	var camera_panel := Control.new()
+	camera_panel.custom_minimum_size = Vector2(640.0, 360.0)
+	camera_panel.size = Vector2(640.0, 360.0)
+	add_child(camera_panel)
+	camera_panel.add_child(harness)
+	var display := TextureRect.new()
+	display.name = "CameraDisplay"
+	display.set_anchors_preset(Control.PRESET_FULL_RECT)
+	camera_panel.add_child(display)
+	harness.camera_display = display
+
+	harness._ensure_playback_controls()
+	assert_not_null(harness._playback_bar_panel)
+	harness._playback_bar_panel.visible = true
+	await get_tree().process_frame
+
+	var toggle_rect := harness._playback_toggle_button.get_global_rect()
+	var slider_rect := harness._playback_seek_slider.get_global_rect()
+	var time_rect := harness._playback_time_label.get_global_rect()
+
+	assert_gt(slider_rect.size.x, 300.0)
+	assert_almost_eq(slider_rect.get_center().y, toggle_rect.get_center().y, 1.0)
+	assert_almost_eq(slider_rect.get_center().y, time_rect.get_center().y, 1.0)
+
 func _fake_replay_transport_request(url: String) -> Dictionary:
 	_replay_requests.append(url)
 	if _replay_responses.has(url):
