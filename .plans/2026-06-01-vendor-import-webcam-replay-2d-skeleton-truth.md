@@ -1,9 +1,9 @@
 # AeroBeat Input Camera Tracking
 
-**Date:** 2026-06-01  
-**Status:** Blocked  
-**Last Updated:** 2026-06-02 05:33 EDT  
-**Blocked Reason:** Land-the-plane handoff after session compaction/context loss; active plan tasks after Task 6 were not materialized in this repo's current Beads state, and Derrick suspects beads were created in the wrong repo. Resume in a fresh session by investigating Beads repo/context drift before continuing Task 7+.  
+**Date:** 2026-06-01
+**Status:** Blocked
+**Last Updated:** 2026-06-02 07:29 EDT
+**Blocked Reason:** Superseded and intentionally left in place as historical context for the proving/runtime slice only. The missing `oc-*` bead line was a stale markdown branch, not the live repo state. Cross-repo de-MediaPipe work continued under repo-local `aerobeat-input-camera-tracking-*` beads and later commits, then completed under archived plans `/.plans/archive/2026-06-01-cross-repo-demediapipe-coordination.md` and `/.plans/archive/2026-06-02-input-camera-tracking-repo-root-demediapipe-audit.md`.
 **Agent:** `byte`
 
 ---
@@ -76,10 +76,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 1: Audit the real vendor import and runtime path for webcam + replay
 
-**Bead ID:** `oc-3xp6`  
-**SubAgent:** `primary`  
-**Role:** `research`  
-**References:** `REF-01`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-3xp6`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-01`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim the assigned bead on start. Audit the actual import/runtime path used for live webcam tracking and replay tracking. Determine whether `aerobeat-vendor-mediapipe-python` is only mounted or is truly the package in use, identify any stale local fallback ownership still participating, and map the exact seams that control 2D skeleton rendering. Do not edit mounted addon mirrors. If dependency refresh is needed, use `/home/derrick/.openclaw/workspace/scripts/godotenv-sync` rather than the raw `godotenv` CLI.
 
 **Folders Created/Deleted/Modified:**
@@ -96,10 +96,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 2: Fix import/runtime wiring so vendor-backed webcam and replay both start truthfully
 
-**Bead ID:** `oc-hl2c`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-hl2c`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim the assigned bead on start. Based on the audit, implement the narrowest truthful fixes needed so the repo correctly imports and uses `aerobeat-vendor-mediapipe-python` for both live webcam and replay tracking paths. Remove or bypass stale local fallback behavior only where needed to make the active lane unambiguous. Keep `.testbed` singleton-first, avoid `/addons/` edits, use `/home/derrick/.openclaw/workspace/scripts/godotenv-sync` if dependency refresh is required, run relevant repo-local validation, and commit/push by default before handoff.
 
 **Folders Created/Deleted/Modified:**
@@ -119,10 +119,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 3: Fix and prove visible 2D skeleton rendering in webcam + replay flows
 
-**Bead ID:** `oc-9sud`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-9sud`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim the assigned bead on start. Ensure the proving flows visibly render the 2D body skeleton/overlay for tracked bodies in both live webcam and replay modes. If the failure is data-path related, fix the runtime/provider mapping; if it is presentation related, fix the overlay/rendering attachment. Capture proof of the working result through the highest-fidelity practical validation path and add or update targeted regression coverage where practical.
 
 **Folders Created/Deleted/Modified:**
@@ -148,10 +148,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 4: Prepare code-change handoff for Derrick's manual QA pass
 
-**Bead ID:** `oc-q6qu`  
-**SubAgent:** `primary`  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-q6qu`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim the assigned bead on start. Run the relevant repo-local validation and prepare a concise, truthful handoff for Derrick's manual QA of both live webcam and replay flows. Confirm as much as possible from safe local validation, identify the exact screens/behaviors Derrick should verify manually, and note any evidence that the vendor-backed path is the one actually in use. Do not treat this as a replacement for Derrick's final manual QA.
 
 **Folders Created/Deleted/Modified:**
@@ -168,10 +168,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 5: Prepare truth-audit handoff and doc cleanup for Derrick's manual audit
 
-**Bead ID:** `oc-r1xe`  
-**SubAgent:** `primary`  
-**Role:** `auditor`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-r1xe`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim the assigned bead on start. Prepare the narrowest truthful audit package for Derrick's manual audit. Independently review whether the repo now imports and uses `aerobeat-vendor-mediapipe-python` for the intended live webcam and replay tracking paths, whether the visible 2D skeleton path appears correctly wired, whether any mounted addon mirror was mistakenly treated as source, and whether README/plugin wording still matches reality. If documentation drift is clear, make the narrowest truthful README/doc cleanup and leave a concise audit checklist/evidence summary for Derrick rather than pretending the manual audit is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -203,10 +203,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 6: Audit repo-root startup seams still tied to legacy local MediaPipe paths
 
-**Bead ID:** `oc-s62r`  
-**SubAgent:** `primary`  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-s62r`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-s62r` on start. Audit why the proving scenes still fail to start appropriately after `mediapipe-sync` now prepares the vendor dependency. Focus on repo-root `/src/` and proving/testbed startup seams that may still assume the old local `python_mediapipe` sidecar layout instead of the mounted `aerobeat-vendor-mediapipe-python` addon/runtime lane. Identify the exact scripts, paths, and startup checks that are still stale, and recommend the narrowest safe implementation seam for the coder pass.
 
 **Folders Created/Deleted/Modified:**
@@ -224,10 +224,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 7: Fix repo-root startup/runtime seams to use the vendor addon lane
 
-**Bead ID:** `oc-q4p6`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-q4p6`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-q4p6` on start. Based on the audit, implement the narrowest truthful fixes needed so repo-root startup/runtime seams and proving-scene startup checks use the mounted `aerobeat-vendor-mediapipe-python` addon/runtime lane rather than stale local `python_mediapipe` assumptions. Fix only the seams actually blocking startup. Avoid `/addons/` mirror edits, use `godotenv-sync` if dependency refresh is required, run relevant repo-local validation, and commit/push by default before handoff.
 
 **Folders Created/Deleted/Modified:**
@@ -245,10 +245,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 8: Prepare manual verification handoff for startup-path fix
 
-**Bead ID:** `oc-ngfk`  
-**SubAgent:** `primary`  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-ngfk`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-ngfk` on start. After the startup-path fix lands, run safe repo-local validation and prepare a concise manual verification handoff for Derrick focused on proving-scene startup. Confirm as much as possible locally, state exactly what Derrick should reopen/rerun, and call out any remaining replay/runtime caveats.
 
 **Folders Created/Deleted/Modified:**
@@ -265,10 +265,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 9: Audit replay presentation/transport and live camera startup regressions
 
-**Bead ID:** `oc-0puv`  
-**SubAgent:** `primary`  
-**Role:** `research`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-0puv`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-0puv` on start. Audit the newly observed regressions after proving startup was rerouted to the vendor lane: (1) replay video file tracking + skeleton appears, but the replay video image does not display and the seekbar/timeline transport does not display or work properly; (2) live camera mode still does not start the video feed and skeleton appropriately. Identify the exact scripts, transport/preview seams, and readiness assumptions causing each failure, and recommend the narrowest safe implementation seam for the coder pass.
 
 **Folders Created/Deleted/Modified:**
@@ -286,10 +286,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 10: Fix replay presentation/transport and live camera startup regressions
 
-**Bead ID:** `oc-in8x`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-in8x`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-in8x` on start. Based on the audit, implement the narrowest truthful fixes needed so replay proving shows the actual video image and has working timeline/seek transport, and live camera proving starts the video feed plus skeleton appropriately through the intended vendor-backed lane. Avoid reviving unrelated legacy seams, avoid `/addons` mirror edits, use `godotenv-sync` if needed, run relevant repo-local validation, and commit/push by default before handoff.
 
 **Folders Created/Deleted/Modified:**
@@ -307,10 +307,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 11: Prepare manual verification handoff for replay/live regression fixes
 
-**Bead ID:** `oc-guis`  
-**SubAgent:** `primary`  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-guis`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-guis` on start. After the replay/live regression fixes land, run safe repo-local validation and prepare a concise manual verification handoff for Derrick focused on replay image display, timeline/seek controls, and live camera startup. Confirm as much as possible locally and call out any remaining replay/runtime caveats.
 
 **Folders Created/Deleted/Modified:**
@@ -327,10 +327,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 12: Audit immediate recursion/stack overflow in boxing proving startup
 
-**Bead ID:** `oc-bb8y`  
-**SubAgent:** `primary`  
-**Role:** `research`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-bb8y`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-bb8y` on start. Audit the immediate `Stack overflow (stack size: 1024)` regression Derrick hit when opening the boxing proving scene after the latest proving replay/live changes. Focus on newly touched proving-harness, preview surface, replay playback facade, and vendor preview-status plumbing. Identify the exact recursive call path or signal loop causing the overflow and recommend the narrowest safe implementation seam for the coder pass.
 
 **Folders Created/Deleted/Modified:**
@@ -348,10 +348,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 13: Fix recursion/stack overflow in boxing proving startup
 
-**Bead ID:** `oc-a41q`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-a41q`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-a41q` on start. Based on the audit, implement the narrowest truthful fix for the immediate recursion/stack overflow in boxing proving startup. Focus on the newly touched proving-harness, preview surface, replay/playback facade, and vendor preview-status seams first. Avoid unrelated refactors, avoid `/addons` mirror edits, run relevant repo-local validation, commit/push by default before handoff, and report exactly what changed plus what Derrick should retest manually.
 
 **Folders Created/Deleted/Modified:**
@@ -369,10 +369,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 14: Prepare manual verification handoff for recursion fix
 
-**Bead ID:** `oc-1pyb`  
-**SubAgent:** `primary`  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-1pyb`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-1pyb` on start. After the recursion fix lands, run safe repo-local validation and prepare a concise manual verification handoff for Derrick focused on confirming the boxing proving scene opens without immediate stack overflow before deeper replay/live checks continue.
 
 **Folders Created/Deleted/Modified:**
@@ -389,10 +389,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 15: Audit live camera duplicate-signal, perf, and seated tracking regressions
 
-**Bead ID:** `oc-h590`  
-**SubAgent:** `primary`  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-h590`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-h590` on start. Audit the newly observed live-camera regressions in the boxing proving scene: duplicate signal connection warnings in `_start_provider()`, very slow tracking, and skeleton detection that appears but does not actually track Derrick's seated body/face on webcam. Focus on proving-harness signal wiring, provider/session reconnect behavior, current runtime config defaults sent into the vendor lane, camera selection/switching, and any stale model/preview/performance assumptions that could explain bad seated live tracking. Identify the exact likely causes and recommend the narrowest safe implementation seam for the coder pass.
 
 **Folders Created/Deleted/Modified:**
@@ -410,10 +410,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 16: Fix live camera duplicate-signal, perf, and seated tracking regressions
 
-**Bead ID:** `oc-lmz8`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-lmz8`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-lmz8` on start. Based on the audit, implement the narrowest truthful fixes needed for live camera proving: eliminate duplicate signal-connection warnings, improve startup/runtime behavior so the live webcam path is not abnormally slow, restore reasonable seated face/body tracking behavior through the vendor-backed lane, and ensure scene stop/exit releases the live camera cleanly instead of leaving the Logitech device wedged after close. Start with the proving-harness / provider lifecycle seams first; if vendor teardown or runtime-loop changes are directly required, make the narrowest truthful cross-repo changes needed and report them explicitly. Avoid unrelated replay refactors, avoid `/addons` mirror edits, use `godotenv-sync` if needed, run relevant repo-local validation, commit/push by default before handoff, and report exactly what changed plus what Derrick should retest manually.
 
 **Folders Created/Deleted/Modified:**
@@ -431,10 +431,10 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 ### Task 17: Prepare manual verification handoff for live camera regression fixes
 
-**Bead ID:** `oc-ruzq`  
-**SubAgent:** `primary`  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`  
+**Bead ID:** `oc-ruzq`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-04`, `REF-06`, `REF-07`, `REF-08`, `REF-09`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `oc-ruzq` on start. After the live-camera regression fixes land, run safe repo-local validation and prepare a concise manual verification handoff for Derrick focused on webcam startup, signal-warning cleanliness, tracking responsiveness, and seated face/body detection quality.
 
 **Folders Created/Deleted/Modified:**
@@ -464,7 +464,7 @@ The acceptance bar for this plan is practical rather than rhetorical: from the `
 
 **Lessons Learned:** The biggest risk was not whether the vendor package was mounted, but whether stale local fallback ownership could still quietly steal control and whether coordinate-space assumptions were drifting between runtime, gameplay normalization, and the proving overlay. The safest pattern was to make the contract lane explicit, then prove the overlay/data seam separately. Remaining risk is concentrated in replay playback facade behavior and teardown stability rather than the vendor import path itself.
 
-**Wrap-up / Stopping Point (2026-06-02 05:33 EDT):** Derrick asked to land the plane and resume in a fresh session because this session likely lost context during compaction and may have created or tracked beads in the wrong repo. During heartbeat checks, the active plan still named pending tasks `oc-q4p6`, `oc-ngfk`, `oc-in8x`, `oc-guis`, `oc-a41q`, `oc-1pyb`, `oc-h590`, `oc-lmz8`, and `oc-ruzq`, but the current repo-local Beads state exposed none of those IDs: `bd ready --json` returned `[]`, `bd list --json` showed only unrelated blocked bead `aerobeat-input-camera-tracking-lda`, and the earlier `wisp_dependencies` schema concern no longer reproduced because the table now exists in `.beads/embeddeddolt`. The correct next slice is therefore not more camera-tracking implementation work yet; it is a fresh-session audit of Beads repo/context drift to determine whether those planned beads were never created here, were created in another repo, or were lost during Beads/Dolt state churn.
+**Wrap-up / Reconciliation Note (2026-06-02 05:50 EDT):** Fresh-session recovery showed that the suspected wrong-repo bead creation was not the live blocker. The `oc-*` continuation named here does not exist in the current repo or `/.openclaw` Beads state, while newer repo-local commits and `aerobeat-input-camera-tracking-*` beads document the actual continuation that landed overnight. This plan remains useful as a historical record of the proving/runtime slice, but it is no longer the authoritative active plan. Current continuation should follow the repaired cross-repo de-MediaPipe plan and the new repo-root `src/` audit plan focused on whether this repo can respond to camera-tracking events and emit input events without MediaPipe knowledge.
 
 ---
 
