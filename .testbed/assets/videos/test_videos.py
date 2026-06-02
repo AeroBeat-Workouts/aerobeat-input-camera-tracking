@@ -5,7 +5,7 @@ Provides OpenCV VideoCapture wrapper with multiple playback modes
 for deterministic and real-time testing scenarios.
 
 This script is located in .testbed/assets/videos/ and can test videos in this folder
-or serve as a utility for the Python sidecar.
+as a standalone proving utility.
 """
 
 import cv2
@@ -15,13 +15,6 @@ from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, Iterator, List
-
-# Add python_mediapipe to path for imports
-# This script is in: .testbed/assets/videos/
-# python_mediapipe is at: ../../../python_mediapipe/
-PYTHON_MEDIAPIPE_PATH = Path(__file__).parent.parent.parent / "python_mediapipe"
-if PYTHON_MEDIAPIPE_PATH.exists():
-    sys.path.insert(0, str(PYTHON_MEDIAPIPE_PATH))
 
 
 class PlaybackMode(Enum):
@@ -297,20 +290,18 @@ def test_video_input():
 
 def test_with_sidecar_integration():
     """
-    Test integration with the Python sidecar.
-    
-    This demonstrates how to use VideoInput to feed frames to the
-    MediaPipe Python sidecar for testing without a live camera.
+    Placeholder for optional backend-integration experiments.
+
+    Keep this utility standalone by default; wire it to a sibling backend repo
+    only when a specific proving experiment needs that hookup.
     """
     try:
-        # Try to import from python_mediapipe
-        from main import MediaPipeServer  # Example import
-        print("Python sidecar modules available!")
-        print("You can now test with: python test_videos.py <video_file>")
-        print("And modify this function to feed frames to the sidecar.")
+        from main import CameraTrackingBackend  # Example sibling-backend import
+        print("Sibling backend modules available!")
+        print("You can now adapt this helper for a focused integration experiment.")
     except ImportError as e:
-        print(f"Python sidecar modules not available: {e}")
-        print("VideoInput can still be used standalone for video testing.")
+        print(f"Sibling backend modules not available: {e}")
+        print("VideoInput still works as a standalone proving utility.")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="AeroBeat MediaPipe Testbed"
+config/name="AeroBeat Camera Tracking Testbed"
 run/main_scene="uid://83jxycoubyxd"
 config/features=PackedStringArray("4.6")
 

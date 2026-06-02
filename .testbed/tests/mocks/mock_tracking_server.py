@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mock MediaPipe server for testing without real camera"""
+"""Mock tracking server for testing without a real camera."""
 
 import socket
 import json
@@ -8,7 +8,7 @@ import sys
 import argparse
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Mock MediaPipe Server")
+    parser = argparse.ArgumentParser(description="Mock Tracking Server")
     parser.add_argument("--port", type=int, default=4242, help="UDP port")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="UDP host")
     parser.add_argument("--fps", type=int, default=30, help="Frames per second")
@@ -19,7 +19,7 @@ def main():
     
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
-    print(f"Mock MediaPipe server started - sending to {args.host}:{args.port}")
+    print(f"Mock tracking server started - sending to {args.host}:{args.port}")
     print("Press Ctrl+C to stop")
     
     try:

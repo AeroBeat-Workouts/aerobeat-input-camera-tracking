@@ -1,14 +1,14 @@
 extends "res://addons/gut/test.gd"
 
 const PoseDetectorSubstrate = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd")
-const MediaPipeConfig = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
+const CameraTrackingConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd")
 const PoseLandmarkIds = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/pose_landmark_ids.gd")
 
 var substrate: PoseDetectorSubstrate = null
-var config: MediaPipeConfig = null
+var config = null
 
 func before_each() -> void:
-	config = MediaPipeConfig.new()
+	config = CameraTrackingConfigScript.new()
 	config.flip_horizontal = false
 	config.min_visibility = 0.5
 	config.tracking_confidence = 0.5

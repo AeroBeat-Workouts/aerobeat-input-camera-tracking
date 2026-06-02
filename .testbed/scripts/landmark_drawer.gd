@@ -1,5 +1,5 @@
 extends Control
-## Draws MediaPipe pose landmarks and skeleton on top of camera feed,
+## Draws normalized pose landmarks and skeleton on top of camera feed,
 ## and exposes enlarged click targets for landmark inspection.
 
 signal landmark_clicked(landmark_id: int)

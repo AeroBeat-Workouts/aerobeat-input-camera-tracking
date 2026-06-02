@@ -1026,7 +1026,7 @@ func _compact_status_text(text: String) -> String:
 	var compact := text.strip_edges()
 	compact = compact.replace("Preview-only debug mode active (provider disabled)", "Preview only")
 	compact = compact.replace("Python server started", "Server started")
-	compact = compact.replace("MediaPipe runtime missing - installing", "Installing runtime")
+	compact = compact.replace("Tracking runtime missing - installing", "Installing runtime")
 	compact = compact.replace("Auto-start failed:", "Auto-start failed")
 	return compact
 

@@ -2,7 +2,7 @@ extends "res://addons/aerobeat-input-core/src/interfaces/boxing_input.gd"
 ## Assembly-facing AeroInputProvider adapter for this addon.
 ##
 ## This addon entrypoint is for consuming projects that mount this repo under
-## the live assembly addon alias `res://addons/aerobeat-input-mediapipe/`
+## the live assembly addon alias `res://addons/aerobeat-input-camera-tracking/`
 ## alongside `aerobeat-input-core`.
 ##
 ## Current truthful scope:
@@ -565,7 +565,7 @@ func _load_local_script(relative_path: String) -> GDScript:
 	return script
 
 func _new_local_config() -> Variant:
-	var config_script: GDScript = _load_local_script("config/mediapipe_config.gd")
+	var config_script: GDScript = _load_local_script("config/camera_tracking_config.gd")
 	return config_script.new() if config_script != null else null
 
 func _resolve_local_path(relative_path: String) -> String:

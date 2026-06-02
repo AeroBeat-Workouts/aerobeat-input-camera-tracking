@@ -2,12 +2,12 @@
 
 Gameplay-interpretation layer for AeroBeat camera input.
 
-This repo is no longer described as the product's vendor-owned "MediaPipe Python" package. Its job is to preserve and evolve AeroBeat's **Boxing + Flow gameplay interpretation** while the platform moves camera lifecycle, preview ownership, and normalized frame production into the upstream `aerobeat-tool-camera-tracking` contract.
+This repo preserves and evolves AeroBeat's **Boxing + Flow gameplay interpretation** while camera lifecycle, preview ownership, and normalized frame production live in the upstream `aerobeat-tool-camera-tracking` contract.
 
 Current truthful status for this migration wave:
 
 - `src/input_provider.gd` now requires a supplied or conservatively discoverable `CameraTracking` session and routes the assembly-facing adapter through `src/providers/camera_tracking_provider.gd`
-- the adapter still publishes itself through the input-core provider-session registry with `provider_id = mediapipe_python` for current compatibility, but the sharable addon no longer owns a local MediaPipe/runtime fallback path
+- the adapter still publishes itself through the input-core provider-session registry for current compatibility, but the sharable addon no longer owns a local runtime fallback path
 - the repo contains a **tracking-frame ingestion seam** that consumes normalized `CameraTracking` frames without re-owning vendor payload shape
 - `.testbed/` Boxing + Flow proving uses the upstream `aerobeat-tool-camera-tracking` contract shell plus the paired vendor backend only for repo-local proving/tests
 - real sharable addon code stays at the repo root; `.testbed/` remains the proving surface only
@@ -36,7 +36,7 @@ Current truthful status for this migration wave:
 New sharable files at the repo root:
 
 - `src/tracking_frame_adapter.gd` — translates vendor-neutral `CameraTracking` frames into the local landmark array shape consumed by detector code
-- `src/providers/camera_tracking_provider.gd` — detector provider that consumes `CameraTracking.tracking_updated(frame)` instead of raw MediaPipe server payloads
+- `src/providers/camera_tracking_provider.gd` — detector provider that consumes `CameraTracking.tracking_updated(frame)` instead of raw backend payloads
 
 This keeps the existing detector truth mostly intact while reducing how much this repo must know about vendor/runtime details.
 

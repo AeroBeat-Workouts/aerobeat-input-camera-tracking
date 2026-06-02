@@ -82,8 +82,7 @@ For every feature family below, try to capture:
 - From the repo root, refresh the repo-local `.testbed` workbench before opening Godot:
   - `python3 scripts/refresh_testbed_workbench.py`
   - this restores declared GodotEnv mounts, prunes stale generated addon identities, clears the relevant `.godot` caches, and re-imports the workbench so proving scenes do not keep loading removed addon names from cache
-- If you also need the local Python sidecar runtime on Cookie, prepare that separately from the repo root:
-  - `python3 python_mediapipe/prepare_runtime.py --platform linux-x64 --mode dev --install-requirements --validate`
+- If you also need the mounted camera-tracking backend runtime on Cookie, prepare it separately using the current sibling backend repo's documented setup flow before opening the proving scenes.
 - Open `.testbed` in Godot.
 - Run **Boxing Detector Proving** first.
 - Later run **Flow Detector Proving**.

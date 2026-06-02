@@ -1,5 +1,5 @@
 extends Control
-## Draws MediaPipe pose landmarks and skeleton on top of camera feed
+## Draws normalized pose landmarks and skeleton on top of camera feed
 
 # Landmark colors
 const LANDMARK_COLOR = Color(0.0, 1.0, 0.5, 0.9)  # Green-cyan
@@ -8,7 +8,7 @@ const SKELETON_COLOR = Color(0.0, 0.8, 1.0, 0.8)  # Cyan
 const SKELETON_WIDTH = 2.0
 const LANDMARK_RADIUS = 4.0
 
-# MediaPipe Pose connections (skeleton)
+# Pose landmark connections (skeleton)
 # Format: [landmark1, landmark2]
 const SKELETON_CONNECTIONS = [
 	# Face
@@ -109,7 +109,7 @@ func _draw_landmarks(width: float, height: float):
 		draw_arc(pos, LANDMARK_RADIUS, 0, TAU, 16, Color.BLACK, 1.0)
 
 func _landmark_to_screen(lm: Dictionary, width: float, height: float) -> Vector2:
-	# MediaPipe coordinates are normalized [0, 1]
+	# Tracking coordinates are normalized [0, 1]
 	# X: 0=left, 1=right
 	# Y: 0=top, 1=bottom
 	# Flip Y so 0 is at the top

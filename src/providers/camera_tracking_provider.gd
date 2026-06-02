@@ -367,7 +367,7 @@ func _ensure_tracking_frame_adapter_script() -> Variant:
 func _ensure_config() -> Variant:
 	if config != null:
 		return config
-	var config_script: Variant = _load_repo_src_script("config/mediapipe_config.gd")
+	var config_script: Variant = _load_repo_src_script("config/camera_tracking_config.gd")
 	if config_script == null:
 		return null
 	config = config_script.new()

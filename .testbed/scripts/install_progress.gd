@@ -18,13 +18,22 @@ func _ready() -> void:
 	_check_and_start()
 
 func _check_and_start() -> void:
-	if auto_start_manager.check_mediapipe_installed():
-		status_label.text = "MediaPipe found! Starting server..."
+	if _tracking_runtime_installed():
+		status_label.text = "Tracking runtime found! Starting server..."
 		progress_bar.value = 100
 		auto_start_manager.start_server()
 	else:
-		status_label.text = "MediaPipe not found. Installing..."
+		status_label.text = "Tracking runtime not found. Installing..."
 		auto_start_manager.install_dependencies()
+
+func _tracking_runtime_installed() -> bool:
+	if auto_start_manager == null:
+		return false
+	if auto_start_manager.has_method("check_tracking_runtime_installed"):
+		return bool(auto_start_manager.check_tracking_runtime_installed())
+	if auto_start_manager.has_method("check_mediapipe_installed"):
+		return bool(auto_start_manager.check_mediapipe_installed())
+	return false
 
 func _on_installation_progress(percent: int, message: String) -> void:
 	progress_bar.value = percent

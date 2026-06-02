@@ -52,7 +52,7 @@ func _force_fixture_runtime_settings(node: Node) -> void:
 		if property_name == "startup_mode":
 			node.set("startup_mode", 0)
 		elif property_name == "prerecorded_video_source":
-			var video_source := OS.get_environment("AEROBEAT_MEDIAPIPE_CAMERA_SOURCE")
+			var video_source := OS.get_environment("AEROBEAT_CAMERA_TRACKING_SOURCE")
 			if not video_source.is_empty():
 				node.set("prerecorded_video_source", video_source)
 
@@ -96,7 +96,7 @@ func _capture_outputs(elapsed_ms: int) -> void:
 func _collect_harness_report(elapsed_ms: int, screenshot_path: String) -> Dictionary:
 	var report := {
 		"fixture_path": ProjectSettings.globalize_path(_fixture_path),
-		"video_path": OS.get_environment("AEROBEAT_MEDIAPIPE_CAMERA_SOURCE"),
+		"video_path": OS.get_environment("AEROBEAT_CAMERA_TRACKING_SOURCE"),
 		"scene_path": _scene_path,
 		"captured_at": Time.get_datetime_string_from_system(true, true),
 		"elapsed_ms": elapsed_ms,

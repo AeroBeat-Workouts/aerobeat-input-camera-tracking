@@ -2,7 +2,7 @@ extends Control
 ## Shared proving harness for live Boxing / Flow detector tuning.
 
 const TruthfulPreviewSurfaceScript = preload("res://scripts/truthful_preview_surface.gd")
-const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
+const CameraTrackingConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd")
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const VENDOR_REPO_ROOT := "res://addons/aerobeat-vendor-mediapipe-python"
 const VENDOR_RUNTIME_ENTRYPOINT := "runtime/mediapipe_runtime_probe.py"
@@ -795,8 +795,8 @@ func _setup_auto_start() -> void:
 		auto_start_manager.server_stopped.connect(_on_server_stopped)
 	if not auto_start_manager.python_not_found.is_connected(_on_python_not_found):
 		auto_start_manager.python_not_found.connect(_on_python_not_found)
-	if not auto_start_manager.mediapipe_not_found.is_connected(_on_mediapipe_not_found):
-		auto_start_manager.mediapipe_not_found.connect(_on_mediapipe_not_found)
+	if not auto_start_manager.mediapipe_not_found.is_connected(_on_tracking_runtime_not_found):
+		auto_start_manager.mediapipe_not_found.connect(_on_tracking_runtime_not_found)
 	if not auto_start_manager.check_progress.is_connected(_on_check_progress):
 		auto_start_manager.check_progress.connect(_on_check_progress)
 	if not auto_start_manager.installation_progress.is_connected(_on_install_progress):
@@ -859,8 +859,8 @@ func _on_install_complete(success: bool) -> void:
 func _on_python_not_found() -> void:
 	_update_status("Python 3 not found", Color.RED)
 
-func _on_mediapipe_not_found() -> void:
-	_update_status("MediaPipe runtime missing - installing", Color.YELLOW)
+func _on_tracking_runtime_not_found() -> void:
+	_update_status("Tracking runtime missing - installing", Color.YELLOW)
 
 func _on_server_started(pid: int) -> void:
 	_update_status("Python server started (PID %d)" % pid, Color.GREEN)
@@ -965,7 +965,7 @@ func _remember_mode_signal_relay(signal_name: String, callback: Callable) -> voi
 	_connect_provider_signal(signal_name, callback)
 
 func _build_runtime_config() -> Variant:
-	var config := MediaPipeConfigScript.new()
+	var config := CameraTrackingConfigScript.new()
 	config.min_visibility = overlay_visibility_threshold
 	config.track_left_foot = true
 	config.track_right_foot = true
@@ -2497,7 +2497,7 @@ func _get_autostart_camera_source_override() -> String:
 func _get_configured_live_camera_source() -> String:
 	if not _selected_live_camera_device_id.strip_edges().is_empty():
 		return _selected_live_camera_device_id.strip_edges()
-	var env_override := OS.get_environment("AEROBEAT_MEDIAPIPE_CAMERA_SOURCE").strip_edges()
+	var env_override := OS.get_environment("AEROBEAT_CAMERA_TRACKING_SOURCE").strip_edges()
 	if not env_override.is_empty():
 		return _normalize_live_camera_device_id(env_override)
 	return "0"
