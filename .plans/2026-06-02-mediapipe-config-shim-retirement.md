@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-02  
 **Status:** In Progress  
-**Last Updated:** 2026-06-02 06:07 EDT  
-**Blocked Reason:** None  
+**Last Updated:** 2026-06-02 06:59 EDT  
+**Blocked Reason:** None. The next step is concrete and approved: update the assembly consumer pin past shim retirement, refresh caches via `godotenv-sync`, then rerun QA/audit.  
 **Agent:** `main`
 
 ---
@@ -99,19 +99,143 @@ The work therefore starts with a reference inventory rather than deleting the sh
 **Files Created/Deleted/Modified:**
 - none expected unless a minimal validation note is justified
 
+**Status:** ❌ Failed
+
+**Results:** QA reran focused hygiene and reference checks across both relevant repos and found that the slice is **not yet truthful as written**. The direct temporary assembly script removal was real (`/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/src/mediapipe_provider_test.gd` and `.uid` are no longer tracked) and the owning-repo shim deletion was also real (`/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd` and `.uid` are no longer tracked). However, a code/resource-only search excluding `.plans` still found remaining `mediapipe_config.gd` / `MediaPipeConfig` hits in the assembly repo’s **ignored but live restored addon copies** under `addons/aerobeat-input-mediapipe/` and `.addons/aerobeat-input-mediapipe/`. Key remaining hits include: `addons/aerobeat-input-mediapipe/src/config/mediapipe_config.gd:1`, `addons/aerobeat-input-mediapipe/src/input_provider.gd:569`, `addons/aerobeat-input-mediapipe/src/AeroCameraTracking.gd:13`, `addons/aerobeat-input-mediapipe/src/providers/camera_tracking_provider.gd:360`, `addons/aerobeat-input-mediapipe/src/providers/mediapipe_provider.gd:412`, `addons/aerobeat-input-mediapipe/src/mediapipe_input_with_camera.gd:167,174`, plus tests/proving files under `addons/aerobeat-input-mediapipe/.testbed/...`; the same families also remain under `.addons/aerobeat-input-mediapipe/...`. `git check-ignore -v` confirmed these paths are ignored by assembly-community (`addons/*` and `.addons/`), but `addons.jsonc` still declares the live assembly dependency key `aerobeat-input-mediapipe` from `git@github.com:AeroBeat-Workouts/aerobeat-input-camera-tracking.git`, so these are not just markdown/docs history. Validation run: `git status --short`, `git diff --check`, `git ls-files --error-unmatch` on the deleted shim/test files, repo-local `rg -n 'mediapipe_config\.gd|MediaPipeConfig'` scans, a non-`.plans` Python content sweep across both repos, `git check-ignore -v` on the remaining addon hits, and spot-check reads of `aerobeat-assembly-community/addons.jsonc` plus remaining addon source files. Verdict: the narrow deletions themselves were real, but the broader claim that no live/tests-only code references remain across the relevant repos is currently false until the assembly repo’s restored addon surfaces are refreshed/realigned or explicitly scoped out.
+
+---
+
+### Task 4: Refresh assembly addon state via `godotenv-sync` after shim retirement
+
+**Bead ID:** `aerobeat-input-camera-tracking-j57`  
+**SubAgent:** `primary` (for `coder` workflow role)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community`, refresh the restored addon/dependency state with the approved `godotenv-sync` flow so the consumer worktree stops carrying stale `mediapipe_config.gd` / `MediaPipeConfig` payloads from the old addon snapshot. Do not patch `addons/` or `.addons/` mirrors by hand and do not use raw GodotEnv CLI mutation as the repair path. After refresh, rerun the focused `mediapipe_config\.gd|MediaPipeConfig` search and document whether the restored assembly dependency surface now matches the retired shim state. Commit/push only repo-owned changes if any durable repo-owned files change; do not fabricate source edits inside generated addon mirrors.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/`
+- generated addon/dependency surfaces refreshed via `godotenv-sync`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-02-mediapipe-config-shim-retirement.md`
+
+**Status:** ✅ Complete
+
+**Results:** Ran the approved refresh path exactly as `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community` from the assembly repo. `godotenv-sync` completed successfully with exit 0 and reported `scrub-uids: 106 untracked removed/selected, 56 tracked kept`, `restore-deleted-tracked-uids: restored 106 file(s) across 15 nested repo(s)`, and `install: ok`. After the refresh, reran `rg -n "mediapipe_config\\.gd|MediaPipeConfig" . --glob '!**/.git/**'` in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community`; it returned no matches, so the stale restored addon surfaces no longer carry those legacy hits. `git status --short` in the assembly repo remained clean, so no durable repo-owned files changed there. This unblocks a truthful QA rerun against the refreshed assembly dependency surface.
+
+---
+
+### Task 5: Re-QA shim retirement after `godotenv-sync` refresh
+
+**Bead ID:** `aerobeat-input-camera-tracking-t59`  
+**SubAgent:** `primary` (for `qa` workflow role)  
+**Role:** `qa`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Re-run the shim-retirement QA after the assembly dependency surfaces have been refreshed with `godotenv-sync`. Verify whether any remaining `mediapipe_config.gd` / `MediaPipeConfig` hits are still live/tests-only dependency truth or have been reduced to docs/history only. Use focused searches, safe repo-local validation, and exact evidence. Do not modify application code.
+
+**Folders Created/Deleted/Modified:**
+- validation-only surfaces as needed
+
+**Files Created/Deleted/Modified:**
+- plan updates only unless a minimal QA note is justified
+
+**Status:** ❌ Failed
+
+**Results:** QA reran the post-`godotenv-sync` sweep and the slice is still **not safe to pass**. The earlier assembly rerun in Task 4 used a default `rg` that skipped ignored/hidden addon mirrors, so it missed remaining generated dependency truth under `addons/` and `.addons/`. Focused safe validation on 2026-06-02 consisted of: `git status --short` and `git diff --check` in both relevant repos; `rg -n "mediapipe_config\\.gd|MediaPipeConfig" . --glob '!**/.git/**'` in each repo; `find . \( -path '*/.git/*' -o -path '*/.git' \) -prune -o \( -name 'mediapipe_config.gd' -o -name 'mediapipe_config.gd.uid' \) -print` in `aerobeat-assembly-community`; `rg -uu -n "mediapipe_config\\.gd|MediaPipeConfig" .` in both repos; and `git check-ignore -v addons/aerobeat-input-mediapipe/src/config/mediapipe_config.gd .addons/aerobeat-input-mediapipe/src/config/mediapipe_config.gd` in `aerobeat-assembly-community`.
+
+Exact remaining **live/tests-only** hits are all in the assembly repo’s generated addon mirrors for dependency `aerobeat-input-mediapipe` and are therefore still runtime/test surfaces rather than docs/history only. Primary live source hits:
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/src/config/mediapipe_config.gd:1`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/src/input_provider.gd:569`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/src/AeroCameraTracking.gd:13`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/src/providers/camera_tracking_provider.gd:360`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/src/providers/mediapipe_provider.gd:412`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/src/mediapipe_input_with_camera.gd:167,174`
+
+Exact remaining **tests/proving** hits in that same generated dependency surface:
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/.testbed/tests/mediapipe_provider_test.gd:8,20,38`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/.testbed/tests/unit/test_mediapipe_process.gd:4,7,11`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/.testbed/tests/unit/test_mediapipe_provider_camera_switch_reset.gd:4,11`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/.testbed/tests/unit/test_mediapipe_server.gd:4,7,10`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/.testbed/tests/unit/test_pose_detector_substrate.gd:4,8,11`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/.testbed/tests/test_mediapipe_logic.gd:45,92`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/.testbed/scripts/mediapipe_provider_test.gd:5,17,34`
+- `aerobeat-assembly-community/addons/aerobeat-input-mediapipe/.testbed/scripts/proving_harness.gd:6,881`
+
+The same families are duplicated under `.addons/aerobeat-input-mediapipe/...`; `git check-ignore -v` confirmed both mirror roots are ignored by assembly-community (`addons/*` and `.addons/`), but they are still present on disk as generated dependency surfaces. Non-blocking history/cache/log hits also remain in `.plans/`, `.qa-logs/`, `.godot/`, and `.testbed/.godot/`, but those are not the reason for failure. `aerobeat-input-camera-tracking` itself no longer has live repo-source hits; its remaining matches are plan/bead history only. Verdict: **FAIL** for the QA rerun, and the slice is **not yet safe for final audit** until the generated dependency surface mounted in assembly is actually refreshed to a version that no longer carries `mediapipe_config.gd` / `MediaPipeConfig`, or the scope is explicitly narrowed.
+---
+
+### Task 6: Audit why assembly dependency refresh still regenerates the old addon payload
+
+**Bead ID:** `aerobeat-input-camera-tracking-f5k`  
+**SubAgent:** `primary` (for `research` workflow role)  
+**Role:** `research`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Audit why `aerobeat-assembly-community` still materializes generated addon surfaces under `addons/aerobeat-input-mediapipe/` and `.addons/aerobeat-input-mediapipe/` that contain `mediapipe_config.gd` / `MediaPipeConfig` after the approved `godotenv-sync` refresh. Focus on dependency declaration/alias mapping, restore/install behavior, nested repo source selection, and whether the consumer is correctly pulling the updated `aerobeat-input-camera-tracking` source or an older addon identity snapshot. Do not patch generated addon mirrors as source. Produce a concise evidence-backed diagnosis and name the narrowest next implementation seam.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/` (read-only audit target)
+
+**Files Created/Deleted/Modified:**
+- this plan file
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-02-assembly-mediapipe-regeneration-audit.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit completed. Root cause is **stale consumer source selection**, not merely alias naming. Exact dependency declaration in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/addons.jsonc` still installs addon key `aerobeat-input-mediapipe` from repo `git@github.com:AeroBeat-Workouts/aerobeat-input-camera-tracking.git` at pinned checkout `5bbdf2575c31eab03ea528f4826c1d159f47a1fe` with `subfolder: "/"`. That pinned commit still contains `src/config/mediapipe_config.gd` plus compat references (`git show --stat --oneline --no-patch 5bbdf2575c31eab03ea528f4826c1d159f47a1fe`; `git ls-tree -r --name-only 5bbdf2575c31eab03ea528f4826c1d159f47a1fe | rg 'mediapipe_config\.gd|camera_tracking_config\.gd|input_provider\.gd|AeroCameraTracking\.gd'`). By contrast, the current source repo HEAD in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` is `4f63ccd2d131d4192e9675fd6a78572780a7ec0f` (`Retire MediaPipe config shim`), which no longer carries `src/config/mediapipe_config.gd`. In the assembly repo, the generated cache `.addons/aerobeat-input-mediapipe` is indeed checked out at the old pinned commit (`git -C .addons/aerobeat-input-mediapipe rev-parse HEAD` => `5bbdf2575c31eab03ea528f4826c1d159f47a1fe`; remote points at the renamed repo), and `rg -n 'mediapipe_config\.gd|class_name MediaPipeConfig|MediaPipeConfig'` there still shows the legacy files. The installed `addons/aerobeat-input-mediapipe` mirror is then regenerated from that stale payload and is not source of truth; its local nested git state is just a generated install artifact (`git -C addons/aerobeat-input-mediapipe log --oneline -1` => `577ec77 "Initial commit"`). Relevant restore/install behavior from `/home/derrick/.openclaw/workspace/scripts/godotenv-sync`: default path is `--scrub-uids --install`; cache clearing only happens when `--refresh-caches` is explicitly requested. Even so, refresh-caching alone would not fix the problem because the manifest still pins the old shim-bearing checkout. Narrowest next seam: update only the assembly consumer manifest pin in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/addons.jsonc` to a commit/tag at or after `4f63ccd2d131d4192e9675fd6a78572780a7ec0f` while keeping the install alias key `aerobeat-input-mediapipe` if consumer paths still need it, then rerun `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community --refresh-caches --install` and re-QA with `rg -uu -n 'mediapipe_config\.gd|MediaPipeConfig'`. Audit memo written at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-02-assembly-mediapipe-regeneration-audit.md`. References validated: `REF-03`, `REF-04`, `REF-05`.
+
+---
+
+### Task 7: Update assembly addon pin past shim retirement and refresh caches
+
+**Bead ID:** `aerobeat-input-camera-tracking-1is`  
+**SubAgent:** `primary` (for `coder` workflow role)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Update `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/addons.jsonc` so the `aerobeat-input-mediapipe` dependency pin points to a commit at or after `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` commit `4f63ccd2d131d4192e9675fd6a78572780a7ec0f` (`Retire MediaPipe config shim`). Keep the alias key if consumer mount-path assumptions still depend on it. After updating the pin, run `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community --refresh-caches --install`, then rerun focused `rg -uu -n 'mediapipe_config\.gd|MediaPipeConfig'` validation in the assembly repo. Do not patch generated addon mirrors as source. Commit/push repo-owned changes by default and update this plan with exact command, validation, and commit hashes.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/addons.jsonc`
+- plan updates as needed
+
+**Status:** ✅ Complete
+
+**Results:** Updated `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community/addons.jsonc` so alias key `aerobeat-input-mediapipe` still points at `git@github.com:AeroBeat-Workouts/aerobeat-input-camera-tracking.git` but now checks out commit `4f63ccd2d131d4192e9675fd6a78572780a7ec0f` (`Retire MediaPipe config shim`) instead of stale commit `5bbdf2575c31eab03ea528f4826c1d159f47a1fe`. Ran the approved refresh exactly as `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community --refresh-caches --install`; it completed with exit 0 and reported `godotenv-sync: 1 project root(s)`, `actions: refresh-caches, install`, `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community: ok`, `refresh-caches: 15 entries`, `restore-deleted-tracked-uids: restored 0 file(s) across 15 nested repo(s)`, and `install: ok`. Then reran the required focused validation exactly as `rg -uu -n 'mediapipe_config\.gd|MediaPipeConfig' /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-assembly-community`. Remaining hits were reduced to history/log/cache surfaces only: assembly `.qa-logs/*`, assembly `.godot/global_script_class_cache.cfg`, assembly `.godot/editor/filesystem_cache10`, and plan/history files under generated addon mirrors at `addons/aerobeat-input-mediapipe/.plans/**` and `.addons/aerobeat-input-mediapipe/.plans/**`; there were no remaining live addon-source hits under `addons/aerobeat-input-mediapipe/src/**` or `.addons/aerobeat-input-mediapipe/src/**`. This makes the slice ready for the planned QA rerun in Task 8.
+
+---
+
+### Task 8: Re-QA assembly pin update after cache refresh
+
+**Bead ID:** `aerobeat-input-camera-tracking-955`  
+**SubAgent:** `primary` (for `qa` workflow role)  
+**Role:** `qa`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Re-run the shim-retirement QA after the assembly consumer pin has been updated and `godotenv-sync --refresh-caches --install` has refreshed the generated dependency surface. Verify whether any remaining `mediapipe_config.gd` / `MediaPipeConfig` hits are still live/tests-only dependency truth or have been reduced to docs/history only. Use focused `rg -uu` searches and safe repo-local validation, and document exact evidence.
+
+**Folders Created/Deleted/Modified:**
+- validation-only surfaces as needed
+
+**Files Created/Deleted/Modified:**
+- plan updates only unless a minimal QA note is justified
+
 **Status:** ⏳ Pending
 
 **Results:** Pending.
 
 ---
 
-### Task 4: Independently audit final truthfulness of shim retirement
+### Task 9: Independently audit final truthfulness of shim retirement
 
-**Bead ID:** `aerobeat-input-camera-tracking-okb`  
+**Bead ID:** `aerobeat-input-camera-tracking-tfe`  
 **SubAgent:** `primary` (for `auditor` workflow role)  
 **Role:** `auditor`  
 **References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
-**Prompt:** Independently verify that all live `MediaPipeConfig` / `mediapipe_config.gd` references were either removed or truthfully justified, that neutral replacements are correct, and that no hidden runtime/resource dependency was broken. Produce a concise evidence-backed audit.
+**Prompt:** Independently verify that the final shim-retirement state is truthful after the assembly pin update, cache refresh, and QA rerun: no hidden live/tests-only dependency still relies on `mediapipe_config.gd` / `MediaPipeConfig`, neutral replacements are correct, and no generated addon mirror was treated as source. Produce a concise evidence-backed audit.
 
 **Folders Created/Deleted/Modified:**
 - `.plans/`
@@ -129,14 +253,14 @@ The work therefore starts with a reference inventory rather than deleting the sh
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Completed the coder slice for shim retirement by deleting the temporary assembly test consumer and then removing the now-unused `MediaPipeConfig` compatibility shim from `aerobeat-input-camera-tracking`.
+**What We Built:** Completed the initial coder slices needed so far for shim retirement: removed the temporary assembly test consumer, removed the repo-source `MediaPipeConfig` compatibility shim from `aerobeat-input-camera-tracking`, refreshed the assembly repo’s generated addon/cache surfaces with the approved `godotenv-sync` flow, and then diagnosed why the consumer still regenerates the old shim-bearing addon payload.
 
-**Reference Check:** `REF-03` and `REF-06` were validated directly; no live/tests-only `mediapipe_config.gd` / `MediaPipeConfig` hits remained after the deletions.
+**Reference Check:** `REF-03`, `REF-04`, `REF-05`, and `REF-06` were validated directly. The refreshed assembly still resolves `aerobeat-input-mediapipe` from an older pinned commit in `addons.jsonc`, so QA/audit must continue only after that consumer pin is updated and the generated surfaces are rebuilt from the newer source snapshot.
 
 **Commits:**
-- Pending coder commit/push
+- No new commit in this slice; only the coordination plan and audit memo changed durably.
 
-**Lessons Learned:** Even a tiny compatibility shim needs a cross-repo search before removal, but once the last consumer is explicitly temporary, deleting the consumer is cleaner than migrating dead test code.
+**Lessons Learned:** Refreshing generated addon mirrors is not enough when the consumer manifest still selects an older source snapshot. The truthful repair path is: fix the repo-owned dependency pin first, then rerun `godotenv-sync` (ideally with `--refresh-caches --install` for this seam), and never treat `addons/` or `.addons/` mirrors as source.
 
 ---
 
