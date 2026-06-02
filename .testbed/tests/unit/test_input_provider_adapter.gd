@@ -18,7 +18,7 @@ func after_each() -> void:
 
 func test_input_provider_adapter_reports_explicit_provider_id() -> void:
 	var provider = add_child_autoqfree(InputProviderAdapterScript.new())
-	assert_eq(provider.get_provider_id(), "mediapipe_python")
+	assert_eq(provider.get_provider_id(), "camera_tracking")
 
 func test_input_provider_adapter_reports_boxing_velocity_and_lower_body_capabilities() -> void:
 	var provider = add_child_autoqfree(InputProviderAdapterScript.new())
@@ -51,20 +51,21 @@ func test_input_provider_adapter_publishes_started_session_for_shared_reuse() ->
 	var adapter := setup["adapter"] as Node
 	assert_true(bool(setup["started"]))
 
-	var request: Dictionary = RegistryScript.request_session({"session_key": "mediapipe_python"})
+	var request: Dictionary = RegistryScript.request_session({"session_key": "camera_tracking"})
 	assert_true(bool(request.get("ok", false)))
 	var session: Dictionary = request.get("session", {}) if request.get("session", {}) is Dictionary else {}
 	var metadata: Dictionary = session.get("metadata", {}) if session.get("metadata", {}) is Dictionary else {}
 	assert_same(session.get("provider", null), adapter)
-	assert_eq(String(session.get("provider_id", "")), "mediapipe_python")
+	assert_eq(String(session.get("provider_id", "")), "camera_tracking")
 	assert_eq(String(metadata.get("shared_reuse_scope", "")), "same_runtime_only")
 	assert_false(bool(metadata.get("legacy_fallback", true)))
+	assert_eq(String(metadata.get("lane", "")), "camera_tracking")
 	assert_eq(String(metadata.get("provider_lane", "")), "camera_tracking")
 	assert_eq(String(metadata.get("runtime_mode", "")), "live")
 	assert_eq(String(metadata.get("camera_source", "")), "/dev/video7")
 
 	var acquire: Dictionary = adapter.acquire_shared_session("camera_gesture:testbed", {
-		"provider_id": "mediapipe_python",
+		"provider_id": "camera_tracking",
 		"metadata_match": {
 			"runtime_mode": "live",
 			"camera_source": "/dev/video7",
@@ -96,8 +97,8 @@ func test_input_provider_adapter_reports_owned_shared_session_debug_state() -> v
 
 	var debug_state: Dictionary = adapter.get_shared_session_debug_state()
 	assert_eq(String(debug_state.get("session_role", "")), "owned")
-	assert_eq(String(debug_state.get("session_key", "")), "mediapipe_python")
-	assert_eq(String(debug_state.get("provider_id", "")), "mediapipe_python")
+	assert_eq(String(debug_state.get("session_key", "")), "camera_tracking")
+	assert_eq(String(debug_state.get("provider_id", "")), "camera_tracking")
 	assert_eq(String(debug_state.get("provider_lane", "")), "camera_tracking")
 	assert_eq(String(debug_state.get("runtime_mode", "")), "live")
 	assert_eq(String(debug_state.get("camera_source", "")), "/dev/video3")
@@ -110,7 +111,7 @@ func test_input_provider_adapter_unpublishes_owned_session_on_stop() -> void:
 
 	adapter.stop()
 
-	assert_false(bool(RegistryScript.request_session({"session_key": "mediapipe_python"}).get("ok", false)))
+	assert_false(bool(RegistryScript.request_session({"session_key": "camera_tracking"}).get("ok", false)))
 
 func test_input_provider_adapter_keeps_existing_owner_session_when_publication_collides() -> void:
 	var first_setup := _make_started_tracking_adapter({"source": {"kind": "live_camera", "camera_id": "/dev/video7"}})
@@ -121,7 +122,7 @@ func test_input_provider_adapter_keeps_existing_owner_session_when_publication_c
 	assert_true(bool(second_setup["started"]))
 	assert_eq(String(second_adapter._published_session_key), "")
 
-	var request: Dictionary = RegistryScript.request_session({"session_key": "mediapipe_python"})
+	var request: Dictionary = RegistryScript.request_session({"session_key": "camera_tracking"})
 	assert_true(bool(request.get("ok", false)))
 	var session: Dictionary = request.get("session", {}) if request.get("session", {}) is Dictionary else {}
 	assert_same(session.get("provider", null), first_adapter)
@@ -192,7 +193,7 @@ func test_input_provider_adapter_publishes_replay_metadata_from_camera_tracking_
 	assert_eq(adapter.get_selected_camera_device_id(), fixture_path)
 	assert_false(adapter.set_selected_camera_device_id("/dev/video3"))
 
-	var request: Dictionary = RegistryScript.request_session({"session_key": "mediapipe_python"})
+	var request: Dictionary = RegistryScript.request_session({"session_key": "camera_tracking"})
 	assert_true(bool(request.get("ok", false)))
 	var session: Dictionary = request.get("session", {}) if request.get("session", {}) is Dictionary else {}
 	var metadata: Dictionary = session.get("metadata", {}) if session.get("metadata", {}) is Dictionary else {}
@@ -200,6 +201,7 @@ func test_input_provider_adapter_publishes_replay_metadata_from_camera_tracking_
 	assert_eq(String(metadata.get("source_kind", "")), "video_file")
 	assert_eq(String(metadata.get("camera_source", "")), fixture_path)
 	assert_eq(String(metadata.get("fixture_video_path", "")), fixture_path)
+	assert_eq(String(metadata.get("lane", "")), "camera_tracking")
 	assert_eq(String(metadata.get("provider_lane", "")), "camera_tracking")
 	assert_false(bool(metadata.get("legacy_fallback", true)))
 

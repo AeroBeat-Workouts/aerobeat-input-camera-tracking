@@ -13,10 +13,10 @@ extends "res://addons/aerobeat-input-core/src/interfaces/boxing_input.gd"
 ## - does not reclaim upstream runtime/backend/preview ownership
 ## - does not compose or fall back to local vendor/runtime implementations
 
-const PROVIDER_ID := "mediapipe_python"
+const PROVIDER_ID := "camera_tracking"
 const PROVIDER_SESSION_REGISTRY_PATH := "res://addons/aerobeat-input-core/src/runtime/provider_session_registry.gd"
 const SHARED_SESSION_OWNER_PREFIX := "aerobeat-input-camera-tracking:input_provider"
-const SHARED_SESSION_KEY := "mediapipe_python"
+const SHARED_SESSION_KEY := "camera_tracking"
 const TRACKING_SESSION_NODE_NAME := "CameraTracking"
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const PROVIDER_LANE_CAMERA_TRACKING := "camera_tracking"
@@ -303,7 +303,7 @@ func _build_shared_session_metadata() -> Dictionary:
 	var source_identity := _shared_session_source_identity()
 	var source_kind := _shared_session_source_kind()
 	return {
-		"lane": "input_provider",
+		"lane": "camera_tracking",
 		"entrypoint": "src/input_provider.gd",
 		"node_path": String(get_path()) if is_inside_tree() else "",
 		"shared_reuse_scope": "same_runtime_only",

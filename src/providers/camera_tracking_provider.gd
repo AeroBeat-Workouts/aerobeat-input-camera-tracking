@@ -310,7 +310,7 @@ func _build_tracking_config() -> Dictionary:
 			"path": source_id,
 		}
 	var tracking_config := {
-		"backend": "mediapipe_python",
+		"backend": "camera_tracking_default",
 		"source": source_payload,
 		"tracking": {
 			"overlay_mode": String(active_config.tracking_overlay_mode).strip_edges() if active_config != null else "optimized",
