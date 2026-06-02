@@ -1,4 +1,4 @@
-extends "res://addons/gut/test.gd"
+extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const LandmarkDrawerScript = preload("res://scripts/landmark_drawer.gd")
 

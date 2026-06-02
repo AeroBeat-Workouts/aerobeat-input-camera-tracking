@@ -1,4 +1,4 @@
-extends "res://addons/gut/test.gd"
+extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const AeroCameraTrackingScript = preload("res://addons/aerobeat-input-camera-tracking/src/AeroCameraTracking.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")

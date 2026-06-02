@@ -1,4 +1,4 @@
-extends "res://addons/gut/test.gd"
+extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const InputProviderAdapterScript = preload("res://addons/aerobeat-input-camera-tracking/src/input_provider.gd")
 const RegistryScript = preload("res://addons/aerobeat-input-core/src/runtime/provider_session_registry.gd")

@@ -1,4 +1,4 @@
-extends "res://addons/gut/test.gd"
+extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const TrackingFrameAdapter = preload("res://addons/aerobeat-input-camera-tracking/src/tracking_frame_adapter.gd")
 

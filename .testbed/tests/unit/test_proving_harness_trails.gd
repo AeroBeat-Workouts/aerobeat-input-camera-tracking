@@ -1,4 +1,4 @@
-extends "res://addons/gut/test.gd"
+extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const ProvingHarness = preload("res://scripts/proving_harness.gd")
 const TruthfulPreviewSurfaceScript = preload("res://scripts/truthful_preview_surface.gd")
