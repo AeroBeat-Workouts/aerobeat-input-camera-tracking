@@ -10,7 +10,7 @@ extends Node
 
 const CAMERA_TRACKING_SCRIPT_PATH := "res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd"
 const CAMERA_TRACKING_PROVIDER_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd"
-const MEDIAPIPE_CONFIG_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd"
+const CAMERA_TRACKING_CONFIG_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd"
 const INTERNAL_TRACKING_NODE_NAME := "CameraTracking"
 const INTERNAL_PROVIDER_NODE_NAME := "CameraTrackingProvider"
 
@@ -398,9 +398,9 @@ func _make_replay_runtime_config(source_path: String, start_time_sec: float):
 func _coerce_runtime_config(config_variant: Variant):
 	if typeof(config_variant) == TYPE_OBJECT and config_variant.has_method("get_camera_source"):
 		return config_variant
-	var config_script: Variant = _load_script(MEDIAPIPE_CONFIG_SCRIPT_PATH)
+	var config_script: Variant = _load_script(CAMERA_TRACKING_CONFIG_SCRIPT_PATH)
 	if config_script == null:
-		push_error("[AeroCameraTracking] MediaPipe config script is not available")
+		push_error("[AeroCameraTracking] CameraTracking config script is not available")
 		return null
 	var config = config_script.new()
 	if config_variant is Dictionary:

@@ -1,7 +1,7 @@
 extends "res://addons/gut/test.gd"
 
 const ProvingHarness = preload("res://scripts/proving_harness.gd")
-const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
+const TruthfulPreviewSurfaceScript = preload("res://scripts/truthful_preview_surface.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
@@ -246,9 +246,7 @@ func test_preview_only_pose_activity_invalidates_surface_and_clears_overlay_stat
 
 func test_preview_only_provider_node_drift_invalidates_surface() -> void:
 	harness.startup_mode = harness.StartupMode.PREVIEW_ONLY_DEBUG
-	var drift_node := Node.new()
-	drift_node.name = "MediaPipeProvider"
-	harness.add_child(drift_node)
+	harness.provider = add_child_autoqfree(Node.new())
 	harness._audit_preview_only_surface()
 	assert_eq(harness._preview_only_invalid_reason, "provider node active in preview-only rung")
 	assert_eq(harness._event_count("preview_only_invalid"), 1)
@@ -300,8 +298,7 @@ func test_replay_proving_prefers_singleton_playback_controller() -> void:
 
 	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
 	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
-	harness.camera_view = MediaPipeCameraViewScript.new()
-	harness.camera_view.stream_url = "http://127.0.0.1:4243/camera"
+	harness.camera_view = TruthfulPreviewSurfaceScript.new()
 	harness.add_child(harness.camera_view)
 	add_child(harness)
 
@@ -322,8 +319,7 @@ func test_replay_proving_autoplays_when_same_source_is_already_loaded_but_paused
 
 	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
 	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
-	harness.camera_view = MediaPipeCameraViewScript.new()
-	harness.camera_view.stream_url = "http://127.0.0.1:4243/camera"
+	harness.camera_view = TruthfulPreviewSurfaceScript.new()
 	harness.add_child(harness.camera_view)
 	add_child(harness)
 

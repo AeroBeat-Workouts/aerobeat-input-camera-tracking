@@ -1,8 +1,6 @@
 extends Control
 ## Shared proving harness for live Boxing / Flow detector tuning.
 
-const MediaPipeProviderScript = preload("res://addons/aerobeat-input-camera-tracking/src/providers/mediapipe_provider.gd")
-const MediaPipeCameraViewScript = preload("res://addons/aerobeat-input-camera-tracking/src/camera_view.gd")
 const TruthfulPreviewSurfaceScript = preload("res://scripts/truthful_preview_surface.gd")
 const MediaPipeConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd")
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
@@ -575,17 +573,11 @@ func _load_available_camera_devices() -> Array:
 		elif tracking_singleton.has_method("list_cameras"):
 			devices = tracking_singleton.list_cameras()
 	if devices.is_empty():
-		var temp_provider: Variant = MediaPipeProviderScript.new()
-		if temp_provider != null and temp_provider.has_method("get_available_camera_devices"):
-			devices = temp_provider.get_available_camera_devices()
-		if temp_provider is Node and is_instance_valid(temp_provider):
-			temp_provider.free()
-	if devices.is_empty():
 		devices.append({
 			"id": "/dev/video0",
 			"label": "Default camera",
 			"path": "/dev/video0",
-			"provider": "mediapipe_python",
+			"provider": "camera_tracking",
 		})
 	return devices
 
@@ -1435,39 +1427,8 @@ func _refresh_contract_preview_surface() -> void:
 	_on_contract_preview_changed(descriptor)
 
 func _start_camera_feed() -> void:
-	camera_view = MediaPipeCameraViewScript.new()
-	camera_view.name = "CameraView"
-	camera_view.stream_url = "http://127.0.0.1:4243/camera"
-	camera_view.debug_logging = steady_state_console_debug
-	camera_view.flip_horizontal = _should_flip_horizontal_preview()
-	camera_view.show_overlay = false
-
-	var previous_display := camera_display
-	if previous_display:
-		camera_view.custom_minimum_size = previous_display.custom_minimum_size
-		camera_view.layout_mode = previous_display.layout_mode
-		camera_view.size_flags_horizontal = previous_display.size_flags_horizontal
-		camera_view.size_flags_vertical = previous_display.size_flags_vertical
-		camera_view.size_flags_stretch_ratio = previous_display.size_flags_stretch_ratio
-		camera_view.expand_mode = previous_display.expand_mode
-		camera_view.stretch_mode = previous_display.stretch_mode
-	else:
-		camera_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		camera_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	previous_display.replace_by(camera_view)
-	camera_display = camera_view
-	if landmark_drawer:
-		landmark_drawer.reparent(camera_display)
-	if trail_drawer:
-		trail_drawer.reparent(camera_display)
-	_ensure_overlay_drawers_ready()
-	if previous_display and previous_display != camera_view:
-		previous_display.queue_free()
-
+	_ensure_contract_preview_surface()
 	await get_tree().process_frame
-	var stream_started: bool = bool(await camera_view.start_stream())
-	if not stream_started:
-		_record_event("camera_stream_failed", {})
 
 func _on_landmark_clicked(landmark_id: int) -> void:
 	_open_shared_inspector("landmark", str(landmark_id))
@@ -2705,7 +2666,7 @@ func _audit_preview_only_surface() -> void:
 	if not _is_preview_only_mode():
 		return
 	_clear_preview_only_overlay_state()
-	if provider != null or get_node_or_null("MediaPipeProvider") != null:
+	if provider != null:
 		_invalidate_preview_only_surface("provider node active in preview-only rung")
 
 func _invalidate_preview_only_surface(reason: String) -> void:

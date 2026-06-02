@@ -6,14 +6,12 @@ This repo is no longer described as the product's vendor-owned "MediaPipe Python
 
 Current truthful status for this migration wave:
 
-- `src/input_provider.gd` now prefers a supplied or conservatively discoverable `CameraTracking` session and routes the assembly-facing adapter through `src/providers/camera_tracking_provider.gd` when that contract lane exists
-- this repo still contains the existing MediaPipe-backed implementation as a **clearly provisional legacy fallback** when no `CameraTracking` session is available yet
-- the adapter still publishes itself through the input-core provider-session registry with `provider_id = mediapipe_python` for current compatibility
+- `src/input_provider.gd` now requires a supplied or conservatively discoverable `CameraTracking` session and routes the assembly-facing adapter through `src/providers/camera_tracking_provider.gd`
+- the adapter still publishes itself through the input-core provider-session registry with `provider_id = mediapipe_python` for current compatibility, but the sharable addon no longer owns a local MediaPipe/runtime fallback path
 - the repo contains a **tracking-frame ingestion seam** that consumes normalized `CameraTracking` frames without re-owning vendor payload shape
-- `.testbed/` Boxing + Flow proving now prefer a live `CameraTracking` session for the continuous contract path
-- `.testbed/` mounts the upstream `aerobeat-tool-camera-tracking` contract shell plus the paired vendor backend only for repo-local proving/tests
+- `.testbed/` Boxing + Flow proving uses the upstream `aerobeat-tool-camera-tracking` contract shell plus the paired vendor backend only for repo-local proving/tests
 - real sharable addon code stays at the repo root; `.testbed/` remains the proving surface only
-- direct preview/lifecycle/runtime ownership is still provisional in the legacy lane and is **not** reclaimed by this repo for the contract path
+- direct preview/lifecycle/runtime ownership is not reclaimed by this repo
 
 ## First migration-slice architecture
 
@@ -45,11 +43,9 @@ This keeps the existing detector truth mostly intact while reducing how much thi
 ## Repo layout
 
 - `src/input_provider.gd` — current assembly-facing addon entrypoint
-- `src/providers/mediapipe_provider.gd` — legacy/local MediaPipe-backed provider path still kept for provisional assembly/runtime compatibility
-- `src/providers/camera_tracking_provider.gd` — first contract-driven provider seam for normalized tracking-frame consumption
+- `src/providers/camera_tracking_provider.gd` — contract-driven provider seam for normalized tracking-frame consumption
 - `src/tracking_frame_adapter.gd` — vendor-neutral tracking-frame translator for existing detectors
 - `src/detectors/` — Boxing + Flow interpretation substrate and helpers
-- `python_mediapipe/` — current sidecar/runtime implementation still present in this repo during migration
 - `.testbed/` — hidden Godot proving project and tests
 
 ## GodotEnv development flow

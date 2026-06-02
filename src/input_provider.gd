@@ -6,13 +6,12 @@ extends "res://addons/aerobeat-input-core/src/interfaces/boxing_input.gd"
 ## alongside `aerobeat-input-core`.
 ##
 ## Current truthful scope:
-## - prefers a supplied/discoverable CameraTracking session and routes gameplay-facing
-##   behavior through CameraTrackingProvider when that contract lane is available
+## - consumes a supplied/discoverable CameraTracking session and routes gameplay-facing
+##   behavior through CameraTrackingProvider only
 ## - preserves provider-session-registry publication from this adapter for current
 ##   input-core compatibility
-## - keeps a clearly provisional legacy MediaPipe fallback only when no contract
-##   session is available yet
-## - does not reclaim upstream runtime/backend/preview ownership in the contract lane
+## - does not reclaim upstream runtime/backend/preview ownership
+## - does not compose or fall back to local vendor/runtime implementations
 
 const PROVIDER_ID := "mediapipe_python"
 const PROVIDER_SESSION_REGISTRY_PATH := "res://addons/aerobeat-input-core/src/runtime/provider_session_registry.gd"
@@ -21,7 +20,6 @@ const SHARED_SESSION_KEY := "mediapipe_python"
 const TRACKING_SESSION_NODE_NAME := "CameraTracking"
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const PROVIDER_LANE_CAMERA_TRACKING := "camera_tracking"
-const PROVIDER_LANE_LEGACY_MEDIAPIPE := "legacy_mediapipe"
 
 signal swing_left(placement: int, direction: int)
 signal swing_right(placement: int, direction: int)
@@ -78,6 +76,7 @@ func get_shared_session_debug_state() -> Dictionary:
 		"provider_live": _provider != null and is_instance_valid(_provider),
 		"provider_id": PROVIDER_ID,
 		"provider_lane": _provider_lane,
+		"legacy_fallback": false,
 		"runtime_mode": _shared_session_runtime_mode(),
 		"source_kind": source_kind,
 		"camera_source": source_identity,
@@ -116,7 +115,7 @@ func uses_camera_tracking_contract_path() -> bool:
 	return _provider_lane == PROVIDER_LANE_CAMERA_TRACKING
 
 func is_using_legacy_fallback() -> bool:
-	return _provider_lane == PROVIDER_LANE_LEGACY_MEDIAPIPE
+	return false
 
 func start(settings_json: String = "") -> bool:
 	_ensure_provider()
@@ -131,8 +130,7 @@ func start(settings_json: String = "") -> bool:
 		camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
 		started.emit()
 	else:
-		var failure_reason := "CameraTracking provider failed to start" if uses_camera_tracking_contract_path() else "MediaPipe provider failed to start"
-		failed.emit(failure_reason)
+		failed.emit("CameraTracking provider failed to start")
 	return success
 
 func stop() -> void:
@@ -276,7 +274,7 @@ func _publish_shared_session_if_possible() -> Dictionary:
 	_published_session_key = ""
 	var status := String(publish.get("status", "unknown"))
 	if status != "owner_mismatch" and status != "session_exists":
-		push_warning("MediaPipe input provider session was not published: %s" % status)
+		push_warning("CameraTracking input provider session was not published: %s" % status)
 	return publish
 
 func _unpublish_shared_session_if_needed() -> void:
@@ -311,7 +309,7 @@ func _build_shared_session_metadata() -> Dictionary:
 		"shared_reuse_scope": "same_runtime_only",
 		"provider_id": PROVIDER_ID,
 		"provider_lane": _provider_lane,
-		"legacy_fallback": is_using_legacy_fallback(),
+		"legacy_fallback": false,
 		"runtime_mode": _shared_session_runtime_mode(),
 		"source_kind": source_kind,
 		"camera_source": source_identity,
@@ -328,8 +326,10 @@ func _ensure_provider() -> void:
 	var resolved_tracking_session = _resolve_tracking_session()
 	if resolved_tracking_session != null:
 		_ensure_camera_tracking_provider(resolved_tracking_session)
-	else:
-		_ensure_legacy_mediapipe_provider()
+	elif _provider != null and _provider_lane == PROVIDER_LANE_CAMERA_TRACKING:
+		if _provider.has_method("set_tracking_session"):
+			_provider.set_tracking_session(null)
+		_provider_lane = ""
 
 	if _provider != null and _provider.has_method("set_tracking_mode"):
 		_provider.set_tracking_mode(_to_provider_mode(_tracking_mode))
@@ -357,25 +357,6 @@ func _ensure_camera_tracking_provider(tracking_session, manage_tracking_session_
 	provider.set_tracking_session(tracking_session)
 	_replace_provider(provider, PROVIDER_LANE_CAMERA_TRACKING)
 
-func _ensure_legacy_mediapipe_provider() -> void:
-	if _provider != null and _provider_lane.is_empty():
-		_provider_lane = _infer_provider_lane(_provider)
-	if _provider != null and _provider_lane == PROVIDER_LANE_LEGACY_MEDIAPIPE:
-		if _provider.get("config") == null:
-			_provider.config = _ensure_config()
-		_config = _provider.config
-		_connect_provider_signals()
-		_connect_provider_tracking_lost_signal()
-		return
-
-	var provider_script: GDScript = _load_local_script("providers/mediapipe_provider.gd")
-	if provider_script == null:
-		return
-	var provider = provider_script.new()
-	provider.name = "MediaPipeProvider"
-	provider.config = _ensure_config()
-	_replace_provider(provider, PROVIDER_LANE_LEGACY_MEDIAPIPE)
-
 func _replace_provider(next_provider: Node, lane: String) -> void:
 	var previous_provider = _provider
 	if previous_provider == next_provider:
@@ -402,7 +383,7 @@ func _replace_provider(next_provider: Node, lane: String) -> void:
 func _infer_provider_lane(provider: Variant) -> String:
 	if provider != null and provider.has_method("set_tracking_session"):
 		return PROVIDER_LANE_CAMERA_TRACKING
-	return PROVIDER_LANE_LEGACY_MEDIAPIPE
+	return ""
 
 func _resolve_tracking_session():
 	if _tracking_session != null:
