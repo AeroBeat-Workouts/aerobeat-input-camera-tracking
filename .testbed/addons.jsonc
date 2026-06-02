@@ -1,31 +1,26 @@
 {
   "$schema": "https://chickensoft.games/schemas/addons.schema.json",
   "addons": {
-    // This workbench consumes the current repo package from the repo root.
     "aerobeat-input-camera-tracking": {
       "url": "..",
       "source": "symlink",
       "subfolder": "/"
     },
-    // The input-core repo is mounted under its truthful addon key/path.
     "aerobeat-input-core": {
       "url": "../../aerobeat-input-core",
       "source": "symlink",
       "subfolder": "/"
     },
-    // The camera-tracking contract shell is mounted for contract-driven proving/tests.
     "aerobeat-tool-camera-tracking": {
       "url": "../../aerobeat-tool-camera-tracking",
       "source": "symlink",
       "subfolder": "/"
     },
-    // The paired vendor backend is mounted only for repo-local live CameraTracking proving.
     "aerobeat-vendor-mediapipe-python": {
       "url": "../../aerobeat-vendor-mediapipe-python",
       "source": "symlink",
       "subfolder": "/"
     },
-    // Shared playback contract + facade are mounted so replay transport UI delegates through tool-video-player.
     "aerobeat-tool-core": {
       "url": "../../aerobeat-tool-core",
       "source": "symlink",
@@ -36,13 +31,11 @@
       "source": "symlink",
       "subfolder": "/"
     },
-    // The reusable headless quit manager is consumed like a normal addon package.
     "aerobeat-tool-headless-manager": {
-      "url": "git@github.com:AeroBeat-Workouts/aerobeat-tool-headless-manager.git",
-      "checkout": "e13b751",
-      "subfolder": "/"
+      "url": "../../aerobeat-tool-headless-manager",
+      "subfolder": "/",
+      "source": "symlink"
     },
-    // GUT drives the repo-local test suite inside the hidden testbed/workbench.
     "gut": {
       "url": "git@github.com:bitwes/Gut.git",
       "checkout": "main",
