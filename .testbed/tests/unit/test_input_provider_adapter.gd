@@ -207,6 +207,14 @@ func test_input_provider_adapter_discovers_camera_tracking_session_before_fallin
 	assert_false(adapter.is_using_legacy_fallback())
 	assert_not_null(adapter.get_tracking_session())
 
+func test_input_provider_adapter_does_not_compose_a_local_contract_session_when_none_is_discoverable() -> void:
+	var adapter = add_child_autoqfree(InputProviderAdapterScript.new())
+	adapter.clear_tracking_session()
+
+	assert_null(adapter.get_tracking_session())
+	assert_true(adapter.is_using_legacy_fallback())
+	assert_false(adapter.uses_camera_tracking_contract_path())
+
 func test_input_provider_adapter_publishes_replay_metadata_from_camera_tracking_session() -> void:
 	var fixture_path := "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
 	var tracker_setup := _make_started_tracking_session({

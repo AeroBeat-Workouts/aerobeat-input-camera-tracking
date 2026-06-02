@@ -5,15 +5,12 @@ extends Node
 ## - owns the high-level start/stop contract for live-camera and replay/video-file tracking
 ## - delegates normalized tracking + gesture interpretation through CameraTrackingProvider
 ## - re-emits tracking-session state plus Boxing/Flow detector signals for consumer scenes
-## - keeps legacy local python_mediapipe fallback code elsewhere intact until the remaining
-##   preview/playback/runtime seams can be retired safely
+## - consumes only the public CameraTracking contract from aerobeat-tool-camera-tracking
+##   and does not locally compose vendor backend/runtime objects
 
 const CAMERA_TRACKING_SCRIPT_PATH := "res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd"
 const CAMERA_TRACKING_PROVIDER_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd"
 const MEDIAPIPE_CONFIG_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/config/mediapipe_config.gd"
-const VENDOR_BACKEND_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonCameraTrackingBackend.gd"
-const VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonRuntimeBridge.gd"
-const DEFAULT_BACKEND_ID := "mediapipe_python"
 const INTERNAL_TRACKING_NODE_NAME := "CameraTracking"
 const INTERNAL_PROVIDER_NODE_NAME := "CameraTrackingProvider"
 
@@ -67,6 +64,7 @@ var _replay_position_sec := 0.0
 var _replay_loaded := false
 var _replay_playing := false
 var _replay_started_at_msec := 0
+var _replay_started_at_position_sec := 0.0
 
 func has_tracking_contract() -> bool:
 	return _tracking_session != null and is_instance_valid(_tracking_session)
@@ -215,7 +213,6 @@ func ensure_replay_playback_loaded(source_path: String) -> bool:
 		return false
 	_replay_source_path = normalized_source
 	_replay_loaded = true
-	_replay_duration_sec = maxf(_probe_replay_duration_seconds(normalized_source), _replay_duration_sec)
 	_replay_position_sec = clampf(_replay_position_sec, 0.0, _replay_duration_sec if _replay_duration_sec > 0.0 else _replay_position_sec)
 	return true
 
@@ -259,6 +256,7 @@ func play_replay_playback() -> bool:
 		return false
 	_replay_playing = start_replay(_replay_source_path, config)
 	if _replay_playing:
+		_replay_started_at_position_sec = _replay_position_sec
 		_replay_started_at_msec = Time.get_ticks_msec()
 		_refresh_replay_playback_state_from_tracking_session()
 	return _replay_playing
@@ -268,6 +266,7 @@ func pause_replay_playback() -> bool:
 	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
 		_provider.stop()
 	_replay_playing = false
+	_replay_started_at_position_sec = _replay_position_sec
 	return true
 
 func seek_replay_playback(seconds: float) -> bool:
@@ -285,6 +284,7 @@ func unload_replay_playback() -> void:
 	_replay_loaded = false
 	_replay_playing = false
 	_replay_started_at_msec = 0
+	_replay_started_at_position_sec = 0.0
 
 func set_replay_playback_transport_request(_transport_request: Callable) -> void:
 	pass
@@ -307,7 +307,6 @@ func set_tracking_session(session: Node) -> void:
 		_provider.set_tracking_session(_tracking_session)
 
 func _start_with_config(runtime_config) -> bool:
-	_register_vendor_camera_tracking_backend_if_needed()
 	var session := _ensure_tracking_session()
 	var provider := _ensure_provider()
 	if session == null or provider == null:
@@ -357,19 +356,21 @@ func get_current_preview_descriptor() -> Dictionary:
 	return {}
 
 func get_current_playback_status() -> Dictionary:
-	var backend = _tracking_session.get("_backend") if has_tracking_contract() else null
-	if backend != null and backend.has_method("get_playback_status"):
-		return backend.get_playback_status()
-	return {}
+	return get_replay_playback_status()
 
 func _refresh_replay_playback_state_from_tracking_session() -> void:
-	var status := get_current_playback_status()
-	if status.is_empty():
-		return
-	_replay_duration_sec = maxf(float(status.get("duration_sec", _replay_duration_sec)), _replay_duration_sec)
-	_replay_position_sec = maxf(float(status.get("current_time_sec", _replay_position_sec)), 0.0)
-	_replay_playing = not bool(status.get("paused", false)) and String(status.get("state", "playing")) != "ended"
-	_replay_loaded = _replay_loaded or bool(status.get("is_file_source", false))
+	if _replay_loaded and _replay_playing:
+		var elapsed_sec := maxf(float(Time.get_ticks_msec() - _replay_started_at_msec) / 1000.0, 0.0)
+		var next_position := _replay_started_at_position_sec + elapsed_sec
+		if _replay_duration_sec > 0.0:
+			next_position = minf(next_position, _replay_duration_sec)
+		_replay_position_sec = maxf(next_position, _replay_position_sec)
+	var active_config := get_active_config()
+	var source: Dictionary = active_config.get("source", {})
+	var source_kind := String(source.get("kind", "")).strip_edges()
+	if source_kind == "video_file":
+		_replay_loaded = true
+		_replay_source_path = String(source.get("path", _replay_source_path)).strip_edges()
 
 func _get_live_camera_source_id(source: Dictionary) -> String:
 	var camera_id := String(source.get("camera_id", "")).strip_edges()
@@ -393,22 +394,6 @@ func _make_replay_runtime_config(source_path: String, start_time_sec: float):
 		(vendor_config["source"] as Dictionary)["start_time_sec"] = maxf(start_time_sec, 0.0)
 		config.vendor = vendor_config
 	return config
-
-func _probe_replay_duration_seconds(source_path: String) -> float:
-	var output: Array = []
-	var args := PackedStringArray([
-		"-v", "error",
-		"-show_entries", "format=duration",
-		"-of", "default=noprint_wrappers=1:nokey=1",
-		source_path,
-	])
-	var exit_code := OS.execute("ffprobe", args, output, true)
-	if exit_code != 0 or output.is_empty():
-		return 0.0
-	return maxf(String(output[0]).strip_edges().to_float(), 0.0)
-
-func _approx_eq(a: float, b: float, epsilon: float = 0.0001) -> bool:
-	return absf(a - b) <= epsilon
 
 func _coerce_runtime_config(config_variant: Variant):
 	if typeof(config_variant) == TYPE_OBJECT and config_variant.has_method("get_camera_source"):
@@ -445,22 +430,6 @@ func _apply_dictionary_config(config, values: Dictionary) -> void:
 		config.diagnostics = (values["diagnostics"] as Dictionary).duplicate(true)
 	if values.has("vendor") and config.get("vendor") is Dictionary and values["vendor"] is Dictionary:
 		config.vendor = (values["vendor"] as Dictionary).duplicate(true)
-
-func _register_vendor_camera_tracking_backend_if_needed() -> void:
-	var camera_tracking_script: Variant = _load_script(CAMERA_TRACKING_SCRIPT_PATH)
-	if camera_tracking_script == null:
-		return
-	if camera_tracking_script.get_registered_backend_ids().has(DEFAULT_BACKEND_ID):
-		return
-	camera_tracking_script.register_backend_factory(DEFAULT_BACKEND_ID, func(_config: Dictionary):
-		var backend_script: Variant = _load_script(VENDOR_BACKEND_SCRIPT_PATH)
-		var runtime_bridge_script: Variant = _load_script(VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH)
-		if backend_script == null or runtime_bridge_script == null:
-			return null
-		var backend = backend_script.new()
-		backend.set_runtime_bridge(runtime_bridge_script.new())
-		return backend
-	)
 
 func _connect_tracking_session_signals() -> void:
 	if not has_tracking_contract():

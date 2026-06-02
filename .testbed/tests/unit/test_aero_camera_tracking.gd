@@ -3,9 +3,10 @@ extends "res://addons/gut/test.gd"
 const AeroCameraTrackingScript = preload("res://addons/aerobeat-input-camera-tracking/src/AeroCameraTracking.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
+const CameraTrackingBackendRegistryScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingBackendRegistry.gd")
 
 func before_each() -> void:
-	pass
+	CameraTrackingBackendRegistryScript.clear()
 
 func test_aero_camera_tracking_starts_live_camera_and_reemits_tracking_and_flow_updates() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
@@ -80,6 +81,16 @@ func test_aero_camera_tracking_starts_replay_sources_through_camera_tracking_con
 	var source: Dictionary = tracker.get_active_config().get("source", {})
 	assert_eq(String(source.get("kind", "")), "video_file")
 	assert_eq(String(source.get("path", "")), "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+
+func test_aero_camera_tracking_does_not_register_vendor_backends_from_the_input_repo() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var tracker = CameraTrackingScript.new()
+	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+	singleton.set_tracking_session(tracker)
+
+	assert_eq(CameraTrackingScript.get_registered_backend_ids(), [])
+	assert_true(singleton.start_live_camera("/dev/video7", {}))
+	assert_eq(CameraTrackingScript.get_registered_backend_ids(), [])
 
 func test_aero_camera_tracking_owns_replay_playback_facade_for_vendor_backed_proving_consumers() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())

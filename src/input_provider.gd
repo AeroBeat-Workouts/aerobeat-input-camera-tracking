@@ -8,13 +8,10 @@ extends "res://addons/aerobeat-input-core/src/interfaces/boxing_input.gd"
 ## Current truthful scope:
 ## - prefers a supplied/discoverable CameraTracking session and routes gameplay-facing
 ##   behavior through CameraTrackingProvider when that contract lane is available
-## - can instantiate the upstream CameraTracking contract locally when the contract +
-##   vendor backend are mounted, so this adapter does not silently fall back just
-##   because an external session has not been started yet
 ## - preserves provider-session-registry publication from this adapter for current
 ##   input-core compatibility
-## - keeps a clearly provisional legacy MediaPipe fallback only when the upstream
-##   contract lane is unavailable on this mount
+## - keeps a clearly provisional legacy MediaPipe fallback only when no contract
+##   session is available yet
 ## - does not reclaim upstream runtime/backend/preview ownership in the contract lane
 
 const PROVIDER_ID := "mediapipe_python"
@@ -23,10 +20,6 @@ const SHARED_SESSION_OWNER_PREFIX := "aerobeat-input-camera-tracking:input_provi
 const SHARED_SESSION_KEY := "mediapipe_python"
 const TRACKING_SESSION_NODE_NAME := "CameraTracking"
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
-const CAMERA_TRACKING_SCRIPT_PATH := "res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd"
-const VENDOR_BACKEND_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonCameraTrackingBackend.gd"
-const VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH := "res://addons/aerobeat-vendor-mediapipe-python/src/MediaPipePythonRuntimeBridge.gd"
-const DEFAULT_BACKEND_ID := "mediapipe_python"
 const PROVIDER_LANE_CAMERA_TRACKING := "camera_tracking"
 const PROVIDER_LANE_LEGACY_MEDIAPIPE := "legacy_mediapipe"
 
@@ -42,7 +35,6 @@ signal weave_right_end()
 var _provider = null
 var _config = null
 var _tracking_session = null
-var _tracking_session_owned_locally := false
 var _provider_lane := ""
 var _tracking_mode: TrackingMode = TrackingMode.MODE_2D
 var _body_track_flags: int = BodyTrackFlags.ALL
@@ -100,10 +92,7 @@ func _ready() -> void:
 	_ensure_provider()
 
 func set_tracking_session(session) -> void:
-	if _tracking_session_owned_locally and _tracking_session != session:
-		_dispose_owned_tracking_session_if_needed()
 	_tracking_session = session
-	_tracking_session_owned_locally = false
 	_ensure_provider()
 	if _provider != null and _provider.has_method("set_tracking_session"):
 		_provider.set_tracking_session(session)
@@ -111,9 +100,7 @@ func set_tracking_session(session) -> void:
 	_republish_shared_session_if_needed()
 
 func clear_tracking_session() -> void:
-	_dispose_owned_tracking_session_if_needed()
 	_tracking_session = null
-	_tracking_session_owned_locally = false
 	_ensure_provider()
 	_refresh_available_camera_devices()
 	_republish_shared_session_if_needed()
@@ -337,20 +324,10 @@ func _build_shared_session_metadata() -> Dictionary:
 func _ensure_provider() -> void:
 	if _provider != null and _provider_lane.is_empty():
 		_provider_lane = _infer_provider_lane(_provider)
-	if _provider != null and _provider_lane == PROVIDER_LANE_LEGACY_MEDIAPIPE:
-		_ensure_legacy_mediapipe_provider()
-		if _provider != null and _provider.has_method("set_tracking_mode"):
-			_provider.set_tracking_mode(_to_provider_mode(_tracking_mode))
-		_refresh_available_camera_devices()
-		return
 
 	var resolved_tracking_session = _resolve_tracking_session()
-	var manage_tracking_session_lifecycle := false
-	if resolved_tracking_session == null and _provider == null and _contract_lane_available():
-		resolved_tracking_session = _ensure_local_tracking_session()
-		manage_tracking_session_lifecycle = resolved_tracking_session != null
 	if resolved_tracking_session != null:
-		_ensure_camera_tracking_provider(resolved_tracking_session, manage_tracking_session_lifecycle)
+		_ensure_camera_tracking_provider(resolved_tracking_session)
 	else:
 		_ensure_legacy_mediapipe_provider()
 
@@ -360,7 +337,6 @@ func _ensure_provider() -> void:
 
 func _ensure_camera_tracking_provider(tracking_session, manage_tracking_session_lifecycle: bool = false) -> void:
 	_tracking_session = tracking_session
-	_tracking_session_owned_locally = manage_tracking_session_lifecycle
 	if _provider != null and _provider_lane.is_empty():
 		_provider_lane = _infer_provider_lane(_provider)
 	if _provider != null and _provider_lane == PROVIDER_LANE_CAMERA_TRACKING:
@@ -382,7 +358,6 @@ func _ensure_camera_tracking_provider(tracking_session, manage_tracking_session_
 	_replace_provider(provider, PROVIDER_LANE_CAMERA_TRACKING)
 
 func _ensure_legacy_mediapipe_provider() -> void:
-	_dispose_owned_tracking_session_if_needed()
 	if _provider != null and _provider_lane.is_empty():
 		_provider_lane = _infer_provider_lane(_provider)
 	if _provider != null and _provider_lane == PROVIDER_LANE_LEGACY_MEDIAPIPE:
@@ -423,39 +398,6 @@ func _replace_provider(next_provider: Node, lane: String) -> void:
 		if previous_provider.get_parent() == self:
 			remove_child(previous_provider)
 		previous_provider.queue_free()
-
-func _contract_lane_available() -> bool:
-	return ResourceLoader.exists(CAMERA_TRACKING_SCRIPT_PATH) and ResourceLoader.exists(VENDOR_BACKEND_SCRIPT_PATH) and ResourceLoader.exists(VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH)
-
-func _ensure_local_tracking_session():
-	if _tracking_session != null and is_instance_valid(_tracking_session) and _tracking_session_owned_locally:
-		return _tracking_session
-	var camera_tracking_script: Variant = load(CAMERA_TRACKING_SCRIPT_PATH)
-	var backend_script: Variant = load(VENDOR_BACKEND_SCRIPT_PATH)
-	var runtime_bridge_script: Variant = load(VENDOR_RUNTIME_BRIDGE_SCRIPT_PATH)
-	if camera_tracking_script == null or backend_script == null or runtime_bridge_script == null:
-		return null
-	var tracking_session = camera_tracking_script.new()
-	var backend = backend_script.new()
-	backend.set_runtime_bridge(runtime_bridge_script.new())
-	tracking_session.set_backend(backend, DEFAULT_BACKEND_ID)
-	tracking_session.name = TRACKING_SESSION_NODE_NAME
-	_tracking_session = tracking_session
-	_tracking_session_owned_locally = true
-	add_child(tracking_session)
-	return tracking_session
-
-func _dispose_owned_tracking_session_if_needed() -> void:
-	if not _tracking_session_owned_locally:
-		return
-	if _tracking_session != null and is_instance_valid(_tracking_session):
-		if _tracking_session.has_method("stop"):
-			_tracking_session.stop()
-		if _tracking_session.get_parent() == self:
-			remove_child(_tracking_session)
-		_tracking_session.queue_free()
-	_tracking_session = null
-	_tracking_session_owned_locally = false
 
 func _infer_provider_lane(provider: Variant) -> String:
 	if provider != null and provider.has_method("set_tracking_session"):
