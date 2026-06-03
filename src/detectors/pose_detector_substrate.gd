@@ -7,16 +7,18 @@ const TRACKING_DEGRADED := &"degraded"
 const TRACKING_LOST := &"lost"
 const TRACKING_REACQUIRING := &"reacquiring"
 
-const PUNCH_READY_EXTENSION := 0.72
-const PUNCH_FIRE_EXTENSION := 0.92
-const PUNCH_ELBOW_STRAIGHT_MIN_DEG := 170.0
-const PUNCH_LATERAL_VELOCITY_RATIO := 1.35
-const PUNCH_3D_EXTENSION_MIN := 0.95
-const PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG := 145.0
-const PUNCH_FORWARD_DELTA_RATIO := 0.08
-const PUNCH_FORWARD_VELOCITY_MIN_RATIO := 8.0
-const PUNCH_REARM_RETREAT_RATIO := 0.12
-const PUNCH_REARM_READY_MARGIN_RATIO := 0.09
+const STRAIGHT_PUNCH_STATE_READY := "ready"
+const STRAIGHT_PUNCH_STATE_TRIGGERED := "triggered"
+const STRAIGHT_PUNCH_STATE_NOT_READY := "not_ready"
+const STRAIGHT_PUNCH_STATE_TRACKING_LOST := "tracking_lost"
+const STRAIGHT_PUNCH_DEFAULT_FRESH_SAMPLES_ONLY := true
+const STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE := 4
+const STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES := 3
+const STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY := 0.18
+const STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH := 0.010
+const STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES := 3
+const STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON := 0.003
+const STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES := 2
 const PUNCH_OWN_HALF_MARGIN_RATIO := 0.12
 
 const HOOK_ELBOW_MIN_DEG := 55.0
@@ -128,7 +130,7 @@ func reset() -> void:
 	_reset_gesture_state()
 	_latest_state = _build_empty_state()
 
-func process_landmarks(landmarks: Array, timestamp_ms: int = 0) -> Dictionary:
+func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: Dictionary = {}) -> Dictionary:
 	if timestamp_ms <= 0:
 		timestamp_ms = Time.get_ticks_msec()
 	_frame_index += 1
@@ -138,9 +140,11 @@ func process_landmarks(landmarks: Array, timestamp_ms: int = 0) -> Dictionary:
 	_update_baseline(metrics, tracking_state, smoothed_landmarks)
 	metrics["tracking_state"] = tracking_state
 	metrics["baseline"] = _baseline.duplicate(true)
+	metrics["hand_tracking"] = tracking_frame.get("hand_tracking", {}).duplicate(true) if tracking_frame.get("hand_tracking", {}) is Dictionary else {}
+	metrics["hands"] = tracking_frame.get("hands", {}).duplicate(true) if tracking_frame.get("hands", {}) is Dictionary else {}
 	var events: Array = []
 	if tracking_state == TRACKING_TRACKING or tracking_state == TRACKING_REACQUIRING:
-		events = _detect_intent_events(smoothed_landmarks, metrics, timestamp_ms)
+		events = _detect_intent_events(smoothed_landmarks, metrics, timestamp_ms, tracking_frame)
 	else:
 		_clear_transient_gesture_state()
 	_latest_state = {
@@ -523,44 +527,36 @@ func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 
 func _build_straight_punch_side_debug(side: String, measurements: Dictionary) -> Dictionary:
 	var state := _get_straight_punch_state(side)
-	var current_shoulder_width := maxf(float(measurements.get("shoulder_width", float(_baseline.get("shoulder_width", 0.0)))), 0.0)
-	var latched_threshold_shoulder_width := maxf(float(state.get("threshold_shoulder_width", 0.0)), 0.0)
-	var threshold_shoulder_width_latched := latched_threshold_shoulder_width > 0.0
-	var threshold_shoulder_width := _get_straight_punch_threshold_shoulder_width(state, current_shoulder_width)
-	var forward_delta_min := threshold_shoulder_width * PUNCH_FORWARD_DELTA_RATIO
-	var forward_velocity_min := threshold_shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
-	var rearm_retreat_min := threshold_shoulder_width * PUNCH_REARM_RETREAT_RATIO
-	var rearm_ready_margin := threshold_shoulder_width * PUNCH_REARM_READY_MARGIN_RATIO
-	var arm_extension_3d := float(measurements.get("%s_arm_extension_3d" % side, 0.0))
-	var elbow_bend_deg_3d := float(measurements.get("%s_elbow_bend_deg_3d" % side, 0.0))
-	var raw_forward_velocity := float(measurements.get("%s_forward_velocity" % side, 0.0))
-	var current_forward_distance := float(measurements.get("%s_forward_distance" % side, 0.0))
-	var armed_forward_distance := float(state.get("armed_forward_distance", current_forward_distance))
-	var peak_forward_distance := float(state.get("peak_forward_distance", current_forward_distance))
+	var straight_punch_config := _get_straight_punch_config()
+	var hands: Dictionary = measurements.get("hands", {}) if measurements.get("hands", {}) is Dictionary else _latest_state.get("metrics", {}).get("hands", {})
+	var hand_payload: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
+	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
 	return {
-		"phase": String(state.get("phase", "recovering")),
-		"armed_forward_distance": armed_forward_distance,
-		"current_forward_distance": current_forward_distance,
-		"forward_delta_from_armed": current_forward_distance - armed_forward_distance,
-		"peak_forward_distance": peak_forward_distance,
-		"arm_extension_3d": arm_extension_3d,
-		"elbow_bend_deg_3d": elbow_bend_deg_3d,
-		"raw_forward_velocity": raw_forward_velocity,
-		"threshold_shoulder_width": threshold_shoulder_width,
-		"threshold_shoulder_width_latched": threshold_shoulder_width_latched,
-		"latched_threshold_shoulder_width": latched_threshold_shoulder_width,
-		"live_shoulder_width": current_shoulder_width,
-		"forward_delta_min": forward_delta_min,
-		"forward_velocity_min": forward_velocity_min,
-		"rearm_retreat_min": rearm_retreat_min,
-		"rearm_ready_margin": rearm_ready_margin,
-		"arm_extension_min": PUNCH_3D_EXTENSION_MIN,
-		"elbow_bend_deg_min": PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG,
+		"phase": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
+		"state": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
+		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
+		"min_wrist_velocity": float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)),
+		"bbox_area": float(bbox.get("area", state.get("last_bbox_area", 0.0))),
+		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),
+		"growth_window_areas": (state.get("bbox_area_history", []) as Array).duplicate(true),
+		"positive_growth_samples": int(state.get("positive_growth_samples", 0)),
+		"min_positive_growth_samples": int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)),
+		"sample_window_size": int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)),
+		"min_bbox_area_growth": float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)),
+		"trigger_bbox_area": float(state.get("trigger_bbox_area", 0.0)),
+		"grace_frames_remaining": int(state.get("grace_frames_remaining", 0)),
+		"triggered_grace_frames": int(straight_punch_config.get("triggered_grace_frames", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES)),
+		"bbox_area_retract_epsilon": float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)),
+		"reacquire_valid_samples": int(state.get("reacquire_valid_samples", 0)),
+		"reacquire_stable_frames_required": int(straight_punch_config.get("lost_tracking_reacquire_stable_frames", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES)),
+		"fresh_sample": bool(state.get("last_sample_fresh", false)),
+		"tracking_valid": bool(hand_payload.get("tracking_valid", false)),
+		"tracking_state": String(hand_payload.get("tracking_state", state.get("hand_tracking_state", "idle"))),
+		"stale_frames": int(hand_payload.get("stale_frames", state.get("stale_frames", 0))),
+		"bbox": bbox.duplicate(true),
+		"association": hand_payload.get("association", {}).duplicate(true) if hand_payload.get("association", {}) is Dictionary else {},
 		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
 		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
-		"baseline_shoulder_width": float(_baseline.get("shoulder_width", 0.0)),
-		"baseline_torso_height": float(_baseline.get("torso_height", 0.0)),
-		"baseline_athlete_height": float(_baseline.get("athlete_height", 0.0)),
 	}
 
 func _build_flow_debug_state(metrics: Dictionary = {}) -> Dictionary:
@@ -656,8 +652,8 @@ func _reset_gesture_state() -> void:
 			"swing_right": true,
 		},
 		"straight_punch": {
-			"left": _build_straight_punch_state("recovering"),
-			"right": _build_straight_punch_state("recovering"),
+			"left": _build_straight_punch_state(STRAIGHT_PUNCH_STATE_TRACKING_LOST),
+			"right": _build_straight_punch_state(STRAIGHT_PUNCH_STATE_TRACKING_LOST),
 		},
 		"flow": {
 			"left_hand": [],
@@ -678,7 +674,7 @@ func _should_evaluate_gestures_this_frame() -> bool:
 func _clear_transient_gesture_state() -> void:
 	_reset_gesture_state()
 
-func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_ms: int) -> Array:
+func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_ms: int, tracking_frame: Dictionary = {}) -> Array:
 	var events: Array = []
 	var measurements: Dictionary = metrics.get("measurements", {})
 	if not bool(_baseline.get("is_calibrated", false)):
@@ -721,8 +717,8 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if right_foot_confidence >= lower_body_confidence_gate:
 		_process_knee(events, "right", float(measurements.get("right_knee_rise", 0.0)), float(measurements.get("right_foot_rise", 0.0)), float(measurements.get("left_knee_rise", 0.0)), right_hip, right_ankle, torso_height)
 		_process_leg_lift(events, "right", float(measurements.get("right_leg_angle_from_core_deg", 0.0)), right_hip, right_ankle, torso_height)
-	_process_straight_punch(events, "left", left_shoulder, left_wrist, measurements, shoulder_width)
-	_process_straight_punch(events, "right", right_shoulder, right_wrist, measurements, shoulder_width)
+	_process_straight_punch(events, "left", left_shoulder, left_wrist, measurements, shoulder_width, tracking_frame)
+	_process_straight_punch(events, "right", right_shoulder, right_wrist, measurements, shoulder_width, tracking_frame)
 	if not _get_state("guard"):
 		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), left_hand_velocity, shoulder_width)
 		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), right_hand_velocity, shoulder_width)
@@ -736,72 +732,101 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 		_process_flow_swing(events, "right", right_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
 	return events
 
-func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, wrist: Dictionary, measurements: Dictionary, shoulder_width: float) -> void:
+func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, wrist: Dictionary, measurements: Dictionary, shoulder_width: float, tracking_frame: Dictionary = {}) -> void:
+	var straight_punch_config := _get_straight_punch_config()
+	if not bool(straight_punch_config.get("enabled", true)):
+		_set_straight_punch_state(side, _build_straight_punch_state(STRAIGHT_PUNCH_STATE_TRACKING_LOST))
+		return
 	var event_name := "punch_%s" % side
-	if shoulder.is_empty() or wrist.is_empty() or shoulder_width <= 0.0:
-		return
 	var state := _get_straight_punch_state(side)
-	var phase := String(state.get("phase", "recovering"))
-	var forward_distance := float(measurements.get("%s_forward_distance" % side, 0.0))
-	var forward_velocity := float(measurements.get("%s_forward_velocity" % side, 0.0))
-	var arm_extension_3d := float(measurements.get("%s_arm_extension_3d" % side, 0.0))
-	var elbow_bend_deg_3d := float(measurements.get("%s_elbow_bend_deg_3d" % side, 0.0))
-	var outward_distance := float(measurements.get("%s_outward_distance" % side, 0.0))
-	var lane_locked := bool(measurements.get("%s_own_half_lock" % side, false))
-	var armed_forward_distance := float(state.get("armed_forward_distance", forward_distance))
-	var peak_forward_distance := maxf(float(state.get("peak_forward_distance", forward_distance)), forward_distance)
-	var threshold_shoulder_width := _get_straight_punch_threshold_shoulder_width(state, shoulder_width)
-	var forward_delta_min := threshold_shoulder_width * PUNCH_FORWARD_DELTA_RATIO
-	var forward_velocity_min := threshold_shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
-	var rearm_retreat_min := threshold_shoulder_width * PUNCH_REARM_RETREAT_RATIO
-	var rearm_ready_margin := threshold_shoulder_width * PUNCH_REARM_READY_MARGIN_RATIO
-	var own_half_margin := threshold_shoulder_width * PUNCH_OWN_HALF_MARGIN_RATIO
-	var straight_enough := arm_extension_3d >= PUNCH_3D_EXTENSION_MIN and elbow_bend_deg_3d >= PUNCH_3D_ELBOW_STRAIGHT_MIN_DEG
-	if phase == "recovering":
-		if armed_forward_distance <= 0.0:
-			state["armed_forward_distance"] = forward_distance
-			state["peak_forward_distance"] = forward_distance
-			if lane_locked and not straight_enough:
-				state["phase"] = "armed"
-				state["threshold_shoulder_width"] = shoulder_width
-			_set_straight_punch_state(side, state)
-			return
-		var retreated := peak_forward_distance - forward_distance >= rearm_retreat_min
-		var returned_near_ready_reach := forward_distance <= armed_forward_distance + rearm_ready_margin
-		if retreated and returned_near_ready_reach and lane_locked:
-			state["phase"] = "armed"
-			state["armed_forward_distance"] = forward_distance
-			state["peak_forward_distance"] = forward_distance
-			state["threshold_shoulder_width"] = shoulder_width
-			_set_straight_punch_state(side, state)
-			return
-		state["peak_forward_distance"] = peak_forward_distance
+	var hand_payload := _get_tracking_hand_payload(tracking_frame, side)
+	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
+	var bbox_area := maxf(float(bbox.get("area", 0.0)), 0.0)
+	var hand_tracking_state := String(hand_payload.get("tracking_state", "idle"))
+	var hand_tracking_valid := bool(hand_payload.get("tracking_valid", false))
+	var fresh_sample := _is_fresh_tracking_hand_sample(hand_payload)
+	var valid_sample := _is_valid_tracking_hand_sample(hand_payload)
+	var wrist_velocity := maxf(float(measurements.get("%s_forward_velocity" % side, 0.0)), 0.0)
+	state["last_bbox_area"] = bbox_area
+	state["last_wrist_velocity"] = wrist_velocity
+	state["last_sample_fresh"] = fresh_sample
+	state["hand_tracking_state"] = hand_tracking_state
+	state["hand_tracking_valid"] = hand_tracking_valid
+	state["stale_frames"] = int(hand_payload.get("stale_frames", 0))
+	if shoulder.is_empty() or wrist.is_empty() or shoulder_width <= 0.0:
+		valid_sample = false
+		fresh_sample = false
+		state["last_sample_fresh"] = false
+		state["hand_tracking_state"] = "pose_missing"
+		state["hand_tracking_valid"] = false
+	if not valid_sample:
+		state["bbox_area_history"] = []
+		state["positive_growth_samples"] = 0
+		state["reacquire_valid_samples"] = 0
+		state["grace_frames_remaining"] = 0
+		state["trigger_bbox_area"] = 0.0
+		state["last_bbox_area_growth"] = 0.0
+		_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRACKING_LOST)
 		_set_straight_punch_state(side, state)
 		return
-	if phase == "armed":
-		if float(state.get("threshold_shoulder_width", 0.0)) <= 0.0:
-			state["threshold_shoulder_width"] = shoulder_width
-			threshold_shoulder_width = shoulder_width
-			forward_delta_min = threshold_shoulder_width * PUNCH_FORWARD_DELTA_RATIO
-			forward_velocity_min = threshold_shoulder_width * PUNCH_FORWARD_VELOCITY_MIN_RATIO
-		if lane_locked:
-			armed_forward_distance = minf(armed_forward_distance, forward_distance)
-			peak_forward_distance = maxf(forward_distance, armed_forward_distance)
-			state["armed_forward_distance"] = armed_forward_distance
-			state["peak_forward_distance"] = peak_forward_distance
-		if lane_locked and straight_enough and forward_velocity > forward_velocity_min and forward_distance >= armed_forward_distance + forward_delta_min:
-			var power := clampf(0.45 + (arm_extension_3d - PUNCH_3D_EXTENSION_MIN) * 4.0 + (forward_distance - armed_forward_distance) / maxf(forward_delta_min * 2.0, 0.000001), 0.0, 1.0)
-			_emit_power_event(events, event_name, power)
-			state["phase"] = "extending"
-			state["peak_forward_distance"] = forward_distance
-			_set_straight_punch_state(side, state)
-			return
+
+	var phase := String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST))
+	var history: Array = (state.get("bbox_area_history", []) as Array).duplicate(true)
+	if fresh_sample:
+		history.append(bbox_area)
+		var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
+		while history.size() > sample_window_size:
+			history.remove_at(0)
+		state["bbox_area_history"] = history
+		var min_bbox_area_growth := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.0)
+		state["positive_growth_samples"] = _count_positive_bbox_growth_samples(history, min_bbox_area_growth)
+		state["last_bbox_area_growth"] = _latest_bbox_area_growth(history)
+	else:
+		state["bbox_area_history"] = history
+
+	if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST:
+		if fresh_sample:
+			state["reacquire_valid_samples"] = int(state.get("reacquire_valid_samples", 0)) + 1
+			var reacquire_stable_frames := max(1, int(straight_punch_config.get("lost_tracking_reacquire_stable_frames", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES)))
+			if int(state.get("reacquire_valid_samples", 0)) >= reacquire_stable_frames:
+				state["bbox_area_history"] = [bbox_area]
+				state["positive_growth_samples"] = 0
+				state["last_bbox_area_growth"] = 0.0
+				state["reacquire_valid_samples"] = 0
+				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
 		_set_straight_punch_state(side, state)
 		return
-	peak_forward_distance = maxf(peak_forward_distance, forward_distance)
-	state["peak_forward_distance"] = peak_forward_distance
-	if not lane_locked or forward_velocity <= 0.0 or forward_distance + threshold_shoulder_width * 0.01 < peak_forward_distance or outward_distance < -own_half_margin:
-		state["phase"] = "recovering"
+
+	if phase == STRAIGHT_PUNCH_STATE_READY:
+		if fresh_sample:
+			var min_wrist_velocity := maxf(float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.0)
+			var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
+			if wrist_velocity >= min_wrist_velocity and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples:
+				state["trigger_bbox_area"] = bbox_area
+				state["grace_frames_remaining"] = max(0, int(straight_punch_config.get("triggered_grace_frames", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES)))
+				_emit_power_event(events, event_name, _compute_straight_punch_power(wrist_velocity, bbox_area, state, straight_punch_config))
+				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRIGGERED)
+		_set_straight_punch_state(side, state)
+		return
+
+	if phase == STRAIGHT_PUNCH_STATE_TRIGGERED:
+		var grace_frames_remaining := max(0, int(state.get("grace_frames_remaining", 0)) - 1)
+		state["grace_frames_remaining"] = grace_frames_remaining
+		if grace_frames_remaining <= 0:
+			_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_NOT_READY)
+		_set_straight_punch_state(side, state)
+		return
+
+	if phase == STRAIGHT_PUNCH_STATE_NOT_READY and fresh_sample:
+		var retract_epsilon := maxf(float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)), 0.0)
+		var trigger_bbox_area := maxf(float(state.get("trigger_bbox_area", 0.0)), 0.0)
+		if bbox_area <= trigger_bbox_area - retract_epsilon:
+			state["trigger_bbox_area"] = 0.0
+			state["grace_frames_remaining"] = 0
+			state["bbox_area_history"] = [bbox_area]
+			state["positive_growth_samples"] = 0
+			state["last_bbox_area_growth"] = 0.0
+			_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
 	_set_straight_punch_state(side, state)
 
 func _process_hook(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, hand_velocity: Vector3, shoulder_width: float) -> void:
@@ -1156,12 +1181,21 @@ func _set_state_toggle(events: Array, state_name: String, active: bool) -> void:
 func _build_public_gesture_states() -> Dictionary:
 	return (_gesture_state.get("states", {}) as Dictionary).duplicate(true)
 
-func _build_straight_punch_state(phase: String = "recovering") -> Dictionary:
+func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_LOST) -> Dictionary:
 	return {
 		"phase": phase,
-		"armed_forward_distance": 0.0,
-		"peak_forward_distance": 0.0,
-		"threshold_shoulder_width": 0.0,
+		"bbox_area_history": [],
+		"positive_growth_samples": 0,
+		"trigger_bbox_area": 0.0,
+		"grace_frames_remaining": 0,
+		"reacquire_valid_samples": 0,
+		"last_bbox_area": 0.0,
+		"last_bbox_area_growth": 0.0,
+		"last_wrist_velocity": 0.0,
+		"last_sample_fresh": false,
+		"hand_tracking_state": "idle",
+		"hand_tracking_valid": false,
+		"stale_frames": 0,
 	}
 
 func _get_straight_punch_state(side: String) -> Dictionary:
@@ -1172,13 +1206,98 @@ func _set_straight_punch_state(side: String, state: Dictionary) -> void:
 	var straight_punch: Dictionary = _gesture_state.get("straight_punch", {})
 	straight_punch[side] = state.duplicate(true)
 	_gesture_state["straight_punch"] = straight_punch
-	_set_ready("punch_%s" % side, String(state.get("phase", "recovering")) == "armed")
+	_set_ready("punch_%s" % side, String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)) == STRAIGHT_PUNCH_STATE_READY)
 
-func _get_straight_punch_threshold_shoulder_width(state: Dictionary, fallback_width: float) -> float:
-	var frozen_width := maxf(float(state.get("threshold_shoulder_width", 0.0)), 0.0)
-	if frozen_width > 0.0:
-		return frozen_width
-	return maxf(fallback_width, 0.0)
+func _get_straight_punch_config() -> Dictionary:
+	var config := {
+		"enabled": true,
+		"fresh_samples_only": STRAIGHT_PUNCH_DEFAULT_FRESH_SAMPLES_ONLY,
+		"sample_window_size": STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE,
+		"min_positive_growth_samples": STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES,
+		"min_wrist_velocity": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY,
+		"min_bbox_area_growth": STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH,
+		"triggered_grace_frames": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES,
+		"bbox_area_retract_epsilon": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON,
+		"lost_tracking_reacquire_stable_frames": STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES,
+	}
+	if _config == null:
+		return config
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return config
+	var straight_punch: Dictionary = gesture_profile_document.get("straight_punch", {}) if gesture_profile_document.get("straight_punch", {}) is Dictionary else {}
+	var evaluation: Dictionary = straight_punch.get("evaluation", {}) if straight_punch.get("evaluation", {}) is Dictionary else {}
+	var thresholds: Dictionary = straight_punch.get("thresholds", {}) if straight_punch.get("thresholds", {}) is Dictionary else {}
+	var timing: Dictionary = straight_punch.get("timing", {}) if straight_punch.get("timing", {}) is Dictionary else {}
+	var rearm: Dictionary = straight_punch.get("rearm", {}) if straight_punch.get("rearm", {}) is Dictionary else {}
+	var state_machine: Dictionary = straight_punch.get("state_machine", {}) if straight_punch.get("state_machine", {}) is Dictionary else {}
+	config["enabled"] = bool(straight_punch.get("enabled", config.get("enabled", true)))
+	config["fresh_samples_only"] = bool(evaluation.get("fresh_samples_only", config.get("fresh_samples_only", STRAIGHT_PUNCH_DEFAULT_FRESH_SAMPLES_ONLY)))
+	config["sample_window_size"] = max(2, int(evaluation.get("sample_window_size", config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE))))
+	config["min_positive_growth_samples"] = max(1, int(evaluation.get("min_positive_growth_samples", config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES))))
+	config["min_wrist_velocity"] = maxf(0.0, float(thresholds.get("min_wrist_velocity", config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY))))
+	config["min_bbox_area_growth"] = maxf(0.0, float(thresholds.get("min_bbox_area_growth", config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH))))
+	config["triggered_grace_frames"] = max(0, int(timing.get("triggered_grace_frames", config.get("triggered_grace_frames", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES))))
+	config["bbox_area_retract_epsilon"] = maxf(0.0, float(rearm.get("bbox_area_retract_epsilon", config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON))))
+	config["lost_tracking_reacquire_stable_frames"] = max(1, int(state_machine.get("lost_tracking_reacquire_stable_frames", config.get("lost_tracking_reacquire_stable_frames", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES))))
+	return config
+
+func _get_tracking_hand_payload(tracking_frame: Dictionary, side: String) -> Dictionary:
+	var hands: Dictionary = tracking_frame.get("hands", {}) if tracking_frame.get("hands", {}) is Dictionary else {}
+	return hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
+
+func _is_valid_tracking_hand_sample(hand_payload: Dictionary) -> bool:
+	return bool(hand_payload.get("tracking_valid", false))
+
+func _is_fresh_tracking_hand_sample(hand_payload: Dictionary) -> bool:
+	if not bool(hand_payload.get("tracking_valid", false)):
+		return false
+	return String(hand_payload.get("tracking_state", "")) == "tracked"
+
+func _count_positive_bbox_growth_samples(history: Array, min_bbox_area_growth: float) -> int:
+	if history.size() < 2:
+		return 0
+	var positive_growth_samples := 0
+	for idx in range(1, history.size()):
+		var growth := float(history[idx]) - float(history[idx - 1])
+		if growth + 0.000001 >= min_bbox_area_growth:
+			positive_growth_samples += 1
+	return positive_growth_samples
+
+func _latest_bbox_area_growth(history: Array) -> float:
+	if history.size() < 2:
+		return 0.0
+	return float(history[history.size() - 1]) - float(history[history.size() - 2])
+
+func _compute_straight_punch_power(wrist_velocity: float, bbox_area: float, state: Dictionary, straight_punch_config: Dictionary) -> float:
+	var velocity_floor := maxf(float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.000001)
+	var growth_floor := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.000001)
+	var bbox_growth := maxf(float(state.get("last_bbox_area_growth", 0.0)), 0.0)
+	var velocity_power := wrist_velocity / (velocity_floor * 3.0)
+	var growth_power := bbox_growth / (growth_floor * 2.0)
+	var area_power := bbox_area / maxf(float(state.get("trigger_bbox_area", bbox_area)), 0.000001)
+	return clampf(0.35 + velocity_power * 0.35 + growth_power * 0.20 + area_power * 0.10, 0.0, 1.0)
+
+func _transition_straight_punch_state(events: Array, side: String, state: Dictionary, next_phase: String) -> void:
+	var previous_phase := String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST))
+	if previous_phase == next_phase:
+		return
+	state["phase"] = next_phase
+	events.append({
+		"name": StringName("straight_punch_state_changed"),
+		"side": side,
+		"state": next_phase,
+		"previous_state": previous_phase,
+		"trigger_bbox_area": float(state.get("trigger_bbox_area", 0.0)),
+		"grace_frames_remaining": int(state.get("grace_frames_remaining", 0)),
+		"bbox_area": float(state.get("last_bbox_area", 0.0)),
+		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),
+		"positive_growth_samples": int(state.get("positive_growth_samples", 0)),
+		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
+		"fresh_sample": bool(state.get("last_sample_fresh", false)),
+		"tracking_state": String(state.get("hand_tracking_state", "idle")),
+		"tracking_valid": bool(state.get("hand_tracking_valid", false)),
+	})
 
 func _emit_power_event(events: Array, event_name: String, power: float) -> void:
 	events.append({

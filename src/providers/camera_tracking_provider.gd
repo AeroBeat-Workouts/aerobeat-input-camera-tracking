@@ -19,6 +19,7 @@ signal tracking_restored()
 
 signal punch_left(power: float)
 signal punch_right(power: float)
+signal straight_punch_state_changed(side: String, state: String, detail: Dictionary)
 signal uppercut_left(power: float)
 signal uppercut_right(power: float)
 signal hook_left(power: float)
@@ -408,7 +409,7 @@ func _process_primary_landmarks(landmarks: Array, emit_signal_flag: bool, overwr
 	_ensure_detector_substrate()
 	var state: Dictionary = {}
 	if _detector_substrate != null:
-		state = _detector_substrate.process_landmarks(landmarks, timestamp_ms)
+		state = _detector_substrate.process_landmarks(landmarks, timestamp_ms, _last_tracking_frame)
 		_landmarks = state.get("landmarks_by_id", {}).duplicate(true)
 		_emit_detector_events(state.get("events", []))
 	else:
@@ -460,6 +461,10 @@ func _emit_detector_events(events: Array) -> void:
 				punch_left.emit(float(event_data.get("power", 0.0)))
 			"punch_right":
 				punch_right.emit(float(event_data.get("power", 0.0)))
+			"straight_punch_state_changed":
+				var detail := event_data.duplicate(true)
+				detail.erase("name")
+				straight_punch_state_changed.emit(String(event_data.get("side", "")), String(event_data.get("state", "")), detail)
 			"uppercut_left":
 				uppercut_left.emit(float(event_data.get("power", 0.0)))
 			"uppercut_right":

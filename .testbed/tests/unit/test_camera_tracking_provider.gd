@@ -118,6 +118,68 @@ func test_camera_tracking_provider_reads_and_normalizes_legacy_live_camera_sourc
 	assert_eq(String(tracker.get_active_config().get("source", {}).get("camera_id", "")), "/dev/video9")
 	assert_eq(String(tracker.get_active_config().get("source", {}).get("id", "")), "/dev/video9")
 
+func test_camera_tracking_provider_emits_straight_punch_state_change_signal() -> void:
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.config = provider._ensure_config()
+	provider.config.load_selected_profile_bundle("boxing")
+
+	var state_changes: Array = []
+	provider.straight_punch_state_changed.connect(func(side: String, state: String, detail: Dictionary) -> void:
+		state_changes.append({
+			"side": side,
+			"state": state,
+			"detail": detail.duplicate(true),
+		})
+	)
+
+	var frames := [
+		{"ts": 1000, "z": 0.00, "area": 0.020},
+		{"ts": 1080, "z": 0.00, "area": 0.020},
+		{"ts": 1160, "z": 0.00, "area": 0.020},
+		{"ts": 1240, "z": 0.00, "area": 0.020},
+		{"ts": 1320, "z": 0.00, "area": 0.020},
+		{"ts": 1400, "z": -0.04, "area": 0.021},
+		{"ts": 1480, "z": -0.08, "area": 0.031},
+		{"ts": 1560, "z": -0.12, "area": 0.043},
+		{"ts": 1640, "z": -0.20, "area": 0.055},
+	]
+	for frame_data: Dictionary in frames:
+		provider.ingest_tracking_frame({
+			"timestamp_ms": int(frame_data.get("ts", 0)),
+			"frame_index": int(frame_data.get("ts", 0)),
+			"tracking_state": "tracked",
+			"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+			"landmarks": [
+				{"id": 0, "x": 0.50, "y": 0.15, "z": 0.0, "visibility": 0.95},
+				{"id": 11, "x": 0.42, "y": 0.32, "z": 0.0, "visibility": 0.92},
+				{"id": 12, "x": 0.58, "y": 0.32, "z": 0.0, "visibility": 0.92},
+				{"id": 13, "x": 0.36, "y": 0.40, "z": 0.0, "visibility": 0.94},
+				{"id": 14, "x": 0.64, "y": 0.40, "z": 0.0, "visibility": 0.94},
+				{"id": 15, "x": 0.36, "y": 0.48, "z": float(frame_data.get("z", 0.0)), "visibility": 0.94},
+				{"id": 16, "x": 0.64, "y": 0.48, "z": 0.0, "visibility": 0.94},
+				{"id": 23, "x": 0.45, "y": 0.56, "z": 0.0, "visibility": 0.90},
+				{"id": 24, "x": 0.55, "y": 0.56, "z": 0.0, "visibility": 0.90},
+				{"id": 25, "x": 0.45, "y": 0.70, "z": 0.0, "visibility": 0.90},
+				{"id": 26, "x": 0.55, "y": 0.70, "z": 0.0, "visibility": 0.90},
+				{"id": 27, "x": 0.45, "y": 0.84, "z": 0.0, "visibility": 0.90},
+				{"id": 28, "x": 0.55, "y": 0.84, "z": 0.0, "visibility": 0.90},
+			],
+			"hand_tracking": {"enabled": true, "available": true},
+			"hands": {
+				"left": _normalized_hand_payload("left", float(frame_data.get("area", 0.0))),
+				"right": _normalized_hand_payload("right", 0.020),
+			},
+		})
+
+	var left_state_changes: Array = []
+	for change: Dictionary in state_changes:
+		if String(change.get("side", "")) == "left":
+			left_state_changes.append(change)
+	assert_eq(left_state_changes.size(), 2)
+	assert_eq(left_state_changes[0]["state"], "ready")
+	assert_eq(left_state_changes[1]["state"], "triggered")
+	assert_eq(String(left_state_changes[1]["detail"].get("previous_state", "")), "ready")
+
 func test_camera_tracking_provider_emits_tracking_edges_when_frame_state_changes() -> void:
 	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
 
@@ -218,3 +280,32 @@ func test_camera_tracking_provider_polls_tracking_session_frames_between_signals
 	assert_eq(provider.get_num_poses(), 1)
 	assert_eq(provider.get_all_poses().size(), 1)
 	assert_ne(provider.get_detector_state().get("tracking_state", &""), &"lost")
+
+func _normalized_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0) -> Dictionary:
+	var width := 0.10
+	var height := bbox_area / width if width > 0.0 else 0.0
+	var x := 0.18 if side == "left" else 0.72
+	return {
+		"tracking_valid": tracking_valid,
+		"tracking_state": tracking_state,
+		"frame_index": 1,
+		"timestamp_seconds": 0.0,
+		"stale_frames": stale_frames,
+		"association": {
+			"side": side,
+			"assigned": true,
+			"method": "pose_side_binding",
+			"source_hand_index": 0 if side == "left" else 1,
+			"source_label": side,
+			"source_score": 0.95,
+		},
+		"landmarks": [],
+		"bbox": {
+			"x": x,
+			"y": 0.40,
+			"width": width,
+			"height": height,
+			"area": bbox_area,
+			"area_unit": "normalized_frame_area",
+		},
+	}
