@@ -543,6 +543,10 @@ func _apply_settings(settings_json: String) -> void:
 		_config.tracking_overlay_mode = String(settings["tracking_overlay_mode"]).strip_edges().to_lower()
 	if settings.has("gesture_eval_interval_frames"):
 		_config.gesture_eval_interval_frames = maxi(1, int(settings["gesture_eval_interval_frames"]))
+	if settings.has("profile") and _config.has_method("set_profile_id"):
+		var profile_result: Variant = _config.set_profile_id(String(settings["profile"]))
+		if not (profile_result is Dictionary) or not bool(profile_result.get("ok", false)):
+			push_error("[InputProvider] Failed to load selected camera tracking profile bundle")
 	if _provider != null:
 		_provider.config = _config
 		if selected_camera_changed and _provider.has_method("set_selected_camera_device_id"):

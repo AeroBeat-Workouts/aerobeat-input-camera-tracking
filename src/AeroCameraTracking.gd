@@ -143,6 +143,17 @@ func get_active_config() -> Dictionary:
 		return _tracking_session.get_active_config()
 	return {}
 
+func get_selected_profile_id() -> String:
+	if _last_runtime_config != null and _last_runtime_config.has_method("get_selected_profile_id"):
+		return String(_last_runtime_config.get_selected_profile_id()).strip_edges()
+	return ""
+
+func get_selected_profile_bundle() -> Dictionary:
+	if _last_runtime_config != null and _last_runtime_config.has_method("get_selected_profile_bundle"):
+		var bundle: Variant = _last_runtime_config.get_selected_profile_bundle()
+		return bundle.duplicate(true) if bundle is Dictionary else {}
+	return {}
+
 func get_tracking_frame() -> Dictionary:
 	if has_tracking_contract() and _tracking_session.has_method("get_tracking_frame"):
 		return _tracking_session.get_tracking_frame()
@@ -456,15 +467,22 @@ func _make_replay_runtime_config(source_path: String, start_time_sec: Variant = 
 	return config
 
 func _coerce_runtime_config(config_variant: Variant):
+	var config = null
 	if typeof(config_variant) == TYPE_OBJECT and config_variant.has_method("get_camera_source"):
-		return config_variant
-	var config_script: Variant = _load_script(CAMERA_TRACKING_CONFIG_SCRIPT_PATH)
-	if config_script == null:
-		push_error("[AeroCameraTracking] CameraTracking config script is not available")
-		return null
-	var config = config_script.new()
-	if config_variant is Dictionary:
-		_apply_dictionary_config(config, config_variant)
+		config = config_variant
+	else:
+		var config_script: Variant = _load_script(CAMERA_TRACKING_CONFIG_SCRIPT_PATH)
+		if config_script == null:
+			push_error("[AeroCameraTracking] CameraTracking config script is not available")
+			return null
+		config = config_script.new()
+		if config_variant is Dictionary:
+			_apply_dictionary_config(config, config_variant)
+	if config != null and config.has_method("load_selected_profile_bundle"):
+		var profile_result: Variant = config.load_selected_profile_bundle()
+		if not (profile_result is Dictionary) or not bool(profile_result.get("ok", false)):
+			push_error("[AeroCameraTracking] Failed to load selected profile bundle")
+			return null
 	return config
 
 func _apply_dictionary_config(config, values: Dictionary) -> void:
@@ -484,6 +502,8 @@ func _apply_dictionary_config(config, values: Dictionary) -> void:
 		config.set_selected_camera_device_id(String(values["camera_source"]))
 	elif values.has("selected_camera_device_id") and config.has_method("set_selected_camera_device_id"):
 		config.set_selected_camera_device_id(String(values["selected_camera_device_id"]))
+	if values.has("profile") and config.get("profile") != null:
+		config.profile = String(values["profile"]).strip_edges().to_lower()
 	if values.has("runtime") and config.get("runtime") is Dictionary and values["runtime"] is Dictionary:
 		config.runtime = (values["runtime"] as Dictionary).duplicate(true)
 	if values.has("diagnostics") and config.get("diagnostics") is Dictionary and values["diagnostics"] is Dictionary:

@@ -135,6 +135,21 @@ func test_aero_camera_tracking_starts_live_camera_and_reemits_tracking_and_flow_
 	singleton.get_provider().swing_left.emit(9, 3)
 	assert_eq(swing_events, [[9, 3]])
 
+func test_aero_camera_tracking_loads_selected_flow_profile_bundle_during_start() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var tracker = CameraTrackingScript.new()
+	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+	singleton.set_tracking_session(tracker)
+
+	assert_true(singleton.start_live_camera("/dev/video7", {
+		"profile": "flow",
+	}))
+	var bundle: Dictionary = singleton.get_selected_profile_bundle()
+	assert_eq(singleton.get_selected_profile_id(), "flow")
+	assert_true(bool(bundle.get("ok", false)))
+	assert_eq(String(bundle.get("camera_tracking", {}).get("profile", "")), "flow")
+	assert_eq(String(bundle.get("gesture_detection", {}).get("profile", "")), "flow")
+
 func test_aero_camera_tracking_starts_replay_sources_through_camera_tracking_contract() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
 	var tracker = CameraTrackingScript.new()
