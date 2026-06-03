@@ -5,6 +5,14 @@ const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 const CameraTrackingBackendRegistryScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingBackendRegistry.gd")
 
+class CameraOptionsFakeBackend extends CameraTrackingFakeBackendScript:
+	var camera_options_response: Dictionary = {}
+	var requested_camera_ids: Array = []
+
+	func get_camera_options(camera_id: String = "") -> Dictionary:
+		requested_camera_ids.append(camera_id)
+		return camera_options_response.duplicate(true)
+
 func before_each() -> void:
 	CameraTrackingBackendRegistryScript.clear()
 
@@ -81,6 +89,34 @@ func test_aero_camera_tracking_starts_replay_sources_through_camera_tracking_con
 	var source: Dictionary = tracker.get_active_config().get("source", {})
 	assert_eq(String(source.get("kind", "")), "video_file")
 	assert_eq(String(source.get("path", "")), "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+
+func test_aero_camera_tracking_delegates_get_camera_options_through_public_wrapper() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var tracker = CameraTrackingScript.new()
+	var backend := CameraOptionsFakeBackend.new()
+	backend.camera_options_response = {
+		"state": "running",
+		"source": "live_camera",
+		"camera_options": {
+			"requested": {
+				"camera_id": "/dev/video7",
+			},
+			"selected": {
+				"camera_id": "/dev/video7",
+				"fps": 30.0,
+			},
+		},
+	}
+	tracker.set_backend(backend)
+	singleton.set_tracking_session(tracker)
+	assert_true(singleton.start_live_camera("/dev/video7", {}))
+
+	var expected: Dictionary = tracker.get_camera_options("/dev/video7")
+	var camera_options: Dictionary = singleton.get_camera_options("/dev/video7")
+	assert_true(backend.requested_camera_ids.has("/dev/video7"))
+	assert_eq(camera_options, expected)
+	camera_options["mutated"] = true
+	assert_false(tracker.get_camera_options("/dev/video7").has("mutated"))
 
 func test_aero_camera_tracking_does_not_register_vendor_backends_from_the_input_repo() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())

@@ -153,6 +153,11 @@ func list_cameras() -> Array:
 		return _tracking_session.list_cameras()
 	return []
 
+func get_camera_options(camera_id: String = "") -> Dictionary:
+	if has_tracking_contract() and _tracking_session.has_method("get_camera_options"):
+		return _tracking_session.get_camera_options(camera_id)
+	return {}
+
 func get_available_camera_devices() -> Array:
 	var provider := _ensure_provider()
 	if provider != null and provider.has_method("get_available_camera_devices"):
