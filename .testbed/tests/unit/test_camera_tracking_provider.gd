@@ -176,6 +176,26 @@ func test_camera_tracking_provider_can_manage_minimal_session_lifecycle_for_prov
 	assert_eq(String(tracker.get_active_config().get("source", {}).get("camera_id", "")), "/dev/video5")
 	assert_eq(provider.get_selected_camera_device_id(), "/dev/video5")
 
+func test_camera_tracking_provider_forwards_runtime_filter_semantics_from_config() -> void:
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.config = provider._ensure_config()
+	provider.config.runtime = {
+		"model_complexity": 2,
+		"filter_enabled": false,
+		"no_filter": true,
+	}
+	provider.config.gesture_eval_interval_frames = 3
+	provider.config.min_visibility = 0.42
+	provider.config.flip_horizontal = false
+
+	var tracking_config: Dictionary = provider._build_tracking_config()
+	assert_eq(int(tracking_config.get("runtime", {}).get("model_complexity", -1)), 2)
+	assert_false(bool(tracking_config.get("runtime", {}).get("filter_enabled", true)))
+	assert_true(bool(tracking_config.get("runtime", {}).get("no_filter", false)))
+	assert_eq(int(tracking_config.get("tracking", {}).get("gesture_eval_interval_frames", -1)), 3)
+	assert_eq(float(tracking_config.get("tracking", {}).get("min_visibility", 0.0)), 0.42)
+	assert_false(bool(tracking_config.get("preview", {}).get("flip_horizontal", true)))
+
 func test_camera_tracking_provider_polls_tracking_session_frames_between_signals() -> void:
 	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
 	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())

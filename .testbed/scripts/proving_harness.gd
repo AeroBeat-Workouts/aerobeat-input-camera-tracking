@@ -10,6 +10,7 @@ const VENDOR_RUNTIME_WINDOWS_PYTHON := ".venv/Scripts/python.exe"
 const VENDOR_MODEL_LITE := "models/pose_landmarker_lite.task"
 const VENDOR_MODEL_FULL := "models/pose_landmarker_full.task"
 const VENDOR_MODEL_HEAVY := "models/pose_landmarker_heavy.task"
+const DEFAULT_TRACKING_OVERLAY_MODE := "optimized"
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -170,7 +171,6 @@ enum TrackingSmoothingStyle {
 @export var scene_title := "Detector Proving Harness"
 @export_multiline var scene_notes := ""
 @export var overlay_visibility_threshold := 0.35
-@export_enum("full", "optimized", "off") var tracking_overlay_mode := "full"
 @export var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.FULL_RAW
 @export_range(1, 6, 1) var gesture_eval_interval_frames := 1
 @export var show_landmarks := true
@@ -763,7 +763,7 @@ func _setup_auto_start() -> void:
 
 	auto_start_manager.camera_source_override = _get_autostart_camera_source_override()
 	_apply_tracking_smoothing_style_to_autostart_manager()
-	auto_start_manager.tracking_overlay_mode = tracking_overlay_mode
+	auto_start_manager.tracking_overlay_mode = DEFAULT_TRACKING_OVERLAY_MODE
 
 	if not auto_start_manager.server_started.is_connected(_on_server_started):
 		auto_start_manager.server_started.connect(_on_server_started)
@@ -947,14 +947,15 @@ func _build_runtime_config() -> Variant:
 	var live_camera_source := _get_configured_live_camera_source()
 	if not live_camera_source.is_empty() and live_camera_source != "0":
 		config.set_selected_camera_device_id(live_camera_source)
-	config.tracking_overlay_mode = tracking_overlay_mode
+	config.tracking_overlay_mode = DEFAULT_TRACKING_OVERLAY_MODE
 	config.gesture_eval_interval_frames = maxi(1, gesture_eval_interval_frames)
 	var tracking_style := _tracking_smoothing_style_spec()
 	config.model_complexity = int(tracking_style.get("model_complexity", config.model_complexity))
-	config.runtime = _build_vendor_runtime_config(config.model_complexity)
+	var filter_enabled := not bool(tracking_style.get("no_filter", false))
+	config.runtime = _build_vendor_runtime_config(config.model_complexity, filter_enabled)
 	return config
 
-func _build_vendor_runtime_config(model_complexity: int) -> Dictionary:
+func _build_vendor_runtime_config(model_complexity: int, filter_enabled: bool = true) -> Dictionary:
 	var vendor_root := ProjectSettings.globalize_path(VENDOR_REPO_ROOT)
 	var python_relpath := VENDOR_RUNTIME_WINDOWS_PYTHON if OS.get_name() == "Windows" else VENDOR_RUNTIME_LINUX_PYTHON
 	return {
@@ -962,6 +963,8 @@ func _build_vendor_runtime_config(model_complexity: int) -> Dictionary:
 		"entrypoint": vendor_root.path_join(VENDOR_RUNTIME_ENTRYPOINT),
 		"working_directory": vendor_root,
 		"model_complexity": model_complexity,
+		"filter_enabled": filter_enabled,
+		"no_filter": not filter_enabled,
 		"pose_landmarker_model_path": vendor_root.path_join(_vendor_model_relpath_for_complexity(model_complexity)),
 	}
 
