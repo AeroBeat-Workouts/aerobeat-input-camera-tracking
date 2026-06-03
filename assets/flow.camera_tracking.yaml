@@ -1,0 +1,21 @@
+schema: aerobeat/camera_tracking_config
+version: 1
+profile: flow
+tracking:
+  pose:
+    enabled: true
+    inference_interval_frames: 1
+    smoothing_style: lite_filtered
+  hands:
+    enabled: false
+    landmark_mode: lite
+    inference_interval_frames: 1
+    bbox_recompute_interval_frames: 1
+    bbox:
+      enabled: true
+    association:
+      prefer_existing_pose_side_binding: true
+      nearest_wrist_fallback: true
+    validity:
+      max_stale_frames: 2
+      reacquire_stable_frames: 2

@@ -1,0 +1,18 @@
+schema: aerobeat/gesture_detection_config
+version: 1
+profile: boxing
+straight_punch:
+  enabled: true
+  evaluation:
+    fresh_samples_only: true
+    sample_window_size: 4
+    min_positive_growth_samples: 3
+  thresholds:
+    min_wrist_velocity: 0.18
+    min_bbox_area_growth: 0.010
+  timing:
+    triggered_grace_frames: 3
+  rearm:
+    bbox_area_retract_epsilon: 0.003
+  state_machine:
+    lost_tracking_reacquire_stable_frames: 2

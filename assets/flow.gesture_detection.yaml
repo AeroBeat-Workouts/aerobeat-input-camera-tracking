@@ -1,0 +1,5 @@
+schema: aerobeat/gesture_detection_config
+version: 1
+profile: flow
+straight_punch:
+  enabled: false
