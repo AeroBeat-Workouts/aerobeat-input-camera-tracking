@@ -68,6 +68,14 @@ class FakeSignalProvider:
 	signal tracking_lost()
 	signal tracking_restored()
 
+class FakePreviewPresenter:
+	extends Control
+
+	var tracking_frame := {}
+
+	func get_tracking_frame_snapshot() -> Dictionary:
+		return tracking_frame.duplicate(true)
+
 class ContractAwareHarness:
 	extends TestProvingHarness
 
@@ -203,6 +211,14 @@ func test_resolves_trail_hand_point_by_clamping_near_edge_jitter() -> void:
 	assert_false(resolved.is_empty())
 	assert_true(float(resolved.get("x", 0.0)) >= 0.98 and float(resolved.get("x", 0.0)) <= 1.0)
 	assert_true(float(resolved.get("y", 0.0)) >= 0.39 and float(resolved.get("y", 0.0)) <= 0.43)
+
+func test_resolves_trail_hand_point_from_raw_tracking_frame_visibility_field() -> void:
+	var resolved := harness._resolve_trail_hand_point([
+		{"id": 15, "x": 0.24, "y": 0.18, "visibility": 0.93},
+	], harness.LEFT_WRIST_ID, [harness.LEFT_INDEX_ID, harness.LEFT_PINKY_ID, harness.LEFT_THUMB_ID])
+	assert_false(resolved.is_empty())
+	assert_true(is_equal_approx(float(resolved.get("x", 0.0)), 0.24))
+	assert_true(is_equal_approx(float(resolved.get("y", 0.0)), 0.18))
 
 func test_fallback_clamp_still_rejects_large_out_of_bounds_overshoot() -> void:
 	var resolved := harness._resolve_trail_hand_point([
@@ -396,6 +412,27 @@ func test_overlay_drawers_are_forced_full_rect_and_receive_pose_updates() -> voi
 	assert_eq(landmark_drawer.update_calls.size(), 1)
 	assert_eq(float(landmark_drawer.update_calls[0].get("min_visibility", 0.0)), harness.overlay_visibility_threshold)
 	assert_eq(trail_drawer.update_calls.size(), 1)
+
+func test_motion_trails_prefer_presenter_tracking_frame_landmarks_when_available() -> void:
+	var presenter := FakePreviewPresenter.new()
+	presenter.tracking_frame = {
+		"landmarks": [
+			{"id": 15, "x": 0.22, "y": 0.18, "visibility": 0.94},
+			{"id": 16, "x": 0.78, "y": 0.26, "visibility": 0.91},
+		],
+	}
+	add_child(presenter)
+	harness.set("_preview_presenter", presenter)
+
+	harness._update_motion_trails([
+		{"id": 15, "x": 0.22, "y": 0.82, "v": 0.94},
+		{"id": 16, "x": 0.78, "y": 0.74, "v": 0.91},
+	])
+
+	assert_eq(harness._left_trail.size(), 1)
+	assert_eq(harness._right_trail.size(), 1)
+	assert_true(is_equal_approx(float(harness._left_trail[0].get("y", -1.0)), 0.18))
+	assert_true(is_equal_approx(float(harness._right_trail[0].get("y", -1.0)), 0.26))
 
 func test_contract_preview_surface_mounts_tool_owned_presenter_and_reparents_overlay_layers() -> void:
 	if harness != null:

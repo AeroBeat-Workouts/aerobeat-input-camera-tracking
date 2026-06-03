@@ -1078,8 +1078,9 @@ func _on_pose_updated(landmarks: Array) -> void:
 
 func _update_motion_trails(landmarks: Array) -> void:
 	var timestamp_ms := Time.get_ticks_msec()
-	var left_wrist := _resolve_trail_hand_point(landmarks, LEFT_WRIST_ID, [LEFT_INDEX_ID, LEFT_PINKY_ID, LEFT_THUMB_ID])
-	var right_wrist := _resolve_trail_hand_point(landmarks, RIGHT_WRIST_ID, [RIGHT_INDEX_ID, RIGHT_PINKY_ID, RIGHT_THUMB_ID])
+	var trail_landmarks := _resolve_overlay_trail_landmarks(landmarks)
+	var left_wrist := _resolve_trail_hand_point(trail_landmarks, LEFT_WRIST_ID, [LEFT_INDEX_ID, LEFT_PINKY_ID, LEFT_THUMB_ID])
+	var right_wrist := _resolve_trail_hand_point(trail_landmarks, RIGHT_WRIST_ID, [RIGHT_INDEX_ID, RIGHT_PINKY_ID, RIGHT_THUMB_ID])
 	_append_trail_point(_left_trail, left_wrist, timestamp_ms, _left_trail_debug)
 	_append_trail_point(_right_trail, right_wrist, timestamp_ms, _right_trail_debug)
 	_prune_trail(_left_trail, timestamp_ms)
@@ -1091,13 +1092,21 @@ func _update_motion_trails(landmarks: Array) -> void:
 	elif trail_drawer:
 		trail_drawer.clear_trails()
 
+func _resolve_overlay_trail_landmarks(default_landmarks: Array) -> Array:
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("get_tracking_frame_snapshot"):
+		var tracking_frame: Dictionary = _preview_presenter.get_tracking_frame_snapshot()
+		var raw_landmarks: Variant = tracking_frame.get("landmarks", [])
+		if raw_landmarks is Array and not raw_landmarks.is_empty():
+			return raw_landmarks
+	return default_landmarks
+
 func _append_trail_point(trail: Array, landmark: Dictionary, timestamp_ms: int, debug_state: Dictionary) -> void:
 	debug_state["frame_samples"] = int(debug_state.get("frame_samples", 0)) + 1
 	if landmark.is_empty():
 		_note_trail_debug_skip(debug_state, "missing")
 		_break_trail_for_gap(trail, timestamp_ms, debug_state, "missing")
 		return
-	var visibility := float(landmark.get("v", 0.0))
+	var visibility := _trail_landmark_visibility(landmark)
 	var trail_visibility_threshold := _trail_visibility_threshold()
 	if visibility < trail_visibility_threshold:
 		_note_trail_debug_skip(debug_state, "low_visibility")
@@ -1147,10 +1156,13 @@ func _resolve_trail_hand_point(landmarks: Array, wrist_id: int, fallback_ids: Ar
 func _trail_visibility_threshold() -> float:
 	return minf(overlay_visibility_threshold, TRAIL_VISIBILITY_THRESHOLD_FLOOR)
 
+func _trail_landmark_visibility(landmark: Dictionary) -> float:
+	return float(landmark.get("v", landmark.get("visibility", 0.0)))
+
 func _trail_landmark_is_directly_usable(landmark: Dictionary, min_visibility: float) -> bool:
 	if landmark.is_empty():
 		return false
-	if float(landmark.get("v", 0.0)) < min_visibility:
+	if _trail_landmark_visibility(landmark) < min_visibility:
 		return false
 	var point := Vector2(float(landmark.get("x", 0.0)), float(landmark.get("y", 0.0)))
 	return _is_normalized_point_in_bounds(point)
@@ -1158,7 +1170,7 @@ func _trail_landmark_is_directly_usable(landmark: Dictionary, min_visibility: fl
 func _trail_landmark_is_candidate(landmark: Dictionary) -> bool:
 	if landmark.is_empty():
 		return false
-	if float(landmark.get("v", 0.0)) < _trail_visibility_threshold():
+	if _trail_landmark_visibility(landmark) < _trail_visibility_threshold():
 		return false
 	var point := Vector2(float(landmark.get("x", 0.0)), float(landmark.get("y", 0.0)))
 	return _is_normalized_point_in_bounds(point)
@@ -1174,7 +1186,7 @@ func _trail_clamp_candidate_for_fallback(landmark: Dictionary) -> Dictionary:
 func _trail_landmark_is_fallback_usable(landmark: Dictionary) -> bool:
 	if landmark.is_empty():
 		return false
-	if float(landmark.get("v", 0.0)) < _trail_visibility_threshold():
+	if _trail_landmark_visibility(landmark) < _trail_visibility_threshold():
 		return false
 	var point := Vector2(float(landmark.get("x", 0.0)), float(landmark.get("y", 0.0)))
 	return _is_normalized_point_in_bounds(point) or _is_trail_fallback_point_near_normalized_bounds(point)
