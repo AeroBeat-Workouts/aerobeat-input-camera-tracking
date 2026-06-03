@@ -13,7 +13,6 @@ const CAMERA_TRACKING_PROVIDER_SCRIPT_PATH := "res://addons/aerobeat-input-camer
 const CAMERA_TRACKING_CONFIG_SCRIPT_PATH := "res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd"
 const INTERNAL_TRACKING_NODE_NAME := "CameraTracking"
 const INTERNAL_PROVIDER_NODE_NAME := "CameraTrackingProvider"
-const _SHUTDOWN_TRACE_PREFIX := "[CameraShutdownTrace][AeroCameraTracking]"
 
 signal state_changed(state: String, detail: Dictionary)
 signal tracking_updated(frame: Dictionary)
@@ -113,20 +112,10 @@ func start(config_variant: Variant = null) -> bool:
 	return _start_with_config(runtime_config)
 
 func stop() -> void:
-	_log_shutdown_trace("stop() requested", {
-		"release_owned_nodes": true,
-		"release_tracking_session": false,
-	})
 	_stop_runtime(true)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_EXIT_TREE or what == NOTIFICATION_PREDELETE:
-		_log_shutdown_trace("notification teardown entry", {
-			"what": what,
-			"notification": _notification_name(what),
-			"release_owned_nodes": true,
-			"release_tracking_session": true,
-		})
 		_stop_runtime(true, true)
 
 func attach_preview_surface(surface: Node) -> void:
@@ -462,66 +451,40 @@ func _apply_dictionary_config(config, values: Dictionary) -> void:
 
 func _stop_runtime(release_owned_nodes: bool, release_tracking_session: bool = false) -> void:
 	if _runtime_teardown_in_progress:
-		_log_shutdown_trace("stop_runtime skipped reentry", {
-			"release_owned_nodes": release_owned_nodes,
-			"release_tracking_session": release_tracking_session,
-		})
 		return
-	_log_shutdown_trace("stop_runtime begin", {
-		"release_owned_nodes": release_owned_nodes,
-		"release_tracking_session": release_tracking_session,
-		"owns_provider": _owns_provider,
-		"owns_tracking_session": _owns_tracking_session,
-		"provider_valid": _provider != null and is_instance_valid(_provider),
-		"tracking_session_valid": _tracking_session != null and is_instance_valid(_tracking_session),
-	})
 	_runtime_teardown_in_progress = true
 	_preview_surface = null
 	if _provider != null and is_instance_valid(_provider):
 		if _provider.has_method("stop"):
-			_log_shutdown_trace("provider.stop()", {})
 			_provider.stop()
 		if _provider.has_method("set_tracking_session"):
-			_log_shutdown_trace("provider.set_tracking_session(null)", {})
 			_provider.set_tracking_session(null)
-		_log_shutdown_trace("disconnect_provider_signals", {})
 		_disconnect_provider_signals()
 		if release_owned_nodes and _owns_provider:
 			var owned_provider := _provider
 			_provider = null
 			_owns_provider = false
-			_log_shutdown_trace("release_owned_provider", {})
 			_release_owned_runtime_node(owned_provider)
 	if release_tracking_session:
-		_log_shutdown_trace("teardown_tracking_session requested", {})
 		_teardown_tracking_session()
 	_reset_replay_state()
 	_runtime_teardown_in_progress = false
-	_log_shutdown_trace("stop_runtime end", {
-		"provider_valid": _provider != null and is_instance_valid(_provider),
-		"tracking_session_valid": _tracking_session != null and is_instance_valid(_tracking_session),
-	})
 
 func _teardown_tracking_session() -> void:
 	if _tracking_session == null or not is_instance_valid(_tracking_session):
-		_log_shutdown_trace("teardown_tracking_session no-op", {})
 		_tracking_session = null
 		_owns_tracking_session = false
 		return
 	if _tracking_session.has_method("detach_preview_surface"):
-		_log_shutdown_trace("tracking_session.detach_preview_surface()", {})
 		_tracking_session.detach_preview_surface()
 	if _tracking_session.has_method("stop"):
-		_log_shutdown_trace("tracking_session.stop()", {})
 		_tracking_session.stop()
-	_log_shutdown_trace("disconnect_tracking_session_signals", {})
 	_disconnect_tracking_session_signals()
 	var tracking_session := _tracking_session
 	var release_owned_tracking_session := _owns_tracking_session
 	_tracking_session = null
 	_owns_tracking_session = false
 	if release_owned_tracking_session:
-		_log_shutdown_trace("release_owned_tracking_session", {})
 		_release_owned_runtime_node(tracking_session)
 
 func _release_owned_runtime_node(node: Node) -> void:
@@ -530,9 +493,6 @@ func _release_owned_runtime_node(node: Node) -> void:
 	if node.get_parent() == self:
 		remove_child(node)
 	node.queue_free()
-
-func _log_shutdown_trace(marker: String, detail: Dictionary = {}) -> void:
-	print("%s %s %s" % [_SHUTDOWN_TRACE_PREFIX, marker, JSON.stringify(detail)])
 
 func _notification_name(what: int) -> String:
 	match what:
