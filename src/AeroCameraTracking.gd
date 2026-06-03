@@ -98,11 +98,9 @@ func start_replay(source_path: String, config_variant: Variant = null) -> bool:
 	if normalized_source.is_empty():
 		push_warning("[AeroCameraTracking] Replay start requested without a source path")
 		return false
-	var runtime_config = _coerce_runtime_config(config_variant)
+	var runtime_config = _make_replay_runtime_config(normalized_source, null, config_variant)
 	if runtime_config == null:
 		return false
-	if runtime_config.has_method("set_selected_camera_device_id"):
-		runtime_config.set_selected_camera_device_id(normalized_source)
 	return _start_with_config(runtime_config)
 
 func start(config_variant: Variant = null) -> bool:
@@ -429,8 +427,9 @@ func _get_live_camera_source_id(source: Dictionary) -> String:
 		return legacy_id
 	return String(source.get("path", "")).strip_edges()
 
-func _make_replay_runtime_config(source_path: String, start_time_sec: float):
-	var config = _coerce_runtime_config(_last_runtime_config if _last_runtime_config != null else {})
+func _make_replay_runtime_config(source_path: String, start_time_sec: Variant = null, config_variant: Variant = null):
+	var base_config: Variant = config_variant if config_variant != null else (_last_runtime_config if _last_runtime_config != null else {})
+	var config = _coerce_runtime_config(base_config)
 	if config == null:
 		return null
 	if config.has_method("set_selected_camera_device_id"):
@@ -439,7 +438,12 @@ func _make_replay_runtime_config(source_path: String, start_time_sec: float):
 		var vendor_config: Dictionary = config.vendor.duplicate(true)
 		if not vendor_config.has("source") or not vendor_config["source"] is Dictionary:
 			vendor_config["source"] = {}
-		(vendor_config["source"] as Dictionary)["start_time_sec"] = maxf(start_time_sec, 0.0)
+		var vendor_source := vendor_config["source"] as Dictionary
+		if start_time_sec != null:
+			vendor_source["start_time_sec"] = maxf(float(start_time_sec), 0.0)
+		if not vendor_source.has("loop"):
+			vendor_source["loop"] = true
+		vendor_config["source"] = vendor_source
 		config.vendor = vendor_config
 	return config
 

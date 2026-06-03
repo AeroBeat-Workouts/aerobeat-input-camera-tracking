@@ -117,9 +117,29 @@ func test_aero_camera_tracking_starts_replay_sources_through_camera_tracking_con
 		"model_complexity": 1,
 	}))
 
-	var source: Dictionary = tracker.get_active_config().get("source", {})
+	var active_config: Dictionary = tracker.get_active_config()
+	var source: Dictionary = active_config.get("source", {})
+	var vendor_source: Dictionary = (active_config.get("vendor", {}) as Dictionary).get("source", {})
 	assert_eq(String(source.get("kind", "")), "video_file")
 	assert_eq(String(source.get("path", "")), "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+	assert_true(bool(vendor_source.get("loop", false)))
+
+func test_aero_camera_tracking_replay_loop_override_is_respected() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var tracker = CameraTrackingScript.new()
+	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+	singleton.set_tracking_session(tracker)
+
+	assert_true(singleton.start_replay("res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4", {
+		"vendor": {
+			"source": {
+				"loop": false,
+			},
+		},
+	}))
+
+	var vendor_source: Dictionary = (tracker.get_active_config().get("vendor", {}) as Dictionary).get("source", {})
+	assert_false(bool(vendor_source.get("loop", true)))
 
 func test_aero_camera_tracking_delegates_get_camera_options_through_public_wrapper() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
