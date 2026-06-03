@@ -58,6 +58,9 @@ var _tracking_session: Node = null
 var _provider: Node = null
 var _preview_surface: Node = null
 var _last_runtime_config = null
+var _owns_tracking_session := false
+var _owns_provider := false
+var _runtime_teardown_in_progress := false
 var _replay_source_path := ""
 var _replay_duration_sec := 0.0
 var _replay_position_sec := 0.0
@@ -109,9 +112,12 @@ func start(config_variant: Variant = null) -> bool:
 	return _start_with_config(runtime_config)
 
 func stop() -> void:
-	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
-		_provider.stop()
-	
+	_stop_runtime(true)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EXIT_TREE or what == NOTIFICATION_PREDELETE:
+		_stop_runtime(true, true)
+
 func attach_preview_surface(surface: Node) -> void:
 	_preview_surface = surface
 	var provider := _ensure_provider()
@@ -303,13 +309,18 @@ func has_replay_playback_loaded() -> bool:
 func set_tracking_session(session: Node) -> void:
 	if _tracking_session == session:
 		return
+	var previous_tracking_session := _tracking_session
+	var release_previous_owned_session := _owns_tracking_session and previous_tracking_session != null and previous_tracking_session != session
 	_disconnect_tracking_session_signals()
 	_tracking_session = session
+	_owns_tracking_session = false
 	if _tracking_session != null and _tracking_session.get_parent() == null:
 		add_child(_tracking_session)
 	_connect_tracking_session_signals()
 	if _provider != null and is_instance_valid(_provider) and _provider.has_method("set_tracking_session"):
 		_provider.set_tracking_session(_tracking_session)
+	if release_previous_owned_session:
+		_release_owned_runtime_node(previous_tracking_session)
 
 func _start_with_config(runtime_config) -> bool:
 	var session := _ensure_tracking_session()
@@ -334,6 +345,7 @@ func _ensure_tracking_session() -> Node:
 	_tracking_session = camera_tracking_script.new()
 	_tracking_session.name = INTERNAL_TRACKING_NODE_NAME
 	add_child(_tracking_session)
+	_owns_tracking_session = true
 	_connect_tracking_session_signals()
 	return _tracking_session
 
@@ -352,6 +364,7 @@ func _ensure_provider() -> Node:
 	if _preview_surface != null and _provider.has_method("set_preview_surface"):
 		_provider.set_preview_surface(_preview_surface)
 	add_child(_provider)
+	_owns_provider = true
 	_connect_provider_signals()
 	return _provider
 
@@ -436,6 +449,56 @@ func _apply_dictionary_config(config, values: Dictionary) -> void:
 	if values.has("vendor") and config.get("vendor") is Dictionary and values["vendor"] is Dictionary:
 		config.vendor = (values["vendor"] as Dictionary).duplicate(true)
 
+func _stop_runtime(release_owned_nodes: bool, release_tracking_session: bool = false) -> void:
+	if _runtime_teardown_in_progress:
+		return
+	_runtime_teardown_in_progress = true
+	_preview_surface = null
+	if _provider != null and is_instance_valid(_provider):
+		if _provider.has_method("stop"):
+			_provider.stop()
+		if _provider.has_method("set_tracking_session"):
+			_provider.set_tracking_session(null)
+		_disconnect_provider_signals()
+		if release_owned_nodes and _owns_provider:
+			var owned_provider := _provider
+			_provider = null
+			_owns_provider = false
+			_release_owned_runtime_node(owned_provider)
+	if release_tracking_session:
+		_teardown_tracking_session()
+	_reset_replay_state()
+	_runtime_teardown_in_progress = false
+
+func _teardown_tracking_session() -> void:
+	if _tracking_session == null or not is_instance_valid(_tracking_session):
+		_tracking_session = null
+		_owns_tracking_session = false
+		return
+	if _tracking_session.has_method("detach_preview_surface"):
+		_tracking_session.detach_preview_surface()
+	if _tracking_session.has_method("stop"):
+		_tracking_session.stop()
+	_disconnect_tracking_session_signals()
+	var tracking_session := _tracking_session
+	var release_owned_tracking_session := _owns_tracking_session
+	_tracking_session = null
+	_owns_tracking_session = false
+	if release_owned_tracking_session:
+		_release_owned_runtime_node(tracking_session)
+
+func _release_owned_runtime_node(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if node.get_parent() == self:
+		remove_child(node)
+	node.queue_free()
+
+func _reset_replay_state() -> void:
+	_replay_playing = false
+	_replay_started_at_msec = 0
+	_replay_started_at_position_sec = _replay_position_sec
+
 func _connect_tracking_session_signals() -> void:
 	if not has_tracking_contract():
 		return
@@ -500,12 +563,55 @@ func _connect_provider_signals() -> void:
 	_connect_provider_signal("leg_lift_right_start", _on_provider_leg_lift_right_start)
 	_connect_provider_signal("leg_lift_right_end", _on_provider_leg_lift_right_end)
 
+func _disconnect_provider_signals() -> void:
+	if _provider == null or not is_instance_valid(_provider):
+		return
+	_disconnect_provider_signal("pose_updated", _on_provider_pose_updated)
+	_disconnect_provider_signal("multi_pose_updated", _on_provider_multi_pose_updated)
+	_disconnect_provider_signal("tracking_lost", _on_provider_tracking_lost)
+	_disconnect_provider_signal("tracking_restored", _on_provider_tracking_restored)
+	_disconnect_provider_signal("punch_left", _on_provider_punch_left)
+	_disconnect_provider_signal("punch_right", _on_provider_punch_right)
+	_disconnect_provider_signal("uppercut_left", _on_provider_uppercut_left)
+	_disconnect_provider_signal("uppercut_right", _on_provider_uppercut_right)
+	_disconnect_provider_signal("hook_left", _on_provider_hook_left)
+	_disconnect_provider_signal("hook_right", _on_provider_hook_right)
+	_disconnect_provider_signal("swing_left", _on_provider_swing_left)
+	_disconnect_provider_signal("swing_right", _on_provider_swing_right)
+	_disconnect_provider_signal("trail_left", _on_provider_trail_left)
+	_disconnect_provider_signal("trail_right", _on_provider_trail_right)
+	_disconnect_provider_signal("guard_start", _on_provider_guard_start)
+	_disconnect_provider_signal("guard_end", _on_provider_guard_end)
+	_disconnect_provider_signal("squat_start", _on_provider_squat_start)
+	_disconnect_provider_signal("squat_end", _on_provider_squat_end)
+	_disconnect_provider_signal("weave_left_start", _on_provider_weave_left_start)
+	_disconnect_provider_signal("weave_left_end", _on_provider_weave_left_end)
+	_disconnect_provider_signal("weave_right_start", _on_provider_weave_right_start)
+	_disconnect_provider_signal("weave_right_end", _on_provider_weave_right_end)
+	_disconnect_provider_signal("sidestep_left_start", _on_provider_sidestep_left_start)
+	_disconnect_provider_signal("sidestep_left_end", _on_provider_sidestep_left_end)
+	_disconnect_provider_signal("sidestep_right_start", _on_provider_sidestep_right_start)
+	_disconnect_provider_signal("sidestep_right_end", _on_provider_sidestep_right_end)
+	_disconnect_provider_signal("knee_left", _on_provider_knee_left)
+	_disconnect_provider_signal("knee_right", _on_provider_knee_right)
+	_disconnect_provider_signal("leg_lift_left_start", _on_provider_leg_lift_left_start)
+	_disconnect_provider_signal("leg_lift_left_end", _on_provider_leg_lift_left_end)
+	_disconnect_provider_signal("leg_lift_right_start", _on_provider_leg_lift_right_start)
+	_disconnect_provider_signal("leg_lift_right_end", _on_provider_leg_lift_right_end)
+
 func _connect_provider_signal(signal_name: String, callback: Callable) -> void:
 	if _provider == null or not _provider.has_signal(signal_name):
 		return
 	var signal_variant: Variant = _provider.get(signal_name)
 	if signal_variant is Signal and not signal_variant.is_connected(callback):
 		signal_variant.connect(callback)
+
+func _disconnect_provider_signal(signal_name: String, callback: Callable) -> void:
+	if _provider == null or not _provider.has_signal(signal_name):
+		return
+	var signal_variant: Variant = _provider.get(signal_name)
+	if signal_variant is Signal and signal_variant.is_connected(callback):
+		signal_variant.disconnect(callback)
 
 func _load_script(path: String) -> Variant:
 	return load(path)
