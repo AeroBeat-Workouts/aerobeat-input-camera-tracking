@@ -1,9 +1,9 @@
 # AeroBeat Boxing Hand BBox Straight Punch Detection
 
-**Date:** 2026-06-03  
-**Status:** In Progress  
-**Last Updated:** 2026-06-03 19:38 EDT  
-**Blocked Reason:** None  
+**Date:** 2026-06-03
+**Status:** In Progress
+**Last Updated:** 2026-06-03 19:41 EDT
+**Blocked Reason:** None
 **Agent:** `pico`
 
 ---
@@ -45,10 +45,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 1: Lock the cross-repo contract and YAML filenames
 
-**Bead ID:** `aerobeat-input-camera-tracking-pq6`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`  
+**Bead ID:** `aerobeat-input-camera-tracking-pq6`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`
 **Prompt:** Define the cross-repo configuration contract for boxing/flow tracker configs and boxing/flow gesture configs. Lock the four YAML filenames/locations under `/assets/`: `boxing.camera_tracking.yaml`, `flow.camera_tracking.yaml`, `boxing.gesture_detection.yaml`, and `flow.gesture_detection.yaml`. Document schema/version headers, exact field ownership split, default values, and which repo owns parsing/validation for each config layer. Keep this slice documentation/config-contract only so later implementation slices have a stable target. Claim the bead on start and update the plan references if names or boundaries change.
 
 **Folders Created/Deleted/Modified:**
@@ -74,10 +74,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 2: Land the boxing/flow YAML files with approved defaults
 
-**Bead ID:** `aerobeat-input-camera-tracking-dui`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-01`, `REF-02`  
+**Bead ID:** `aerobeat-input-camera-tracking-dui`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
 **Prompt:** Create the four agreed YAML files in `aerobeat-input-camera-tracking/assets/` with the approved field names and default values. Include `tracking.pose.inference_interval_frames`, `tracking.pose.smoothing_style`, `tracking.hands.*`, and the boxing/flow gesture split where flow uses `straight_punch.enabled: false` without duplicating unused boxing thresholds. Keep this slice to authored config files plus any minimal parsing/plumbing required to load them without yet changing punch behavior. Claim the bead on start.
 
 **Folders Created/Deleted/Modified:**
@@ -103,30 +103,34 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 3: Expose normalized hand payload fields in the MediaPipe vendor layer
 
-**Bead ID:** `aerobeat-input-camera-tracking-280`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-02`, `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-280`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-02`, `REF-03`
 **Prompt:** Implement the smallest vendor-layer slice needed to expose optional hand landmarks and bbox geometry/data required by the normalized payload contract. This slice should focus on hand landmark extraction, bbox derivation, bbox landmark mode support (`lite` and `full`), and any vendor-level cadence/staleness constraints that must be surfaced upward. Do not couple this slice to boxing state-machine logic yet. Claim the bead on start and document MediaPipe API limits that affect cadence, mirroring, or interpolation.
 
 **Folders Created/Deleted/Modified:**
 - vendor source folders to be identified during implementation
 
 **Files Created/Deleted/Modified:**
-- `aerobeat-vendor-mediapipe-python` tracker integration files
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/src/MediaPipePythonConfig.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/tests/test_mediapipe_runtime_probe.py`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.testbed/tests/test_mediapipe_python_backend.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/README.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Verified that the owner-correct vendor slice already landed in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python` as commit `2357784` (`Expose MediaPipe hand landmarks and bbox payloads`), so this task did not require duplicating implementation in the input repo. That vendor commit adds optional raw `hands[]` samples, lite/full hand landmark subset support, derived normalized-frame bbox geometry (`x`, `y`, `width`, `height`, `area`, `coordinate_space`, `area_unit`), runtime config translation for `tracking.hands.*`, and `vendor_hand_tracking` metadata exposing cadence/staleness knobs plus MediaPipe API constraints (no stable per-hand IDs, preview-mirroring is presentation-only, tasks backend runs `HandLandmarker` in `IMAGE` mode, and missing `.task` assets surface `unavailable` instead of fake stale data). Fresh validation rerun against the vendor repo in this task pass: `python3 -m py_compile runtime/mediapipe_runtime_probe.py runtime/tests/test_mediapipe_runtime_probe.py`; `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` ✅ (`31` tests); `godot --headless --path .testbed --import --quit-after 1000` ✅; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_mediapipe_python_backend.gd -gexit` ✅ (`4/4` tests, `74` asserts). Attempted bead claim via `bd update aerobeat-input-camera-tracking-280 --status in_progress`, but this repo currently has no Beads database (`bd` reported `no beads database found`), so claim/closure could not be recorded there.
 
 ---
 
 ### Task 4: Normalize hand payload and tracker config handling in camera tracking tool
 
-**Bead ID:** `aerobeat-input-camera-tracking-9kz`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-02`, `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-9kz`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-02`, `REF-03`
 **Prompt:** Add the tracker-layer support in `aerobeat-tool-camera-tracking` for configurable pose inference cadence, pose smoothing style (`lite_filtered`, `lite_raw`), hand inference cadence, bbox recompute cadence, association rules, and validity/reacquire semantics. Expose a single normalized per-side hand payload including `tracking_valid`, `tracking_state`, `landmark_mode`, `frame_index`, `timestamp_seconds`, `stale_frames`, `association`, `landmarks`, and `bbox` geometry (`x`, `y`, `width`, `height`, `area`) in normalized-frame coordinates with `area_unit: normalized_frame_area`. Keep this slice focused on tracker contract and transport, not boxing gesture interpretation. Claim the bead on start.
 
 **Folders Created/Deleted/Modified:**
@@ -143,10 +147,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 5: Add live preview and playback bbox visualization in the tracking stack
 
-**Bead ID:** `aerobeat-input-camera-tracking-jtf`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-02`, `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-jtf`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-02`, `REF-03`
 **Prompt:** Wire the new hand payload into the live preview and recording playback paths exposed by the camera tracking stack so bbox geometry, landmark mode, and validity can be observed before boxing-specific gesture logic is layered on top. Keep this slice strictly about visualization and debug transport in the tracking stack. Claim the bead on start.
 
 **Folders Created/Deleted/Modified:**
@@ -163,10 +167,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 6: Replace boxing straight-punch detection with bbox-growth state machine
 
-**Bead ID:** `aerobeat-input-camera-tracking-9go`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-01`, `REF-02`  
+**Bead ID:** `aerobeat-input-camera-tracking-9go`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
 **Prompt:** Remove the current nonfunctional straight-punch detection path in `aerobeat-input-camera-tracking` and replace it with the agreed four-state machine (`ready`, `triggered`, `not_ready`, `tracking_lost`) driven by wrist velocity and bbox area growth over a configurable short sample window. Use gesture defaults of evaluating only on fresh hand samples, a 4-sample growth window, and a required minimum count of positive growth samples. Store trigger bbox area on `ready -> triggered`, emit state-change events so subscribers can react to left/right punch state changes, hold `triggered` for the configured grace period, rearm only when bbox area retracts below the stored trigger size, and reset into `tracking_lost` when hand tracking becomes invalid. If tracking is lost during `triggered`, enter `tracking_lost`, cancel and reset the grace timer, and clear the stored trigger bbox area. Claim the bead on start and keep left/right ownership tied to the existing pose-tracking association with nearest-wrist fallback when necessary.
 
 **Folders Created/Deleted/Modified:**
@@ -183,10 +187,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 7: Expose config-driven tuning and state visualization in the boxing proving scene
 
-**Bead ID:** `aerobeat-input-camera-tracking-0ab`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-01`  
+**Bead ID:** `aerobeat-input-camera-tracking-0ab`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
 **Prompt:** Update the `/.testbed/` boxing proving scene so it can load a selected boxing/flow YAML config path, surface the relevant tracker and gesture tuning values for iteration, and visualize hand bbox state with the agreed color mapping (`ready` yellow, `triggered` green, `not_ready` red, `tracking_lost` dark red). Also expose the key debug values needed for tuning: wrist velocity, bbox area, bbox area growth, tracking validity, current state, grace/reacquire timers where useful, pose smoothing style, pose inference cadence, hand inference cadence, and bbox recompute cadence. Claim the bead on start and document any UI constraints.
 
 **Folders Created/Deleted/Modified:**
@@ -205,10 +209,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 8: Update the left/right straight-punch inspector panels in the boxing proving scene
 
-**Bead ID:** `aerobeat-input-camera-tracking-cxj`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-01`  
+**Bead ID:** `aerobeat-input-camera-tracking-cxj`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
 **Prompt:** Update the existing boxing proving-scene gesture inspector behavior so clicking the left or right straight-punch gesture icons opens a panel that reflects the new detection method instead of the old one. The panel should show the live values and state inputs that now determine left/right straight-punch status, including at minimum current state, wrist velocity, bbox area, bbox area growth, fresh-sample validity, grace timer state, and any stored trigger bbox value or rearm-relevant data needed to understand why the gesture is or is not active. Claim the bead on start and keep the inspector wiring aligned with the new state-change event model.
 
 **Folders Created/Deleted/Modified:**
@@ -227,10 +231,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 9: QA the tracker contract in isolation before boxing validation
 
-**Bead ID:** `aerobeat-input-camera-tracking-web`  
-**SubAgent:** `primary`  
-**Role:** `qa`  
-**References:** `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `aerobeat-input-camera-tracking-web`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Verify the tracker contract before boxing gameplay validation. Confirm the normalized hand payload is present and stable, preview/playback visualization works, mirrored camera behavior keeps hand and pose aligned, lite vs full landmark mode both produce sane bbox outputs, flow can disable unnecessary hand work cleanly, and the tracker contract remains consumable by `aerobeat-tool-camera-gesture-control` without breaking unchanged consumer behavior. Use the proving-harness fixture videos in `REF-05` and `REF-06` where useful to validate deterministic playback behavior before moving to boxing gesture validation. Capture any cadence, staleness, interpolation, or association regressions. Claim the bead on start and leave clear repro steps in the bead/plan results.
 
 **Folders Created/Deleted/Modified:**
@@ -248,10 +252,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 10: QA boxing straight-punch behavior end to end
 
-**Bead ID:** `aerobeat-input-camera-tracking-35y`  
-**SubAgent:** `primary`  
-**Role:** `qa`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Bead ID:** `aerobeat-input-camera-tracking-35y`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-05`, `REF-06`
 **Prompt:** Verify boxing straight-punch behavior end to end. Use the proving-harness straight left and straight right punch fixture folders plus their human-verified gold-truth timing YAMLs from `REF-05` and `REF-06` as the primary deterministic validation path. Confirm left/right straights trigger via wrist velocity + bbox growth, compare detected trigger windows against the expected gold-truth timing windows, confirm trigger, grace hold, rearm, loss, and reacquire behavior, and confirm the proving scene loads YAML presets correctly, reflects state/event changes, and that the clickable left/right straight-punch inspector panels show the new live decision inputs correctly. Capture clear repro steps, threshold observations, any mismatches versus gold truth, and any remaining tuning gaps. Claim the bead on start and leave clear repro steps in the bead/plan results.
 
 **Folders Created/Deleted/Modified:**
@@ -269,10 +273,10 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
-**Bead ID:** `aerobeat-input-camera-tracking-ej7`  
-**SubAgent:** `primary`  
-**Role:** `auditor`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `aerobeat-input-camera-tracking-ej7`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Perform an independent audit of the landed changes across the input, tool, and vendor repos. Confirm the implementation matches the approved state-machine behavior, the config ownership split is correct, the four YAML files exist in the owning repo, the tracker schema is documented in the tool repo, tracker QA passed before boxing QA, the proving-scene/debug behavior matches the agreed design, and the boxing QA used the `REF-05` and `REF-06` fixture folders plus gold-truth timing YAMLs as intended. Close only the beads that are fully done; if anything is missing or ambiguous, report the gap and keep the work open.
 
 **Folders Created/Deleted/Modified:**
