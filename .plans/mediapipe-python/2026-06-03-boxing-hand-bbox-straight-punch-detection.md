@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03  
 **Status:** In Progress  
-**Last Updated:** 2026-06-03 16:38 EDT  
+**Last Updated:** 2026-06-03 19:38 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -88,11 +88,16 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 - `assets/flow.camera_tracking.yaml`
 - `assets/boxing.gesture_detection.yaml`
 - `assets/flow.gesture_detection.yaml`
-- minimal config loading/plumbing files as needed
+- `src/config/profile_config_loader.gd`
+- `src/config/camera_tracking_config.gd`
+- `src/AeroCameraTracking.gd`
+- `src/input_provider.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_aero_camera_tracking.gd`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Completed within the intended narrow slice without changing punch behavior. The four canonical YAML files were authored under `assets/` with the approved v1 tracker/gesture field names and defaults, including `tracking.pose.inference_interval_frames`, `tracking.pose.smoothing_style`, the full `tracking.hands.*` subtree, and the boxing/flow gesture split where `flow.gesture_detection.yaml` sets `straight_punch.enabled: false` without duplicating boxing-only thresholds. Minimal repo-owned loading/plumbing was also landed so the input repo can resolve canonical boxing/flow profile bundle paths, parse/load the YAML documents, validate their schema/version/profile headers, and surface the selected profile bundle through `CameraTrackingConfig` and `AeroCameraTracking` without yet changing detector behavior. Implementation landed across commits `f196346` (YAML + contract docs) and `d29d43a` (profile loader/plumbing/tests). Fresh repo-local validation rerun in this task pass: `godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`; `godot --headless --path .testbed --import`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_aero_camera_tracking.gd -gexit` ✅ (`16/16` tests passed, `96` asserts).
 
 ---
 
