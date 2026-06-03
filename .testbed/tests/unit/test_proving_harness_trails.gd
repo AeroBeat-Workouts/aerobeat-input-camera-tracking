@@ -534,7 +534,7 @@ func test_singleton_runtime_config_tracks_selected_model_complexity_truthfully()
 	assert_true(bool(heavy_runtime.get("filter_enabled", false)))
 	assert_false(bool(heavy_runtime.get("no_filter", true)))
 	assert_true(String(heavy_runtime.get("pose_landmarker_model_path", "")).ends_with("models/pose_landmarker_heavy.task"))
-	assert_eq(String(heavy_config.get("tracking_overlay_mode", "")), "optimized")
+	assert_eq(String(heavy_config.get("tracking_overlay_mode")), "optimized")
 
 	harness.tracking_smoothing_style = harness.TrackingSmoothingStyle.LITE_RAW
 	var lite_config := harness._build_runtime_config() as Resource
@@ -543,7 +543,7 @@ func test_singleton_runtime_config_tracks_selected_model_complexity_truthfully()
 	assert_false(bool(lite_runtime.get("filter_enabled", true)))
 	assert_true(bool(lite_runtime.get("no_filter", false)))
 	assert_true(String(lite_runtime.get("pose_landmarker_model_path", "")).ends_with("models/pose_landmarker_lite.task"))
-	assert_eq(String(lite_config.get("tracking_overlay_mode", "")), "optimized")
+	assert_eq(String(lite_config.get("tracking_overlay_mode")), "optimized")
 
 func test_camera_picker_accepts_camera_id_only_device_entries() -> void:
 	harness._camera_devices = [
