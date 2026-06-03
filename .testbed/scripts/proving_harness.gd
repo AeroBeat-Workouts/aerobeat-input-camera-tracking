@@ -175,14 +175,6 @@ enum TrackingSmoothingStyle {
 @export_range(1, 6, 1) var gesture_eval_interval_frames := 1
 @export var show_landmarks := true
 @export var show_trails := true
-@export var trail_debug_logging := false
-@export var steady_state_console_debug := false
-@export var shutdown_console_debug := false
-@export var skip_sidecar_stop_on_close_debug := false
-@export var skip_sidecar_terminate_sync_on_close_debug := false
-@export var skip_sidecar_terminate_kill_escalation_on_close_debug := false
-@export var skip_linux_pkill_main_py_on_close_debug := false
-@export var skip_linux_video0_fuser_cleanup_on_close_debug := false
 
 @onready var status_label: Label = get_node_or_null("Margin/VSplit/Header/StatusLabel") as Label
 @onready var live_status_label: RichTextLabel = get_node_or_null("Margin/VSplit/Header/LiveStatusLabel") as RichTextLabel
@@ -229,10 +221,8 @@ var _fixture_time_origin_locked := false
 var _fixture_event_timeline: Array[Dictionary] = []
 var _fixture_state_timeline: Array[Dictionary] = []
 var _fixture_state_sequence := 0
-var _last_console_snapshot := ""
 var _preview_only_invalid_reason := ""
 var _preview_only_invalid_logged := false
-var _shutdown_summary_logged := false
 var _camera_devices: Array = []
 var _selected_live_camera_device_id := ""
 var _suppress_camera_picker_signal := false
@@ -774,19 +764,6 @@ func _setup_auto_start() -> void:
 	auto_start_manager.camera_source_override = _get_autostart_camera_source_override()
 	_apply_tracking_smoothing_style_to_autostart_manager()
 	auto_start_manager.tracking_overlay_mode = tracking_overlay_mode
-	auto_start_manager.debug_logging = steady_state_console_debug or shutdown_console_debug
-	auto_start_manager.skip_sidecar_stop_on_close_debug = skip_sidecar_stop_on_close_debug
-	auto_start_manager.skip_sidecar_terminate_sync_on_close_debug = skip_sidecar_terminate_sync_on_close_debug
-	auto_start_manager.skip_sidecar_terminate_kill_escalation_on_close_debug = skip_sidecar_terminate_kill_escalation_on_close_debug
-	auto_start_manager.skip_linux_pkill_main_py_on_close_debug = skip_linux_pkill_main_py_on_close_debug
-	auto_start_manager.skip_linux_video0_fuser_cleanup_on_close_debug = skip_linux_video0_fuser_cleanup_on_close_debug
-	if skip_sidecar_stop_on_close_debug:
-		print("[ProvingHarness][%s] Close-path isolation enabled: AutoStartManager will skip normal sidecar stop on close/scene teardown; heartbeat timeout should stop it after exit" % _mode_name())
-	elif skip_sidecar_terminate_sync_on_close_debug \
-		or skip_sidecar_terminate_kill_escalation_on_close_debug \
-		or skip_linux_pkill_main_py_on_close_debug \
-		or skip_linux_video0_fuser_cleanup_on_close_debug:
-		print("[ProvingHarness][%s] Narrow close-path debug enabled: stop_mode=%s" % [_mode_name(), _get_close_path_stop_mode_label()])
 
 	if not auto_start_manager.server_started.is_connected(_on_server_started):
 		auto_start_manager.server_started.connect(_on_server_started)
@@ -826,9 +803,6 @@ func _process(_delta: float) -> void:
 
 	_refresh_playback_polling()
 	_refresh_shared_inspector()
-
-	if steady_state_console_debug and _frame_count % 30 == 0:
-		_emit_console_snapshot_if_changed()
 
 func _input(event: InputEvent) -> void:
 	if _shared_inspector_panel == null or not _shared_inspector_panel.visible:
@@ -1848,9 +1822,6 @@ func _build_quick_stats_text() -> String:
 		lines.append("Height state: %s" % String(measurements.get("height_state", &"unknown")))
 		lines.append("Guard active: %s" % str(bool(gesture_states.get("guard", false))))
 		lines.append("Attack gates armed: %d / %d" % [armed_count, BOXING_ATTACK_EVENTS.size() + BOXING_KNEE_EVENTS.size()])
-		if trail_debug_logging:
-			lines.append(_format_trail_debug_line(_left_trail_debug))
-			lines.append(_format_trail_debug_line(_right_trail_debug))
 	else:
 		var swing_ready := int(bool(ready_map.get("swing_left", true))) + int(bool(ready_map.get("swing_right", true)))
 		var active_trails := int(bool(gesture_states.get("trail_left", false))) + int(bool(gesture_states.get("trail_right", false)))
@@ -1892,12 +1863,6 @@ func _build_summary_text() -> String:
 		lines.append("leg_lift_left=%s leg_lift_right=%s" % [str(bool(gesture_states.get("leg_lift_left", false))), str(bool(gesture_states.get("leg_lift_right", false)))])
 		lines.append("height=%s ratio=%s squat_depth=%s" % [String(measurements.get("height_state", &"unknown")), _fmt_float(measurements.get("height_ratio", 0.0)), _fmt_float(measurements.get("squat_depth", 0.0))])
 		lines.append("head/hip lateral=%s / %s" % [_fmt_float(measurements.get("head_lateral_offset", 0.0)), _fmt_float(measurements.get("hip_lateral_offset", 0.0))])
-		if trail_debug_logging:
-			lines.append("")
-			lines.append("Trail continuity")
-			lines.append("----------------")
-			lines.append(_format_trail_debug_line(_left_trail_debug))
-			lines.append(_format_trail_debug_line(_right_trail_debug))
 	else:
 		var gesture_debug: Dictionary = state.get("gesture_debug", {})
 		var ready_map: Dictionary = gesture_debug.get("ready", {})
@@ -2181,11 +2146,7 @@ func _record_event(event_name: String, payload: Dictionary) -> void:
 		"mode": _mode_name().to_lower(),
 	})
 	_append_event_feed_lines(event_name, payload)
-	if _should_log_event_to_console(event_name):
-		print("[ProvingHarness][%s] %s%s" % [_mode_name(), event_name, _format_event_payload(payload)])
 	_refresh_debug_panels()
-	if steady_state_console_debug:
-		_emit_console_snapshot_if_changed()
 
 func _append_event_feed_lines(event_name: String, payload: Dictionary) -> void:
 	var lines := _build_event_feed_lines(event_name, payload)
@@ -2210,11 +2171,6 @@ func _flow_ui_label_from_value(value: int, is_placement: bool) -> int:
 	if is_placement and value == 12:
 		return 13
 	return value + 1
-
-func _should_log_event_to_console(event_name: String) -> bool:
-	if steady_state_console_debug:
-		return true
-	return event_name in ["server_failed", "camera_stream_failed", "preview_only_invalid"]
 
 func _format_event_payload(payload: Dictionary) -> String:
 	if payload.is_empty():
@@ -2460,16 +2416,6 @@ func _build_console_snapshot() -> String:
 		_preview_only_audit_text(),
 	]
 	if harness_mode == HarnessMode.BOXING:
-		if trail_debug_logging:
-			return "%s guard=%s squat=%s height=%s latest=%s | %s | %s" % [
-				base,
-				str(bool(gesture_states.get("guard", false))),
-				str(bool(gesture_states.get("squat", false))),
-				String(measurements.get("height_state", &"unknown")),
-				(_latest_event_name() if _latest_event_name() != "" else "none"),
-				_format_trail_debug_line(_left_trail_debug),
-				_format_trail_debug_line(_right_trail_debug),
-			]
 		return "%s guard=%s squat=%s height=%s latest=%s" % [
 			base,
 			str(bool(gesture_states.get("guard", false))),
@@ -2490,13 +2436,6 @@ func _build_console_snapshot() -> String:
 		_fmt_flow_direction_candidate(right_flow),
 		(_latest_event_name() if _latest_event_name() != "" else "none"),
 	]
-
-func _emit_console_snapshot_if_changed(force: bool = false) -> void:
-	var snapshot := _build_console_snapshot()
-	if not force and snapshot == _last_console_snapshot:
-		return
-	_last_console_snapshot = snapshot
-	print(snapshot)
 
 func _get_scene_camera_source_override() -> String:
 	return prerecorded_video_source.strip_edges()
@@ -2704,38 +2643,7 @@ func _clear_preview_only_overlay_state() -> void:
 	if trail_drawer:
 		trail_drawer.clear_trails()
 
-func _get_close_path_stop_mode_label() -> String:
-	if skip_sidecar_stop_on_close_debug:
-		return "heartbeat_only"
-	var parts: PackedStringArray = ["normal_stop"]
-	if skip_sidecar_terminate_sync_on_close_debug:
-		parts.append("skip_terminate_sync")
-	elif skip_sidecar_terminate_kill_escalation_on_close_debug:
-		parts.append("skip_terminate_kill_escalation")
-	if skip_linux_pkill_main_py_on_close_debug:
-		parts.append("skip_linux_sidecar_identity_pkill")
-	if skip_linux_video0_fuser_cleanup_on_close_debug:
-		parts.append("legacy_skip_linux_video0_fuser_noop")
-	return "+".join(parts)
-
-func _log_shutdown_summary_once(reason: String) -> void:
-	if _shutdown_summary_logged:
-		if shutdown_console_debug:
-			print("[ProvingHarness][%s] Duplicate shutdown notification ignored (%s)" % [_mode_name(), reason])
-		return
-	_shutdown_summary_logged = true
-	var stop_mode := _get_close_path_stop_mode_label()
-	print("[ProvingHarness][%s] Shutdown summary: reason=%s stop_mode=%s server=%s camera=%s preview=%s" % [
-		_mode_name(),
-		reason,
-		stop_mode,
-		_server_status_text(),
-		_camera_status_text("streaming", "offline"),
-		_preview_only_audit_text(),
-	])
-
 func _stop_everything(reason: String = "unknown") -> void:
-	_log_shutdown_summary_once(reason)
 	_playback_controller_unload()
 	_playback_visibility_active = false
 	_playback_autoplay_pending = false
