@@ -102,6 +102,23 @@ class FakeTrackingContractSingleton:
 	func get_tracking_session_if_ready() -> Node:
 		return tracking_session
 
+class FakeLiveTrackingContractSingleton:
+	extends FakeTrackingContractSingleton
+
+	var start_live_calls := 0
+
+	func start_live_camera(_camera_id: String, _config_variant: Variant = null) -> bool:
+		start_live_calls += 1
+		if tracking_session == null:
+			tracking_session = CameraTrackingScript.new()
+			tracking_session.set_backend(CameraTrackingFakeBackendScript.new(), "fake")
+			add_child(tracking_session)
+		tracking_session.start({
+			"source": {"kind": "live_camera", "camera_id": "/dev/video0"},
+			"preview": {"enabled": true, "flip_horizontal": true},
+		})
+		return true
+
 var harness: ProvingHarness = null
 var _replay_requests: Array[String] = []
 var _replay_responses: Dictionary = {}
@@ -419,6 +436,31 @@ func test_contract_preview_surface_mounts_tool_owned_presenter_and_reparents_ove
 	assert_same(landmark_drawer.get_parent(), harness.get("_preview_presenter"))
 	assert_same(trail_drawer.get_parent(), harness.get("_preview_presenter"))
 	assert_not_null(harness.camera_view)
+
+func test_start_provider_mounts_contract_preview_presenter_after_live_session_starts() -> void:
+	if harness != null:
+		harness.free()
+	harness = ContractAwareHarness.new()
+	var fake_singleton := add_child_autoqfree(FakeLiveTrackingContractSingleton.new()) as FakeLiveTrackingContractSingleton
+	harness.fake_singleton = fake_singleton
+
+	var camera_host := TextureRect.new()
+	camera_host.name = "CameraDisplay"
+	camera_host.size = Vector2(640, 360)
+	camera_host.custom_minimum_size = camera_host.size
+	harness.add_child(camera_host)
+	add_child(harness)
+
+	harness.startup_mode = harness.StartupMode.TRACKING
+	harness.camera_display = camera_host
+	harness._start_provider()
+
+	assert_eq(fake_singleton.start_live_calls, 1)
+	assert_not_null(harness.get("_preview_presenter"))
+	assert_not_null(harness.camera_view)
+	assert_not_null(fake_singleton.tracking_session)
+	assert_true(fake_singleton.tracking_session.get_preview_descriptor().get("attached"))
+	assert_eq(int(fake_singleton.tracking_session.get_preview_descriptor().get("attached_surface_count", 0)), 1)
 
 func test_clearing_live_runtime_state_keeps_repo_singleton_alive() -> void:
 	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")

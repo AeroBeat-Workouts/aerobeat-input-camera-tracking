@@ -915,6 +915,8 @@ func _start_provider() -> void:
 	else:
 		success = bool(provider.call("start"))
 	if success:
+		if _uses_camera_tracking_contract_path():
+			_ensure_contract_preview_surface()
 		_server_ready = true
 		_refresh_camera_source_controls()
 		_record_event("provider_started", {"mode": _mode_name(), "provider": provider.name})
