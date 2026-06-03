@@ -1,5 +1,5 @@
 extends Control
-## Draws left/right hand motion trails on top of the mirrored camera feed.
+## Draws left/right hand motion trails in preview space on top of the tool-owned presenter.
 
 const LEFT_TRAIL_COLOR := Color(0.25, 0.95, 1.0, 0.95)
 const RIGHT_TRAIL_COLOR := Color(1.0, 0.45, 0.75, 0.95)
@@ -10,6 +10,11 @@ const POINT_RADIUS := 7.0
 
 var _left_points: Array = []
 var _right_points: Array = []
+var _preview_presenter: Node = null
+
+func set_preview_presenter(preview_presenter: Node) -> void:
+	_preview_presenter = preview_presenter
+	queue_redraw()
 
 func update_trails(left_points: Array, right_points: Array) -> void:
 	_left_points = left_points.duplicate(true)
@@ -66,13 +71,17 @@ func _is_normalized_point_in_bounds(point: Vector2) -> bool:
 	return point.x >= 0.0 and point.x <= 1.0 and point.y >= 0.0 and point.y <= 1.0
 
 func _normalized_to_screen(point: Vector2, image_bounds: Rect2) -> Vector2:
-	# Trail points come from provider-normalized gameplay space, matching the landmark drawer.
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("map_landmark_to_preview_position"):
+		return _preview_presenter.map_landmark_to_preview_position({"x": point.x, "y": point.y})
 	return Vector2(
 		image_bounds.position.x + point.x * image_bounds.size.x,
 		image_bounds.position.y + (1.0 - point.y) * image_bounds.size.y
 	)
 
 func _get_displayed_image_bounds() -> Rect2:
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("get_content_rect"):
+		return _preview_presenter.get_content_rect()
+
 	var parent: TextureRect = get_parent() as TextureRect
 	if parent == null:
 		return get_rect()

@@ -1,7 +1,6 @@
 extends Control
 ## Shared proving harness for live Boxing / Flow detector tuning.
 
-const TruthfulPreviewSurfaceScript = preload("res://scripts/truthful_preview_surface.gd")
 const CameraTrackingConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd")
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const VENDOR_REPO_ROOT := "res://addons/aerobeat-vendor-mediapipe-python"
@@ -191,7 +190,7 @@ enum TrackingSmoothingStyle {
 @onready var notes_label: Label = get_node_or_null("Margin/VSplit/Header/NotesLabel") as Label
 @onready var camera_source_controls: Control = get_node_or_null("Margin/VSplit/Content/LeftColumn/CameraSourceControls") as Control
 @onready var camera_source_picker: OptionButton = find_child("CameraSourcePicker", true, false) as OptionButton
-@onready var camera_display: TextureRect = get_node_or_null("Margin/VSplit/Content/LeftColumn/CameraPanel/CameraDisplay") as TextureRect
+@onready var camera_display: Control = get_node_or_null("Margin/VSplit/Content/LeftColumn/CameraPanel/CameraDisplay") as Control
 @onready var landmark_drawer: Control = find_child("LandmarkDrawer", true, false) as Control
 @onready var trail_drawer: Control = find_child("TrailDrawer", true, false) as Control
 @onready var quick_stats_label: RichTextLabel = find_child("QuickStats", true, false) as RichTextLabel
@@ -207,6 +206,7 @@ enum TrackingSmoothingStyle {
 var provider: Node = null
 var auto_start_manager: Node = null
 var camera_view: TextureRect = null
+var _preview_presenter: Control = null
 var _provider_mode_signal_relays: Dictionary = {}
 var _frame_count := 0
 var _server_ready := false
@@ -713,7 +713,7 @@ func _apply_contract_live_camera_source(device_id: String) -> bool:
 		_selected_live_camera_device_id = _normalize_live_camera_device_id(String(tracking_singleton.get_selected_camera_device_id()))
 	_server_ready = true
 	await get_tree().process_frame
-	_refresh_contract_preview_surface()
+	_ensure_contract_preview_surface()
 	return await _await_live_camera_runtime_ready()
 
 func _clear_live_camera_runtime_visual_state() -> void:
@@ -810,7 +810,6 @@ func _setup_auto_start() -> void:
 
 func _process(_delta: float) -> void:
 	_frame_count += 1
-	_refresh_contract_preview_surface()
 
 	if _is_preview_only_mode():
 		_audit_preview_only_surface()
@@ -903,7 +902,7 @@ func _start_provider() -> void:
 	provider = tracking_singleton
 	if _uses_camera_tracking_contract_path():
 		_ensure_contract_preview_surface()
-	if provider.has_method("attach_preview_surface"):
+	elif provider.has_method("attach_preview_surface") and camera_display != null:
 		provider.attach_preview_surface(camera_display)
 	_connect_provider_signals()
 
@@ -927,7 +926,6 @@ func _start_provider() -> void:
 func _connect_provider_signals() -> void:
 	if provider == null:
 		return
-	_connect_provider_signal("preview_changed", _on_contract_preview_changed)
 	_connect_provider_signal("pose_updated", _on_pose_updated)
 	_connect_provider_signal("tracking_lost", _on_tracking_lost)
 	_connect_provider_signal("tracking_restored", _on_tracking_restored)
@@ -951,7 +949,6 @@ func _disconnect_provider_signals(target_provider: Node = provider) -> void:
 	if target_provider == null:
 		_provider_mode_signal_relays.clear()
 		return
-	_disconnect_provider_signal(target_provider, "preview_changed", _on_contract_preview_changed)
 	_disconnect_provider_signal(target_provider, "pose_updated", _on_pose_updated)
 	_disconnect_provider_signal(target_provider, "tracking_lost", _on_tracking_lost)
 	_disconnect_provider_signal(target_provider, "tracking_restored", _on_tracking_restored)
@@ -1389,43 +1386,44 @@ func _on_tracking_restored() -> void:
 	_record_fixture_state_snapshot("tracking_restored")
 
 func _ensure_contract_preview_surface() -> void:
-	if camera_display != null and camera_display.get_script() == TruthfulPreviewSurfaceScript:
+	if camera_display == null:
 		return
-	var preview_surface := TruthfulPreviewSurfaceScript.new()
-	preview_surface.name = "CameraDisplay"
-	var previous_display := camera_display
-	if previous_display:
-		preview_surface.custom_minimum_size = previous_display.custom_minimum_size
-		preview_surface.layout_mode = previous_display.layout_mode
-		preview_surface.size_flags_horizontal = previous_display.size_flags_horizontal
-		preview_surface.size_flags_vertical = previous_display.size_flags_vertical
-		preview_surface.size_flags_stretch_ratio = previous_display.size_flags_stretch_ratio
-		preview_surface.expand_mode = previous_display.expand_mode
-		preview_surface.stretch_mode = previous_display.stretch_mode
-		previous_display.replace_by(preview_surface)
-		if landmark_drawer:
-			landmark_drawer.reparent(preview_surface)
-		if trail_drawer:
-			trail_drawer.reparent(preview_surface)
-		previous_display.queue_free()
-	camera_display = preview_surface
-	camera_view = preview_surface
+	var tracking_session := _resolve_camera_tracking_session()
+	if tracking_session == null or not tracking_session.has_method("mount_preview_presenter"):
+		return
+	if _preview_presenter == null or not is_instance_valid(_preview_presenter):
+		_preview_presenter = tracking_session.mount_preview_presenter(camera_display, {
+			"fit_mode": "cover",
+			"min_visibility": overlay_visibility_threshold,
+		})
+		if _preview_presenter != null:
+			_preview_presenter.name = "CameraTrackingPreviewPresenter"
+	elif _preview_presenter.has_method("bind_tracking_session"):
+		_preview_presenter.bind_tracking_session(tracking_session)
+	if _preview_presenter != null and _preview_presenter.has_method("configure"):
+		_preview_presenter.configure({
+			"fit_mode": "cover",
+			"overlay_visible": show_landmarks,
+			"min_visibility": overlay_visibility_threshold,
+		})
+	if _preview_presenter != null and _preview_presenter.has_method("get_preview_surface"):
+		var preview_surface: Variant = _preview_presenter.get_preview_surface()
+		if preview_surface is TextureRect:
+			camera_view = preview_surface
+	_sync_overlay_drawers_to_preview_presenter()
 	_ensure_overlay_drawers_ready()
 
-func _on_contract_preview_changed(descriptor: Dictionary) -> void:
-	if camera_display != null and camera_display.has_method("apply_preview_descriptor"):
-		camera_display.apply_preview_descriptor(descriptor)
-
-func _refresh_contract_preview_surface() -> void:
-	if not _uses_camera_tracking_contract_path():
+func _sync_overlay_drawers_to_preview_presenter() -> void:
+	if _preview_presenter == null or not is_instance_valid(_preview_presenter):
 		return
-	var tracking_singleton := _resolve_camera_tracking_singleton()
-	if tracking_singleton == null or not tracking_singleton.has_method("get_current_preview_descriptor"):
-		return
-	var descriptor: Dictionary = tracking_singleton.get_current_preview_descriptor()
-	if descriptor.is_empty():
-		return
-	_on_contract_preview_changed(descriptor)
+	for drawer_variant: Variant in [landmark_drawer, trail_drawer]:
+		if not drawer_variant is Control:
+			continue
+		var drawer := drawer_variant as Control
+		if drawer.get_parent() != _preview_presenter:
+			drawer.reparent(_preview_presenter)
+		if drawer.has_method("set_preview_presenter"):
+			drawer.set_preview_presenter(_preview_presenter)
 
 func _start_camera_feed() -> void:
 	_ensure_contract_preview_surface()

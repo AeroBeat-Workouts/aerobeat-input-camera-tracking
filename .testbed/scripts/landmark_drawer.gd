@@ -1,32 +1,23 @@
 extends Control
-## Draws normalized pose landmarks and skeleton on top of camera feed,
-## and exposes enlarged click targets for landmark inspection.
+## Consumer-owned click/inspection layer for landmarks.
+##
+## Preview image loading, fit/crop behavior, mirroring, and rendered skeleton/landmark
+## overlays now belong to the tool-owned CameraTrackingPreviewPresenter. This layer only
+## keeps enlarged hit targets so the proving harness can still inspect landmarks.
 
 signal landmark_clicked(landmark_id: int)
 
-const LANDMARK_COLOR: Color = Color(0.0, 1.0, 0.5, 0.9)
-const LANDMARK_COLOR_LOW_CONFIDENCE: Color = Color(1.0, 0.5, 0.0, 0.7)
-const SKELETON_COLOR: Color = Color(0.0, 0.8, 1.0, 0.8)
-const SKELETON_WIDTH: float = 2.0
-const LANDMARK_RADIUS: float = 4.0
 const LANDMARK_HIT_RADIUS: float = 18.0
-
-const SKELETON_CONNECTIONS: Array = [
-	[0, 1], [1, 2], [2, 3], [3, 7],
-	[0, 4], [4, 5], [5, 6], [6, 8],
-	[9, 10],
-	[11, 12], [11, 23], [12, 24], [23, 24],
-	[11, 13], [13, 15], [15, 17], [15, 19], [15, 21],
-	[12, 14], [14, 16], [16, 18], [16, 20], [16, 22],
-	[23, 25], [25, 27], [27, 29], [27, 31],
-	[24, 26], [26, 28], [28, 30], [28, 32],
-]
 
 var _landmarks: Array = []
 var _min_visibility: float = 0.5
+var _preview_presenter: Node = null
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
+
+func set_preview_presenter(preview_presenter: Node) -> void:
+	_preview_presenter = preview_presenter
 	queue_redraw()
 
 func update_landmarks(landmarks: Array, min_visibility: float = 0.5) -> void:
@@ -66,46 +57,8 @@ func _gui_input(event: InputEvent) -> void:
 	landmark_clicked.emit(landmark_id)
 
 func _draw() -> void:
-	if _landmarks.is_empty():
-		return
-
-	var image_bounds: Rect2 = _get_displayed_image_bounds()
-	var width: float = image_bounds.size.x
-	var height: float = image_bounds.size.y
-	var offset: Vector2 = image_bounds.position
-
-	_draw_skeleton(width, height, offset)
-	_draw_landmarks(width, height, offset)
-
-func _draw_skeleton(width: float, height: float, offset: Vector2 = Vector2.ZERO) -> void:
-	var landmark_dict: Dictionary = {}
-	for landmark: Dictionary in _landmarks:
-		landmark_dict[landmark.id] = landmark
-
-	for connection: Array in SKELETON_CONNECTIONS:
-		var id1: int = connection[0]
-		var id2: int = connection[1]
-
-		if landmark_dict.has(id1) and landmark_dict.has(id2):
-			var lm1: Dictionary = landmark_dict[id1]
-			var lm2: Dictionary = landmark_dict[id2]
-			if not _is_landmark_in_bounds(lm1) or not _is_landmark_in_bounds(lm2):
-				continue
-
-			var pos1: Vector2 = _landmark_to_screen(lm1, width, height, offset)
-			var pos2: Vector2 = _landmark_to_screen(lm2, width, height, offset)
-
-			draw_line(pos1, pos2, SKELETON_COLOR, SKELETON_WIDTH)
-
-func _draw_landmarks(width: float, height: float, offset: Vector2 = Vector2.ZERO) -> void:
-	for lm: Dictionary in _landmarks:
-		if not _is_landmark_in_bounds(lm):
-			continue
-		var pos: Vector2 = _landmark_to_screen(lm, width, height, offset)
-		var color: Color = LANDMARK_COLOR if lm.v > 0.8 else LANDMARK_COLOR_LOW_CONFIDENCE
-
-		draw_circle(pos, LANDMARK_RADIUS, color)
-		draw_arc(pos, LANDMARK_RADIUS, 0.0, TAU, 16, Color.BLACK, 1.0)
+	# The presenter now owns visible landmark rendering; keep this layer invisible.
+	pass
 
 func _find_clicked_landmark(screen_position: Vector2) -> int:
 	if _landmarks.is_empty():
@@ -129,17 +82,23 @@ func _find_clicked_landmark(screen_position: Vector2) -> int:
 	return closest_id
 
 func _is_landmark_in_bounds(lm: Dictionary) -> bool:
-	return float(lm.get("x", -1.0)) >= 0.0 		and float(lm.get("x", -1.0)) <= 1.0 		and float(lm.get("y", -1.0)) >= 0.0 		and float(lm.get("y", -1.0)) <= 1.0
+	return float(lm.get("x", -1.0)) >= 0.0 \
+		and float(lm.get("x", -1.0)) <= 1.0 \
+		and float(lm.get("y", -1.0)) >= 0.0 \
+		and float(lm.get("y", -1.0)) <= 1.0
 
 func _landmark_to_screen(lm: Dictionary, width: float, height: float, offset: Vector2 = Vector2.ZERO) -> Vector2:
-	# Provider landmarks are already normalized into AeroBeat's mirrored gameplay space:
-	# x is already mirrored when flip_horizontal=true, and y is already inverted to bottom-left origin.
-	# Convert that normalized gameplay space into screen space without applying a second mirror.
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("map_landmark_to_preview_position"):
+		return _preview_presenter.map_landmark_to_preview_position(lm)
+	# Compatibility fallback for non-presenter tests/lanes.
 	var x: float = offset.x + float(lm.get("x", 0.0)) * width
 	var y: float = offset.y + (1.0 - float(lm.get("y", 0.0))) * height
 	return Vector2(x, y)
 
 func _get_displayed_image_bounds() -> Rect2:
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("get_content_rect"):
+		return _preview_presenter.get_content_rect()
+
 	var parent: TextureRect = get_parent() as TextureRect
 	if parent == null:
 		return get_rect()
@@ -169,8 +128,8 @@ func _get_displayed_image_bounds() -> Rect2:
 		_:
 			displayed_size = container_size
 
-	var offset: Vector2 = (container_size - displayed_size) / 2.0
-	return Rect2(offset, displayed_size)
+	var draw_offset: Vector2 = (container_size - displayed_size) / 2.0
+	return Rect2(draw_offset, displayed_size)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:

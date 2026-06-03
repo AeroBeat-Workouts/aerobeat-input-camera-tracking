@@ -1,7 +1,6 @@
 extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const ProvingHarness = preload("res://scripts/proving_harness.gd")
-const TruthfulPreviewSurfaceScript = preload("res://scripts/truthful_preview_surface.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
@@ -94,6 +93,14 @@ class FakeTrackingSingleton:
 
 	func stop() -> void:
 		stop_calls += 1
+
+class FakeTrackingContractSingleton:
+	extends Node
+
+	var tracking_session: Node = null
+
+	func get_tracking_session_if_ready() -> Node:
+		return tracking_session
 
 var harness: ProvingHarness = null
 var _replay_requests: Array[String] = []
@@ -298,7 +305,7 @@ func test_replay_proving_prefers_singleton_playback_controller() -> void:
 
 	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
 	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
-	harness.camera_view = TruthfulPreviewSurfaceScript.new()
+	harness.camera_view = TextureRect.new()
 	harness.add_child(harness.camera_view)
 	add_child(harness)
 
@@ -319,7 +326,7 @@ func test_replay_proving_autoplays_when_same_source_is_already_loaded_but_paused
 
 	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
 	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
-	harness.camera_view = TruthfulPreviewSurfaceScript.new()
+	harness.camera_view = TextureRect.new()
 	harness.add_child(harness.camera_view)
 	add_child(harness)
 
@@ -372,6 +379,46 @@ func test_overlay_drawers_are_forced_full_rect_and_receive_pose_updates() -> voi
 	assert_eq(landmark_drawer.update_calls.size(), 1)
 	assert_eq(float(landmark_drawer.update_calls[0].get("min_visibility", 0.0)), harness.overlay_visibility_threshold)
 	assert_eq(trail_drawer.update_calls.size(), 1)
+
+func test_contract_preview_surface_mounts_tool_owned_presenter_and_reparents_overlay_layers() -> void:
+	if harness != null:
+		harness.free()
+	harness = ContractAwareHarness.new()
+	var tracking_session := CameraTrackingScript.new()
+	var backend = CameraTrackingFakeBackendScript.new()
+	tracking_session.set_backend(backend, "fake")
+	tracking_session.start({
+		"source": {"kind": "live_camera", "camera_id": "/dev/video0"},
+		"preview": {"enabled": true, "flip_horizontal": true},
+	})
+	add_child_autofree(tracking_session)
+
+	var fake_singleton := add_child_autoqfree(FakeTrackingContractSingleton.new()) as FakeTrackingContractSingleton
+	fake_singleton.tracking_session = tracking_session
+	harness.fake_singleton = fake_singleton
+
+	var camera_host := TextureRect.new()
+	camera_host.name = "CameraDisplay"
+	camera_host.size = Vector2(640, 360)
+	camera_host.custom_minimum_size = camera_host.size
+	var landmark_drawer := FakeOverlayDrawer.new()
+	landmark_drawer.name = "LandmarkDrawer"
+	var trail_drawer := FakeOverlayDrawer.new()
+	trail_drawer.name = "TrailDrawer"
+	camera_host.add_child(landmark_drawer)
+	camera_host.add_child(trail_drawer)
+	harness.add_child(camera_host)
+	add_child(harness)
+
+	harness.camera_display = camera_host
+	harness.landmark_drawer = landmark_drawer
+	harness.trail_drawer = trail_drawer
+	harness._ensure_contract_preview_surface()
+
+	assert_not_null(harness.get("_preview_presenter"))
+	assert_same(landmark_drawer.get_parent(), harness.get("_preview_presenter"))
+	assert_same(trail_drawer.get_parent(), harness.get("_preview_presenter"))
+	assert_not_null(harness.camera_view)
 
 func test_clearing_live_runtime_state_keeps_repo_singleton_alive() -> void:
 	var singleton = get_tree().root.get_node_or_null("AeroCameraTracking")

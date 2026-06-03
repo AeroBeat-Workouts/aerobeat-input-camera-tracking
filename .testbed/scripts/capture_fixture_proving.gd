@@ -118,6 +118,8 @@ func _collect_harness_report(elapsed_ms: int, screenshot_path: String) -> Dictio
 	var events_label := _scene_root.get_node_or_null("Margin/VSplit/Content/RightPanelScroll/RightColumn/EventsPanel/Events") as RichTextLabel
 	var camera_display := _scene_root.get_node_or_null("Margin/VSplit/Content/LeftColumn/CameraPanel/CameraView") as TextureRect
 	if camera_display == null:
+		camera_display = _scene_root.find_child("PreviewSurface", true, false) as TextureRect
+	if camera_display == null:
 		camera_display = _scene_root.get_node_or_null("Margin/VSplit/Content/LeftColumn/CameraPanel/CameraDisplay") as TextureRect
 	var auto_start := _scene_root.get_node_or_null("AutoStartManager")
 	var provider: Variant = _scene_root.get("provider") if _scene_root != null else null
