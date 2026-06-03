@@ -68,6 +68,7 @@ var _replay_loaded := false
 var _replay_playing := false
 var _replay_started_at_msec := 0
 var _replay_started_at_position_sec := 0.0
+var _replay_loop_origin_sec := 0.0
 
 func has_tracking_contract() -> bool:
 	return _tracking_session != null and is_instance_valid(_tracking_session)
@@ -98,7 +99,7 @@ func start_replay(source_path: String, config_variant: Variant = null) -> bool:
 	if normalized_source.is_empty():
 		push_warning("[AeroCameraTracking] Replay start requested without a source path")
 		return false
-	var runtime_config = _make_replay_runtime_config(normalized_source, null, config_variant)
+	var runtime_config = _make_replay_runtime_config(normalized_source, null, null, config_variant)
 	if runtime_config == null:
 		return false
 	return _start_with_config(runtime_config)
@@ -220,6 +221,8 @@ func ensure_replay_playback_loaded(source_path: String) -> bool:
 	var normalized_source := source_path.strip_edges()
 	if normalized_source.is_empty():
 		return false
+	if _replay_source_path != normalized_source:
+		_replay_loop_origin_sec = 0.0
 	_replay_source_path = normalized_source
 	_replay_loaded = true
 	_replay_position_sec = clampf(_replay_position_sec, 0.0, _replay_duration_sec if _replay_duration_sec > 0.0 else _replay_position_sec)
@@ -260,7 +263,7 @@ func play_replay_playback() -> bool:
 		return false
 	if _replay_source_path.is_empty():
 		return false
-	var config = _make_replay_runtime_config(_replay_source_path, _replay_position_sec)
+	var config = _make_replay_runtime_config(_replay_source_path, _replay_position_sec, _replay_loop_origin_sec)
 	if config == null:
 		return false
 	_replay_playing = start_replay(_replay_source_path, config)
@@ -273,8 +276,9 @@ func play_replay_playback() -> bool:
 func pause_replay_playback() -> bool:
 	_refresh_replay_playback_state_from_tracking_session()
 	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
-		_provider.stop()
+		_provider.stop(true)
 	_replay_playing = false
+	_replay_started_at_msec = 0
 	_replay_started_at_position_sec = _replay_position_sec
 	return true
 
@@ -282,6 +286,7 @@ func seek_replay_playback(seconds: float) -> bool:
 	if not _replay_loaded and _replay_source_path.is_empty():
 		return false
 	_replay_position_sec = maxf(seconds, 0.0)
+	_replay_loop_origin_sec = _replay_position_sec
 	return play_replay_playback()
 
 func unload_replay_playback() -> void:
@@ -290,6 +295,7 @@ func unload_replay_playback() -> void:
 	_replay_source_path = ""
 	_replay_duration_sec = 0.0
 	_replay_position_sec = 0.0
+	_replay_loop_origin_sec = 0.0
 	_replay_loaded = false
 	_replay_playing = false
 	_replay_started_at_msec = 0
@@ -427,7 +433,7 @@ func _get_live_camera_source_id(source: Dictionary) -> String:
 		return legacy_id
 	return String(source.get("path", "")).strip_edges()
 
-func _make_replay_runtime_config(source_path: String, start_time_sec: Variant = null, config_variant: Variant = null):
+func _make_replay_runtime_config(source_path: String, start_time_sec: Variant = null, loop_start_time_sec: Variant = null, config_variant: Variant = null):
 	var base_config: Variant = config_variant if config_variant != null else (_last_runtime_config if _last_runtime_config != null else {})
 	var config = _coerce_runtime_config(base_config)
 	if config == null:
@@ -441,6 +447,8 @@ func _make_replay_runtime_config(source_path: String, start_time_sec: Variant = 
 		var vendor_source := vendor_config["source"] as Dictionary
 		if start_time_sec != null:
 			vendor_source["start_time_sec"] = maxf(float(start_time_sec), 0.0)
+		if loop_start_time_sec != null:
+			vendor_source["loop_start_time_sec"] = maxf(float(loop_start_time_sec), 0.0)
 		if not vendor_source.has("loop"):
 			vendor_source["loop"] = true
 		vendor_config["source"] = vendor_source

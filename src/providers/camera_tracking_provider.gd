@@ -97,11 +97,14 @@ func start() -> bool:
 	_sync_from_tracking_session()
 	return true
 
-func stop() -> void:
-	if _tracking_session != null and _tracking_session.has_method("detach_preview_surface"):
+func stop(preserve_runtime_state: bool = false) -> void:
+	if not preserve_runtime_state and _tracking_session != null and _tracking_session.has_method("detach_preview_surface"):
 		_tracking_session.detach_preview_surface()
-	if manage_tracking_session_lifecycle and _tracking_session != null and _tracking_session.has_method("stop"):
-		_tracking_session.stop()
+	if manage_tracking_session_lifecycle:
+		_stop_tracking_session(preserve_runtime_state)
+	if preserve_runtime_state:
+		_sync_from_tracking_session()
+		return
 	reset_runtime_state()
 
 func reset_runtime_state() -> void:
@@ -343,6 +346,20 @@ func _get_tracking_source_config() -> Dictionary:
 		return {}
 	var source: Variant = active_config.get("source", {})
 	return source.duplicate(true) if source is Dictionary else {}
+
+func _stop_tracking_session(preserve_runtime_state: bool) -> void:
+	if _tracking_session == null:
+		return
+	if preserve_runtime_state:
+		if _tracking_session.has_method("stop_preserving_runtime_state"):
+			_tracking_session.stop_preserving_runtime_state()
+			return
+		var backend: Variant = _tracking_session.get("_backend") if _tracking_session.has_method("get") else null
+		if backend != null and is_instance_valid(backend) and backend.has_method("stop_preserving_runtime_state"):
+			backend.stop_preserving_runtime_state()
+			return
+	if _tracking_session.has_method("stop"):
+		_tracking_session.stop()
 
 func _get_live_camera_source_id(source: Dictionary) -> String:
 	var camera_id := String(source.get("camera_id", "")).strip_edges()
