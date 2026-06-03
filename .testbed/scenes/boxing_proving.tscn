@@ -14,7 +14,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
 scene_title = "BOXING GESTURE DETECTION"
-tracking_smoothing_style = 3
+tracking_smoothing_style = 1
 show_trails = false
 
 [node name="Background" type="TextureRect" parent="." unique_id=2072136514]

@@ -522,28 +522,31 @@ func test_singleton_runtime_config_includes_prepared_vendor_runtime_facts() -> v
 	assert_eq(runtime.get("python_executable", ""), vendor_root.path_join(".venv/bin/python"))
 	assert_eq(runtime.get("entrypoint", ""), vendor_root.path_join("runtime/mediapipe_runtime_probe.py"))
 	assert_eq(runtime.get("working_directory", ""), vendor_root)
-	assert_eq(runtime.get("pose_landmarker_model_path", ""), vendor_root.path_join("models/pose_landmarker_full.task"))
-	assert_eq(int(runtime.get("model_complexity", -1)), 1)
+	assert_eq(runtime.get("pose_landmarker_model_path", ""), vendor_root.path_join("models/pose_landmarker_lite.task"))
+	assert_eq(int(runtime.get("model_complexity", -1)), 0)
+	assert_true(bool(runtime.get("filter_enabled", false)))
+	assert_false(bool(runtime.get("no_filter", true)))
 
-func test_singleton_runtime_config_tracks_selected_model_complexity_truthfully() -> void:
+func test_exposed_tracking_smoothing_styles_stay_backed_by_existing_vendor_assets() -> void:
 	add_child(harness)
-	harness.tracking_smoothing_style = harness.TrackingSmoothingStyle.HEAVY_FILTERED
-	var heavy_config := harness._build_runtime_config() as Resource
-	var heavy_runtime: Dictionary = heavy_config.get("runtime")
-	assert_eq(int(heavy_runtime.get("model_complexity", -1)), 2)
-	assert_true(bool(heavy_runtime.get("filter_enabled", false)))
-	assert_false(bool(heavy_runtime.get("no_filter", true)))
-	assert_true(String(heavy_runtime.get("pose_landmarker_model_path", "")).ends_with("models/pose_landmarker_heavy.task"))
-	assert_eq(String(heavy_config.get("tracking_overlay_mode")), "optimized")
+	var exposed_styles := [
+		{"value": harness.TrackingSmoothingStyle.LITE_RAW, "label": "LITE_RAW", "filter_enabled": false},
+		{"value": harness.TrackingSmoothingStyle.LITE_FILTERED, "label": "LITE_FILTERED", "filter_enabled": true},
+	]
+	assert_eq(harness.TrackingSmoothingStyle.size(), exposed_styles.size())
+	assert_true(harness.TrackingSmoothingStyle.has("LITE_RAW"))
+	assert_true(harness.TrackingSmoothingStyle.has("LITE_FILTERED"))
 
-	harness.tracking_smoothing_style = harness.TrackingSmoothingStyle.LITE_RAW
-	var lite_config := harness._build_runtime_config() as Resource
-	var lite_runtime: Dictionary = lite_config.get("runtime")
-	assert_eq(int(lite_runtime.get("model_complexity", -1)), 0)
-	assert_false(bool(lite_runtime.get("filter_enabled", true)))
-	assert_true(bool(lite_runtime.get("no_filter", false)))
-	assert_true(String(lite_runtime.get("pose_landmarker_model_path", "")).ends_with("models/pose_landmarker_lite.task"))
-	assert_eq(String(lite_config.get("tracking_overlay_mode")), "optimized")
+	for style in exposed_styles:
+		harness.tracking_smoothing_style = int(style.get("value", -1))
+		var config := harness._build_runtime_config() as Resource
+		var runtime: Dictionary = config.get("runtime")
+		var model_path := String(runtime.get("pose_landmarker_model_path", ""))
+		assert_true(FileAccess.file_exists(model_path), "%s should map to an existing vendor model asset" % String(style.get("label", "unknown")))
+		assert_eq(int(runtime.get("model_complexity", -1)), 0)
+		assert_eq(bool(runtime.get("filter_enabled", false)), bool(style.get("filter_enabled", false)))
+		assert_eq(bool(runtime.get("no_filter", true)), not bool(style.get("filter_enabled", false)))
+		assert_eq(String(config.get("tracking_overlay_mode")), "optimized")
 
 func test_camera_picker_accepts_camera_id_only_device_entries() -> void:
 	harness._camera_devices = [

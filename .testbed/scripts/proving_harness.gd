@@ -158,11 +158,7 @@ enum StartupMode {
 
 enum TrackingSmoothingStyle {
 	LITE_RAW,
-	FULL_RAW,
-	HEAVY_RAW,
 	LITE_FILTERED,
-	FULL_FILTERED,
-	HEAVY_FILTERED,
 }
 
 @export var harness_mode: HarnessMode = HarnessMode.BOXING
@@ -171,7 +167,7 @@ enum TrackingSmoothingStyle {
 @export var scene_title := "Detector Proving Harness"
 @export_multiline var scene_notes := ""
 @export var overlay_visibility_threshold := 0.35
-@export var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.FULL_RAW
+@export var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.LITE_FILTERED
 @export_range(1, 6, 1) var gesture_eval_interval_frames := 1
 @export var show_landmarks := true
 @export var show_trails := true
@@ -2573,16 +2569,10 @@ func _tracking_smoothing_style_spec() -> Dictionary:
 	match tracking_smoothing_style:
 		TrackingSmoothingStyle.LITE_RAW:
 			return {"label": "Lite + raw", "model_complexity": 0, "no_filter": true}
-		TrackingSmoothingStyle.HEAVY_RAW:
-			return {"label": "Heavy + raw", "model_complexity": 2, "no_filter": true}
 		TrackingSmoothingStyle.LITE_FILTERED:
 			return {"label": "Lite + One-Euro", "model_complexity": 0, "no_filter": false}
-		TrackingSmoothingStyle.FULL_FILTERED:
-			return {"label": "Full + One-Euro", "model_complexity": 1, "no_filter": false}
-		TrackingSmoothingStyle.HEAVY_FILTERED:
-			return {"label": "Heavy + One-Euro", "model_complexity": 2, "no_filter": false}
 		_:
-			return {"label": "Full + raw", "model_complexity": 1, "no_filter": true}
+			return {"label": "Lite + One-Euro", "model_complexity": 0, "no_filter": false}
 
 func _apply_tracking_smoothing_style_to_autostart_manager() -> void:
 	if auto_start_manager == null:
