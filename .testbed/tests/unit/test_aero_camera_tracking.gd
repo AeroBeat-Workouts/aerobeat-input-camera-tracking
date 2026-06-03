@@ -13,6 +13,23 @@ class CameraOptionsFakeBackend extends CameraTrackingFakeBackendScript:
 		requested_camera_ids.append(camera_id)
 		return camera_options_response.duplicate(true)
 
+class PlaybackStatusFakeBackend extends CameraTrackingFakeBackendScript:
+	func set_playback_status(current_time_sec: float, duration_sec: float, paused: bool = false, state_name: String = "playing") -> void:
+		var safe_duration := maxf(duration_sec, 0.0)
+		var safe_position := maxf(current_time_sec, 0.0)
+		var progress := 0.0
+		if safe_duration > 0.0:
+			progress = minf(maxf(safe_position / safe_duration, 0.0), 1.0)
+		playback_status = {
+			"source": str(last_config.get("source", {}).get("path", "")),
+			"state": state_name,
+			"paused": paused,
+			"current_time_sec": safe_position,
+			"duration_sec": safe_duration,
+			"progress": progress,
+			"is_file_source": true,
+		}
+
 class TeardownTrackingSession extends CameraTrackingScript:
 	static var total_stop_calls := 0
 
@@ -161,6 +178,26 @@ func test_aero_camera_tracking_owns_replay_playback_facade_for_vendor_backed_pro
 
 	singleton.unload_replay_playback()
 	assert_false(singleton.has_replay_playback_loaded())
+
+func test_aero_camera_tracking_prefers_public_tracking_session_playback_truth_for_replay_status() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var tracker = CameraTrackingScript.new()
+	var backend := PlaybackStatusFakeBackend.new()
+	tracker.set_backend(backend)
+	singleton.set_tracking_session(tracker)
+
+	var replay_path := ProjectSettings.globalize_path("res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+	assert_true(singleton.start_replay(replay_path, {}))
+	backend.set_playback_status(7.5, 30.0, false, "playing")
+
+	var status: Dictionary = singleton.get_replay_playback_status()
+	assert_eq(status.get("current_time_sec"), 7.5)
+	assert_eq(status.get("duration_sec"), 30.0)
+	assert_eq(status.get("progress"), 0.25)
+	assert_false(bool(status.get("paused", true)))
+	assert_eq(String(singleton.get_replay_playback_state().get("source", {}).get("path", "")), replay_path)
+	assert_eq(float(singleton.get_replay_playback_state().get("duration", -1.0)), 30.0)
+	assert_eq(float(singleton.get_replay_playback_state().get("position", -1.0)), 7.5)
 
 func test_aero_camera_tracking_stop_releases_wrapper_owned_provider_and_keeps_owned_session_reusable() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())

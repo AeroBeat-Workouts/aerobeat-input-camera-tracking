@@ -377,18 +377,48 @@ func get_current_playback_status() -> Dictionary:
 	return get_replay_playback_status()
 
 func _refresh_replay_playback_state_from_tracking_session() -> void:
-	if _replay_loaded and _replay_playing:
-		var elapsed_sec := maxf(float(Time.get_ticks_msec() - _replay_started_at_msec) / 1000.0, 0.0)
-		var next_position := _replay_started_at_position_sec + elapsed_sec
-		if _replay_duration_sec > 0.0:
-			next_position = minf(next_position, _replay_duration_sec)
-		_replay_position_sec = maxf(next_position, _replay_position_sec)
 	var active_config := get_active_config()
 	var source: Dictionary = active_config.get("source", {})
 	var source_kind := String(source.get("kind", "")).strip_edges()
 	if source_kind == "video_file":
 		_replay_loaded = true
 		_replay_source_path = String(source.get("path", _replay_source_path)).strip_edges()
+	var playback_status := _get_tracking_session_playback_status()
+	if _apply_tracking_session_playback_status(playback_status):
+		return
+	if _replay_loaded and _replay_playing:
+		var elapsed_sec := maxf(float(Time.get_ticks_msec() - _replay_started_at_msec) / 1000.0, 0.0)
+		var next_position := _replay_started_at_position_sec + elapsed_sec
+		if _replay_duration_sec > 0.0:
+			next_position = minf(next_position, _replay_duration_sec)
+		_replay_position_sec = maxf(next_position, _replay_position_sec)
+
+func _get_tracking_session_playback_status() -> Dictionary:
+	if has_tracking_contract() and _tracking_session.has_method("get_playback_status"):
+		var status: Variant = _tracking_session.get_playback_status()
+		if status is Dictionary:
+			return status.duplicate(true)
+	return {}
+
+func _apply_tracking_session_playback_status(status: Dictionary) -> bool:
+	if status.is_empty():
+		return false
+	if not bool(status.get("is_file_source", false)):
+		return false
+	var source_path := String(status.get("source", _replay_source_path)).strip_edges()
+	if not source_path.is_empty():
+		_replay_source_path = source_path
+	_replay_loaded = true
+	_replay_duration_sec = maxf(float(status.get("duration_sec", _replay_duration_sec)), 0.0)
+	var next_position := maxf(float(status.get("current_time_sec", _replay_position_sec)), 0.0)
+	if _replay_duration_sec > 0.0:
+		next_position = minf(next_position, _replay_duration_sec)
+	_replay_position_sec = next_position
+	var state_name := String(status.get("state", "")).strip_edges().to_lower()
+	_replay_playing = not bool(status.get("paused", false)) and state_name != "paused" and state_name != "ended"
+	_replay_started_at_position_sec = _replay_position_sec
+	_replay_started_at_msec = Time.get_ticks_msec()
+	return true
 
 func _get_live_camera_source_id(source: Dictionary) -> String:
 	var camera_id := String(source.get("camera_id", "")).strip_edges()
