@@ -126,105 +126,84 @@ const TILE_CONFIGS := [
 ]
 const PUNCH_REQUIREMENT_ROWS := [
 	{
-		"id": "phase_armed",
-		"label_template": "{prefix}-Punch phase is armed",
-		"group": "phase",
-	},
-	{
-		"id": "arm_extension_3d",
-		"label_template": "{prefix}-3D arm reach ratio is >= 0.95",
-		"group": "shape",
-	},
-	{
-		"id": "elbow_angle_3d",
-		"label_template": "{prefix}-3D elbow angle is >= 145°",
-		"group": "shape",
-	},
-	{
-		"id": "armed_forward_distance",
-		"label_template": "{prefix}-Armed forward distance snapshot is latched",
-		"group": "baseline",
-	},
-	{
-		"id": "forward_delta_from_armed",
-		"label_template": "{prefix}-Forward delta from armed is >= {threshold}",
-		"group": "distance",
-	},
-	{
-		"id": "peak_forward_distance",
-		"label_template": "{prefix}-Peak forward distance is tracked",
-		"group": "distance",
-	},
-	{
-		"id": "raw_forward_velocity",
-		"label_template": "{prefix}-Raw forward z velocity is > {threshold}",
-		"group": "speed",
-	},
-	{
-		"id": "frozen_threshold_source",
-		"label_template": "{prefix}-Frozen threshold shoulder width is latched",
-		"group": "threshold",
-	},
-]
-const PUNCH_CALIBRATION_ROWS := [
-	{
-		"id": "calibration_section",
-		"label": "Calibration / Baselines",
+		"id": "state_section",
+		"label": "Live state",
 		"row_kind": "section",
 	},
 	{
-		"id": "calibration_ready",
-		"label": "Calibration status",
+		"id": "current_state",
+		"label": "Current state",
 		"row_kind": "info",
 	},
 	{
-		"id": "calibration_sample_frames",
-		"label": "Calibration sample frames",
+		"id": "tracking_status",
+		"label": "Hand tracking",
 		"row_kind": "info",
 	},
 	{
-		"id": "baseline_shoulder_width",
-		"label": "Baseline shoulder width",
+		"id": "fresh_sample",
+		"label": "Fresh sample valid",
 		"row_kind": "info",
 	},
 	{
-		"id": "baseline_torso_height",
-		"label": "Baseline torso height",
+		"id": "trigger_section",
+		"label": "Trigger inputs",
+		"row_kind": "section",
+	},
+	{
+		"id": "wrist_velocity",
+		"label": "Wrist velocity >= {threshold}",
+	},
+	{
+		"id": "bbox_area",
+		"label": "BBox area",
 		"row_kind": "info",
 	},
 	{
-		"id": "baseline_athlete_height",
-		"label": "Baseline athlete height",
+		"id": "bbox_area_growth",
+		"label": "BBox area growth >= {threshold}",
+	},
+	{
+		"id": "positive_growth_samples",
+		"label": "Positive growth samples >= {threshold}",
+	},
+	{
+		"id": "growth_window_areas",
+		"label": "Growth window bbox areas",
 		"row_kind": "info",
 	},
 	{
-		"id": "calibration_armed_forward_distance",
-		"label": "Armed forward distance snapshot",
+		"id": "rearm_section",
+		"label": "Hold / rearm",
+		"row_kind": "section",
+	},
+	{
+		"id": "grace_timer",
+		"label": "Grace timer",
 		"row_kind": "info",
 	},
 	{
-		"id": "calibration_threshold_width",
-		"label": "Frozen threshold shoulder width",
+		"id": "trigger_bbox_area",
+		"label": "Stored trigger bbox area",
 		"row_kind": "info",
 	},
 	{
-		"id": "calibration_forward_delta_min",
-		"label": "Derived forward delta min",
-		"row_kind": "info",
+		"id": "rearm_status",
+		"label": "BBox retracted enough to rearm",
 	},
 	{
-		"id": "calibration_forward_velocity_min",
-		"label": "Derived forward velocity min",
+		"id": "reacquire_progress",
+		"label": "Reacquire progress",
 		"row_kind": "info",
 	},
 ]
 const HOVER_REQUIREMENT_SPECS := {
 	"punch_left": {
-		"title": "Punch-L",
+		"title": "Straight Punch L",
 		"rows": PUNCH_REQUIREMENT_ROWS,
 	},
 	"punch_right": {
-		"title": "Punch-R",
+		"title": "Straight Punch R",
 		"rows": PUNCH_REQUIREMENT_ROWS,
 	},
 }
@@ -735,124 +714,104 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 	for row_spec_variant: Variant in spec.get("rows", []):
 		var row_spec: Dictionary = row_spec_variant
 		rows.append(_build_punch_requirement_row(row_spec, straight_side, side))
-	for row_spec_variant: Variant in PUNCH_CALIBRATION_ROWS:
-		var row_spec: Dictionary = row_spec_variant
-		rows.append(_build_punch_requirement_row(row_spec, straight_side, side))
 	return {
 		"title": spec.get("title", _display_name_for_card_key("punch_%s" % side)),
 		"rows": rows,
-		"footer": spec.get("footer", ""),
+		"footer": spec.get("footer", "Live values come from the straight-punch state machine."),
 	}
 
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, side: String) -> Dictionary:
 	var row := row_spec.duplicate(true)
-	var prefix := "L" if side == "left" else "R"
 	var row_id := String(row_spec.get("id", ""))
-	var label := String(row_spec.get("label_template", row_spec.get("label", "")))
-	label = label.replace("{prefix}", prefix)
+	var label := String(row_spec.get("label", ""))
 	var passed := false
 	var current_text := ""
 	var threshold_text := ""
-	var phase := String(straight_side.get("phase", "recovering"))
-	var arm_extension_3d := float(straight_side.get("arm_extension_3d", 0.0))
-	var arm_extension_min := float(straight_side.get("arm_extension_min", 0.95))
-	var elbow_angle_3d := float(straight_side.get("elbow_bend_deg_3d", 0.0))
-	var elbow_angle_min := float(straight_side.get("elbow_bend_deg_min", 145.0))
-	var armed_forward_distance := float(straight_side.get("armed_forward_distance", 0.0))
-	var current_forward_distance := float(straight_side.get("current_forward_distance", 0.0))
-	var forward_delta_from_armed := float(straight_side.get("forward_delta_from_armed", 0.0))
-	var peak_forward_distance := float(straight_side.get("peak_forward_distance", 0.0))
-	var forward_delta_min := float(straight_side.get("forward_delta_min", 0.0))
-	var raw_forward_velocity := float(straight_side.get("raw_forward_velocity", 0.0))
-	var forward_velocity_min := float(straight_side.get("forward_velocity_min", 0.0))
-	var _threshold_shoulder_width := float(straight_side.get("threshold_shoulder_width", 0.0))
-	var threshold_shoulder_width_latched := bool(straight_side.get("threshold_shoulder_width_latched", false))
-	var latched_threshold_shoulder_width := float(straight_side.get("latched_threshold_shoulder_width", 0.0))
-	var live_shoulder_width := float(straight_side.get("live_shoulder_width", 0.0))
-	var calibration_ready := bool(straight_side.get("calibration_ready", false))
-	var calibration_sample_frames := int(straight_side.get("calibration_sample_frames", 0))
-	var baseline_shoulder_width := float(straight_side.get("baseline_shoulder_width", 0.0))
-	var baseline_torso_height := float(straight_side.get("baseline_torso_height", 0.0))
-	var baseline_athlete_height := float(straight_side.get("baseline_athlete_height", 0.0))
+	var state_name := String(straight_side.get("state", straight_side.get("phase", "tracking_lost")))
+	var wrist_velocity := float(straight_side.get("wrist_velocity", 0.0))
+	var min_wrist_velocity := float(straight_side.get("min_wrist_velocity", 0.0))
+	var bbox_area := float(straight_side.get("bbox_area", 0.0))
+	var bbox_area_growth := float(straight_side.get("bbox_area_growth", 0.0))
+	var min_bbox_area_growth := float(straight_side.get("min_bbox_area_growth", 0.0))
+	var positive_growth_samples := int(straight_side.get("positive_growth_samples", 0))
+	var min_positive_growth_samples := int(straight_side.get("min_positive_growth_samples", 0))
+	var sample_window_size := int(straight_side.get("sample_window_size", 0))
+	var growth_window_areas: Array = straight_side.get("growth_window_areas", []) as Array
+	var fresh_sample := bool(straight_side.get("fresh_sample", false))
+	var tracking_valid := bool(straight_side.get("tracking_valid", false))
+	var tracking_state := String(straight_side.get("tracking_state", "idle"))
+	var stale_frames := int(straight_side.get("stale_frames", 0))
+	var grace_frames_remaining := int(straight_side.get("grace_frames_remaining", 0))
+	var triggered_grace_frames := int(straight_side.get("triggered_grace_frames", 0))
+	var trigger_bbox_area := float(straight_side.get("trigger_bbox_area", 0.0))
+	var bbox_area_retract_epsilon := float(straight_side.get("bbox_area_retract_epsilon", 0.0))
+	var rearm_threshold := maxf(trigger_bbox_area - bbox_area_retract_epsilon, 0.0)
+	var rearm_ready := trigger_bbox_area > 0.0 and bbox_area <= rearm_threshold
+	var reacquire_valid_samples := int(straight_side.get("reacquire_valid_samples", 0))
+	var reacquire_stable_frames_required := int(straight_side.get("reacquire_stable_frames_required", 0))
 	match row_id:
-		"phase_armed":
-			current_text = "armed (waiting for fire gates)" if phase == "armed" else phase
-			passed = phase == "armed"
-		"arm_extension_3d":
-			current_text = _fmt_float(arm_extension_3d)
-			passed = arm_extension_3d >= arm_extension_min
-		"elbow_angle_3d":
-			current_text = _fmt_degrees_int(elbow_angle_3d)
-			passed = elbow_angle_3d >= elbow_angle_min
-		"armed_forward_distance":
-			current_text = _fmt_float(armed_forward_distance)
-			passed = threshold_shoulder_width_latched
-		"forward_delta_from_armed":
-			threshold_text = _fmt_float(forward_delta_min)
-			current_text = "%s (armed %s → current %s)" % [
-				_fmt_float(forward_delta_from_armed),
-				_fmt_float(armed_forward_distance),
-				_fmt_float(current_forward_distance),
-			]
-			passed = forward_delta_from_armed >= forward_delta_min
-		"peak_forward_distance":
-			current_text = "%s (current %s)" % [
-				_fmt_float(peak_forward_distance),
-				_fmt_float(current_forward_distance),
-			]
-			passed = peak_forward_distance >= current_forward_distance
-		"raw_forward_velocity":
-			threshold_text = _fmt_float(forward_velocity_min)
-			current_text = _fmt_float(raw_forward_velocity)
-			passed = raw_forward_velocity > forward_velocity_min
-		"frozen_threshold_source":
-			if threshold_shoulder_width_latched:
-				current_text = "%s (Δ %s, vz %s)" % [
-					_fmt_float(latched_threshold_shoulder_width),
-					_fmt_float(forward_delta_min),
-					_fmt_float(forward_velocity_min),
-				]
-			else:
-				current_text = "not latched yet (live %s → Δ %s, vz %s)" % [
-					_fmt_float(live_shoulder_width),
-					_fmt_float(forward_delta_min),
-					_fmt_float(forward_velocity_min),
-				]
-			passed = threshold_shoulder_width_latched
-		"calibration_section":
+		"state_section", "trigger_section", "rearm_section":
 			current_text = ""
 			passed = false
-		"calibration_ready":
-			current_text = "ready" if calibration_ready else "not ready"
-			passed = calibration_ready
-		"calibration_sample_frames":
-			current_text = str(calibration_sample_frames)
-			passed = calibration_sample_frames > 0
-		"baseline_shoulder_width":
-			current_text = _fmt_float(baseline_shoulder_width)
-			passed = baseline_shoulder_width > 0.0
-		"baseline_torso_height":
-			current_text = _fmt_float(baseline_torso_height)
-			passed = baseline_torso_height > 0.0
-		"baseline_athlete_height":
-			current_text = _fmt_float(baseline_athlete_height)
-			passed = baseline_athlete_height > 0.0
-		"calibration_armed_forward_distance":
-			current_text = _fmt_float(armed_forward_distance)
-			passed = threshold_shoulder_width_latched
-		"calibration_threshold_width":
-			if threshold_shoulder_width_latched:
-				current_text = _fmt_float(latched_threshold_shoulder_width)
-				passed = true
+		"current_state":
+			current_text = state_name
+			passed = state_name != "tracking_lost"
+		"tracking_status":
+			current_text = "%s, valid=%s, stale_frames=%d" % [tracking_state, _fmt_bool(tracking_valid), stale_frames]
+			passed = tracking_valid
+		"fresh_sample":
+			current_text = _fmt_bool(fresh_sample)
+			passed = fresh_sample
+		"wrist_velocity":
+			threshold_text = _fmt_float(min_wrist_velocity)
+			current_text = _fmt_float(wrist_velocity)
+			passed = wrist_velocity >= min_wrist_velocity
+		"bbox_area":
+			current_text = _fmt_float(bbox_area)
+			passed = bbox_area > 0.0
+		"bbox_area_growth":
+			threshold_text = _fmt_float(min_bbox_area_growth)
+			current_text = _fmt_float(bbox_area_growth)
+			passed = bbox_area_growth >= min_bbox_area_growth
+		"positive_growth_samples":
+			threshold_text = "%d/%d" % [min_positive_growth_samples, sample_window_size]
+			current_text = "%d/%d" % [positive_growth_samples, sample_window_size]
+			passed = positive_growth_samples >= min_positive_growth_samples
+		"growth_window_areas":
+			var area_values: Array[String] = []
+			for area_variant: Variant in growth_window_areas:
+				area_values.append(_fmt_float(area_variant))
+			current_text = "[" + ", ".join(area_values) + "]" if not area_values.is_empty() else "[]"
+			passed = not area_values.is_empty()
+		"grace_timer":
+			current_text = "%d/%d remaining" % [grace_frames_remaining, triggered_grace_frames]
+			if state_name == "triggered":
+				current_text += " (active)"
+			elif grace_frames_remaining > 0:
+				current_text += " (counting down)"
 			else:
-				current_text = "not latched yet (live %s)" % _fmt_float(live_shoulder_width)
-				passed = false
-		"calibration_forward_delta_min":
-			current_text = _fmt_float(forward_delta_min)
-			passed = threshold_shoulder_width_latched
-		"calibration_forward_velocity_min":
-			current_text = _fmt_float(forward_velocity_min)
-			passed = threshold_shoulder_width_latched
+				current_text += " (idle)"
+			passed = state_name != "triggered" or grace_frames_remaining > 0
+		"trigger_bbox_area":
+			current_text = _fmt_float(trigger_bbox_area)
+			if trigger_bbox_area <= 0.0:
+				current_text += " (no stored trigger)"
+			passed = trigger_bbox_area > 0.0
+		"rearm_status":
+			if trigger_bbox_area <= 0.0:
+				current_text = "waiting for a trigger bbox snapshot"
+				passed = state_name == "ready"
+			else:
+				current_text = "%s <= %s (trigger %s - eps %s)" % [
+					_fmt_float(bbox_area),
+					_fmt_float(rearm_threshold),
+					_fmt_float(trigger_bbox_area),
+					_fmt_float(bbox_area_retract_epsilon),
+				]
+				passed = rearm_ready
+		"reacquire_progress":
+			current_text = "%d/%d valid samples" % [reacquire_valid_samples, reacquire_stable_frames_required]
+			passed = reacquire_valid_samples >= reacquire_stable_frames_required
 		_:
 			current_text = "pending"
 			passed = false
@@ -1219,7 +1178,7 @@ func _tracker_hand_debug_snapshot() -> Dictionary:
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	if tracking_singleton != null and tracking_singleton.has_method("get_tracking_frame"):
 		var frame: Dictionary = tracking_singleton.get_tracking_frame()
-		var playback := tracking_singleton.get_playback_status() if tracking_singleton.has_method("get_playback_status") else {}
+		var playback: Variant = tracking_singleton.get_playback_status() if tracking_singleton.has_method("get_playback_status") else {}
 		return {
 			"frame_index": int(frame.get("frame_index", 0)),
 			"source_kind": String(frame.get("source_kind", "")),
