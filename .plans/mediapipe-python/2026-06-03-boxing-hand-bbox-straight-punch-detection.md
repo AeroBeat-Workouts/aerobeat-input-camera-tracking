@@ -642,6 +642,32 @@ Validation run from repo root: `godot --headless --path .testbed --import --quit
 
 ---
 
+### Task 10I: Investigate and repair bbox overlay invisibility after Derrick's live retest
+
+**Bead ID:** `aerobeat-input-camera-tracking-d3b`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Derrick retested the boxing proving scene on-device and reported that the hand tracking bbox still is not visibly rendering even though the scene config/debug profile has it enabled. Keep this slice narrow and truth-first: trace the proving-scene bbox overlay path end to end (input-owned testbed debug config -> boxing harness visibility toggle -> preview presenter overlay parent -> hand debug snapshot/bbox geometry -> final draw path), identify the real failure seam, implement the smallest durable repair, and validate that enabled bbox overlays actually render/update in the boxing proving scene without widening into punch-threshold tuning. Claim the bead on start and close it only if the visibility bug is genuinely fixed and verified.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `.testbed/`
+- dependency repo files in `REF-02` only if the true root cause is tool-owned
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `assets/boxing.camera_tracking.yaml`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- nondurable probes: `.testbed/scripts/tmp_task10i_profile_probe.gd`, `.testbed/scripts/tmp_task10i_runtime_probe.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Root cause was repo-local config corruption, not a host MediaPipe capability gap: `assets/boxing.camera_tracking.yaml` used tab indentation under `tracking.pose` / `tracking.hands`, so the selected boxing profile loaded as `{"tracking":{"pose":null}}` in Godot. That silently dropped `tracking.hands.enabled`, which let the proving stack fall back to `hand_tracking_enabled = false` even though the debug profile still showed the bbox overlay toggle as enabled, creating the misleading “scene config ignored” symptom. Replacing the tabs with valid YAML space indentation restored the full boxing hand-tracking subtree, and a focused headless runtime probe then showed the proving scene now starts with `active_config.tracking.hands.enabled = true`, `runtime.hand_tracking_enabled = true`, `tracking_frame.hand_tracking.available = true`, `tracking_frame.hand_tracking.enabled = true`, and populated left/right hand bbox payloads from `mediapipe_tasks_hand_landmarker`. Added regression coverage so profile loading now explicitly asserts boxing hands are enabled/bbox-backed, while the existing provider replay/live-start tests continue to prove the boxing bundle forwards hand config into the tracking session. Validation run: `godot --headless --path .testbed --script scripts/tmp_task10i_profile_probe.gd`; `godot --headless --path .testbed --script scripts/tmp_task10i_runtime_probe.gd scenes/boxing_proving.tscn 5000 /tmp/task10i_runtime_probe_after.json`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` (`14/14` passed, `96` asserts). An attempted run including `test_boxing_proving_harness_profiles_and_debug.gd` still hit a pre-existing unrelated trail-drawer test-double issue (`Control` lacks `update_trails`), so that file was not used as the regression gate for this slice.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`

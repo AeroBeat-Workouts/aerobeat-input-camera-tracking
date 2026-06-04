@@ -21,6 +21,10 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(String(bundle.get("testbed_debug", {}).get("schema", "")), ProfileConfigLoaderScript.TESTBED_DEBUG_SCHEMA)
 	assert_eq(int(bundle.get("testbed_debug", {}).get("version", -1)), ProfileConfigLoaderScript.CONFIG_VERSION)
 	assert_eq(String(bundle.get("testbed_debug", {}).get("profile", "")), "boxing")
+	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("enabled", false)))
+	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", false)))
+	assert_eq(String(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("landmark_mode", "")), "lite")
+	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("bbox", {}).get("enabled", false)))
 	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", false)))
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:

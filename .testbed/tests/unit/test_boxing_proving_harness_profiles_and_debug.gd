@@ -82,6 +82,7 @@ func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> 
 	assert_true(String(bundle.get("camera_tracking_path", "")).ends_with("assets/flow.camera_tracking.yaml"))
 	assert_true(String(bundle.get("gesture_detection_path", "")).ends_with("assets/flow.gesture_detection.yaml"))
 	assert_true(String(bundle.get("testbed_debug_path", "")).ends_with("assets/flow.testbed_debug.yaml"))
+	assert_false(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", true)))
 
 func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	var harness: Variant = add_child_autoqfree(_new_harness())
