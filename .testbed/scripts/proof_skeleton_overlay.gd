@@ -112,13 +112,13 @@ func _capture_frame(label: String, frame: Dictionary, flip_horizontal: bool, out
 		if not landmark_variant is Dictionary:
 			continue
 		var landmark: Dictionary = landmark_variant
-		var position: Vector2 = _presenter.map_landmark_to_preview_position(landmark)
+		var screen_position: Vector2 = _presenter.map_landmark_to_preview_position(landmark)
 		screen_landmarks.append({
 			"id": int(landmark.get("id", -1)),
 			"x": float(landmark.get("x", 0.0)),
 			"y": float(landmark.get("y", 0.0)),
-			"screen_x": position.x,
-			"screen_y": position.y,
+			"screen_x": screen_position.x,
+			"screen_y": screen_position.y,
 		})
 	var output_path := ProjectSettings.globalize_path(OUTPUT_DIR.path_join(output_name))
 	_report[label] = {

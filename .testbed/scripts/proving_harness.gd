@@ -2636,7 +2636,7 @@ func _clear_preview_only_overlay_state() -> void:
 	if trail_drawer:
 		trail_drawer.clear_trails()
 
-func _stop_everything(reason: String = "unknown") -> void:
+func _stop_everything(_reason: String = "unknown") -> void:
 	_playback_controller_unload()
 	_playback_visibility_active = false
 	_playback_autoplay_pending = false

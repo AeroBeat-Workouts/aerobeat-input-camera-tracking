@@ -35,7 +35,7 @@ func _draw() -> void:
 	if _hand_snapshot.is_empty():
 		return
 	var hands: Dictionary = _hand_snapshot.get("hands", {}) if _hand_snapshot.get("hands", {}) is Dictionary else {}
-	for side in ["left", "right"]:
+	for side: String in ["left", "right"]:
 		var hand: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
 		if not bool(hand.get("has_bbox", false)):
 			continue

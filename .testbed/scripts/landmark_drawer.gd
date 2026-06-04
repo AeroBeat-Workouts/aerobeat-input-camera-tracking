@@ -8,6 +8,17 @@ extends Control
 signal landmark_clicked(landmark_id: int)
 
 const LANDMARK_HIT_RADIUS: float = 18.0
+const DEBUG_HIT_TARGET_FILL := Color(0.13, 0.88, 0.96, 0.14)
+const DEBUG_HIT_TARGET_STROKE := Color(0.18, 0.95, 1.0, 0.92)
+const DEBUG_HIT_TARGET_CENTER := Color(1.0, 0.97, 0.72, 0.98)
+const DEBUG_HIT_TARGET_LABEL_BG := Color(0.03, 0.06, 0.09, 0.86)
+const DEBUG_HIT_TARGET_LABEL_TEXT := Color(1.0, 1.0, 1.0, 0.98)
+const DEBUG_HIT_TARGET_STROKE_WIDTH := 2.0
+const DEBUG_HIT_TARGET_CENTER_RADIUS := 3.5
+const DEBUG_HIT_TARGET_LABEL_FONT_SIZE := 12
+
+@export var show_debug_hit_targets := false
+@export var show_debug_hit_target_labels := true
 
 var _landmarks: Array = []
 var _min_visibility: float = 0.5
@@ -57,28 +68,68 @@ func _gui_input(event: InputEvent) -> void:
 	landmark_clicked.emit(landmark_id)
 
 func _draw() -> void:
-	# The presenter now owns visible landmark rendering; keep this layer invisible.
-	pass
+	if not show_debug_hit_targets:
+		return
+	var hit_targets: Array[Dictionary] = get_hit_target_snapshot()
+	if hit_targets.is_empty():
+		return
+	var font := ThemeDB.fallback_font
+	for hit_target: Dictionary in hit_targets:
+		var center: Vector2 = hit_target.get("center", Vector2.ZERO)
+		draw_circle(center, LANDMARK_HIT_RADIUS, DEBUG_HIT_TARGET_FILL)
+		draw_arc(center, LANDMARK_HIT_RADIUS, 0.0, TAU, 48, DEBUG_HIT_TARGET_STROKE, DEBUG_HIT_TARGET_STROKE_WIDTH)
+		draw_circle(center, DEBUG_HIT_TARGET_CENTER_RADIUS, DEBUG_HIT_TARGET_CENTER)
+		if show_debug_hit_target_labels and font != null:
+			_draw_hit_target_label(font, center, int(hit_target.get("id", -1)))
 
-func _find_clicked_landmark(screen_position: Vector2) -> int:
+func get_hit_target_snapshot() -> Array[Dictionary]:
+	var hit_targets: Array[Dictionary] = []
 	if _landmarks.is_empty():
-		return -1
+		return hit_targets
 	var image_bounds := _get_displayed_image_bounds()
 	var width := image_bounds.size.x
 	var height := image_bounds.size.y
 	var offset := image_bounds.position
-	var closest_id := -1
-	var closest_distance := INF
 	for landmark: Dictionary in _landmarks:
 		if not _is_landmark_in_bounds(landmark):
 			continue
-		var landmark_position := _landmark_to_screen(landmark, width, height, offset)
+		var center := _landmark_to_screen(landmark, width, height, offset)
+		hit_targets.append({
+			"id": int(landmark.get("id", -1)),
+			"center": center,
+			"radius": LANDMARK_HIT_RADIUS,
+			"visibility": float(landmark.get("v", 0.0)),
+		})
+	return hit_targets
+
+func _draw_hit_target_label(font: Font, center: Vector2, landmark_id: int) -> void:
+	var text := "#%d" % landmark_id
+	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, DEBUG_HIT_TARGET_LABEL_FONT_SIZE)
+	var padding := Vector2(5.0, 3.0)
+	var label_size := Vector2(text_size.x + padding.x * 2.0, text_size.y + padding.y * 2.0)
+	var label_position := center + Vector2(LANDMARK_HIT_RADIUS + 6.0, -LANDMARK_HIT_RADIUS - label_size.y * 0.5)
+	if label_position.x + label_size.x > size.x:
+		label_position.x = center.x - LANDMARK_HIT_RADIUS - 6.0 - label_size.x
+	if label_position.y < 0.0:
+		label_position.y = center.y + LANDMARK_HIT_RADIUS + 6.0
+	var label_rect := Rect2(label_position, label_size)
+	draw_rect(label_rect, DEBUG_HIT_TARGET_LABEL_BG, true)
+	draw_rect(label_rect, DEBUG_HIT_TARGET_STROKE, false, 1.0)
+	draw_string(font, label_rect.position + Vector2(padding.x, label_rect.size.y - padding.y - 1.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, DEBUG_HIT_TARGET_LABEL_FONT_SIZE, DEBUG_HIT_TARGET_LABEL_TEXT)
+
+func _find_clicked_landmark(screen_position: Vector2) -> int:
+	if _landmarks.is_empty():
+		return -1
+	var closest_id := -1
+	var closest_distance := INF
+	for hit_target: Dictionary in get_hit_target_snapshot():
+		var landmark_position: Vector2 = hit_target.get("center", Vector2.ZERO)
 		var distance := landmark_position.distance_to(screen_position)
 		if distance > LANDMARK_HIT_RADIUS:
 			continue
 		if distance < closest_distance:
 			closest_distance = distance
-			closest_id = int(landmark.get("id", -1))
+			closest_id = int(hit_target.get("id", -1))
 	return closest_id
 
 func _is_landmark_in_bounds(lm: Dictionary) -> bool:
@@ -91,8 +142,11 @@ func _landmark_to_screen(lm: Dictionary, width: float, height: float, offset: Ve
 	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("map_landmark_to_preview_position"):
 		return _preview_presenter.map_landmark_to_preview_position(lm)
 	# Compatibility fallback for non-presenter tests/lanes.
+	# MediaPipe-style normalized coordinates are already top-left anchored, matching
+	# the presenter overlay and preview texture space. Only X mirroring belongs in
+	# preview normalization upstream; Y should not be flipped here.
 	var x: float = offset.x + float(lm.get("x", 0.0)) * width
-	var y: float = offset.y + (1.0 - float(lm.get("y", 0.0))) * height
+	var y: float = offset.y + float(lm.get("y", 0.0)) * height
 	return Vector2(x, y)
 
 func _get_displayed_image_bounds() -> Rect2:

@@ -62,6 +62,7 @@ test_report*.json
 !.testbed/addons/.editorconfig
 .testbed/.addons/
 .testbed/.headless/
+.testbed/.testbed/
 
 # Beads / Dolt files (added by bd init)
 .dolt/

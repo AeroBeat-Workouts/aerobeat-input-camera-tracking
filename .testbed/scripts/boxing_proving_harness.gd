@@ -785,7 +785,7 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 		"footer": spec.get("footer", "Live values come from the straight-punch state machine."),
 	}
 
-func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, side: String) -> Dictionary:
+func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
 	var row := row_spec.duplicate(true)
 	var row_id := String(row_spec.get("id", ""))
 	var label := String(row_spec.get("label", ""))
