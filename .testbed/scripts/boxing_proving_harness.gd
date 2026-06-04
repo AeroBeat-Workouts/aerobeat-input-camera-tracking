@@ -1285,11 +1285,11 @@ func _fmt_playback_status(playback: Dictionary) -> String:
 	if playback.is_empty():
 		return "live"
 	var playing := bool(playback.get("playing", false))
-	var position := float(playback.get("position_seconds", playback.get("position_sec", 0.0)))
+	var playback_position := float(playback.get("position_seconds", playback.get("position_sec", 0.0)))
 	var duration := float(playback.get("duration_seconds", playback.get("duration_sec", 0.0)))
 	return "%s %s/%s" % [
 		"playing" if playing else "paused",
-		_fmt_duration(position),
+		_fmt_duration(playback_position),
 		_fmt_duration(duration),
 	]
 

@@ -668,6 +668,31 @@ Validation run from repo root: `godot --headless --path .testbed --import --quit
 
 ---
 
+### Task 10J: Correct the still-malformed boxing profile YAML and clean the boxing proving warning seam
+
+**Bead ID:** `aerobeat-input-camera-tracking-6mz`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick retested after pulling/syncing and confirmed the boxing proving scene still reports `Hand tracking - disabled` while the bbox overlay is expected, plus Godot emits a shadowed `position` warning from `boxing_proving_harness.gd`. Keep this slice narrow and truth-first: verify the actual source and mounted addon copies of `assets/boxing.camera_tracking.yaml`, correct the boxing profile YAML indentation/shape if it is still malformed, fix the identified low-risk warning seam in `boxing_proving_harness.gd`, validate that the boxing proving runtime now sees hand tracking enabled, and update the active plan with the real result. Do not widen into punch-threshold tuning. Claim the bead on start and close it only if the config really loads correctly and the warning seam is addressed.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `assets/`
+- `.testbed/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `assets/boxing.camera_tracking.yaml`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- focused tests/probes if needed
+
+**Status:** ✅ Complete
+
+**Results:** The root cause was still-on-disk tab indentation in the owning repo’s `assets/boxing.camera_tracking.yaml`, not a stale testbed mirror or a MediaPipe/runtime capability problem. I re-verified the raw file bytes before fixing them, then overwrote the boxing camera-tracking profile with space-indented YAML so Godot now loads the full `tracking.pose` and `tracking.hands` subtree instead of collapsing boxing to `{"tracking":{"pose":null}}`. I confirmed the mounted addon/testbed path updated through the normal repo path (`.testbed/addons/aerobeat-input-camera-tracking -> /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`) and that the mounted YAML also no longer contains tabs. I also fixed the low-risk warning seam in `.testbed/scripts/boxing_proving_harness.gd` by renaming the local playback `position` variable to `playback_position` inside `_fmt_playback_status()`. Validation was narrow and truth-first: (1) direct byte-level tab scan of source + mounted YAML, (2) headless Godot unit regression run `test_camera_tracking_config_profiles.gd` + `test_camera_tracking_provider.gd` (`14/14` passed, `96` asserts), and (3) a focused headless runtime probe of `res://scenes/boxing_proving.tscn`, which reported `status_label = Boxing harness live`, `active_config.tracking.hands.enabled = true`, `active_config.runtime.hand_tracking_enabled = true`, `tracking_frame.hand_tracking.available = true`, `tracking_frame.hand_tracking.enabled = true`, and live hand bbox payloads from the boxing proving stack. Temporary probe scripts used for this validation were cleaned up after use.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
