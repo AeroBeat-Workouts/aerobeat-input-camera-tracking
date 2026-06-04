@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-03 19:41 EDT
+**Last Updated:** 2026-06-03 20:28 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -134,14 +134,18 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 **Prompt:** Add the tracker-layer support in `aerobeat-tool-camera-tracking` for configurable pose inference cadence, pose smoothing style (`lite_filtered`, `lite_raw`), hand inference cadence, bbox recompute cadence, association rules, and validity/reacquire semantics. Expose a single normalized per-side hand payload including `tracking_valid`, `tracking_state`, `landmark_mode`, `frame_index`, `timestamp_seconds`, `stale_frames`, `association`, `landmarks`, and `bbox` geometry (`x`, `y`, `width`, `height`, `area`) in normalized-frame coordinates with `area_unit: normalized_frame_area`. Keep this slice focused on tracker contract and transport, not boxing gesture interpretation. Claim the bead on start.
 
 **Folders Created/Deleted/Modified:**
-- tool source folders to be identified during implementation
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/`
 
 **Files Created/Deleted/Modified:**
-- `aerobeat-tool-camera-tracking` tracker config / output contract files
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
+- existing owner-correct implementation verified in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd`
+- existing owner-correct implementation verified in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd`
+- existing owner-correct implementation verified in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/docs/tracker-config-schema.md`
+- existing owner-correct implementation verified in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/README.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Verified the approved Task 4 tracker-contract slice was already present in the owner repo from commit `e0a2cbd` (`Add normalized hand tracker payload contract`), which added the tracker-layer config normalization and per-side hand transport contract in `CameraTrackingConfig.gd` and `CameraTrackingFrame.gd`, documented it in `docs/tracker-config-schema.md`, and covered it with repo-local tests. In this task pass I added one focused regression test in `test_CameraTracking.gd` to prove `tracking.hands.association.prefer_existing_pose_side_binding` wins before `nearest_wrist_fallback` when pose wrists cross between frames, which keeps Task 4's association semantics explicitly guarded. Validation rerun for this slice: `godot --headless --path .testbed --import --quit-after 1000` ✅; targeted GUT reruns for `test_config_normalization_adds_tracker_pose_and_hand_defaults`, `test_frame_normalization_builds_per_side_hand_payload_from_vendor_samples`, `test_frame_normalization_prefers_existing_pose_side_binding_before_wrist_fallback`, and `test_frame_normalization_carries_stale_hands_until_validity_budget_expires` ✅. A broad full-file rerun still shows one unrelated pre-existing replay assertion failure in `test_registered_vendor_backend_change_surfaces_truthful_restart_into_replay_and_public_stop` (`frame_size` expected `960x540`, got `0x0`), so I kept Task 4 validation scoped to the tracker-contract tests instead of widening into later replay work. Attempted bead lookup/claim in the tool repo, but `bd` reported `no beads database found`, so bead state could not be recorded there.
 
 ---
 
