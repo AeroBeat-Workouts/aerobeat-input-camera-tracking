@@ -720,6 +720,26 @@ Validation run from repo root: `godot --headless --path .testbed --import --quit
 
 ---
 
+### Task 10L: Trace and stop the boxing YAML files from being locally rewritten back into tab-indented form
+
+**Bead ID:** `aerobeat-input-camera-tracking-xhg`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick retested and observed that the boxing YAML files themselves show up as dirty local changes after running the proving scene, and the dirty diffs reveal tabs being reintroduced into `assets/boxing.camera_tracking.yaml` and `assets/boxing.gesture_detection.yaml`. Keep this slice tightly focused on mutation tracing: identify what codepath/tool/workflow is rewriting or restoring those repo-owned YAML files into tab-indented form, stop that mutation at the owner-correct source, and validate that running the relevant proving-scene path no longer dirties the YAML files. Do not widen into punch-threshold tuning. Claim the bead on start and close it only if the mutation/restoration path is genuinely identified and fixed, or the remaining blocker is precisely proven.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Traced the apparent YAML “mutation” to an external workflow, not the boxing proving scene runtime. The tab-indented on-disk contents matched the exact blob IDs from git object `ebda3095` (`On main: git-sync:projects/aerobeat/aerobeat-input-camera-tracking`), which is a stash object created by the shared `/home/derrick/.openclaw/workspace/scripts/git-sync` flow at `2026-06-04 16:35`. The local file mtimes (`2026-06-04 16:38`) and byte-exact blob match proved that `git-sync` had restored pre-existing local dirt for `assets/boxing.camera_tracking.yaml` and `assets/boxing.gesture_detection.yaml`; the proving scene itself was not rewriting those repo-owned YAML files. Owner-correct fix for this repo was therefore to remove the restored stale dirt, not to change the proving runtime: I restored both YAMLs back to `HEAD`, leaving the active plan note as the only remaining worktree change. Validation then reran the relevant proving-scene path headlessly with the real boxing scene via `godot --headless --path .testbed --script scripts/capture_fixture_proving.gd -- scenes/boxing_proving.tscn res://assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4 /tmp/task10l-proving-capture 5000`, which reached `status_label = Boxing harness live`, `provider_present = true`, and `camera_streaming = true` while `git diff --name-only -- assets/boxing.camera_tracking.yaml assets/boxing.gesture_detection.yaml` stayed empty before/after the run. Temporary capture output under `/tmp/task10l-proving-capture` was removed after validation. Net truth: no repo runtime code was reintroducing tabs; the dirty YAMLs came from `git-sync` restoring earlier local changes, and the proving-scene path no longer dirties those files once that restored dirt is cleared.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
