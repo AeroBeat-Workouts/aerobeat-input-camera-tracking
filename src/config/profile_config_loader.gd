@@ -132,13 +132,23 @@ func _get_addon_root_path() -> String:
 
 func _parse_yaml_text(text: String) -> Dictionary:
 	var lines: Array = []
+	var line_number := 0
 	for raw_line in text.split("\n"):
+		line_number += 1
 		var normalized_line: String = String(raw_line).rstrip("\r")
 		var stripped_line: String = normalized_line.strip_edges()
 		if stripped_line.is_empty() or stripped_line.begins_with("#"):
 			continue
 		var trimmed_left: String = normalized_line.lstrip(" \t")
-		var indent: int = normalized_line.length() - trimmed_left.length()
+		var indent_prefix := normalized_line.substr(0, normalized_line.length() - trimmed_left.length())
+		if indent_prefix.contains("\t"):
+			return {
+				"ok": false,
+				"data": {},
+				"error": "Tabs are not allowed in YAML indentation (line %d)." % line_number,
+				"error_code": "config_tab_indentation",
+			}
+		var indent: int = indent_prefix.length()
 		lines.append({"indent": indent, "text": trimmed_left.rstrip(" \t")})
 	if lines.is_empty():
 		return {"ok": true, "data": {}, "error": "", "error_code": ""}

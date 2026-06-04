@@ -693,6 +693,33 @@ Validation run from repo root: `godot --headless --path .testbed --import --quit
 
 ---
 
+### Task 10K: Investigate live proving-scene hand-tracking-disabled state that still reproduces on Derrick's device
+
+**Bead ID:** `aerobeat-input-camera-tracking-b7w`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Derrick retested live on-device after the prior boxing profile and warning fixes, and the boxing proving scene still reports `Hand tracking - disabled` / `tracking_lost` with no bbox overlay visible. Keep this slice tightly anchored to the real live failure, not only headless probes: trace the exact runtime/config/session path that drives the proving-scene hand-tracking status in the live scene, determine why the live scene still disables hands even though earlier focused validation claimed otherwise, and implement the smallest truthful repair. Validate against the real proving-scene state path and update the active plan with what actually happened. Do not widen into punch-threshold tuning. Claim the bead on start and close it only if the live proving-scene hand-tracking-disabled failure is genuinely fixed or the remaining blocker is precisely proven.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `assets/`
+- `.testbed/tests/unit/`
+- `src/config/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `assets/boxing.camera_tracking.yaml`
+- `assets/boxing.gesture_detection.yaml`
+- `src/config/profile_config_loader.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Traced the live proving-scene hand-tracking-disabled seam through the same startup path the boxing scene uses: `boxing_proving_harness.gd::_build_runtime_config()` sets the boxing profile on `CameraTrackingConfig`, which loads the repo-owned profile bundle via `src/config/profile_config_loader.gd` from `res://addons/aerobeat-input-camera-tracking/assets/{boxing.camera_tracking,boxing.gesture_detection,boxing.testbed_debug}.yaml`; that bundle then feeds `AeroCameraTracking` / `camera_tracking_provider.gd`, and the proving scene’s status + hand bbox drawer consume the resulting `tracking_frame.hand_tracking` / `hands.left|right` state. The real failure was **not** a detector/runtime capability gap: Derrick’s live scene was reading a locally regressed boxing tracker profile with tab-indented YAML in `assets/boxing.camera_tracking.yaml`, which the lightweight in-repo parser silently mis-shaped so the boxing bundle lost the expected `tracking.hands` subtree and the proving UI truthfully fell back to `Hand tracking - disabled` / `tracking_lost` with no bbox overlay. While tracing that seam I also found the matching boxing gesture profile still used tab indentation, so I normalized `assets/boxing.gesture_detection.yaml` too and hardened `ProfileConfigLoader` to reject tab-indented YAML explicitly (`config_tab_indentation`) instead of silently accepting malformed structure again. Focused regression coverage now proves the loader rejects tab-indented profile docs, and a proving-scene runtime-path probe against `res://scenes/boxing_proving.tscn` shows the actual boxing harness now resolves `runtime_bundle.profile=boxing`, `camera_tracking_path=res://addons/aerobeat-input-camera-tracking/assets/boxing.camera_tracking.yaml`, `tracking.pose.enabled=true`, `tracking.hands.enabled=true`, `tracking.hands.landmark_mode=lite`, and `status_label=Boxing harness live` through the same scene/runtime config seam Derrick was using. Temporary probe scripts were cleaned up after validation.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
@@ -720,7 +747,7 @@ Validation run from repo root: `godot --headless --path .testbed --import --quit
 
 **What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability and ownership correctness. The current state includes: vendor hand bbox payload exposure, tool-layer normalized hand payload + bbox preview support, input-layer bbox straight-punch state-machine wiring, tracker-contract QA pass, visible proving-scene collider debug rings, input-owned proving-scene debug config, preview-space vs gameplay-space landmark separation, and the upstream pose-side hand lock repair across occlusion/reacquire. The proving scene was further cleaned so Cookie retests can verify bbox overlays and reduced editor clutter without in-scene profile switching.
 
-**Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices landed; `REF-05` / `REF-06` fixture-based straight-punch QA is still the outstanding truth gate. Task 10 remains blocked on external retest / rerun rather than on known unlanded code slices.
+**Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices landed; `REF-05` / `REF-06` fixture-based straight-punch QA is still the outstanding truth gate. Task 10K closed the live `Hand tracking - disabled` seam by restoring the boxing profile path and adding a parser guard against tab-indented regressions; final auditor/fixture truthing remains the remaining gate.
 
 **Commits:**
 - `2357784` (`REF-03`) - Expose MediaPipe hand landmarks and bbox payloads

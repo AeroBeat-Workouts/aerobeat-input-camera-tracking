@@ -57,3 +57,21 @@ func test_profile_config_loader_rejects_header_mismatches() -> void:
 	)
 	assert_false(bool(result.get("ok", true)))
 	assert_eq(String(result.get("error_code", "")), "config_schema_mismatch")
+
+
+func test_profile_config_loader_rejects_tab_indented_yaml() -> void:
+	var loader = ProfileConfigLoaderScript.new()
+	var temp_path := "user://tab_indented.camera_tracking.yaml"
+	var file := FileAccess.open(temp_path, FileAccess.WRITE)
+	assert_not_null(file)
+	file.store_string("schema: aerobeat/camera_tracking_config\nversion: 1\nprofile: boxing\ntracking:\n  pose:\n\tenabled: true\n")
+	file = null
+
+	var result: Dictionary = loader.load_profile_document(
+		temp_path,
+		ProfileConfigLoaderScript.CAMERA_TRACKING_SCHEMA,
+		ProfileConfigLoaderScript.CONFIG_VERSION,
+		"boxing"
+	)
+	assert_false(bool(result.get("ok", true)))
+	assert_eq(String(result.get("error_code", "")), "config_tab_indentation")
