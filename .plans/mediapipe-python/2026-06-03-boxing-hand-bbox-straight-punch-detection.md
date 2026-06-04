@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-04 12:45 EDT
-**Blocked Reason:** None
+**Last Updated:** 2026-06-04 14:23 EDT
+**Blocked Reason:** Waiting on Derrick's Cookie retest / QA validation after the latest proving-scene cleanup pushes.
 **Agent:** `pico`
 
 ---
@@ -665,16 +665,24 @@ Validation run from repo root: `godot --headless --path .testbed --import --quit
 
 ## Final Results
 
-**Status:** ⏳ In Progress
+**Status:** ⚠️ Partial
 
-**What We Built:** Execution started. Beads created, dependency order linked, and implementation is beginning from the contract/YAML slices.
+**What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability and ownership correctness. The current state includes: vendor hand bbox payload exposure, tool-layer normalized hand payload + bbox preview support, input-layer bbox straight-punch state-machine wiring, tracker-contract QA pass, visible proving-scene collider debug rings, input-owned proving-scene debug config, preview-space vs gameplay-space landmark separation, and the upstream pose-side hand lock repair across occlusion/reacquire. The proving scene was further cleaned so Cookie retests can verify bbox overlays and reduced editor clutter without in-scene profile switching.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices landed; `REF-05` / `REF-06` fixture-based straight-punch QA is still the outstanding truth gate. Task 10 remains blocked on external retest / rerun rather than on known unlanded code slices.
 
 **Commits:**
-- Pending.
+- `2357784` (`REF-03`) - Expose MediaPipe hand landmarks and bbox payloads
+- `edd416a` (`REF-02`) - Add hand bbox preview and playback debug overlays
+- `62c7d1b` (`REF-02`) - Preserve pose-side hand locks across reacquire
+- `29ca851` (`REF-01`) - Fix boxing proving scene debug surfaces
+- `5468857` (`REF-01`) - Separate preview and gameplay landmark spaces
+- `9915421` (`REF-01`) - Promote proving scene debug toggles into config
+- `2043b6a` (`REF-01`) - Fix proving scene bbox overlay wiring
+- `f5ba8fc` (`REF-01`) - Remove proving profile picker and hide tuning exports
+- `fdcd1d8` (`REF-01`) - modified testbed defaults
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** The hardest bugs here were seam bugs, not detector-threshold bugs: Beads ownership had to stay in the owner repo, preview-space vs gameplay-space landmark coordinates needed to be split explicitly, and hand ownership had to preserve pose-side truth across reacquire instead of relying on stale anchor continuity. The remaining work should start from live/fixture retest evidence on Cookie rather than further speculative detector changes.
 
 ---
 
