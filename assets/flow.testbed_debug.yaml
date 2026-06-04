@@ -1,0 +1,9 @@
+schema: aerobeat/testbed_debug_config
+version: 1
+profile: flow
+visuals:
+  show_landmarks: true
+  show_trails: true
+  show_hand_bbox_overlay: false
+  show_landmark_hit_targets: false
+  show_landmark_hit_target_labels: false

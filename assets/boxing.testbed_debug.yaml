@@ -1,0 +1,9 @@
+schema: aerobeat/testbed_debug_config
+version: 1
+profile: boxing
+visuals:
+  show_landmarks: true
+  show_trails: false
+  show_hand_bbox_overlay: true
+  show_landmark_hit_targets: true
+  show_landmark_hit_target_labels: true

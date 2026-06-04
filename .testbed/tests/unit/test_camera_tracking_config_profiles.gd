@@ -11,12 +11,17 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(String(bundle.get("profile", "")), "boxing")
 	assert_true(String(bundle.get("camera_tracking_path", "")).ends_with("assets/boxing.camera_tracking.yaml"))
 	assert_true(String(bundle.get("gesture_detection_path", "")).ends_with("assets/boxing.gesture_detection.yaml"))
+	assert_true(String(bundle.get("testbed_debug_path", "")).ends_with("assets/boxing.testbed_debug.yaml"))
 	assert_eq(String(bundle.get("camera_tracking", {}).get("schema", "")), ProfileConfigLoaderScript.CAMERA_TRACKING_SCHEMA)
 	assert_eq(int(bundle.get("camera_tracking", {}).get("version", -1)), ProfileConfigLoaderScript.CONFIG_VERSION)
 	assert_eq(String(bundle.get("camera_tracking", {}).get("profile", "")), "boxing")
 	assert_eq(String(bundle.get("gesture_detection", {}).get("schema", "")), ProfileConfigLoaderScript.GESTURE_DETECTION_SCHEMA)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("version", -1)), ProfileConfigLoaderScript.CONFIG_VERSION)
 	assert_eq(String(bundle.get("gesture_detection", {}).get("profile", "")), "boxing")
+	assert_eq(String(bundle.get("testbed_debug", {}).get("schema", "")), ProfileConfigLoaderScript.TESTBED_DEBUG_SCHEMA)
+	assert_eq(int(bundle.get("testbed_debug", {}).get("version", -1)), ProfileConfigLoaderScript.CONFIG_VERSION)
+	assert_eq(String(bundle.get("testbed_debug", {}).get("profile", "")), "boxing")
+	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", false)))
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	var config = CameraTrackingConfigScript.new()
@@ -26,8 +31,11 @@ func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	assert_eq(config.get_selected_profile_id(), "flow")
 	assert_true(String(bundle.get("camera_tracking_path", "")).ends_with("assets/flow.camera_tracking.yaml"))
 	assert_true(String(bundle.get("gesture_detection_path", "")).ends_with("assets/flow.gesture_detection.yaml"))
+	assert_true(String(bundle.get("testbed_debug_path", "")).ends_with("assets/flow.testbed_debug.yaml"))
 	assert_eq(String(bundle.get("camera_tracking", {}).get("profile", "")), "flow")
 	assert_eq(String(bundle.get("gesture_detection", {}).get("profile", "")), "flow")
+	assert_eq(String(bundle.get("testbed_debug", {}).get("profile", "")), "flow")
+	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", true)))
 
 func test_profile_config_loader_rejects_header_mismatches() -> void:
 	var loader = ProfileConfigLoaderScript.new()

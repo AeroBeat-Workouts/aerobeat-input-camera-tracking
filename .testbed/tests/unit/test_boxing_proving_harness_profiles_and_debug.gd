@@ -1,5 +1,7 @@
 extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
+const LandmarkDrawerScript = preload("res://scripts/landmark_drawer.gd")
+
 func _new_harness() -> Object:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
 	return harness_script.new()
@@ -17,6 +19,32 @@ func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> 
 	assert_eq(String(bundle.get("profile", "")), "flow")
 	assert_true(String(bundle.get("camera_tracking_path", "")).ends_with("assets/flow.camera_tracking.yaml"))
 	assert_true(String(bundle.get("gesture_detection_path", "")).ends_with("assets/flow.gesture_detection.yaml"))
+	assert_true(String(bundle.get("testbed_debug_path", "")).ends_with("assets/flow.testbed_debug.yaml"))
+
+func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
+	var harness: Variant = add_child_autoqfree(_new_harness())
+	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
+	var trail_drawer: Control = add_child_autoqfree(Control.new())
+	var hand_bbox_drawer: Control = add_child_autoqfree(Control.new())
+	harness.set("landmark_drawer", landmark_drawer)
+	harness.set("trail_drawer", trail_drawer)
+	harness.set("hand_bbox_drawer", hand_bbox_drawer)
+
+	harness.set("_selected_profile_id", "boxing")
+	harness._sync_profile_visual_config()
+	assert_true(bool(harness.get("show_landmarks")))
+	assert_false(bool(harness.get("show_trails")))
+	assert_true(bool(landmark_drawer.get("show_debug_hit_targets")))
+	assert_true(bool(landmark_drawer.get("show_debug_hit_target_labels")))
+	assert_true(hand_bbox_drawer.visible)
+
+	harness.set("_selected_profile_id", "flow")
+	harness._sync_profile_visual_config()
+	assert_true(bool(harness.get("show_landmarks")))
+	assert_true(bool(harness.get("show_trails")))
+	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))
+	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
+	assert_false(hand_bbox_drawer.visible)
 
 func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	var harness = _new_harness()

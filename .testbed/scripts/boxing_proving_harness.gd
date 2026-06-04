@@ -253,6 +253,7 @@ func _ready() -> void:
 	_configure_profile_controls()
 	super._ready()
 	_refresh_profile_controls()
+	_sync_profile_visual_config()
 	_refresh_debug_panels()
 
 func _connect_mode_signals() -> void:
@@ -314,6 +315,10 @@ func _sync_hand_bbox_drawer() -> void:
 			hand_bbox_drawer.reparent(_preview_presenter)
 		if hand_bbox_drawer.has_method("set_preview_presenter"):
 			hand_bbox_drawer.set_preview_presenter(_preview_presenter)
+	if not hand_bbox_drawer.visible:
+		if hand_bbox_drawer.has_method("clear_snapshot"):
+			hand_bbox_drawer.clear_snapshot()
+		return
 	var hand_snapshot := _tracker_hand_debug_snapshot()
 	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
@@ -387,6 +392,31 @@ func _refresh_profile_controls() -> void:
 	if gesture_config_path_field != null:
 		gesture_config_path_field.text = _pretty_resource_path(String(bundle.get("gesture_detection_path", "")))
 		gesture_config_path_field.tooltip_text = String(bundle.get("gesture_detection_path", ""))
+	_sync_profile_visual_config(bundle)
+
+func _sync_profile_visual_config(bundle: Dictionary = {}) -> void:
+	var resolved_bundle := bundle if not bundle.is_empty() else _current_profile_bundle()
+	var testbed_debug: Dictionary = resolved_bundle.get("testbed_debug", {}) if resolved_bundle.get("testbed_debug", {}) is Dictionary else {}
+	var visuals: Dictionary = testbed_debug.get("visuals", {}) if testbed_debug.get("visuals", {}) is Dictionary else {}
+	if visuals.is_empty():
+		return
+	show_landmarks = bool(visuals.get("show_landmarks", show_landmarks))
+	show_trails = bool(visuals.get("show_trails", show_trails))
+	if landmark_drawer != null:
+		landmark_drawer.set("show_debug_hit_targets", bool(visuals.get("show_landmark_hit_targets", landmark_drawer.get("show_debug_hit_targets"))))
+		landmark_drawer.set("show_debug_hit_target_labels", bool(visuals.get("show_landmark_hit_target_labels", landmark_drawer.get("show_debug_hit_target_labels"))))
+		landmark_drawer.visible = show_landmarks or bool(landmark_drawer.get("show_debug_hit_targets"))
+		landmark_drawer.queue_redraw()
+	if trail_drawer != null:
+		trail_drawer.visible = show_trails
+		trail_drawer.queue_redraw()
+	if hand_bbox_drawer != null:
+		var show_hand_bbox_overlay := bool(visuals.get("show_hand_bbox_overlay", hand_bbox_drawer.visible))
+		hand_bbox_drawer.visible = show_hand_bbox_overlay
+		if not show_hand_bbox_overlay and hand_bbox_drawer.has_method("clear_snapshot"):
+			hand_bbox_drawer.clear_snapshot()
+		else:
+			hand_bbox_drawer.queue_redraw()
 
 func _on_profile_picker_selected(index: int) -> void:
 	if profile_picker == null or _profile_switch_in_progress or index < 0 or index >= profile_picker.item_count:

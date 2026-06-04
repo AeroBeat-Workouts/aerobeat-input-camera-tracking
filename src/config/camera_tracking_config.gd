@@ -23,8 +23,10 @@ const PROFILE_FLOW := "flow"
 @export_enum("boxing", "flow") var profile: String = PROFILE_BOXING
 @export var tracker_profile_path: String = ""
 @export var gesture_profile_path: String = ""
+@export var testbed_debug_profile_path: String = ""
 @export var tracker_profile_document: Dictionary = {}
 @export var gesture_profile_document: Dictionary = {}
+@export var testbed_debug_profile_document: Dictionary = {}
 @export var runtime: Dictionary = {}
 @export var diagnostics: Dictionary = {}
 @export var vendor: Dictionary = {}
@@ -67,20 +69,24 @@ func load_selected_profile_bundle(profile_name: String = "") -> Dictionary:
 	profile = normalized_profile
 	tracker_profile_path = String(result.get("camera_tracking_path", ""))
 	gesture_profile_path = String(result.get("gesture_detection_path", ""))
+	testbed_debug_profile_path = String(result.get("testbed_debug_path", ""))
 	tracker_profile_document = (result.get("camera_tracking", {}) as Dictionary).duplicate(true)
 	gesture_profile_document = (result.get("gesture_detection", {}) as Dictionary).duplicate(true)
+	testbed_debug_profile_document = (result.get("testbed_debug", {}) as Dictionary).duplicate(true)
 	return get_selected_profile_bundle()
 
 func get_selected_profile_bundle() -> Dictionary:
-	if tracker_profile_document.is_empty() or gesture_profile_document.is_empty():
+	if tracker_profile_document.is_empty() or gesture_profile_document.is_empty() or testbed_debug_profile_document.is_empty():
 		return load_selected_profile_bundle(profile)
 	return {
 		"ok": true,
 		"profile": get_selected_profile_id(),
 		"camera_tracking_path": tracker_profile_path,
 		"gesture_detection_path": gesture_profile_path,
+		"testbed_debug_path": testbed_debug_profile_path,
 		"camera_tracking": tracker_profile_document.duplicate(true),
 		"gesture_detection": gesture_profile_document.duplicate(true),
+		"testbed_debug": testbed_debug_profile_document.duplicate(true),
 	}
 
 func _normalize_profile_name(profile_name: String) -> String:

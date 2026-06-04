@@ -4,6 +4,7 @@ const PROFILE_BOXING := "boxing"
 const PROFILE_FLOW := "flow"
 const CAMERA_TRACKING_SCHEMA := "aerobeat/camera_tracking_config"
 const GESTURE_DETECTION_SCHEMA := "aerobeat/gesture_detection_config"
+const TESTBED_DEBUG_SCHEMA := "aerobeat/testbed_debug_config"
 const CONFIG_VERSION := 1
 const SCRIPT_PATH_SUFFIX := "/src/config/profile_config_loader.gd"
 
@@ -11,10 +12,12 @@ const PROFILE_FILE_MAP := {
 	PROFILE_BOXING: {
 		"camera_tracking": "assets/boxing.camera_tracking.yaml",
 		"gesture_detection": "assets/boxing.gesture_detection.yaml",
+		"testbed_debug": "assets/boxing.testbed_debug.yaml",
 	},
 	PROFILE_FLOW: {
 		"camera_tracking": "assets/flow.camera_tracking.yaml",
 		"gesture_detection": "assets/flow.gesture_detection.yaml",
+		"testbed_debug": "assets/flow.testbed_debug.yaml",
 	},
 }
 
@@ -26,6 +29,7 @@ func resolve_profile_bundle_paths(profile_name: String) -> Dictionary:
 		"profile": normalized_profile,
 		"camera_tracking_path": _get_addon_root_path().path_join(String(paths.get("camera_tracking", ""))),
 		"gesture_detection_path": _get_addon_root_path().path_join(String(paths.get("gesture_detection", ""))),
+		"testbed_debug_path": _get_addon_root_path().path_join(String(paths.get("testbed_debug", ""))),
 	}
 
 func load_profile_bundle(profile_name: String) -> Dictionary:
@@ -47,13 +51,23 @@ func load_profile_bundle(profile_name: String) -> Dictionary:
 	)
 	if not bool(gesture_detection.get("ok", false)):
 		return gesture_detection
+	var testbed_debug := load_profile_document(
+		String(paths.get("testbed_debug_path", "")),
+		TESTBED_DEBUG_SCHEMA,
+		CONFIG_VERSION,
+		normalized_profile
+	)
+	if not bool(testbed_debug.get("ok", false)):
+		return testbed_debug
 	return {
 		"ok": true,
 		"profile": normalized_profile,
 		"camera_tracking_path": String(paths.get("camera_tracking_path", "")),
 		"gesture_detection_path": String(paths.get("gesture_detection_path", "")),
+		"testbed_debug_path": String(paths.get("testbed_debug_path", "")),
 		"camera_tracking": (camera_tracking.get("document", {}) as Dictionary).duplicate(true),
 		"gesture_detection": (gesture_detection.get("document", {}) as Dictionary).duplicate(true),
+		"testbed_debug": (testbed_debug.get("document", {}) as Dictionary).duplicate(true),
 	}
 
 func load_profile_document(path: String, expected_schema: String, expected_version: int, expected_profile: String) -> Dictionary:

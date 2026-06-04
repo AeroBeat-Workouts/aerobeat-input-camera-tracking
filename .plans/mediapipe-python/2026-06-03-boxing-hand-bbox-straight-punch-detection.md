@@ -574,9 +574,13 @@ This keeps gameplay-facing detector math on the old bottom-left normalized contr
 - input-owned config files and proving-scene/testbed files that consume the new debug booleans
 - focused validation artifacts or tests if added
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Root cause: the proving-scene visual toggles only lived as scene exports / per-node inspector state (`show_landmarks`, `show_trails`, landmark hit-target booleans, and the boxing bbox drawer), so profile switching never exercised an input-owned source of truth. Approach: added a third repo-owned profile document per input profile (`assets/{boxing,flow}.testbed_debug.yaml` with schema `aerobeat/testbed_debug_config`) and extended `ProfileConfigLoader` / `CameraTrackingConfig` so the selected profile bundle now carries `testbed_debug_path` plus the parsed `testbed_debug` document alongside the tracker and gesture YAMLs. The boxing proving harness now reads that bundle and applies `visuals.show_landmarks`, `visuals.show_trails`, `visuals.show_hand_bbox_overlay`, `visuals.show_landmark_hit_targets`, and `visuals.show_landmark_hit_target_labels` to the inherited overlay toggles and boxing bbox drawer instead of relying on ad-hoc scene-only values.
+
+Files changed: `assets/boxing.testbed_debug.yaml`, `assets/flow.testbed_debug.yaml`, `src/config/profile_config_loader.gd`, `src/config/camera_tracking_config.gd`, `.testbed/scripts/proving_harness.gd`, `.testbed/scripts/boxing_proving_harness.gd`, `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`, `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`, plus regenerated Godot `.uid` companions for touched/new scripts.
+
+Validation: `godot --headless --path .testbed --import --quit-after 1000` ✅; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`42/42` passed, `228` asserts; existing boxing harness orphan warnings remained, no new failing tests).
 
 ---
 

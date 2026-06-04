@@ -508,7 +508,6 @@ func _configure_overlay_drawer(drawer: Control, z_index_value: int) -> void:
 	drawer.mouse_filter = Control.MOUSE_FILTER_PASS if drawer == landmark_drawer else Control.MOUSE_FILTER_IGNORE
 	drawer.z_as_relative = true
 	drawer.z_index = z_index_value
-	drawer.visible = true
 	if drawer.get_parent() != null:
 		drawer.queue_redraw()
 
