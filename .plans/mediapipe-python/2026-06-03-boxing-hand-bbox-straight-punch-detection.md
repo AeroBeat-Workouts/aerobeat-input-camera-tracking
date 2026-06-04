@@ -1,9 +1,9 @@
 # AeroBeat Boxing Hand BBox Straight Punch Detection
 
 **Date:** 2026-06-03
-**Status:** In Progress
-**Last Updated:** 2026-06-04 14:23 EDT
-**Blocked Reason:** Waiting on Derrick's Cookie retest / QA validation after the latest proving-scene cleanup pushes.
+**Status:** Blocked
+**Last Updated:** 2026-06-04 18:57 EDT
+**Blocked Reason:** Need a wider live-repro trace around Derrick's normal retest workflow (especially git-sync/godotenv-sync + project open/play) because a controlled clean scene launch did not re-dirty the boxing YAMLs, but earlier retests still observed the bad local state.
 **Agent:** `pico`
 
 ---
@@ -762,6 +762,32 @@ That narrows the writer away from Godot/editor/plugin/runtime code for this repr
 
 ---
 
+### Task 10N: Run a controlled clean-launch-clean-check repro for the boxing YAML reset claim
+
+**Bead ID:** `aerobeat-input-camera-tracking-7i6`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick asked for a controlled repro to distinguish whether playing the boxing proving scene itself resets the boxing YAML files into the bad tab-indented state, or whether the bad state already exists before launch. Keep this slice narrowly procedural: restore the two boxing YAML files to known-good bytes, confirm clean git status before launch, run the real project/scene load + play path, and check git status plus file bytes immediately afterward. Record the exact before/after status and whether the scene run itself re-dirties the files. Do not widen into punch-threshold tuning. Claim the bead on start and close it only after the controlled repro is complete and documented.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- focused repro artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- temporary repro artifacts if any
+
+**Status:** ✅ Complete
+
+**Results:** Restored `assets/boxing.camera_tracking.yaml` and `assets/boxing.gesture_detection.yaml` to `HEAD` with `git restore --source=HEAD -- ...`, then captured the controlled pre-launch baseline. Exact pre-launch state for the two target files: `git status --short -- assets/...` returned clean, SHA-256 stayed at `2e288ff79707a07e3205d481d3ce581d21bb2f6c8df299115daf260dcb0de443` (`boxing.camera_tracking.yaml`) and `c6019bb377f27597fe22f3991f75352622754dbe34aec2046206ab63ed646bcb` (`boxing.gesture_detection.yaml`), and `grep` found no tab characters in either file. Repo-wide `git status` was not globally clean because the active plan file was already modified before launch, but the boxing YAML targets themselves were clean.
+
+For the launch path, I stayed narrow and used the closest practical real scene-run entrypoint available from this subagent environment without destructive teardown of the already-open editor session: a fresh one-shot Godot runtime launch of the real proving scene via `godot --path .testbed --scene res://scenes/boxing_proving.tscn --quit-after 600 --log-file <tmp>`. That run reached the expected live markers in stdout/log (`[ProvingHarness][Boxing] CameraTracking contract proving mode active`, `Tracking restored`, `Boxing harness live`) and exited `0`; temporary log files were removed afterward.
+
+Immediate post-launch check was unchanged for the target files: `git status --short -- assets/...` still returned clean, the SHA-256 values were identical to pre-launch, and `grep` again found no tab characters in either YAML. Conclusion: this controlled scene run did **not** re-dirty `assets/boxing.camera_tracking.yaml` or `assets/boxing.gesture_detection.yaml`; the bad tab-indented state was not reproduced by the scene play path used here.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
@@ -787,9 +813,9 @@ That narrows the writer away from Godot/editor/plugin/runtime code for this repr
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability and ownership correctness. The current state includes: vendor hand bbox payload exposure, tool-layer normalized hand payload + bbox preview support, input-layer bbox straight-punch state-machine wiring, tracker-contract QA pass, visible proving-scene collider debug rings, input-owned proving-scene debug config, preview-space vs gameplay-space landmark separation, and the upstream pose-side hand lock repair across occlusion/reacquire. The proving scene was further cleaned so Cookie retests can verify bbox overlays and reduced editor clutter without in-scene profile switching.
+**What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability and ownership correctness. The current state includes: vendor hand bbox payload exposure, tool-layer normalized hand payload + bbox preview support, input-layer bbox straight-punch state-machine wiring, tracker-contract QA pass, visible proving-scene collider debug rings, input-owned proving-scene debug config, preview-space vs gameplay-space landmark separation, the upstream pose-side hand lock repair across occlusion/reacquire, and explicit parser guards against tab-indented boxing profile regressions. Late-session tracing narrowed the YAML-reset suspicion: Godot/editor load+play was proven read-only for the boxing YAMLs, and a controlled clean launch of the boxing proving scene did not re-dirty them. The remaining blocker is the wider external workflow that can restore pre-existing dirty local YAML state around Derrick's real retest loop.
 
-**Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices landed; `REF-05` / `REF-06` fixture-based straight-punch QA is still the outstanding truth gate. Task 10K closed the live `Hand tracking - disabled` seam by restoring the boxing profile path and adding a parser guard against tab-indented regressions; final auditor/fixture truthing remains the remaining gate.
+**Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices landed; `REF-05` / `REF-06` fixture-based straight-punch QA is still the outstanding truth gate. Task 10K closed the live `Hand tracking - disabled` seam by restoring the boxing profile path and adding a parser guard against tab-indented regressions. Tasks 10L–10N then proved that clean Godot load/play does not itself rewrite the boxing YAMLs; the unresolved blocker is reproducing and stopping the wider local workflow that reintroduces dirty tab-indented YAML before some retests.
 
 **Commits:**
 - `2357784` (`REF-03`) - Expose MediaPipe hand landmarks and bbox payloads
@@ -801,8 +827,11 @@ That narrows the writer away from Godot/editor/plugin/runtime code for this repr
 - `2043b6a` (`REF-01`) - Fix proving scene bbox overlay wiring
 - `f5ba8fc` (`REF-01`) - Remove proving profile picker and hide tuning exports
 - `fdcd1d8` (`REF-01`) - modified testbed defaults
+- `cb50ea7` (`REF-01`) - Fix boxing proving warning seam
+- `3d5ce09` (`REF-01`) - Guard boxing profile YAML indentation
+- `4e4bc9b` (`REF-01`) - Document boxing YAML writer trace
 
-**Lessons Learned:** The hardest bugs here were seam bugs, not detector-threshold bugs: Beads ownership had to stay in the owner repo, preview-space vs gameplay-space landmark coordinates needed to be split explicitly, and hand ownership had to preserve pose-side truth across reacquire instead of relying on stale anchor continuity. The remaining work should start from live/fixture retest evidence on Cookie rather than further speculative detector changes.
+**Lessons Learned:** The hardest bugs here were seam bugs, not detector-threshold bugs: Beads ownership had to stay in the owner repo, preview-space vs gameplay-space landmark coordinates needed to be split explicitly, and hand ownership had to preserve pose-side truth across reacquire instead of relying on stale anchor continuity. Late in the slice, the YAML-reset suspicion also turned out to be a workflow-state problem more than a scene-runtime problem: clean Godot load/play was reproducibly read-only, while external sync/restore steps can resurrect old dirty YAML. The remaining work should start from Derrick's exact retest workflow evidence instead of further speculative detector changes.
 
 ---
 
