@@ -237,16 +237,16 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 **Prompt:** Update the existing boxing proving-scene gesture inspector behavior so clicking the left or right straight-punch gesture icons opens a panel that reflects the new detection method instead of the old one. The panel should show the live values and state inputs that now determine left/right straight-punch status, including at minimum current state, wrist velocity, bbox area, bbox area growth, fresh-sample validity, grace timer state, and any stored trigger bbox value or rearm-relevant data needed to understand why the gesture is or is not active. Claim the bead on start and keep the inspector wiring aligned with the new state-change event model.
 
 **Folders Created/Deleted/Modified:**
-- `/.testbed/`
-- boxing proving-scene gesture inspector UI folders to be identified during implementation
+- `/.testbed/scripts/`
+- `/.testbed/tests/unit/`
 
 **Files Created/Deleted/Modified:**
-- left/right straight-punch inspector panel files in `aerobeat-input-camera-tracking/.testbed/`
-- related proving-scene gesture inspector wiring files
+- `/.testbed/scripts/boxing_proving_harness.gd`
+- `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Updated the boxing proving-scene straight-punch inspector slice in `.testbed/scripts/boxing_proving_harness.gd` so the left/right punch tiles now keep their shared inspector and hover-card data wired to the new `straight_punch_state_changed` provider signal instead of relying only on the old polling path. The inspector/hover model now includes the latest state-change summary plus an event-payload snapshot alongside the live state-machine inputs already sourced from `gesture_debug.straight_punch`, so clicking either straight-punch icon shows current state, tracking/fresh-sample validity, wrist velocity, bbox area, bbox growth, positive-growth history, grace timer, stored trigger bbox, rearm status, and reacquire progress with immediate refresh when the state-machine transitions. Added focused unit coverage in `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` to prove both the richer inspector body and the fallback merge from cached state-change signal payloads. Repo-local validation for this slice: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`5/5` passed, `40` asserts). Attempted bead claim with `bd update aerobeat-input-camera-tracking-cxj --status in_progress --json`, but this repo still has no Beads database configured (`bd` returned `no beads database found`), so no Beads claim was recorded.
 
 ---
 

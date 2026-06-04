@@ -146,6 +146,16 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"row_kind": "info",
 	},
 	{
+		"id": "state_change_event",
+		"label": "Latest state change",
+		"row_kind": "info",
+	},
+	{
+		"id": "state_change_payload",
+		"label": "Event payload snapshot",
+		"row_kind": "info",
+	},
+	{
 		"id": "trigger_section",
 		"label": "Trigger inputs",
 		"row_kind": "section",
@@ -230,6 +240,10 @@ var _hover_card_row_order: Array[String] = []
 var _hover_card_signature := ""
 var _selected_profile_id := PROFILE_BOXING
 var _profile_switch_in_progress := false
+var _straight_punch_transition_debug := {
+	"left": {},
+	"right": {},
+}
 
 func _ready() -> void:
 	_selected_profile_id = _default_profile_id()
@@ -240,6 +254,38 @@ func _ready() -> void:
 	super._ready()
 	_refresh_profile_controls()
 	_refresh_debug_panels()
+
+func _connect_mode_signals() -> void:
+	super._connect_mode_signals()
+	if harness_mode != HarnessMode.BOXING:
+		return
+	if provider == null or not provider.has_signal("straight_punch_state_changed"):
+		return
+	if _provider_mode_signal_relays.has("straight_punch_state_changed"):
+		return
+	var relay := func(side: String, state: String, detail: Dictionary) -> void:
+		_on_straight_punch_state_changed(side, state, detail)
+	_remember_mode_signal_relay("straight_punch_state_changed", relay)
+
+func _on_straight_punch_state_changed(side: String, state: String, detail: Dictionary) -> void:
+	var side_key := side.to_lower()
+	if not ["left", "right"].has(side_key):
+		return
+	var transition := detail.duplicate(true)
+	transition["state"] = state
+	transition["previous_state"] = String(detail.get("previous_state", ""))
+	transition["timestamp_ms"] = Time.get_ticks_msec()
+	_straight_punch_transition_debug[side_key] = transition
+	if provider != null:
+		_latest_state = provider.get_detector_state()
+	var card_key := "punch_%s" % side_key
+	if _hovered_card_key == card_key:
+		_hover_card_signature = ""
+		_refresh_hover_card()
+	if _shared_inspector_target_type == "gesture" and _shared_inspector_target_key == card_key:
+		_shared_inspector_live_model = {}
+		_shared_inspector_live_refresh_due_ms = 0
+		_refresh_shared_inspector(true)
 
 func _refresh_debug_panels() -> void:
 	if harness_mode != HarnessMode.BOXING:
@@ -287,10 +333,17 @@ func _record_event(event_name: String, payload: Dictionary) -> void:
 				_boxing_event_feed.remove_at(0)
 	super._record_event(event_name, payload)
 
+func _clear_straight_punch_transition_debug() -> void:
+	_straight_punch_transition_debug = {
+		"left": {},
+		"right": {},
+	}
+
 func _reset_runtime_debug_state_for_seek() -> void:
 	super._reset_runtime_debug_state_for_seek()
 	_boxing_event_feed = []
 	_boxing_event_sequence = 0
+	_clear_straight_punch_transition_debug()
 
 func _update_status(text: String, color: Color) -> void:
 	if harness_mode != HarnessMode.BOXING:
@@ -343,6 +396,7 @@ func _on_profile_picker_selected(index: int) -> void:
 		return
 	_profile_switch_in_progress = true
 	_selected_profile_id = next_profile
+	_clear_straight_punch_transition_debug()
 	_refresh_profile_controls()
 	_update_status("Switching tracking profile...", Color.YELLOW)
 	_apply_selected_profile.call_deferred()
@@ -706,10 +760,21 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 		_:
 			return spec.duplicate(true)
 
-func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
+func _merged_punch_debug_state(side: String) -> Dictionary:
 	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
-	var straight_side: Dictionary = (straight_punch_debug.get(side, {}) as Dictionary)
+	var straight_side: Dictionary = ((straight_punch_debug.get(side, {}) as Dictionary)).duplicate(true)
+	var transition_debug: Dictionary = (_straight_punch_transition_debug.get(side, {}) as Dictionary)
+	if straight_side.is_empty():
+		return transition_debug.duplicate(true)
+	for key_variant: Variant in transition_debug.keys():
+		if straight_side.has(key_variant):
+			continue
+		straight_side[key_variant] = transition_debug[key_variant]
+	return straight_side
+
+func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
+	var straight_side := _merged_punch_debug_state(side)
 	var rows: Array[Dictionary] = []
 	for row_spec_variant: Variant in spec.get("rows", []):
 		var row_spec: Dictionary = row_spec_variant
@@ -741,6 +806,8 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var tracking_valid := bool(straight_side.get("tracking_valid", false))
 	var tracking_state := String(straight_side.get("tracking_state", "idle"))
 	var stale_frames := int(straight_side.get("stale_frames", 0))
+	var transition_timestamp_ms := int(straight_side.get("timestamp_ms", 0))
+	var previous_state := String(straight_side.get("previous_state", ""))
 	var grace_frames_remaining := int(straight_side.get("grace_frames_remaining", 0))
 	var triggered_grace_frames := int(straight_side.get("triggered_grace_frames", 0))
 	var trigger_bbox_area := float(straight_side.get("trigger_bbox_area", 0.0))
@@ -762,6 +829,29 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 		"fresh_sample":
 			current_text = _fmt_bool(fresh_sample)
 			passed = fresh_sample
+		"state_change_event":
+			if previous_state.is_empty() and transition_timestamp_ms <= 0:
+				current_text = "waiting for first straight-punch state change"
+				passed = false
+			else:
+				var transition_summary := state_name
+				if not previous_state.is_empty():
+					transition_summary = "%s -> %s" % [previous_state, state_name]
+				current_text = transition_summary
+				if transition_timestamp_ms > 0:
+					current_text += " (%s ago)" % _fmt_age_ms(Time.get_ticks_msec() - transition_timestamp_ms)
+				passed = true
+		"state_change_payload":
+			current_text = "state=%s wrist=%s bbox=%s growth=%s fresh=%s grace=%d valid=%s" % [
+				state_name,
+				_fmt_float(wrist_velocity),
+				_fmt_float(bbox_area),
+				_fmt_float(bbox_area_growth),
+				_fmt_bool(fresh_sample),
+				grace_frames_remaining,
+				_fmt_bool(tracking_valid),
+			]
+			passed = transition_timestamp_ms > 0 or not straight_side.is_empty()
 		"wrist_velocity":
 			threshold_text = _fmt_float(min_wrist_velocity)
 			current_text = _fmt_float(wrist_velocity)

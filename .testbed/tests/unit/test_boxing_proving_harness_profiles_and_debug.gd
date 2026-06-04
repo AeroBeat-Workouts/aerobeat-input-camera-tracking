@@ -93,12 +93,14 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	assert_eq(String(rows[1].get("current_text", "")), "not_ready")
 	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, stale_frames=1")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
-	assert_eq(String(rows[5].get("threshold_text", "")), "0.180")
-	assert_eq(String(rows[5].get("current_text", "")), "0.420")
-	assert_eq(String(rows[7].get("threshold_text", "")), "0.010")
-	assert_eq(String(rows[8].get("current_text", "")), "3/4")
-	assert_eq(String(rows[12].get("current_text", "")), "0.061")
-	assert_eq(String(rows[13].get("current_text", "")), "0.052 <= 0.058 (trigger 0.061 - eps 0.003)")
+	assert_eq(String(rows[4].get("current_text", "")), "waiting for first straight-punch state change")
+	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 bbox=0.052 growth=0.015 fresh=true grace=0 valid=true")
+	assert_eq(String(rows[7].get("threshold_text", "")), "0.180")
+	assert_eq(String(rows[7].get("current_text", "")), "0.420")
+	assert_eq(String(rows[9].get("threshold_text", "")), "0.010")
+	assert_eq(String(rows[10].get("current_text", "")), "3/4")
+	assert_eq(String(rows[14].get("current_text", "")), "0.061")
+	assert_eq(String(rows[15].get("current_text", "")), "0.052 <= 0.058 (trigger 0.061 - eps 0.003)")
 
 func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	var harness = _new_harness()
@@ -136,6 +138,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Current state - triggered")
 	assert_string_contains(body, "Hand tracking - tracked, valid=true, stale_frames=0")
 	assert_string_contains(body, "Fresh sample valid - false")
+	assert_string_contains(body, "Event payload snapshot - state=triggered wrist=0.310 bbox=0.071 growth=0.012 fresh=false grace=2 valid=true")
 	assert_string_contains(body, "Wrist velocity >= 0.180 - 0.310")
 	assert_string_contains(body, "BBox area - 0.071")
 	assert_string_contains(body, "BBox area growth >= 0.010 - 0.012")
@@ -143,3 +146,28 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Grace timer - 2/3 remaining (active)")
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
 	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
+
+func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -> void:
+	var harness = _new_harness()
+	harness.set("_straight_punch_transition_debug", {
+		"left": {
+			"state": "triggered",
+			"previous_state": "ready",
+			"timestamp_ms": Time.get_ticks_msec() - 80,
+			"tracking_state": "tracked",
+			"tracking_valid": true,
+			"stale_frames": 0,
+			"fresh_sample": true,
+			"wrist_velocity": 0.280,
+			"bbox_area": 0.064,
+			"bbox_area_growth": 0.011,
+			"grace_frames_remaining": 3,
+		},
+		"right": {},
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var rows: Array = model.get("rows", [])
+	assert_string_contains(String(rows[1].get("current_text", "")), "triggered")
+	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> triggered")
+	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 bbox=0.064 growth=0.011 fresh=true grace=3 valid=true")
