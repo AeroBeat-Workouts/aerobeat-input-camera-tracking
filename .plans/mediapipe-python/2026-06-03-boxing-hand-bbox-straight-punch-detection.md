@@ -740,6 +740,28 @@ Validation run from repo root: `godot --headless --path .testbed --import --quit
 
 ---
 
+### Task 10M: Trace the exact writer that mutates the boxing YAML files during live project load/play
+
+**Bead ID:** `aerobeat-input-camera-tracking-oht`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick now reports that simply loading the Godot project and playing the boxing proving scene causes `assets/boxing.camera_tracking.yaml` and `assets/boxing.gesture_detection.yaml` to change locally. Keep this slice narrowly forensic: instrument/watch those repo-owned YAML files during the real editor/project load + play path, identify the exact writer process/path/workflow that mutates them, and document whether the source is Godot/editor/plugin code, a repo script/helper, or another local workflow layer. If the writer can be stopped safely in-scope, make the smallest owner-correct fix; otherwise return precise evidence for the real mutator. Do not widen into punch-threshold tuning. Claim the bead on start and close it only if the writer is genuinely identified and either fixed or sharply proven.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-oht` and traced the YAMLs under both halves of the reported path. For the live editor load, I launched the real GUI editor on `.testbed` under `strace -ff -yy` and watched every open/write/rename touching `assets/boxing.camera_tracking.yaml` and `assets/boxing.gesture_detection.yaml`. Godot PID `419213` only opened both files `O_RDONLY`; the only observed write mentioning those paths was to `.testbed/.godot/editor/script_editor_cache.cfg-*`, where the editor cached the open tab metadata. No syscall in the editor trace opened either repo YAML with `O_WRONLY`/`O_RDWR`, renamed over them, or wrote to their inodes. For the play/runtime half, I launched `godot --path .testbed scenes/boxing_proving.tscn` under a second `strace`; runtime PID `419453` repeatedly opened both YAMLs `O_RDONLY` and read their contents while the harness reached `CameraTracking contract proving mode active`, `Tracking restored`, and `Boxing harness live`, again with zero write/rename activity against the repo YAMLs. Hashes, mtimes, and `git status` for both files stayed unchanged before/after the traced runs.
+
+That narrows the writer away from Godot/editor/plugin/runtime code for this repro path. The remaining proven mutator is the external local sync workflow: workspace script `/home/derrick/.openclaw/workspace/scripts/git-sync` explicitly stashes dirty tracked+untracked changes, fast-forwards, then restores them via `git stash apply --index` (`git_stash_push()` / `git_stash_apply_and_drop()` in that script). This repo’s latest stash entry is `stash@{2026-06-04 16:35:21 -0400}` with message `On main: git-sync:projects/aerobeat/aerobeat-input-camera-tracking`; its blobs for both boxing YAMLs are tab-indented (`HAS_TAB True`) and therefore match the earlier dirty-file symptom. The repo files are currently clean at `HEAD` (`HAS_TAB False`, no diff), so the smallest owner-correct repair in-scope was to avoid any repo code change and instead sharply document that Godot load/play is not the writer; when dirt reappears, the remaining blocker is external restoration of pre-existing local edits, not project runtime mutation. Temporary trace directories under `/tmp/godot-yaml-trace` and `/tmp/godot-runtime-trace` were removed after capture.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
