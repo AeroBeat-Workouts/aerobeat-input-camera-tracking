@@ -309,12 +309,12 @@ func _refresh_debug_panels() -> void:
 func _sync_hand_bbox_drawer() -> void:
 	if hand_bbox_drawer == null:
 		return
+	var overlay_parent: Node = _resolve_hand_bbox_overlay_parent()
+	if overlay_parent != null and hand_bbox_drawer.get_parent() != overlay_parent:
+		hand_bbox_drawer.reparent(overlay_parent)
 	_configure_overlay_drawer(hand_bbox_drawer, BBOX_DRAWER_Z_INDEX)
-	if _preview_presenter != null and is_instance_valid(_preview_presenter):
-		if hand_bbox_drawer.get_parent() != _preview_presenter:
-			hand_bbox_drawer.reparent(_preview_presenter)
-		if hand_bbox_drawer.has_method("set_preview_presenter"):
-			hand_bbox_drawer.set_preview_presenter(_preview_presenter)
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and hand_bbox_drawer.has_method("set_preview_presenter"):
+		hand_bbox_drawer.set_preview_presenter(_preview_presenter)
 	if not hand_bbox_drawer.visible:
 		if hand_bbox_drawer.has_method("clear_snapshot"):
 			hand_bbox_drawer.clear_snapshot()
@@ -328,6 +328,15 @@ func _sync_hand_bbox_drawer() -> void:
 		return
 	if hand_bbox_drawer.has_method("update_snapshot"):
 		hand_bbox_drawer.update_snapshot(hand_snapshot, straight_punch_debug)
+
+func _resolve_hand_bbox_overlay_parent() -> Node:
+	if _preview_presenter == null or not is_instance_valid(_preview_presenter):
+		return hand_bbox_drawer.get_parent()
+	if _preview_presenter.has_method("get_overlay_layer"):
+		var overlay_layer: Variant = _preview_presenter.get_overlay_layer()
+		if overlay_layer is Node and is_instance_valid(overlay_layer):
+			return overlay_layer
+	return _preview_presenter
 
 func _record_event(event_name: String, payload: Dictionary) -> void:
 	if harness_mode == HarnessMode.BOXING:

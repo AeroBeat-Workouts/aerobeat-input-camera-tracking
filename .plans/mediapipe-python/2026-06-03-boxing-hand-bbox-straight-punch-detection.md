@@ -584,6 +584,32 @@ Validation: `godot --headless --path .testbed --import --quit-after 1000` ✅; `
 
 ---
 
+### Task 10G: Retire proving_harness public debug exports and repair hand bbox overlay visibility
+
+**Bead ID:** `aerobeat-input-camera-tracking-uvl`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick confirmed the new config-driven landmark hit-target toggle works, but the old public proving-harness exports are still exposed in the scene inspector and the hand bbox overlay is not visibly rendering even when the new boxing testbed debug config sets `visuals.show_hand_bbox_overlay: true`. Clean this up in one focused slice: remove/retire the now-redundant public debug exports from `proving_harness.gd` / scene-facing workflow where they are superseded by input-owned config, and audit/fix the boxing proving hand bbox overlay visibility so the overlay actually renders when enabled. Keep the scope narrow to input-repo testbed/config wiring and the bbox debug drawer path; do not widen into punch-detector tuning. Claim the bead on start and close it only if the inspector clutter is removed and the hand bbox overlay is truthfully working again.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scenes/boxing_proving.tscn`
+- `.testbed/scenes/flow_proving.tscn`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-uvl` with `bd update ... --status in_progress --json`, then kept this slice tightly scoped to the proving-scene config/debug seam. Inspector clutter cleanup: retired the now-redundant public scene exports `show_landmarks` and `show_trails` in `.testbed/scripts/proving_harness.gd` by converting them from `@export` inspector fields into plain runtime vars, and removed the old scene-authored `show_trails = ...` overrides from both proving scenes so the config-backed `assets/{boxing,flow}.testbed_debug.yaml` bundle is the sole control surface for those toggles. Hand bbox overlay root cause: the boxing harness was reparenting `HandBBoxDrawer` to the preview presenter root, but the tool-owned presenter now exposes an explicit overlay layer; that meant the boxing bbox drawer was not guaranteed to live on the active overlay plane even when `visuals.show_hand_bbox_overlay: true` made it visible. The repair now resolves `get_overlay_layer()` when available, reparents the bbox drawer there, reapplies full-rect overlay sizing after reparent, and still pushes live hand + straight-punch snapshots into the drawer. Added focused proof coverage in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` to verify the bbox drawer reparents into the preview overlay layer, keeps the preview presenter binding, remains full-rect, and receives a non-empty hand snapshot. Exact validation run from repo root: `godot --headless --path .testbed --import --quit-after 1000` ✅; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_proving_harness_trails.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`43/43` tests passed, `235` asserts). With the redundant exports retired and the bbox drawer now mounted on the presenter's overlay layer, this slice is ready for Cookie to pull and re-check in the boxing proving scene without rerunning broader Task 10 QA.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`

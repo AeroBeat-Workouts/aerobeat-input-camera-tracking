@@ -1,6 +1,41 @@
 extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const LandmarkDrawerScript = preload("res://scripts/landmark_drawer.gd")
+const HandBBoxDrawerScript = preload("res://scripts/hand_bbox_state_drawer.gd")
+
+class FakePreviewPresenter:
+	extends Control
+
+	var overlay_layer: Control
+	var hand_snapshot := {
+		"hands": {
+			"left": {
+				"has_bbox": true,
+				"tracking_valid": true,
+				"tracking_state": "tracked",
+				"bbox": {
+					"x": 0.10,
+					"y": 0.20,
+					"width": 0.30,
+					"height": 0.40,
+					"area": 0.12,
+				},
+			},
+			"right": {},
+		}
+	}
+
+	func _init() -> void:
+		overlay_layer = Control.new()
+		overlay_layer.name = "OverlayLayer"
+		overlay_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(overlay_layer)
+
+	func get_overlay_layer() -> Control:
+		return overlay_layer
+
+	func get_hand_debug_snapshot() -> Dictionary:
+		return hand_snapshot.duplicate(true)
 
 func _new_harness() -> Object:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
@@ -45,6 +80,31 @@ func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
 	assert_false(hand_bbox_drawer.visible)
+
+func test_boxing_proving_bbox_overlay_reparents_into_preview_overlay_layer_and_receives_snapshot() -> void:
+	var harness: Variant = add_child_autoqfree(_new_harness())
+	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new())
+	var hand_bbox_drawer: Control = add_child_autoqfree(HandBBoxDrawerScript.new())
+	hand_bbox_drawer.name = "HandBBoxDrawer"
+	harness.set("_preview_presenter", presenter)
+	harness.set("hand_bbox_drawer", hand_bbox_drawer)
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"left": {"state": "ready"}
+			}
+		}
+	})
+
+	harness._sync_hand_bbox_drawer()
+
+	assert_same(hand_bbox_drawer.get_parent(), presenter.get_overlay_layer())
+	assert_same(hand_bbox_drawer.get("_preview_presenter"), presenter)
+	assert_false((hand_bbox_drawer.get("_hand_snapshot") as Dictionary).is_empty())
+	assert_eq(hand_bbox_drawer.anchor_right, 1.0)
+	assert_eq(hand_bbox_drawer.anchor_bottom, 1.0)
+	assert_eq(hand_bbox_drawer.offset_left, 0.0)
+	assert_eq(hand_bbox_drawer.offset_bottom, 0.0)
 
 func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	var harness = _new_harness()

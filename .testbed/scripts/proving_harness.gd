@@ -169,8 +169,8 @@ enum TrackingSmoothingStyle {
 @export var overlay_visibility_threshold := 0.35
 @export var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.LITE_FILTERED
 @export_range(1, 6, 1) var gesture_eval_interval_frames := 1
-@export var show_landmarks := true
-@export var show_trails := true
+var show_landmarks := true
+var show_trails := true
 
 @onready var status_label: Label = get_node_or_null("Margin/VSplit/Header/StatusLabel") as Label
 @onready var live_status_label: RichTextLabel = get_node_or_null("Margin/VSplit/Header/LiveStatusLabel") as RichTextLabel

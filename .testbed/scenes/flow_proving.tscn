@@ -79,7 +79,6 @@ harness_mode = 1
 prerecorded_video_source = "res://assets/fixtures/flow/swings/left-and-right-hands/same-direction/lr1->lr7/flow_swing_lr1->lr7_repeat_04_take_01.mp4"
 scene_title = "FLOW GESTURE DETECTION"
 tracking_smoothing_style = 1
-show_trails = true
 
 [node name="Background" type="TextureRect" parent="." unique_id=1697466739]
 layout_mode = 1
