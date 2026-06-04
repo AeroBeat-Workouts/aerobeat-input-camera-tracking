@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-03 20:28 EDT
+**Last Updated:** 2026-06-03 21:33 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -181,14 +181,23 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 **Prompt:** Remove the current nonfunctional straight-punch detection path in `aerobeat-input-camera-tracking` and replace it with the agreed four-state machine (`ready`, `triggered`, `not_ready`, `tracking_lost`) driven by wrist velocity and bbox area growth over a configurable short sample window. Use gesture defaults of evaluating only on fresh hand samples, a 4-sample growth window, and a required minimum count of positive growth samples. Store trigger bbox area on `ready -> triggered`, emit state-change events so subscribers can react to left/right punch state changes, hold `triggered` for the configured grace period, rearm only when bbox area retracts below the stored trigger size, and reset into `tracking_lost` when hand tracking becomes invalid. If tracking is lost during `triggered`, enter `tracking_lost`, cancel and reset the grace timer, and clear the stored trigger bbox area. Claim the bead on start and keep left/right ownership tied to the existing pose-tracking association with nearest-wrist fallback when necessary.
 
 **Folders Created/Deleted/Modified:**
-- boxing gesture detection source folders to be identified during implementation
+- `src/detectors/`
+- `src/providers/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
 
 **Files Created/Deleted/Modified:**
-- boxing gesture detection/runtime files in `aerobeat-input-camera-tracking`
+- `src/detectors/pose_detector_substrate.gd`
+- `src/providers/camera_tracking_provider.gd`
+- `src/AeroCameraTracking.gd`
+- `src/input_provider.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_camera_tracking_provider.gd`
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** The agreed straight-punch slice was already landed in commit `29667f4` (`Implement bbox-growth straight punch state machine`), so this task pass verified and documented that implementation instead of redoing it. That commit removes the old nonfunctional straight-punch path and replaces it with the four-state `ready -> triggered -> not_ready -> ready` / `tracking_lost` machine in `pose_detector_substrate.gd`, driven by per-side tracker-associated hand payloads from `REF-02`, forward wrist velocity, and bbox area growth over the repo-owned gesture config defaults (`fresh_samples_only: true`, `sample_window_size: 4`, `min_positive_growth_samples: 3`). The implementation stores `trigger_bbox_area` on `ready -> triggered`, emits `straight_punch_state_changed` events with state-transition details, holds `triggered` for the configured grace frames, rearms only after bbox area retracts below the stored trigger size minus epsilon, and resets into `tracking_lost` with cleared grace/trigger state when hand tracking becomes invalid during any phase including `triggered`. Signal plumbing was also added so `camera_tracking_provider.gd`, `AeroCameraTracking.gd`, and `input_provider.gd` re-emit the new left/right straight-punch state-change events for subscribers. Fresh repo-local validation rerun in this task pass: `godot --headless --path .testbed --import --quit-after 1000`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_aero_camera_tracking.gd -gexit` ✅ (`37/37` tests passed, `268` asserts). Attempted bead claim via `bd update aerobeat-input-camera-tracking-9go --status in_progress --json`, but this repo currently has no Beads database (`bd` reported `no beads database found`), so claim/closure could not be recorded there.
 
 ---
 
