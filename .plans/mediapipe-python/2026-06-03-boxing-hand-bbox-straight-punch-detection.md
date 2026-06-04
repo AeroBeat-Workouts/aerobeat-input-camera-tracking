@@ -158,14 +158,17 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 **Prompt:** Wire the new hand payload into the live preview and recording playback paths exposed by the camera tracking stack so bbox geometry, landmark mode, and validity can be observed before boxing-specific gesture logic is layered on top. Keep this slice strictly about visualization and debug transport in the tracking stack. Claim the bead on start.
 
 **Folders Created/Deleted/Modified:**
-- preview/playback visualization folders to be identified during implementation
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/`
 
 **Files Created/Deleted/Modified:**
-- live preview / playback visualization files
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/README.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Verified the main preview/playback visualization slice was already present in the owner repo from commit `edd416a` (`Add hand bbox preview and playback debug overlays`), which wires normalized per-side hand bbox + landmark overlays into the preview presenter for both live-camera and replay/video-file sessions and exposes presenter-side debug snapshots including bbox preview rects and playback status. In this task pass I added one narrow public-service transport follow-up so non-presenter consumers can inspect the same hand debug payload through `CameraTracking.get_hand_debug_snapshot()`, then covered it with a focused regression test while keeping scope strictly in tracker visualization/debug transport. Validation rerun for this slice: `godot --headless --path .testbed --import --quit-after 1000` ✅; targeted GUT reruns for `test_camera_tracking_exposes_backend_playback_status_through_public_contract`, `test_camera_tracking_exposes_hand_debug_snapshot_through_public_contract`, `test_preview_presenter_exposes_hand_debug_snapshot_and_bbox_preview_rects`, and `test_preview_presenter_exposes_playback_status_alongside_hand_debug_snapshot` ✅. Bead claim was attempted in the tool repo, but `bd` reported `no beads database found`, so the repo could not record the claim/closure state.
 
 ---
 
