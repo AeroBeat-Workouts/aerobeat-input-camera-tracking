@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://d2qmw5c7pnoth" path="res://scripts/boxing_proving_harness.gd" id="1_harness"]
 [ext_resource type="Script" uid="uid://b7yrfwv07ycys" path="res://scripts/landmark_drawer.gd" id="2_landmarks"]
 [ext_resource type="Script" uid="uid://cl21tmxhvdd0x" path="res://scripts/hand_trail_drawer.gd" id="3_trails"]
-[ext_resource type="Script" path="res://scripts/hand_bbox_state_drawer.gd" id="4_bbox"]
+[ext_resource type="Script" uid="uid://cjhoan0524l02" path="res://scripts/hand_bbox_state_drawer.gd" id="4_bbox"]
 [ext_resource type="Texture2D" uid="uid://cv2cmj48bnykt" path="res://assets/backgrounds/perfect-hue-may-08-2026-hd.png" id="5_background"]
 
 [node name="BoxingProving" type="Control" unique_id=212338292]
@@ -14,6 +14,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
+prerecorded_video_source = "res://assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4"
 scene_title = "BOXING GESTURE DETECTION"
 
 [node name="Background" type="TextureRect" parent="." unique_id=2072136514]
@@ -109,13 +110,13 @@ size_flags_horizontal = 3
 
 [node name="TrackerConfigPath" type="LineEdit" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770006]
 layout_mode = 2
-editable = false
 placeholder_text = "Tracker YAML path"
+editable = false
 
 [node name="GestureConfigPath" type="LineEdit" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770007]
 layout_mode = 2
-editable = false
 placeholder_text = "Gesture YAML path"
+editable = false
 
 [node name="CameraPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=609295185]
 layout_mode = 2
@@ -140,7 +141,6 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_landmarks")
 show_debug_hit_targets = true
-show_debug_hit_target_labels = true
 
 [node name="TrailDrawer" type="Control" parent="Margin/VSplit/Content/LeftColumn/CameraPanel/CameraDisplay" unique_id=990877793]
 layout_mode = 1
