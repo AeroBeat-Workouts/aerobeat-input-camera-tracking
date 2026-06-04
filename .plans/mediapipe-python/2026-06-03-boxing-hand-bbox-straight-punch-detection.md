@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-04 10:15 EDT
+**Last Updated:** 2026-06-04 12:45 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -607,6 +607,38 @@ Validation: `godot --headless --path .testbed --import --quit-after 1000` ✅; `
 **Status:** ✅ Complete
 
 **Results:** Claimed bead `aerobeat-input-camera-tracking-uvl` with `bd update ... --status in_progress --json`, then kept this slice tightly scoped to the proving-scene config/debug seam. Inspector clutter cleanup: retired the now-redundant public scene exports `show_landmarks` and `show_trails` in `.testbed/scripts/proving_harness.gd` by converting them from `@export` inspector fields into plain runtime vars, and removed the old scene-authored `show_trails = ...` overrides from both proving scenes so the config-backed `assets/{boxing,flow}.testbed_debug.yaml` bundle is the sole control surface for those toggles. Hand bbox overlay root cause: the boxing harness was reparenting `HandBBoxDrawer` to the preview presenter root, but the tool-owned presenter now exposes an explicit overlay layer; that meant the boxing bbox drawer was not guaranteed to live on the active overlay plane even when `visuals.show_hand_bbox_overlay: true` made it visible. The repair now resolves `get_overlay_layer()` when available, reparents the bbox drawer there, reapplies full-rect overlay sizing after reparent, and still pushes live hand + straight-punch snapshots into the drawer. Added focused proof coverage in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` to verify the bbox drawer reparents into the preview overlay layer, keeps the preview presenter binding, remains full-rect, and receives a non-empty hand snapshot. Exact validation run from repo root: `godot --headless --path .testbed --import --quit-after 1000` ✅; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_proving_harness_trails.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`43/43` tests passed, `235` asserts). With the redundant exports retired and the bbox drawer now mounted on the presenter's overlay layer, this slice is ready for Cookie to pull and re-check in the boxing proving scene without rerunning broader Task 10 QA.
+
+---
+
+### Task 10H: Remove in-scene profile switching UI and hide leftover proving-node tuning exports
+
+**Bead ID:** `aerobeat-input-camera-tracking-96x`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick does not want in-scene tracking profile UI in the new boxing proving scene, and the proving-node editor surface still exposes tuning vars that should no longer be public. Keep this slice tightly scoped to cleanup only: remove the boxing scene's in-scene profile label/picker and the related profile-switch runtime logic, retire the leftover proving-node exported tuning vars from `proving_harness.gd` while preserving current runtime defaults/config behavior, add focused proof if useful, validate truthfully, update the active plan, and close the bead only if the unwanted profile UI is gone and the editor-facing proving-node surface is meaningfully cleaner.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `.testbed/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scenes/boxing_proving.tscn`
+- `.testbed/scenes/flow_proving.tscn`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-96x` with `bd update ... --status in_progress --json` and kept the scope to UI/editor-surface cleanup only. Removed the in-scene boxing profile controls by deleting `ProfileLabel` and `ProfilePicker` from `.testbed/scenes/boxing_proving.tscn`, then removed the matching runtime switching path from `.testbed/scripts/boxing_proving_harness.gd` (`profile_picker` binding, `_profile_switch_in_progress`, `_configure_profile_controls()`, `_on_profile_picker_selected()`, `_apply_selected_profile()`, `_restart_provider_with_selected_profile()`, and the now-unused `PROFILE_FLOW` picker option). The boxing proving harness now stays on its canonical boxing bundle and still shows the resolved tracker/gesture config paths.
+
+Editor-surface cleanup: retired the leftover proving-node tuning exports in `.testbed/scripts/proving_harness.gd` by converting `overlay_visibility_threshold`, `tracking_smoothing_style`, and `gesture_eval_interval_frames` from exported inspector fields into plain runtime vars. Removed the stale scene-authored `tracking_smoothing_style = 1` overrides from both `.testbed/scenes/boxing_proving.tscn` and `.testbed/scenes/flow_proving.tscn` so those hidden runtime values fall back to the script defaults instead of lingering as editable scene data.
+
+Focused proof added in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`: one test now instantiates `boxing_proving.tscn` and proves `ProfileLabel` / `ProfilePicker` are gone while the config-path fields remain, and another asserts `scene_title` is still editor-exposed but `overlay_visibility_threshold`, `tracking_smoothing_style`, and `gesture_eval_interval_frames` are no longer editor-exposed properties on `proving_harness.gd`.
+
+Validation run from repo root: `godot --headless --path .testbed --import --quit-after 1000` ✅; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`9/9` passed, `67` asserts). The GUT run still emitted the pre-existing orphan / RID leak warnings, but there were no new test failures and the cleanup scope passed truthfully. This slice is ready for Cookie to pull again for the narrower proving-scene cleanup check; no Task 10 end-to-end QA was rerun here.
 
 ---
 

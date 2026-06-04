@@ -14,7 +14,6 @@ const HOVER_CARD_TITLE_FONT_SIZE := 18
 const HOVER_CARD_GESTURE_FONT_SIZE := 16
 const BBOX_DRAWER_Z_INDEX := 21
 const PROFILE_BOXING := "boxing"
-const PROFILE_FLOW := "flow"
 const BOARD_ICON_PATHS := {
 	"punch": "res://assets/icons/boxing-punch-1.svg",
 	"hook": "res://assets/icons/boxing-hook-1.svg",
@@ -218,7 +217,6 @@ const HOVER_REQUIREMENT_SPECS := {
 	},
 }
 
-@onready var profile_picker: OptionButton = find_child("ProfilePicker", true, false) as OptionButton
 @onready var tracker_config_path_field: LineEdit = find_child("TrackerConfigPath", true, false) as LineEdit
 @onready var gesture_config_path_field: LineEdit = find_child("GestureConfigPath", true, false) as LineEdit
 @onready var hand_bbox_drawer: Control = find_child("HandBBoxDrawer", true, false) as Control
@@ -239,7 +237,6 @@ var _hover_card_row_nodes := {}
 var _hover_card_row_order: Array[String] = []
 var _hover_card_signature := ""
 var _selected_profile_id := PROFILE_BOXING
-var _profile_switch_in_progress := false
 var _straight_punch_transition_debug := {
 	"left": {},
 	"right": {},
@@ -250,10 +247,8 @@ func _ready() -> void:
 	_resolve_boxing_shell_nodes()
 	_build_tile_grid_if_needed()
 	_apply_boxing_visual_shell()
-	_configure_profile_controls()
 	super._ready()
 	_refresh_profile_controls()
-	_sync_profile_visual_config()
 	_refresh_debug_panels()
 
 func _connect_mode_signals() -> void:
@@ -375,25 +370,9 @@ func _resolve_boxing_shell_nodes() -> void:
 	_board_grid = get_node_or_null("Margin/VSplit/Content/RightPanelScroll/RightColumn/BoardPanel/BoardMargin/BoardGrid") as GridContainer
 
 func _default_profile_id() -> String:
-	return PROFILE_BOXING if harness_mode == HarnessMode.BOXING else PROFILE_FLOW
-
-func _configure_profile_controls() -> void:
-	if profile_picker == null:
-		return
-	if not profile_picker.item_selected.is_connected(_on_profile_picker_selected):
-		profile_picker.item_selected.connect(_on_profile_picker_selected)
-	profile_picker.clear()
-	profile_picker.add_item("Boxing")
-	profile_picker.set_item_metadata(profile_picker.item_count - 1, PROFILE_BOXING)
-	profile_picker.add_item("Flow")
-	profile_picker.set_item_metadata(profile_picker.item_count - 1, PROFILE_FLOW)
-	_refresh_profile_controls()
+	return PROFILE_BOXING
 
 func _refresh_profile_controls() -> void:
-	if profile_picker != null:
-		var selected_index := 0 if _selected_profile_id == PROFILE_BOXING else 1
-		profile_picker.select(selected_index)
-		profile_picker.disabled = _profile_switch_in_progress
 	var bundle := _current_profile_bundle()
 	if tracker_config_path_field != null:
 		tracker_config_path_field.text = _pretty_resource_path(String(bundle.get("camera_tracking_path", "")))
@@ -426,43 +405,6 @@ func _sync_profile_visual_config(bundle: Dictionary = {}) -> void:
 			hand_bbox_drawer.clear_snapshot()
 		else:
 			hand_bbox_drawer.queue_redraw()
-
-func _on_profile_picker_selected(index: int) -> void:
-	if profile_picker == null or _profile_switch_in_progress or index < 0 or index >= profile_picker.item_count:
-		return
-	var next_profile := String(profile_picker.get_item_metadata(index)).strip_edges().to_lower()
-	if next_profile.is_empty() or next_profile == _selected_profile_id:
-		return
-	_profile_switch_in_progress = true
-	_selected_profile_id = next_profile
-	_clear_straight_punch_transition_debug()
-	_refresh_profile_controls()
-	_update_status("Switching tracking profile...", Color.YELLOW)
-	_apply_selected_profile.call_deferred()
-
-func _apply_selected_profile() -> void:
-	var success := await _restart_provider_with_selected_profile()
-	_profile_switch_in_progress = false
-	_refresh_profile_controls()
-	_refresh_debug_panels()
-	if success:
-		_record_event("profile_switched", {"profile": _selected_profile_id})
-		_update_status("Tracking profile switched", Color.GREEN)
-	else:
-		_update_status("Tracking profile switch failed", Color.RED)
-
-func _restart_provider_with_selected_profile() -> bool:
-	_clear_live_camera_runtime_state()
-	await get_tree().process_frame
-	_start_provider()
-	await get_tree().process_frame
-	var tracking_singleton := _resolve_camera_tracking_singleton()
-	if tracking_singleton == null:
-		return false
-	var active_profile := String(tracking_singleton.get_selected_profile_id()).strip_edges().to_lower() if tracking_singleton.has_method("get_selected_profile_id") else ""
-	if active_profile.is_empty():
-		active_profile = _selected_profile_id
-	return active_profile == _selected_profile_id
 
 func _current_profile_bundle() -> Dictionary:
 	var tracking_singleton := _resolve_camera_tracking_singleton()

@@ -15,7 +15,6 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
 scene_title = "BOXING GESTURE DETECTION"
-tracking_smoothing_style = 1
 
 [node name="Background" type="TextureRect" parent="." unique_id=2072136514]
 layout_mode = 1
@@ -105,14 +104,6 @@ layout_mode = 2
 text = "Live camera"
 
 [node name="CameraSourcePicker" type="OptionButton" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770003]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="ProfileLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770004]
-layout_mode = 2
-text = "Tracking profile"
-
-[node name="ProfilePicker" type="OptionButton" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770005]
 layout_mode = 2
 size_flags_horizontal = 3
 

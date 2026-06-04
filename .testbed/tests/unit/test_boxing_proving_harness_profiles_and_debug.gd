@@ -2,6 +2,8 @@ extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const LandmarkDrawerScript = preload("res://scripts/landmark_drawer.gd")
 const HandBBoxDrawerScript = preload("res://scripts/hand_bbox_state_drawer.gd")
+const ProvingHarnessScript = preload("res://scripts/proving_harness.gd")
+const BoxingProvingScene = preload("res://scenes/boxing_proving.tscn")
 
 class FakePreviewPresenter:
 	extends Control
@@ -40,6 +42,31 @@ class FakePreviewPresenter:
 func _new_harness() -> Object:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
 	return harness_script.new()
+
+func _has_editor_exposed_property(subject: Object, property_name: String) -> bool:
+	for property_info_variant: Variant in subject.get_property_list():
+		if not property_info_variant is Dictionary:
+			continue
+		var property_info: Dictionary = property_info_variant
+		if String(property_info.get("name", "")) != property_name:
+			continue
+		return (int(property_info.get("usage", 0)) & PROPERTY_USAGE_EDITOR) != 0
+	return false
+
+func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	assert_not_null(scene_root)
+	assert_null(scene_root.find_child("ProfileLabel", true, false))
+	assert_null(scene_root.find_child("ProfilePicker", true, false))
+	assert_not_null(scene_root.find_child("TrackerConfigPath", true, false))
+	assert_not_null(scene_root.find_child("GestureConfigPath", true, false))
+
+func test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface() -> void:
+	var harness: Object = ProvingHarnessScript.new()
+	assert_true(_has_editor_exposed_property(harness, "scene_title"))
+	assert_false(_has_editor_exposed_property(harness, "overlay_visibility_threshold"))
+	assert_false(_has_editor_exposed_property(harness, "tracking_smoothing_style"))
+	assert_false(_has_editor_exposed_property(harness, "gesture_eval_interval_frames"))
 
 func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> void:
 	var harness = _new_harness()

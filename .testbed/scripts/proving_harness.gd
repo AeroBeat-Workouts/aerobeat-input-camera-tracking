@@ -166,9 +166,9 @@ enum TrackingSmoothingStyle {
 @export_file("*.mp4", "*.mov", "*.avi", "*.mkv", "*.webm") var prerecorded_video_source := ""
 @export var scene_title := "Detector Proving Harness"
 @export_multiline var scene_notes := ""
-@export var overlay_visibility_threshold := 0.35
-@export var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.LITE_FILTERED
-@export_range(1, 6, 1) var gesture_eval_interval_frames := 1
+var overlay_visibility_threshold := 0.35
+var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.LITE_FILTERED
+var gesture_eval_interval_frames := 1
 var show_landmarks := true
 var show_trails := true
 
