@@ -313,14 +313,28 @@ func _build_tracking_config() -> Dictionary:
 			"kind": source_kind,
 			"path": source_id,
 		}
+	var tracking_fields := {
+		"overlay_mode": String(active_config.tracking_overlay_mode).strip_edges() if active_config != null else "optimized",
+		"gesture_eval_interval_frames": int(active_config.gesture_eval_interval_frames) if active_config != null else 1,
+		"min_visibility": float(active_config.min_visibility) if active_config != null else 0.35,
+	}
+	if active_config != null and active_config.has_method("get_selected_profile_bundle"):
+		var profile_bundle: Variant = active_config.get_selected_profile_bundle()
+		if profile_bundle is Dictionary and bool(profile_bundle.get("ok", false)):
+			var tracker_profile: Variant = profile_bundle.get("camera_tracking", {})
+			if tracker_profile is Dictionary:
+				var tracker_tracking: Variant = (tracker_profile as Dictionary).get("tracking", {})
+				if tracker_tracking is Dictionary:
+					var pose_config: Variant = (tracker_tracking as Dictionary).get("pose", {})
+					if pose_config is Dictionary and not pose_config.is_empty():
+						tracking_fields["pose"] = (pose_config as Dictionary).duplicate(true)
+					var hands_config: Variant = (tracker_tracking as Dictionary).get("hands", {})
+					if hands_config is Dictionary and not hands_config.is_empty():
+						tracking_fields["hands"] = (hands_config as Dictionary).duplicate(true)
 	var tracking_config := {
 		"backend": "camera_tracking_default",
 		"source": source_payload,
-		"tracking": {
-			"overlay_mode": String(active_config.tracking_overlay_mode).strip_edges() if active_config != null else "optimized",
-			"gesture_eval_interval_frames": int(active_config.gesture_eval_interval_frames) if active_config != null else 1,
-			"min_visibility": float(active_config.min_visibility) if active_config != null else 0.35,
-		},
+		"tracking": tracking_fields,
 		"preview": {
 			"enabled": true,
 			"surface_mode": "attach",

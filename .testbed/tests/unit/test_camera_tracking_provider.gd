@@ -18,6 +18,35 @@ class PollOnlyTrackingSession:
 	func get_active_config() -> Dictionary:
 		return {"source": {"kind": "video_file", "path": "res://fixtures/replay/test.mp4"}}
 
+class CapturingTrackingSession:
+	extends Node
+
+	signal tracking_updated(frame: Dictionary)
+	signal state_changed(state: String, detail: Dictionary)
+
+	var started_configs: Array = []
+	var active_config: Dictionary = {}
+	var state := "idle"
+
+	func start(config: Dictionary) -> void:
+		active_config = config.duplicate(true)
+		started_configs.append(active_config.duplicate(true))
+		state = "running"
+		state_changed.emit(state, {})
+
+	func stop() -> void:
+		state = "idle"
+		state_changed.emit(state, {})
+
+	func get_tracking_frame() -> Dictionary:
+		return {}
+
+	func get_active_config() -> Dictionary:
+		return active_config.duplicate(true)
+
+	func get_state() -> Dictionary:
+		return {"state": state}
+
 func test_camera_tracking_provider_resolves_repo_owned_scripts_relative_to_its_mount() -> void:
 	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
 	assert_eq(provider._get_repo_src_root_path(), "res://addons/aerobeat-input-camera-tracking/src/")
@@ -257,6 +286,44 @@ func test_camera_tracking_provider_forwards_runtime_filter_semantics_from_config
 	assert_eq(int(tracking_config.get("tracking", {}).get("gesture_eval_interval_frames", -1)), 3)
 	assert_eq(float(tracking_config.get("tracking", {}).get("min_visibility", 0.0)), 0.42)
 	assert_false(bool(tracking_config.get("preview", {}).get("flip_horizontal", true)))
+
+func test_camera_tracking_provider_replay_start_forwards_boxing_pose_and_hand_profile_config() -> void:
+	var tracker = add_child_autoqfree(CapturingTrackingSession.new())
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.manage_tracking_session_lifecycle = true
+	provider.config = provider._ensure_config()
+	provider.config.load_selected_profile_bundle("boxing")
+	provider.config.set_selected_camera_device_id("res://fixtures/replay/test.mp4")
+	provider.set_tracking_session(tracker)
+
+	assert_true(provider.start())
+	assert_eq(tracker.started_configs.size(), 1)
+	var active_config: Dictionary = tracker.get_active_config()
+	assert_eq(String(active_config.get("source", {}).get("kind", "")), "video_file")
+	assert_eq(String(active_config.get("source", {}).get("path", "")), "res://fixtures/replay/test.mp4")
+	assert_true(bool(active_config.get("tracking", {}).get("pose", {}).get("enabled", false)))
+	assert_true(bool(active_config.get("tracking", {}).get("hands", {}).get("enabled", false)))
+	assert_eq(String(active_config.get("tracking", {}).get("hands", {}).get("landmark_mode", "")), "lite")
+	assert_true(bool(active_config.get("tracking", {}).get("hands", {}).get("bbox", {}).get("enabled", false)))
+
+func test_camera_tracking_provider_live_start_forwards_boxing_pose_and_hand_profile_config() -> void:
+	var tracker = add_child_autoqfree(CapturingTrackingSession.new())
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.manage_tracking_session_lifecycle = true
+	provider.config = provider._ensure_config()
+	provider.config.load_selected_profile_bundle("boxing")
+	provider.config.set_selected_camera_device_id("/dev/video5")
+	provider.set_tracking_session(tracker)
+
+	assert_true(provider.start())
+	assert_eq(tracker.started_configs.size(), 1)
+	var active_config: Dictionary = tracker.get_active_config()
+	assert_eq(String(active_config.get("source", {}).get("kind", "")), "live_camera")
+	assert_eq(String(active_config.get("source", {}).get("camera_id", "")), "/dev/video5")
+	assert_true(bool(active_config.get("tracking", {}).get("pose", {}).get("enabled", false)))
+	assert_true(bool(active_config.get("tracking", {}).get("hands", {}).get("enabled", false)))
+	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("inference_interval_frames", -1)), 1)
+	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("validity", {}).get("max_stale_frames", -1)), 2)
 
 func test_camera_tracking_provider_polls_tracking_session_frames_between_signals() -> void:
 	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
