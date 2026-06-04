@@ -1,6 +1,7 @@
 extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const ProvingHarness = preload("res://scripts/proving_harness.gd")
+const LandmarkDrawerScript = preload("res://scripts/landmark_drawer.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
@@ -72,9 +73,19 @@ class FakePreviewPresenter:
 	extends Control
 
 	var tracking_frame := {}
+	var content_rect := Rect2(Vector2.ZERO, Vector2(640.0, 360.0))
 
 	func get_tracking_frame_snapshot() -> Dictionary:
 		return tracking_frame.duplicate(true)
+
+	func map_landmark_to_preview_position(landmark: Dictionary) -> Vector2:
+		return Vector2(
+			float(landmark.get("x", 0.0)) * content_rect.size.x,
+			float(landmark.get("y", 0.0)) * content_rect.size.y
+		)
+
+	func get_content_rect() -> Rect2:
+		return content_rect
 
 class ContractAwareHarness:
 	extends TestProvingHarness
@@ -433,6 +444,31 @@ func test_motion_trails_prefer_presenter_tracking_frame_landmarks_when_available
 	assert_eq(harness._right_trail.size(), 1)
 	assert_true(is_equal_approx(float(harness._left_trail[0].get("y", -1.0)), 0.18))
 	assert_true(is_equal_approx(float(harness._right_trail[0].get("y", -1.0)), 0.26))
+
+func test_pose_updates_feed_preview_space_landmarks_into_boxing_scene_hit_targets() -> void:
+	var presenter := FakePreviewPresenter.new()
+	add_child(presenter)
+	harness.set("_preview_presenter", presenter)
+
+	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
+	landmark_drawer.size = presenter.content_rect.size
+	landmark_drawer.set_preview_presenter(presenter)
+	harness.landmark_drawer = landmark_drawer
+	harness.show_landmarks = true
+
+	harness._on_pose_updated([
+		{"id": 15, "x": 0.64, "y": 0.48, "v": 0.94},
+		{"id": 16, "x": 0.36, "y": 0.48, "v": 0.94},
+	])
+
+	var hit_targets: Array[Dictionary] = landmark_drawer.get_hit_target_snapshot()
+	assert_eq(hit_targets.size(), 2)
+	var left_hit_target: Dictionary = hit_targets[0]
+	var right_hit_target: Dictionary = hit_targets[1]
+	assert_true(is_equal_approx((left_hit_target.get("center", Vector2.ZERO) as Vector2).x, 409.6))
+	assert_true(is_equal_approx((left_hit_target.get("center", Vector2.ZERO) as Vector2).y, 172.8))
+	assert_true(is_equal_approx((right_hit_target.get("center", Vector2.ZERO) as Vector2).x, 230.4))
+	assert_true(is_equal_approx((right_hit_target.get("center", Vector2.ZERO) as Vector2).y, 172.8))
 
 func test_contract_preview_surface_mounts_tool_owned_presenter_and_reparents_overlay_layers() -> void:
 	if harness != null:

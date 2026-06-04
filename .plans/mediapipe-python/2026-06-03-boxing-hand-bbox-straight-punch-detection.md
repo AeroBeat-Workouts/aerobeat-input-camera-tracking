@@ -522,6 +522,64 @@ Validation note: Godot still emitted the pre-existing dummy-renderer leak/object
 
 ---
 
+### Task 10E: Fix remaining landmark preview-space Y mismatch in the boxing proving scene
+
+**Bead ID:** `aerobeat-input-camera-tracking-gx2`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Derrick confirmed the landmark inspector collider layer is still vertically flipped in the boxing proving scene even after the earlier click-target mapping fix. Investigate the remaining preview-space Y mismatch truthfully and repair it. The likely seam is that the input repo testbed is feeding gameplay-space/flipped pose landmarks into a preview-space click/overlay path (for example via `src/tracking_frame_adapter.gd`), but do not assume the exact fix without proving it. Keep the slice focused on making the visible pose skeleton, visible collider debug rings, and click resolution all agree in the boxing proving scene. Claim the bead on start and close it only if the alignment is actually corrected and validated.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `src/tracking_frame_adapter.gd`
+- `src/providers/camera_tracking_provider.gd`
+- `.testbed/tests/unit/test_tracking_frame_adapter.gd`
+- `.testbed/tests/unit/test_camera_tracking_provider.gd`
+- `.testbed/tests/unit/test_proving_harness_trails.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Root cause proved: the remaining vertical mismatch was no longer in `.testbed/scripts/landmark_drawer.gd`; it was upstream in the shared owner-repo adapter/provider seam. `src/tracking_frame_adapter.gd` still inverted landmark `y` into bottom-left gameplay space inside the single payload used for both detector math and proving-scene overlays. The tool-owned preview presenter renders MediaPipe landmarks in native top-left preview space, and Task 10A/10B already moved click-target mapping onto that preview-space contract, so the proving scene was still receiving pose landmarks with `y` flipped once too early. That left the visible presenter skeleton correct while the boxing proving scene's landmark drawer / collider debug rings / click resolution path consumed vertically mirrored landmark coordinates.
+
+Narrow repair landed by splitting the adapter output into two explicit spaces instead of hiding gameplay conversion in the shared overlay payload. `src/tracking_frame_adapter.gd` now preserves top-left preview-space `y` in `landmarks_from_tracking_frame()` and exposes a separate `gameplay_landmarks_from_tracking_frame()` helper for the legacy detector path. `src/providers/camera_tracking_provider.gd` now feeds gameplay-space landmarks only into detector/runtime math, while `pose_updated` and `_all_poses` keep preview-space landmarks for proving-scene overlays and inspection. Focused regression coverage was updated in `.testbed/tests/unit/test_tracking_frame_adapter.gd`, `.testbed/tests/unit/test_camera_tracking_provider.gd`, and `.testbed/tests/unit/test_proving_harness_trails.gd`, including a new harness-level proof that `_on_pose_updated()` now drives the real `LandmarkDrawer` hit targets to the same preview-space positions the presenter expects.
+
+Exact validation performed:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_tracking_frame_adapter.gd,res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_landmark_drawer.gd,res://tests/unit/test_proving_harness_trails.gd -gexit` ✅ (`52/52` passed, `241` asserts)
+- `godot --headless --path .testbed --script res://scripts/proof_skeleton_overlay.gd` ✅ (boxing proving scene booted through the contract path and rewrote `.artifacts/skeleton-proof/report.json` showing presenter-space landmark positions with top-left `y` semantics)
+
+This keeps gameplay-facing detector math on the old bottom-left normalized contract while making the proving-scene visible skeleton, visible hit-target rings, and click resolution all consume the same preview-space landmark `y`. That leaves Task 10F cleaner because the remaining work can focus on debug-toggle ownership instead of compensating for a hidden mixed-coordinate payload.
+
+---
+
+### Task 10F: Promote proving-scene visual debug toggles into input-owned config
+
+**Bead ID:** `aerobeat-input-camera-tracking-ek1`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Promote the useful proving-scene visual debug toggles out of ad-hoc scene-only exports and into the input repo's owned config path. Derrick wants testbed-only debug controls for things like landmark visibility, trail visibility, hand bbox overlay visibility, landmark hit-target visibility, and landmark hit-target labels to live in `aerobeat-input-camera-tracking` config rather than in `aerobeat-tool-camera-tracking`. Keep this slice scoped to the input repo/testbed config surface and scene wiring; do not widen into tracker-layer config ownership. Claim the bead on start and close it only if the toggles are actually driven from the input-owned config path and the boxing proving scene honors them.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `.testbed/`
+- `src/config/` if required for input-owned config plumbing
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- input-owned config files and proving-scene/testbed files that consume the new debug booleans
+- focused validation artifacts or tests if added
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`

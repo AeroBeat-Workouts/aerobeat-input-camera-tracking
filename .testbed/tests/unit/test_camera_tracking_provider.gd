@@ -97,6 +97,8 @@ func test_camera_tracking_provider_consumes_normalized_tracking_frames() -> void
 	assert_ne(provider.get_tracking_state(), &"lost")
 	assert_eq(provider.get_all_poses().size(), 1)
 	assert_ne(provider.get_detector_state().get("tracking_state", &""), &"lost")
+	var pose_landmarks: Array = (provider.get_all_poses()[0] as Dictionary).get("landmarks", [])
+	assert_true(is_equal_approx(float((pose_landmarks[3] as Dictionary).get("y", 0.0)), 0.48), "Stored pose snapshots should stay in preview-space for proving-scene overlays")
 
 	var left_hand: Variant = provider.get_left_hand_position(provider.TrackingMode.MODE_2D)
 	assert_true(left_hand is Vector2)
@@ -108,7 +110,8 @@ func test_camera_tracking_provider_consumes_normalized_tracking_frames() -> void
 	)
 	assert_eq(emitted_left_hand.size(), 1)
 	assert_true(is_equal_approx(float((emitted_left_hand[0] as Dictionary).get("x", 0.0)), 0.64))
-	assert_true(is_equal_approx(float((emitted_left_hand[0] as Dictionary).get("y", 0.0)), 0.52), "Provider should emit bottom-left gameplay-normalized y for overlays and detector math")
+	assert_true(is_equal_approx(float((emitted_left_hand[0] as Dictionary).get("y", 0.0)), 0.48), "Provider pose_updated overlays should stay in preview-space so skeletons and click targets match the presenter")
+	assert_true(is_equal_approx(left_hand.y, 0.52), "Gameplay-facing hand getters should still expose bottom-left normalized y for detector/math consumers")
 
 func test_camera_tracking_provider_attaches_preview_and_can_change_camera_id() -> void:
 	var tracker = add_child_autoqfree(CameraTrackingScript.new())

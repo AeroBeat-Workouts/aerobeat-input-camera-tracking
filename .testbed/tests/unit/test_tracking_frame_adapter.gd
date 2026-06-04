@@ -2,8 +2,8 @@ extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const TrackingFrameAdapter = preload("res://addons/aerobeat-input-camera-tracking/src/tracking_frame_adapter.gd")
 
-func test_tracking_frame_adapter_normalizes_visibility_keys_and_inverts_y_once_for_gameplay_space() -> void:
-	var landmarks := TrackingFrameAdapter.landmarks_from_tracking_frame({
+func test_tracking_frame_adapter_preserves_preview_space_landmark_y_and_normalizes_visibility_keys() -> void:
+	var frame := {
 		"tracking_state": "tracked",
 		"preview_transform": {
 			"flip_horizontal": true,
@@ -13,14 +13,19 @@ func test_tracking_frame_adapter_normalizes_visibility_keys_and_inverts_y_once_f
 			{"id": 15, "x": 0.25, "y": 0.75, "z": -0.10, "visibility": 0.82},
 			{"id": 16, "x": 0.70, "y": 0.35, "z": 0.05, "v": 0.91},
 		],
-	})
+	}
+	var landmarks := TrackingFrameAdapter.landmarks_from_tracking_frame(frame)
 	assert_eq(landmarks.size(), 2)
 	assert_eq(int(landmarks[0].get("id", -1)), 15)
 	assert_true(is_equal_approx(float(landmarks[0].get("x", 0.0)), 0.25))
-	assert_true(is_equal_approx(float(landmarks[0].get("y", 0.0)), 0.25))
+	assert_true(is_equal_approx(float(landmarks[0].get("y", 0.0)), 0.75))
 	assert_true(is_equal_approx(float(landmarks[0].get("v", 0.0)), 0.82))
-	assert_true(is_equal_approx(float(landmarks[1].get("y", 0.0)), 0.65))
+	assert_true(is_equal_approx(float(landmarks[1].get("y", 0.0)), 0.35))
 	assert_true(is_equal_approx(float(landmarks[1].get("v", 0.0)), 0.91))
+
+	var gameplay_landmarks := TrackingFrameAdapter.gameplay_landmarks_from_tracking_frame(frame)
+	assert_true(is_equal_approx(float(gameplay_landmarks[0].get("y", 0.0)), 0.25))
+	assert_true(is_equal_approx(float(gameplay_landmarks[1].get("y", 0.0)), 0.65))
 
 func test_tracking_frame_adapter_treats_reacquiring_frames_as_active() -> void:
 	assert_true(TrackingFrameAdapter.tracking_state_is_active({"tracking_state": "tracked"}))

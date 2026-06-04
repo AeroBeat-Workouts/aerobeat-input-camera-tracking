@@ -240,12 +240,15 @@ func ingest_tracking_frame(frame: Dictionary) -> void:
 		_emit_tracking_edge_signals(false)
 		return
 	var active: bool = bool(adapter_script.tracking_state_is_active(frame))
-	var normalized_landmarks: Array = adapter_script.landmarks_from_tracking_frame(frame)
-	if active and not normalized_landmarks.is_empty():
-		_process_primary_landmarks(normalized_landmarks, true, true, adapter_script.get_timestamp_ms(frame))
+	var preview_landmarks: Array = adapter_script.landmarks_from_tracking_frame(frame)
+	var gameplay_landmarks: Array = adapter_script.gameplay_landmarks_from_tracking_frame(frame)
+	if active and not gameplay_landmarks.is_empty():
+		_process_primary_landmarks(gameplay_landmarks, false, false, adapter_script.get_timestamp_ms(frame))
+		_multi_pose_from_current_landmarks(preview_landmarks)
+		pose_updated.emit(preview_landmarks.duplicate(true))
 	else:
 		_clear_tracking_runtime_state(active)
-	_multi_pose_from_current_landmarks(normalized_landmarks)
+		_multi_pose_from_current_landmarks([])
 	_emit_tracking_edge_signals(active)
 
 func _process(_delta: float) -> void:
