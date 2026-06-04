@@ -119,10 +119,10 @@ straight_punch:
   evaluation:
     fresh_samples_only: true
     sample_window_size: 4
-    min_positive_growth_samples: 3
+    min_positive_growth_samples: 2
   thresholds:
     min_wrist_velocity: 0.18
-    min_bbox_area_growth: 0.010
+    min_bbox_area_growth: 0.006
   timing:
     triggered_grace_frames: 3
   rearm:
@@ -147,9 +147,9 @@ straight_punch:
 - `straight_punch.enabled: true`
 - `straight_punch.evaluation.fresh_samples_only: true`
 - `straight_punch.evaluation.sample_window_size: 4`
-- `straight_punch.evaluation.min_positive_growth_samples: 3`
+- `straight_punch.evaluation.min_positive_growth_samples: 2`
 - `straight_punch.thresholds.min_wrist_velocity: 0.18`
-- `straight_punch.thresholds.min_bbox_area_growth: 0.010`
+- `straight_punch.thresholds.min_bbox_area_growth: 0.006`
 - `straight_punch.timing.triggered_grace_frames: 3`
 - `straight_punch.rearm.bbox_area_retract_epsilon: 0.003`
 - `straight_punch.state_machine.lost_tracking_reacquire_stable_frames: 2`

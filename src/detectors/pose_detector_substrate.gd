@@ -13,9 +13,9 @@ const STRAIGHT_PUNCH_STATE_NOT_READY := "not_ready"
 const STRAIGHT_PUNCH_STATE_TRACKING_LOST := "tracking_lost"
 const STRAIGHT_PUNCH_DEFAULT_FRESH_SAMPLES_ONLY := true
 const STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE := 4
-const STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES := 3
+const STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES := 2
 const STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY := 0.18
-const STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH := 0.010
+const STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH := 0.006
 const STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES := 3
 const STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON := 0.003
 const STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES := 2
@@ -520,15 +520,17 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 
 func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+	var hands: Dictionary = metrics.get("hands", {}) if not metrics.is_empty() and metrics.get("hands", {}) is Dictionary else _latest_state.get("metrics", {}).get("hands", {})
 	return {
-		"left": _build_straight_punch_side_debug("left", measurements),
-		"right": _build_straight_punch_side_debug("right", measurements),
+		"left": _build_straight_punch_side_debug("left", measurements, hands),
+		"right": _build_straight_punch_side_debug("right", measurements, hands),
 	}
 
-func _build_straight_punch_side_debug(side: String, measurements: Dictionary) -> Dictionary:
+func _build_straight_punch_side_debug(side: String, measurements: Dictionary, hands: Dictionary = {}) -> Dictionary:
 	var state := _get_straight_punch_state(side)
 	var straight_punch_config := _get_straight_punch_config()
-	var hands: Dictionary = measurements.get("hands", {}) if measurements.get("hands", {}) is Dictionary else _latest_state.get("metrics", {}).get("hands", {})
+	if hands.is_empty():
+		hands = _latest_state.get("metrics", {}).get("hands", {})
 	var hand_payload: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
 	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
 	return {
@@ -778,9 +780,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		while history.size() > sample_window_size:
 			history.remove_at(0)
 		state["bbox_area_history"] = history
-		var min_bbox_area_growth := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.0)
-		state["positive_growth_samples"] = _count_positive_bbox_growth_samples(history, min_bbox_area_growth)
-		state["last_bbox_area_growth"] = _latest_bbox_area_growth(history)
+		state["positive_growth_samples"] = _count_positive_bbox_growth_samples(history)
+		state["last_bbox_area_growth"] = _window_bbox_area_growth(history)
 	else:
 		state["bbox_area_history"] = history
 
@@ -800,8 +801,9 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	if phase == STRAIGHT_PUNCH_STATE_READY:
 		if fresh_sample:
 			var min_wrist_velocity := maxf(float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.0)
+			var min_bbox_area_growth := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.0)
 			var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
-			if wrist_velocity >= min_wrist_velocity and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples:
+			if wrist_velocity >= min_wrist_velocity and float(state.get("last_bbox_area_growth", 0.0)) + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples:
 				state["trigger_bbox_area"] = bbox_area
 				state["grace_frames_remaining"] = max(0, int(straight_punch_config.get("triggered_grace_frames", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES)))
 				_emit_power_event(events, event_name, _compute_straight_punch_power(wrist_velocity, bbox_area, state, straight_punch_config))
@@ -1254,20 +1256,20 @@ func _is_fresh_tracking_hand_sample(hand_payload: Dictionary) -> bool:
 		return false
 	return String(hand_payload.get("tracking_state", "")) == "tracked"
 
-func _count_positive_bbox_growth_samples(history: Array, min_bbox_area_growth: float) -> int:
+func _count_positive_bbox_growth_samples(history: Array) -> int:
 	if history.size() < 2:
 		return 0
 	var positive_growth_samples := 0
 	for idx in range(1, history.size()):
 		var growth := float(history[idx]) - float(history[idx - 1])
-		if growth + 0.000001 >= min_bbox_area_growth:
+		if growth > 0.000001:
 			positive_growth_samples += 1
 	return positive_growth_samples
 
-func _latest_bbox_area_growth(history: Array) -> float:
+func _window_bbox_area_growth(history: Array) -> float:
 	if history.size() < 2:
 		return 0.0
-	return float(history[history.size() - 1]) - float(history[history.size() - 2])
+	return float(history[history.size() - 1]) - float(history[0])
 
 func _compute_straight_punch_power(wrist_velocity: float, bbox_area: float, state: Dictionary, straight_punch_config: Dictionary) -> float:
 	var velocity_floor := maxf(float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.000001)
