@@ -12,6 +12,9 @@ const HOVER_CARD_MARGIN := 14.0
 const HOVER_CARD_BODY_FONT_SIZE := 14
 const HOVER_CARD_TITLE_FONT_SIZE := 18
 const HOVER_CARD_GESTURE_FONT_SIZE := 16
+const BBOX_DRAWER_Z_INDEX := 21
+const PROFILE_BOXING := "boxing"
+const PROFILE_FLOW := "flow"
 const BOARD_ICON_PATHS := {
 	"punch": "res://assets/icons/boxing-punch-1.svg",
 	"hook": "res://assets/icons/boxing-hook-1.svg",
@@ -226,6 +229,11 @@ const HOVER_REQUIREMENT_SPECS := {
 	},
 }
 
+@onready var profile_picker: OptionButton = find_child("ProfilePicker", true, false) as OptionButton
+@onready var tracker_config_path_field: LineEdit = find_child("TrackerConfigPath", true, false) as LineEdit
+@onready var gesture_config_path_field: LineEdit = find_child("GestureConfigPath", true, false) as LineEdit
+@onready var hand_bbox_drawer: Control = find_child("HandBBoxDrawer", true, false) as Control
+
 var _background_rect: TextureRect
 var _header_icon: TextureRect
 var _board_panel: PanelContainer
@@ -241,12 +249,17 @@ var _hover_card_footer_label: Label
 var _hover_card_row_nodes := {}
 var _hover_card_row_order: Array[String] = []
 var _hover_card_signature := ""
+var _selected_profile_id := PROFILE_BOXING
+var _profile_switch_in_progress := false
 
 func _ready() -> void:
+	_selected_profile_id = _default_profile_id()
 	_resolve_boxing_shell_nodes()
 	_build_tile_grid_if_needed()
 	_apply_boxing_visual_shell()
+	_configure_profile_controls()
 	super._ready()
+	_refresh_profile_controls()
 	_refresh_debug_panels()
 
 func _refresh_debug_panels() -> void:
@@ -257,13 +270,34 @@ func _refresh_debug_panels() -> void:
 		title_label.text = scene_title if not scene_title.is_empty() else "BOXING GESTURE DETECTION"
 	if notes_label:
 		notes_label.visible = false
+	_refresh_profile_controls()
+	_sync_hand_bbox_drawer()
 	if live_status_label:
 		live_status_label.text = _build_boxing_live_line()
 	if quick_stats_label:
 		quick_stats_label.text = _build_boxing_event_feed_text()
 		if quick_stats_label.has_method("scroll_to_line"):
-			quick_stats_label.scroll_to_line(max(quick_stats_label.get_line_count() - 1, 0))
+			quick_stats_label.scroll_to_line(0)
 	_update_tile_states()
+
+func _sync_hand_bbox_drawer() -> void:
+	if hand_bbox_drawer == null:
+		return
+	_configure_overlay_drawer(hand_bbox_drawer, BBOX_DRAWER_Z_INDEX)
+	if _preview_presenter != null and is_instance_valid(_preview_presenter):
+		if hand_bbox_drawer.get_parent() != _preview_presenter:
+			hand_bbox_drawer.reparent(_preview_presenter)
+		if hand_bbox_drawer.has_method("set_preview_presenter"):
+			hand_bbox_drawer.set_preview_presenter(_preview_presenter)
+	var hand_snapshot := _tracker_hand_debug_snapshot()
+	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
+	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
+	if hand_snapshot.is_empty():
+		if hand_bbox_drawer.has_method("clear_snapshot"):
+			hand_bbox_drawer.clear_snapshot()
+		return
+	if hand_bbox_drawer.has_method("update_snapshot"):
+		hand_bbox_drawer.update_snapshot(hand_snapshot, straight_punch_debug)
 
 func _record_event(event_name: String, payload: Dictionary) -> void:
 	if harness_mode == HarnessMode.BOXING:
@@ -293,6 +327,92 @@ func _resolve_boxing_shell_nodes() -> void:
 	_header_icon = find_child("HeaderIcon", true, false) as TextureRect
 	_board_panel = get_node_or_null("Margin/VSplit/Content/RightPanelScroll/RightColumn/BoardPanel") as PanelContainer
 	_board_grid = get_node_or_null("Margin/VSplit/Content/RightPanelScroll/RightColumn/BoardPanel/BoardMargin/BoardGrid") as GridContainer
+
+func _default_profile_id() -> String:
+	return PROFILE_BOXING if harness_mode == HarnessMode.BOXING else PROFILE_FLOW
+
+func _configure_profile_controls() -> void:
+	if profile_picker == null:
+		return
+	if not profile_picker.item_selected.is_connected(_on_profile_picker_selected):
+		profile_picker.item_selected.connect(_on_profile_picker_selected)
+	profile_picker.clear()
+	profile_picker.add_item("Boxing")
+	profile_picker.set_item_metadata(profile_picker.item_count - 1, PROFILE_BOXING)
+	profile_picker.add_item("Flow")
+	profile_picker.set_item_metadata(profile_picker.item_count - 1, PROFILE_FLOW)
+	_refresh_profile_controls()
+
+func _refresh_profile_controls() -> void:
+	if profile_picker != null:
+		var selected_index := 0 if _selected_profile_id == PROFILE_BOXING else 1
+		profile_picker.select(selected_index)
+		profile_picker.disabled = _profile_switch_in_progress
+	var bundle := _current_profile_bundle()
+	if tracker_config_path_field != null:
+		tracker_config_path_field.text = _pretty_resource_path(String(bundle.get("camera_tracking_path", "")))
+		tracker_config_path_field.tooltip_text = String(bundle.get("camera_tracking_path", ""))
+	if gesture_config_path_field != null:
+		gesture_config_path_field.text = _pretty_resource_path(String(bundle.get("gesture_detection_path", "")))
+		gesture_config_path_field.tooltip_text = String(bundle.get("gesture_detection_path", ""))
+
+func _on_profile_picker_selected(index: int) -> void:
+	if profile_picker == null or _profile_switch_in_progress or index < 0 or index >= profile_picker.item_count:
+		return
+	var next_profile := String(profile_picker.get_item_metadata(index)).strip_edges().to_lower()
+	if next_profile.is_empty() or next_profile == _selected_profile_id:
+		return
+	_profile_switch_in_progress = true
+	_selected_profile_id = next_profile
+	_refresh_profile_controls()
+	_update_status("Switching tracking profile...", Color.YELLOW)
+	_apply_selected_profile.call_deferred()
+
+func _apply_selected_profile() -> void:
+	var success := await _restart_provider_with_selected_profile()
+	_profile_switch_in_progress = false
+	_refresh_profile_controls()
+	_refresh_debug_panels()
+	if success:
+		_record_event("profile_switched", {"profile": _selected_profile_id})
+		_update_status("Tracking profile switched", Color.GREEN)
+	else:
+		_update_status("Tracking profile switch failed", Color.RED)
+
+func _restart_provider_with_selected_profile() -> bool:
+	_clear_live_camera_runtime_state()
+	await get_tree().process_frame
+	_start_provider()
+	await get_tree().process_frame
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton == null:
+		return false
+	var active_profile := String(tracking_singleton.get_selected_profile_id()).strip_edges().to_lower() if tracking_singleton.has_method("get_selected_profile_id") else ""
+	if active_profile.is_empty():
+		active_profile = _selected_profile_id
+	return active_profile == _selected_profile_id
+
+func _current_profile_bundle() -> Dictionary:
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null and tracking_singleton.has_method("get_selected_profile_bundle"):
+		var runtime_bundle: Variant = tracking_singleton.get_selected_profile_bundle()
+		if runtime_bundle is Dictionary and bool(runtime_bundle.get("ok", false)):
+			var runtime_profile := String(runtime_bundle.get("profile", "")).strip_edges().to_lower()
+			if runtime_profile.is_empty() or runtime_profile == _selected_profile_id:
+				return runtime_bundle.duplicate(true)
+	var config := CameraTrackingConfigScript.new()
+	var bundle: Variant = config.load_selected_profile_bundle(_selected_profile_id)
+	if bundle is Dictionary and bool(bundle.get("ok", false)):
+		return bundle.duplicate(true)
+	return {
+		"ok": false,
+		"profile": _selected_profile_id,
+	}
+
+func _pretty_resource_path(path: String) -> String:
+	if path.begins_with("res://addons/aerobeat-input-camera-tracking/"):
+		return path.replace("res://addons/aerobeat-input-camera-tracking/", "res://")
+	return path
 
 func _build_tile_grid_if_needed() -> void:
 	if _board_grid == null or not _tile_refs.is_empty():
@@ -1009,17 +1129,138 @@ func _build_boxing_event_feed_text() -> String:
 	else:
 		lines.append("")
 		lines.append_array(_boxing_event_feed)
+
+	var bundle := _current_profile_bundle()
+	var hand_snapshot := _tracker_hand_debug_snapshot()
+	var playback: Dictionary = hand_snapshot.get("playback", {}) if hand_snapshot.get("playback", {}) is Dictionary else {}
+	var tracker_document: Dictionary = bundle.get("camera_tracking", {}) if bundle.get("camera_tracking", {}) is Dictionary else {}
+	var gesture_document: Dictionary = bundle.get("gesture_detection", {}) if bundle.get("gesture_detection", {}) is Dictionary else {}
+	var tracking: Dictionary = tracker_document.get("tracking", {}) if tracker_document.get("tracking", {}) is Dictionary else {}
+	var pose_config: Dictionary = tracking.get("pose", {}) if tracking.get("pose", {}) is Dictionary else {}
+	var hands_config: Dictionary = tracking.get("hands", {}) if tracking.get("hands", {}) is Dictionary else {}
+	var hand_validity: Dictionary = hands_config.get("validity", {}) if hands_config.get("validity", {}) is Dictionary else {}
+	var straight_config: Dictionary = gesture_document.get("straight_punch", {}) if gesture_document.get("straight_punch", {}) is Dictionary else {}
+	var straight_eval: Dictionary = straight_config.get("evaluation", {}) if straight_config.get("evaluation", {}) is Dictionary else {}
+	var straight_thresholds: Dictionary = straight_config.get("thresholds", {}) if straight_config.get("thresholds", {}) is Dictionary else {}
+	var straight_timing: Dictionary = straight_config.get("timing", {}) if straight_config.get("timing", {}) is Dictionary else {}
+	var straight_rearm: Dictionary = straight_config.get("rearm", {}) if straight_config.get("rearm", {}) is Dictionary else {}
+	var straight_state_machine: Dictionary = straight_config.get("state_machine", {}) if straight_config.get("state_machine", {}) is Dictionary else {}
+
+	lines.append("")
+	lines.append("Profile bundle")
+	lines.append("--------------")
+	lines.append("Profile: %s" % String(bundle.get("profile", _selected_profile_id)))
+	lines.append("Tracker YAML: %s" % _pretty_resource_path(String(bundle.get("camera_tracking_path", ""))))
+	lines.append("Gesture YAML: %s" % _pretty_resource_path(String(bundle.get("gesture_detection_path", ""))))
+
+	lines.append("")
+	lines.append("Tracker tuning")
+	lines.append("--------------")
+	lines.append("Pose smoothing: %s" % String(pose_config.get("smoothing_style", _tracking_smoothing_style_spec().get("label", "unknown"))))
+	lines.append("Pose cadence: every %s frame(s)" % str(int(pose_config.get("inference_interval_frames", 1))))
+	lines.append("Hand cadence: every %s frame(s)" % str(int(hands_config.get("inference_interval_frames", 1))))
+	lines.append("BBox recompute cadence: every %s frame(s)" % str(int(hands_config.get("bbox_recompute_interval_frames", 1))))
+	lines.append("Hand tracking enabled: %s" % _fmt_bool(bool(hands_config.get("enabled", false))))
+	lines.append("Hand reacquire stable frames: %d" % int(hand_validity.get("reacquire_stable_frames", 0)))
+	lines.append("Hand max stale frames: %d" % int(hand_validity.get("max_stale_frames", 0)))
+
+	lines.append("")
+	lines.append("Straight-punch tuning")
+	lines.append("---------------------")
+	lines.append("Enabled: %s" % _fmt_bool(bool(straight_config.get("enabled", false))))
+	lines.append("Fresh samples only: %s" % _fmt_bool(bool(straight_eval.get("fresh_samples_only", true))))
+	lines.append("Sample window size: %d" % int(straight_eval.get("sample_window_size", 0)))
+	lines.append("Positive growth samples: %d" % int(straight_eval.get("min_positive_growth_samples", 0)))
+	lines.append("Min wrist velocity: %s" % _fmt_float(straight_thresholds.get("min_wrist_velocity", 0.0)))
+	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))
+	lines.append("Triggered grace frames: %d" % int(straight_timing.get("triggered_grace_frames", 0)))
+	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
+	lines.append("Lost reacquire stable frames: %d" % int(straight_state_machine.get("lost_tracking_reacquire_stable_frames", 0)))
+
+	lines.append("")
+	lines.append("Tracker hand truth")
+	lines.append("------------------")
+	lines.append("Frame: %d  source=%s  playback=%s" % [
+		int(hand_snapshot.get("frame_index", 0)),
+		String(hand_snapshot.get("source_kind", _camera_source_compact_text())),
+		_fmt_playback_status(playback),
+	])
+	lines.append(_build_hand_debug_line("left", hand_snapshot))
+	lines.append(_build_hand_debug_line("right", hand_snapshot))
 	return "\n".join(lines)
 
 func _build_boxing_live_line() -> String:
 	var state: Dictionary = _latest_state
 	var pose_count := int(provider.get_num_poses()) if provider != null else 0
 	var last_event_name := _latest_event_name()
-	return "%s • %s • poses %d • last %s" % [
+	var bundle := _current_profile_bundle()
+	return "%s • profile %s • %s • poses %d • last %s" % [
 		_camera_source_summary_text(),
+		String(bundle.get("profile", _selected_profile_id)),
 		_tracking_status_text(state),
 		pose_count,
 		String(UI_EVENT_LABELS.get(last_event_name, last_event_name if last_event_name != "" else "none")),
+	]
+
+func _build_runtime_config() -> Variant:
+	var config: Variant = super._build_runtime_config()
+	if config == null:
+		return null
+	if config.has_method("set_profile_id"):
+		var result: Variant = config.set_profile_id(_selected_profile_id)
+		if result is Dictionary and not bool(result.get("ok", false)):
+			push_warning("[BoxingProvingHarness] Failed to load selected profile bundle for %s" % _selected_profile_id)
+	return config
+
+func _tracker_hand_debug_snapshot() -> Dictionary:
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("get_hand_debug_snapshot"):
+		var snapshot: Variant = _preview_presenter.get_hand_debug_snapshot()
+		return snapshot.duplicate(true) if snapshot is Dictionary else {}
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null and tracking_singleton.has_method("get_tracking_frame"):
+		var frame: Dictionary = tracking_singleton.get_tracking_frame()
+		var playback := tracking_singleton.get_playback_status() if tracking_singleton.has_method("get_playback_status") else {}
+		return {
+			"frame_index": int(frame.get("frame_index", 0)),
+			"source_kind": String(frame.get("source_kind", "")),
+			"tracking_state": String(frame.get("tracking_state", "idle")),
+			"hand_tracking": frame.get("hand_tracking", {}).duplicate(true) if frame.get("hand_tracking", {}) is Dictionary else {},
+			"hands": frame.get("hands", {}).duplicate(true) if frame.get("hands", {}) is Dictionary else {},
+			"playback": playback.duplicate(true) if playback is Dictionary else {},
+		}
+	return {}
+
+func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
+	var hands: Dictionary = hand_snapshot.get("hands", {}) if hand_snapshot.get("hands", {}) is Dictionary else {}
+	var hand: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
+	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
+	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
+	var side_debug: Dictionary = (straight_punch_debug.get(side, {}) as Dictionary)
+	var state_name := String(side_debug.get("state", side_debug.get("phase", hand.get("tracking_state", "tracking_lost"))))
+	var bbox: Dictionary = hand.get("bbox", {}) if hand.get("bbox", {}) is Dictionary else {}
+	return "%s: state=%s tracking=%s valid=%s wrist_vel=%s bbox_area=%s bbox_growth=%s grace=%d reacquire=%d stale=%d" % [
+		"L" if side == "left" else "R",
+		state_name,
+		String(hand.get("tracking_state", "idle")),
+		_fmt_bool(bool(hand.get("tracking_valid", false))),
+		_fmt_float(side_debug.get("wrist_velocity", 0.0)),
+		_fmt_float(bbox.get("area", side_debug.get("bbox_area", 0.0))),
+		_fmt_float(side_debug.get("bbox_area_growth", 0.0)),
+		int(side_debug.get("grace_frames_remaining", 0)),
+		int(side_debug.get("reacquire_valid_samples", 0)),
+		int(hand.get("stale_frames", 0)),
+	]
+
+func _fmt_playback_status(playback: Dictionary) -> String:
+	if playback.is_empty():
+		return "live"
+	var playing := bool(playback.get("playing", false))
+	var position := float(playback.get("position_seconds", playback.get("position_sec", 0.0)))
+	var duration := float(playback.get("duration_seconds", playback.get("duration_sec", 0.0)))
+	return "%s %s/%s" % [
+		"playing" if playing else "paused",
+		_fmt_duration(position),
+		_fmt_duration(duration),
 	]
 
 func _compact_status_text(text: String) -> String:

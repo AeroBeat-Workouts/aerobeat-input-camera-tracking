@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://d2qmw5c7pnoth" path="res://scripts/boxing_proving_harness.gd" id="1_harness"]
 [ext_resource type="Script" uid="uid://b7yrfwv07ycys" path="res://scripts/landmark_drawer.gd" id="2_landmarks"]
 [ext_resource type="Script" uid="uid://cl21tmxhvdd0x" path="res://scripts/hand_trail_drawer.gd" id="3_trails"]
+[ext_resource type="Script" path="res://scripts/hand_bbox_state_drawer.gd" id="4_bbox"]
 [ext_resource type="Texture2D" uid="uid://cv2cmj48bnykt" path="res://assets/backgrounds/perfect-hue-may-08-2026-hd.png" id="5_background"]
 
 [node name="BoxingProving" type="Control" unique_id=212338292]
@@ -108,6 +109,24 @@ text = "Live camera"
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="ProfileLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770004]
+layout_mode = 2
+text = "Tracking profile"
+
+[node name="ProfilePicker" type="OptionButton" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770005]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TrackerConfigPath" type="LineEdit" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770006]
+layout_mode = 2
+editable = false
+placeholder_text = "Tracker YAML path"
+
+[node name="GestureConfigPath" type="LineEdit" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770007]
+layout_mode = 2
+editable = false
+placeholder_text = "Gesture YAML path"
+
 [node name="CameraPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=609295185]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -140,6 +159,16 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("3_trails")
+
+[node name="HandBBoxDrawer" type="Control" parent="Margin/VSplit/Content/LeftColumn/CameraPanel/CameraDisplay" unique_id=990877794]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("4_bbox")
 
 [node name="QuickStatsPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=1045360063]
 custom_minimum_size = Vector2(0, 210)
