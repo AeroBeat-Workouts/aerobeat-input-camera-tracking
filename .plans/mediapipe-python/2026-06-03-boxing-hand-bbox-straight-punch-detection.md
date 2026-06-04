@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-03 21:33 EDT
+**Last Updated:** 2026-06-03 21:57 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -211,15 +211,20 @@ Use these IDs in implementation, QA, and audit so cross-repo contract changes st
 
 **Folders Created/Deleted/Modified:**
 - `/.testbed/`
-- boxing proving-scene UI folders to be identified during implementation
+- `/.testbed/scenes/`
+- `/.testbed/scripts/`
+- `/.testbed/tests/unit/`
 
 **Files Created/Deleted/Modified:**
-- boxing proving-scene files in `aerobeat-input-camera-tracking/.testbed/`
-- boxing/flow YAML path/config loader files
+- `.testbed/scenes/boxing_proving.tscn`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scripts/hand_bbox_state_drawer.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Verified that this proving-scene tuning/visualization slice was already landed in commit `6832201` (`Add boxing proving bbox tuning surfaces`), then updated this plan entry to reflect the actual implementation and fresh validation. The boxing proving scene now switches between the repo-owned boxing/flow profile bundles, shows the resolved tracker/gesture YAML paths, surfaces tracker tuning (`pose smoothing`, `pose cadence`, `hand cadence`, `bbox recompute cadence`, hand validity budgets) plus straight-punch tuning (`fresh samples only`, sample window, positive-growth count, wrist velocity threshold, bbox growth threshold, grace frames, retract epsilon, reacquire frames), and prints per-hand live debug lines with wrist velocity, bbox area, bbox area growth, tracking validity/state, grace countdown, reacquire progress, and stale-frame counts. Hand bbox overlays are drawn through `.testbed/scripts/hand_bbox_state_drawer.gd` with the agreed state colors: `ready` yellow, `triggered` green, `not_ready` red, and `tracking_lost` dark red. UI constraint: the scene intentionally selects the canonical boxing/flow profile bundle via the profile picker and displays the resolved YAML resource paths; it does not provide an arbitrary filesystem browser for ad-hoc YAML files. Fresh repo-local validation rerun in this task pass: `godot --headless --path .testbed --import --quit-after 1000`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_aero_camera_tracking.gd -gexit` ✅ (`20/20` tests passed, `130` asserts). Attempted bead claim via `bd update aerobeat-input-camera-tracking-0ab --status in_progress --json`, but this repo currently has no Beads database (`bd` reported `no beads database found`), so claim/closure could not be recorded there.
 
 ---
 
