@@ -450,6 +450,7 @@ func test_aero_camera_tracking_paused_approx_seek_stays_truthfully_paused_and_re
 	singleton.set("_replay_loaded", true)
 	singleton.set("_replay_playing", true)
 	singleton.set("_replay_position_sec", 7.5)
+	singleton.set("_replay_loop_origin_sec", 1.25)
 
 	assert_true(singleton.pause_replay_playback())
 	assert_true(singleton.seek_replay_playback(4.0))
@@ -464,7 +465,7 @@ func test_aero_camera_tracking_paused_approx_seek_stays_truthfully_paused_and_re
 	assert_eq(float(paused_transport_status.get("position_sec", -1.0)), 4.0)
 	var paused_vendor_source: Dictionary = (tracker.get_active_config().get("vendor", {}) as Dictionary).get("source", {})
 	assert_eq(float(paused_vendor_source.get("start_time_sec", -1.0)), 4.0)
-	assert_eq(float(paused_vendor_source.get("loop_start_time_sec", -1.0)), 4.0)
+	assert_eq(float(paused_vendor_source.get("loop_start_time_sec", -1.0)), 1.25)
 
 	assert_true(singleton.play_replay_playback())
 	assert_eq(tracker.start_calls.size(), 2)
@@ -473,7 +474,7 @@ func test_aero_camera_tracking_paused_approx_seek_stays_truthfully_paused_and_re
 	assert_false(bool((resumed_state.get("status", {}) as Dictionary).get("paused", true)))
 	var resumed_vendor_source: Dictionary = (tracker.get_active_config().get("vendor", {}) as Dictionary).get("source", {})
 	assert_eq(float(resumed_vendor_source.get("start_time_sec", -1.0)), 4.0)
-	assert_eq(float(resumed_vendor_source.get("loop_start_time_sec", -1.0)), 4.0)
+	assert_eq(float(resumed_vendor_source.get("loop_start_time_sec", -1.0)), 1.25)
 
 func test_aero_camera_tracking_stop_releases_wrapper_owned_provider_and_keeps_owned_session_reusable() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())

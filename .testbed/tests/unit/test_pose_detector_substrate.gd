@@ -151,7 +151,7 @@ func test_straight_punch_ignores_stale_hand_samples_for_trigger_evaluation() -> 
 	assert_false(_event_names(state.get("events", [])).has("punch_left"))
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
-	tracking_frame = _make_tracking_frame(_tracked_hand_payload("left", 0.0280), _tracked_hand_payload("right", 0.020))
+	tracking_frame = _make_tracking_frame(_tracked_hand_payload("left", 0.0295), _tracked_hand_payload("right", 0.020))
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.28}}), 1500, tracking_frame)
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
@@ -218,6 +218,32 @@ func test_straight_punch_wrist_velocity_uses_configured_time_window_instead_of_l
 	assert_eq(int(left_debug.get("wrist_velocity_window_span_ms", 0)), 160)
 	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > 0.9)
 	assert_true(is_equal_approx(float(left_debug.get("wrist_velocity", 0.0)), float(left_debug.get("wrist_forward_velocity", 0.0))))
+
+func test_straight_punch_bbox_area_growth_uses_configured_time_window_instead_of_sample_count_only() -> void:
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"evaluation": {
+				"sample_window_size": 4,
+				"min_positive_growth_samples": 1,
+				"bbox_area_growth_window_ms": 160,
+			},
+			"thresholds": {
+				"min_wrist_velocity": 99.0,
+				"min_bbox_area_growth": 99.0,
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.12}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.0240), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1340, _make_tracking_frame(_tracked_hand_payload("left", 0.0245), _tracked_hand_payload("right", 0.020)))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(int(left_debug.get("bbox_area_growth_window_ms", 0)), 160)
+	assert_eq(int(left_debug.get("bbox_area_growth_window_span_ms", 0)), 160)
+	assert_true(is_equal_approx(float(left_debug.get("bbox_area_growth", 0.0)), 0.0035))
+	assert_eq(left_debug.get("growth_window_areas", []), [0.021, 0.024, 0.0245])
 
 func test_straight_punch_uses_recent_wrist_velocity_peak_when_growth_lands_on_next_hand_sample() -> void:
 	config.gesture_profile_document = {

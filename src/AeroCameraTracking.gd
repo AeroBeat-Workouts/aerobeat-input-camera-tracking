@@ -329,7 +329,6 @@ func seek_replay_playback(seconds: float) -> bool:
 		return false
 	var was_playing := _replay_playing
 	_replay_position_sec = maxf(seconds, 0.0)
-	_replay_loop_origin_sec = _replay_position_sec
 	if not play_replay_playback():
 		return false
 	if was_playing:
