@@ -1,9 +1,9 @@
 # AeroBeat Boxing Hand BBox Straight Punch Detection
 
 **Date:** 2026-06-03
-**Status:** Blocked
-**Last Updated:** 2026-06-04 18:57 EDT
-**Blocked Reason:** Need a wider live-repro trace around Derrick's normal retest workflow (especially git-sync/godotenv-sync + project open/play) because a controlled clean scene launch did not re-dirty the boxing YAMLs, but earlier retests still observed the bad local state.
+**Status:** In Progress
+**Last Updated:** 2026-06-04 20:57 EDT
+**Blocked Reason:** None
 **Agent:** `pico`
 
 ---
@@ -788,6 +788,73 @@ Immediate post-launch check was unchanged for the target files: `git status --sh
 
 ---
 
+### Task 10O: Repair replay-pause debugger truthfulness and frame-step controls
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.1`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-05`, `REF-06`
+**Prompt:** Implement Derrick's new boxing proving-scene debugging feedback in the owner repo. Keep YAML edits outside the Godot editor because we now have a proven editor-side YAML corruption hazard. Repair the paused-replay inspector/debug behavior so straight-punch state-change counters and live debug values do not keep mutating incorrectly while replay is paused; specifically freeze or preserve truthful paused values for latest state-change age/counter semantics, wrist velocity, and bbox area growth when stepping/pausing. Remove the straight-punch inspector line that shows the event payload snapshot. Repair the detected-event window so it can be intentionally scrolled while paused without snapping back to the top, while still auto-scrolling to top when genuinely new live/replay events arrive. Repair pause/resume so replay stepping does not tear down and restart camera tracking on resume. Add explicit paused-only one-frame step backward/forward controls next to the timecode plus matching keyboard left/right-arrow bindings that are disabled while playback is running. Claim the bead on start, keep the slice focused on proving-scene replay/debug UX truthfulness, and leave punch-threshold tuning out of scope unless strictly required by the pause/step repair.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the paused-replay truthfulness repairs in the proving harness without touching YAMLs or widening into threshold tuning. `proving_harness.gd` now adds paused-only step-back/step-forward controls beside the timecode, left/right-arrow stepping, shared-inspector freezing for any paused prerecorded target, and replay step-size tracking derived from playback deltas so paused frame stepping stays disabled while playback is running. `boxing_proving_harness.gd` now snapshots boxing debug state on pause, freezes straight-punch age semantics against the pause timestamp, keeps wrist velocity / bbox growth / transition details truthful while paused, removes the `state_change_payload` / “Event payload snapshot” line from the gesture inspector body, and only auto-scrolls the detected-event feed when a genuinely new event is appended. I did not land a deeper pause/resume backend rewrite because the owner repo already pauses replay via `provider.stop(true)` with preserved runtime state (`REF-01`), and the observed reset symptoms were explained by stale live UI reads rather than a newly proven replay-session ownership bug. Added focused regression coverage in `test_boxing_proving_harness_profiles_and_debug.gd` for the removed payload line, paused inspector freeze behavior, and paused-only step button enablement. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gexit` (111/111 passing; existing GUT UID/object leak warnings remain). Commit: not yet created in this subagent run.
+
+---
+
+### Task 10P: Investigate the remaining straight-punch side-flash under occlusion
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.2`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-05`, `REF-06`
+**Prompt:** Investigate Derrick's latest replay observation that during a left straight-punch extension the opposite hand can briefly lose tracking, come back under the wrong side label, then return to the correct side. Start from the earlier pose-side-lock repair and determine whether the remaining flash is caused by a still-unlocked association path, stale carry / tracking_lost transitions, wrong-side fallback when only one hand is reacquired, mirrored presentation vs raw side labels, or proving-scene presentation of the normalized payload. Keep this slice diagnosis-first: produce a truthful explanation of what path can still create the observed flash in the current code, and only land the smallest owner-correct repair if the cause is proven in-scope. Claim the bead on start and update this plan with the exact cause, evidence path, and next repair direction.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- owner-correct source/test folders in `REF-01` / `REF-02` / `REF-03` only if a proven narrow fix lands
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- focused diagnostic tests/probes/artifacts if added
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10Q: QA paused replay debugging + side-ownership behavior after the new repairs
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.3`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-05`, `REF-06`
+**Prompt:** After Tasks 10O and 10P complete, verify the boxing proving-scene paused replay debugging flow end to end. Confirm that pausing preserves truthful inspector/debug values, the event payload snapshot line is gone, the detected-event window can be intentionally scrolled while paused without snap-back, pause/resume no longer restarts the tracking session, and paused-only frame-step buttons plus keyboard left/right stepping work as intended. Also validate the latest left/right hand-side ownership behavior against Derrick's observed left-punch replay case and record whether the side-flash is resolved, reproduced with a sharper explanation, or still blocked. Capture exact repro steps and truthful results. Claim the bead on start and leave clear evidence in the plan.
+
+**Folders Created/Deleted/Modified:**
+- validation-only use of relevant `.testbed` project(s) and capture artifacts as needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- QA artifacts/captures if generated
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
@@ -831,7 +898,7 @@ Immediate post-launch check was unchanged for the target files: `git status --sh
 - `3d5ce09` (`REF-01`) - Guard boxing profile YAML indentation
 - `4e4bc9b` (`REF-01`) - Document boxing YAML writer trace
 
-**Lessons Learned:** The hardest bugs here were seam bugs, not detector-threshold bugs: Beads ownership had to stay in the owner repo, preview-space vs gameplay-space landmark coordinates needed to be split explicitly, and hand ownership had to preserve pose-side truth across reacquire instead of relying on stale anchor continuity. Late in the slice, the YAML-reset suspicion also turned out to be a workflow-state problem more than a scene-runtime problem: clean Godot load/play was reproducibly read-only, while external sync/restore steps can resurrect old dirty YAML. The remaining work should start from Derrick's exact retest workflow evidence instead of further speculative detector changes.
+**Lessons Learned:** A new concrete root cause was discovered after the last trace wave: Godot editor interaction with these repo-owned YAML files is itself unsafe because merely opening them in the editor can normalize whitespace and corrupt tab/space structure. For this workstream, YAML edits should be treated as text-editor-outside-Godot only. The hardest bugs here were seam bugs, not detector-threshold bugs: Beads ownership had to stay in the owner repo, preview-space vs gameplay-space landmark coordinates needed to be split explicitly, and hand ownership had to preserve pose-side truth across reacquire instead of relying on stale anchor continuity. Late in the slice, the YAML-reset suspicion also turned out to be a workflow-state problem more than a scene-runtime problem: clean Godot load/play was reproducibly read-only, while external sync/restore steps can resurrect old dirty YAML. The remaining work should start from Derrick's exact retest workflow evidence instead of further speculative detector changes.
 
 ---
 

@@ -32,6 +32,9 @@ const PLAYBACK_TOGGLE_BUTTON_WIDTH := 52.0
 const PLAYBACK_CONTROL_ROW_HEIGHT := 32.0
 const PLAYBACK_ICON_PLAY := "▶"
 const PLAYBACK_ICON_PAUSE := "⏸"
+const PLAYBACK_ICON_STEP_BACK := "⏮"
+const PLAYBACK_ICON_STEP_FORWARD := "⏭"
+const DEFAULT_PLAYBACK_FRAME_STEP_SEC := 1.0 / 30.0
 const LANDMARK_DRAWER_Z_INDEX := 20
 const TRAIL_DRAWER_Z_INDEX := 19
 const INSPECTOR_LIVE_REFRESH_INTERVAL_MS := 120
@@ -240,7 +243,11 @@ var _playback_bar_panel: PanelContainer = null
 var _playback_toggle_button: Button = null
 var _playback_seek_slider: HSlider = null
 var _playback_time_label: Label = null
+var _playback_step_back_button: Button = null
+var _playback_step_forward_button: Button = null
 var _playback_status := {}
+var _playback_last_position_sec := -1.0
+var _playback_last_frame_step_sec := DEFAULT_PLAYBACK_FRAME_STEP_SEC
 var _playback_status_poll_due_ms := 0
 var _playback_slider_drag_active := false
 var _playback_visibility_active := false
@@ -429,17 +436,38 @@ func _ensure_playback_controls() -> void:
 	)
 	slider_host.add_child(_playback_seek_slider)
 
-	var time_host := CenterContainer.new()
-	time_host.custom_minimum_size = Vector2(124.0, PLAYBACK_CONTROL_ROW_HEIGHT)
+	var time_host := HBoxContainer.new()
+	time_host.custom_minimum_size = Vector2(212.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	time_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	time_host.alignment = BoxContainer.ALIGNMENT_END
+	time_host.add_theme_constant_override("separation", 6)
 	row.add_child(time_host)
 
 	_playback_time_label = Label.new()
 	_playback_time_label.custom_minimum_size = Vector2(124.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	_playback_time_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_playback_time_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_playback_time_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_playback_time_label.text = "0:00 / 0:00"
 	time_host.add_child(_playback_time_label)
+
+	_playback_step_back_button = Button.new()
+	_playback_step_back_button.custom_minimum_size = Vector2(36.0, PLAYBACK_CONTROL_ROW_HEIGHT)
+	_playback_step_back_button.text = PLAYBACK_ICON_STEP_BACK
+	_playback_step_back_button.tooltip_text = "Step backward one frame (Left Arrow)"
+	_playback_step_back_button.pressed.connect(func() -> void:
+		_request_playback_frame_step(-1)
+	)
+	time_host.add_child(_playback_step_back_button)
+
+	_playback_step_forward_button = Button.new()
+	_playback_step_forward_button.custom_minimum_size = Vector2(36.0, PLAYBACK_CONTROL_ROW_HEIGHT)
+	_playback_step_forward_button.text = PLAYBACK_ICON_STEP_FORWARD
+	_playback_step_forward_button.tooltip_text = "Step forward one frame (Right Arrow)"
+	_playback_step_forward_button.pressed.connect(func() -> void:
+		_request_playback_frame_step(1)
+	)
+	time_host.add_child(_playback_step_forward_button)
 
 func _resolve_playback_controller(log_missing: bool = true) -> Node:
 	var tracking_singleton := _resolve_camera_tracking_singleton()
@@ -800,6 +828,9 @@ func _process(_delta: float) -> void:
 	_refresh_shared_inspector()
 
 func _input(event: InputEvent) -> void:
+	if _handle_playback_step_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	if _shared_inspector_panel == null or not _shared_inspector_panel.visible:
 		return
 	if not (event is InputEventMouseButton):
@@ -812,6 +843,22 @@ func _input(event: InputEvent) -> void:
 	if _playback_bar_panel != null and _playback_bar_panel.visible and _playback_bar_panel.get_global_rect().has_point(mouse_event.position):
 		return
 	_close_shared_inspector()
+
+func _handle_playback_step_input(event: InputEvent) -> bool:
+	if not (event is InputEventKey):
+		return false
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo:
+		return false
+	if not _can_step_paused_playback():
+		return false
+	if key_event.keycode == KEY_LEFT:
+		_request_playback_frame_step(-1)
+		return true
+	if key_event.keycode == KEY_RIGHT:
+		_request_playback_frame_step(1)
+		return true
+	return false
 
 func _on_check_progress(percentage: int, message: String) -> void:
 	_update_status("%d%% - %s" % [percentage, message], Color.YELLOW)
@@ -1424,7 +1471,7 @@ func _open_shared_inspector(target_type: String, target_key: String) -> void:
 	_shared_inspector_frozen_model = {}
 	_shared_inspector_live_model = {}
 	_shared_inspector_live_refresh_due_ms = 0
-	if _should_freeze_landmark_inspector():
+	if _should_freeze_shared_inspector():
 		_shared_inspector_frozen_model = _build_shared_inspector_model(target_type, target_key)
 	_refresh_shared_inspector(true)
 
@@ -1457,7 +1504,7 @@ func _refresh_shared_inspector(force: bool = false) -> void:
 	_reposition_shared_inspector()
 
 func _resolve_shared_inspector_model(force: bool = false) -> Dictionary:
-	if _should_use_frozen_landmark_inspector():
+	if _should_use_frozen_shared_inspector():
 		return _shared_inspector_frozen_model
 	if _shared_inspector_target_type == "landmark":
 		var now_ms := Time.get_ticks_msec()
@@ -1517,7 +1564,7 @@ func _build_landmark_inspector_model(landmark_id: int) -> Dictionary:
 		lines.append("Direction: %s" % _fmt_vec2(direction))
 	lines.append("Detector pose lock: %s" % _tracking_status_text(_latest_state))
 	var footer := INSPECTOR_FOOTER_TEXT
-	if _shared_inspector_target_type == "landmark" and not _should_use_frozen_landmark_inspector():
+	if _shared_inspector_target_type == "landmark" and not _should_use_frozen_shared_inspector():
 		footer = "Live values refresh about every %.2fs for readability. %s" % [float(INSPECTOR_LIVE_REFRESH_INTERVAL_MS) / 1000.0, INSPECTOR_FOOTER_TEXT]
 	return {
 		"title": "Landmark Inspector",
@@ -1562,11 +1609,11 @@ func _landmark_name(landmark_id: int) -> String:
 		return String(LANDMARK_NAMES[landmark_id])
 	return "Landmark %d" % landmark_id
 
-func _should_freeze_landmark_inspector() -> bool:
-	return _shared_inspector_target_type == "landmark" and _is_prerecorded_source_active() and bool(_playback_status.get("paused", false))
+func _should_freeze_shared_inspector() -> bool:
+	return not _shared_inspector_target_type.is_empty() and _is_prerecorded_source_active() and bool(_playback_status.get("paused", false))
 
-func _should_use_frozen_landmark_inspector() -> bool:
-	return _shared_inspector_target_type == "landmark" and _is_prerecorded_source_active() and bool(_playback_status.get("paused", false)) and not _shared_inspector_frozen_model.is_empty()
+func _should_use_frozen_shared_inspector() -> bool:
+	return _should_freeze_shared_inspector() and not _shared_inspector_frozen_model.is_empty()
 
 func _reposition_shared_inspector() -> void:
 	if _shared_inspector_panel == null:
@@ -1647,6 +1694,7 @@ func _refresh_playback_controls_visibility() -> void:
 	_refresh_playback_controls_state()
 
 func _sync_playback_status_from_manager() -> void:
+	var previous_paused := bool(_playback_status.get("paused", false))
 	var state: Dictionary = _get_playback_controller_state()
 	if state.is_empty():
 		return
@@ -1665,7 +1713,16 @@ func _sync_playback_status_from_manager() -> void:
 	if backend_state is Dictionary:
 		for status_key: Variant in backend_state.keys():
 			_playback_status[status_key] = backend_state[status_key]
-	if not bool(_playback_status.get("paused", false)):
+	var paused := bool(_playback_status.get("paused", false))
+	if not paused and _playback_last_position_sec >= 0.0 and playback_position > _playback_last_position_sec:
+		var inferred_step := playback_position - _playback_last_position_sec
+		if inferred_step > 0.0 and inferred_step <= 1.0:
+			_playback_last_frame_step_sec = inferred_step
+	_playback_last_position_sec = playback_position
+	if paused:
+		if not previous_paused and _shared_inspector_target_type != "" and _shared_inspector_target_key != "":
+			_shared_inspector_frozen_model = _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
+	else:
 		_shared_inspector_frozen_model = {}
 		_shared_inspector_live_model = {}
 		_shared_inspector_live_refresh_due_ms = 0
@@ -1679,6 +1736,11 @@ func _refresh_playback_controls_state() -> void:
 	var controls_enabled := _is_prerecorded_source_active() and _playback_controller_has_loaded_media()
 	_playback_toggle_button.disabled = not controls_enabled
 	_playback_seek_slider.editable = controls_enabled
+	var step_enabled := controls_enabled and paused
+	if _playback_step_back_button != null:
+		_playback_step_back_button.disabled = not step_enabled
+	if _playback_step_forward_button != null:
+		_playback_step_forward_button.disabled = not step_enabled
 	if not _playback_slider_drag_active:
 		_playback_seek_slider.value = float(_playback_status.get("progress", 0.0))
 	_playback_time_label.text = "%s / %s" % [
@@ -1711,6 +1773,36 @@ func _on_playback_seek_drag_ended(value_changed: bool) -> void:
 	_shared_inspector_live_model = {}
 	_shared_inspector_live_refresh_due_ms = 0
 	_playback_controller_seek(seconds)
+	_sync_playback_status_from_manager()
+	_refresh_playback_status(true)
+
+func _can_step_paused_playback() -> bool:
+	return _is_prerecorded_source_active() and _playback_controller_has_loaded_media() and bool(_playback_status.get("paused", false))
+
+func _playback_frame_step_seconds() -> float:
+	return maxf(_playback_last_frame_step_sec, DEFAULT_PLAYBACK_FRAME_STEP_SEC)
+
+func _request_playback_frame_step(direction: int) -> void:
+	if direction == 0 or not _can_step_paused_playback():
+		return
+	if not _load_playback_source_if_needed():
+		return
+	var duration := float(_playback_status.get("duration_sec", 0.0))
+	var current_sec := float(_playback_status.get("current_time_sec", 0.0))
+	var target_sec := current_sec + (float(direction) * _playback_frame_step_seconds())
+	if duration > 0.0:
+		target_sec = clampf(target_sec, 0.0, duration)
+	else:
+		target_sec = maxf(target_sec, 0.0)
+	if is_equal_approx(target_sec, current_sec):
+		return
+	_reset_runtime_debug_state_for_seek()
+	_shared_inspector_frozen_model = {}
+	_shared_inspector_live_model = {}
+	_shared_inspector_live_refresh_due_ms = 0
+	_playback_controller_seek(target_sec)
+	_refresh_playback_status(true)
+	_playback_controller_pause()
 	_sync_playback_status_from_manager()
 	_refresh_playback_status(true)
 

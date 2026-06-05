@@ -39,6 +39,17 @@ class FakePreviewPresenter:
 	func get_hand_debug_snapshot() -> Dictionary:
 		return hand_snapshot.duplicate(true)
 
+class PlaybackStateHarness:
+	extends ProvingHarnessScript
+
+	var state := {"media_loaded": true}
+
+	func _get_playback_controller_state() -> Dictionary:
+		return state
+
+	func _is_prerecorded_source_active() -> bool:
+		return true
+
 func _new_harness() -> Object:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
 	return harness_script.new()
@@ -85,7 +96,7 @@ func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> 
 	assert_false(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", true)))
 
 func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
-	var harness: Variant = add_child_autoqfree(_new_harness())
+	var harness: Variant = _new_harness()
 	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
 	var trail_drawer: Control = add_child_autoqfree(Control.new())
 	var hand_bbox_drawer: Control = add_child_autoqfree(Control.new())
@@ -97,8 +108,8 @@ func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	harness._sync_profile_visual_config()
 	assert_true(bool(harness.get("show_landmarks")))
 	assert_false(bool(harness.get("show_trails")))
-	assert_true(bool(landmark_drawer.get("show_debug_hit_targets")))
-	assert_true(bool(landmark_drawer.get("show_debug_hit_target_labels")))
+	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))
+	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
 	assert_true(hand_bbox_drawer.visible)
 
 	harness.set("_selected_profile_id", "flow")
@@ -110,7 +121,7 @@ func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	assert_false(hand_bbox_drawer.visible)
 
 func test_boxing_proving_bbox_overlay_reparents_into_preview_overlay_layer_and_receives_snapshot() -> void:
-	var harness: Variant = add_child_autoqfree(_new_harness())
+	var harness: Variant = _new_harness()
 	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new())
 	var hand_bbox_drawer: Control = add_child_autoqfree(HandBBoxDrawerScript.new())
 	hand_bbox_drawer.name = "HandBBoxDrawer"
@@ -254,7 +265,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Current state - triggered")
 	assert_string_contains(body, "Hand tracking - tracked, valid=true, stale_frames=0")
 	assert_string_contains(body, "Fresh sample valid - false")
-	assert_string_contains(body, "Event payload snapshot - state=triggered wrist=0.310 bbox=0.071 growth=0.012 fresh=false grace=2 valid=true")
+	assert_false(body.contains("Event payload snapshot"))
 	assert_string_contains(body, "Wrist velocity >= 0.180 - 0.310")
 	assert_string_contains(body, "BBox area - 0.071")
 	assert_string_contains(body, "BBox area growth >= 0.010 - 0.012")
@@ -262,6 +273,116 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Grace timer - 2/3 remaining (active)")
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
 	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
+
+func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> void:
+	var harness = _new_harness()
+	harness.set("_playback_status", {"paused": true})
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"right": {
+					"state": "triggered",
+					"tracking_state": "tracked",
+					"tracking_valid": true,
+					"stale_frames": 0,
+					"fresh_sample": true,
+					"wrist_velocity": 0.310,
+					"min_wrist_velocity": 0.180,
+					"bbox_area": 0.071,
+					"bbox_area_growth": 0.012,
+					"min_bbox_area_growth": 0.010,
+					"positive_growth_samples": 4,
+					"min_positive_growth_samples": 3,
+					"sample_window_size": 4,
+					"growth_window_areas": [0.020, 0.038, 0.055, 0.071],
+					"grace_frames_remaining": 2,
+					"triggered_grace_frames": 3,
+					"trigger_bbox_area": 0.071,
+					"bbox_area_retract_epsilon": 0.003,
+					"reacquire_valid_samples": 0,
+					"reacquire_stable_frames_required": 2,
+				}
+			}
+		}
+	})
+	harness.set("_straight_punch_transition_debug", {
+		"left": {},
+		"right": {
+			"state": "triggered",
+			"previous_state": "ready",
+			"timestamp_ms": Time.get_ticks_msec() - 80,
+			"tracking_state": "tracked",
+			"tracking_valid": true,
+			"stale_frames": 0,
+			"fresh_sample": true,
+			"wrist_velocity": 0.310,
+			"bbox_area": 0.071,
+			"bbox_area_growth": 0.012,
+			"grace_frames_remaining": 2,
+		}
+	})
+
+	harness._capture_paused_boxing_snapshot()
+	harness._open_shared_inspector("gesture", "punch_right")
+	var frozen_model: Dictionary = harness._resolve_shared_inspector_model(true)
+	var frozen_body := String(frozen_model.get("body", ""))
+
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"right": {
+					"state": "ready",
+					"tracking_state": "tracked",
+					"tracking_valid": true,
+					"stale_frames": 0,
+					"fresh_sample": false,
+					"wrist_velocity": 0.0,
+					"min_wrist_velocity": 0.180,
+					"bbox_area": 0.071,
+					"bbox_area_growth": 0.0,
+					"min_bbox_area_growth": 0.010,
+					"positive_growth_samples": 0,
+					"min_positive_growth_samples": 3,
+					"sample_window_size": 4,
+					"growth_window_areas": [0.071],
+					"grace_frames_remaining": 0,
+					"triggered_grace_frames": 3,
+					"trigger_bbox_area": 0.071,
+					"bbox_area_retract_epsilon": 0.003,
+					"reacquire_valid_samples": 0,
+					"reacquire_stable_frames_required": 2,
+				}
+			}
+		}
+	})
+	var still_frozen: Dictionary = harness._resolve_shared_inspector_model(true)
+	var still_frozen_body := String(still_frozen.get("body", ""))
+
+	assert_eq(still_frozen_body, frozen_body)
+	assert_string_contains(still_frozen_body, "Latest state change - ready -> triggered")
+	assert_string_contains(still_frozen_body, "Wrist velocity >= 0.180 - 0.310")
+	assert_string_contains(still_frozen_body, "BBox area growth >= 0.010 - 0.012")
+	assert_false(still_frozen_body.contains("Event payload snapshot"))
+
+func test_playback_step_buttons_only_enable_while_paused() -> void:
+	var harness: Variant = PlaybackStateHarness.new()
+	harness.set("_playback_toggle_button", Button.new())
+	harness.set("_playback_seek_slider", HSlider.new())
+	harness.set("_playback_time_label", Label.new())
+	var step_back := Button.new()
+	var step_forward := Button.new()
+	harness.set("_playback_step_back_button", step_back)
+	harness.set("_playback_step_forward_button", step_forward)
+	harness.set("camera_source", "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+	harness.set("_playback_status", {"paused": true, "current_time_sec": 1.0, "duration_sec": 2.0, "progress": 0.5})
+	harness._refresh_playback_controls_state()
+	assert_false(step_back.disabled)
+	assert_false(step_forward.disabled)
+
+	harness.set("_playback_status", {"paused": false, "current_time_sec": 1.0, "duration_sec": 2.0, "progress": 0.5})
+	harness._refresh_playback_controls_state()
+	assert_true(step_back.disabled)
+	assert_true(step_forward.disabled)
 
 func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -> void:
 	var harness = _new_harness()

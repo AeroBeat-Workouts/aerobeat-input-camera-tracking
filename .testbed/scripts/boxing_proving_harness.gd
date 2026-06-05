@@ -237,6 +237,14 @@ var _hover_card_row_nodes := {}
 var _hover_card_row_order: Array[String] = []
 var _hover_card_signature := ""
 var _selected_profile_id := PROFILE_BOXING
+var _boxing_event_feed_autoscroll_pending := false
+var _paused_boxing_state_active := false
+var _paused_boxing_snapshot_time_ms := 0
+var _paused_boxing_latest_state: Dictionary = {}
+var _paused_straight_punch_transition_debug := {
+	"left": {},
+	"right": {},
+}
 var _straight_punch_transition_debug := {
 	"left": {},
 	"right": {},
@@ -266,6 +274,8 @@ func _connect_mode_signals() -> void:
 func _on_straight_punch_state_changed(side: String, state: String, detail: Dictionary) -> void:
 	var side_key := side.to_lower()
 	if not ["left", "right"].has(side_key):
+		return
+	if _paused_boxing_state_active:
 		return
 	var transition := detail.duplicate(true)
 	transition["state"] = state
@@ -297,9 +307,37 @@ func _refresh_debug_panels() -> void:
 		live_status_label.text = _build_boxing_live_line()
 	if quick_stats_label:
 		quick_stats_label.text = _build_boxing_event_feed_text()
-		if quick_stats_label.has_method("scroll_to_line"):
+		if _boxing_event_feed_autoscroll_pending and quick_stats_label.has_method("scroll_to_line"):
 			quick_stats_label.scroll_to_line(0)
+		_boxing_event_feed_autoscroll_pending = false
 	_update_tile_states()
+
+func _sync_playback_status_from_manager() -> void:
+	var was_paused := bool(_playback_status.get("paused", false))
+	super._sync_playback_status_from_manager()
+	if harness_mode != HarnessMode.BOXING:
+		return
+	var paused := bool(_playback_status.get("paused", false))
+	if paused:
+		if not was_paused or not _paused_boxing_state_active:
+			_capture_paused_boxing_snapshot()
+	else:
+		_clear_paused_boxing_snapshot()
+
+func _capture_paused_boxing_snapshot() -> void:
+	_paused_boxing_state_active = true
+	_paused_boxing_snapshot_time_ms = Time.get_ticks_msec()
+	_paused_boxing_latest_state = _latest_state.duplicate(true)
+	_paused_straight_punch_transition_debug = _straight_punch_transition_debug.duplicate(true)
+
+func _clear_paused_boxing_snapshot() -> void:
+	_paused_boxing_state_active = false
+	_paused_boxing_snapshot_time_ms = 0
+	_paused_boxing_latest_state = {}
+	_paused_straight_punch_transition_debug = {
+		"left": {},
+		"right": {},
+	}
 
 func _sync_hand_bbox_drawer() -> void:
 	if hand_bbox_drawer == null:
@@ -340,6 +378,7 @@ func _record_event(event_name: String, payload: Dictionary) -> void:
 			_boxing_event_feed.append("%04d: %s" % [_boxing_event_sequence, String(UI_EVENT_LABELS[event_name])])
 			while _boxing_event_feed.size() > MAX_BOXING_FEED_ROWS:
 				_boxing_event_feed.remove_at(0)
+			_boxing_event_feed_autoscroll_pending = true
 	super._record_event(event_name, payload)
 
 func _clear_straight_punch_transition_debug() -> void:
@@ -352,6 +391,8 @@ func _reset_runtime_debug_state_for_seek() -> void:
 	super._reset_runtime_debug_state_for_seek()
 	_boxing_event_feed = []
 	_boxing_event_sequence = 0
+	_boxing_event_feed_autoscroll_pending = false
+	_clear_paused_boxing_snapshot()
 	_clear_straight_punch_transition_debug()
 
 func _update_status(text: String, color: Color) -> void:
@@ -700,6 +741,8 @@ func _build_gesture_inspector_body(model: Dictionary) -> String:
 		if not row_variant is Dictionary:
 			continue
 		var row: Dictionary = row_variant
+		if String(row.get("id", "")) == "state_change_payload":
+			continue
 		var row_kind := String(row.get("row_kind", "requirement"))
 		match row_kind:
 			"section":
@@ -742,10 +785,12 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 			return spec.duplicate(true)
 
 func _merged_punch_debug_state(side: String) -> Dictionary:
-	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
+	var latest_state := _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
 	var straight_side: Dictionary = ((straight_punch_debug.get(side, {}) as Dictionary)).duplicate(true)
-	var transition_debug: Dictionary = (_straight_punch_transition_debug.get(side, {}) as Dictionary)
+	var transition_debug_source := _paused_straight_punch_transition_debug if _paused_boxing_state_active else _straight_punch_transition_debug
+	var transition_debug: Dictionary = (transition_debug_source.get(side, {}) as Dictionary)
 	if straight_side.is_empty():
 		return transition_debug.duplicate(true)
 	for key_variant: Variant in transition_debug.keys():
@@ -765,6 +810,9 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 		"rows": rows,
 		"footer": spec.get("footer", "Live values come from the straight-punch state machine."),
 	}
+
+func _boxing_reference_time_ms() -> int:
+	return _paused_boxing_snapshot_time_ms if _paused_boxing_state_active else Time.get_ticks_msec()
 
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
 	var row := row_spec.duplicate(true)
@@ -820,7 +868,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					transition_summary = "%s -> %s" % [previous_state, state_name]
 				current_text = transition_summary
 				if transition_timestamp_ms > 0:
-					current_text += " (%s ago)" % _fmt_age_ms(Time.get_ticks_msec() - transition_timestamp_ms)
+					current_text += " (%s ago)" % _fmt_age_ms(_boxing_reference_time_ms() - transition_timestamp_ms)
 				passed = true
 		"state_change_payload":
 			current_text = "state=%s wrist=%s bbox=%s growth=%s fresh=%s grace=%d valid=%s" % [
