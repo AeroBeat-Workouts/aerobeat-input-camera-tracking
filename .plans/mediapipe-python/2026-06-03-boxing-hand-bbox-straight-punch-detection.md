@@ -1027,12 +1027,42 @@ Limitations left explicit on purpose:
 **Prompt:** After the video-owner primitive exists, expose that truthful paused-step capability through `aerobeat-tool-camera-tracking` and the camera-tracking replay surface consumed by the proving scene. Replace the current timestamp-seek approximation path with the new replay-step transport while preserving pause/play/seek behavior for existing consumers. Keep this slice focused on replay ownership boundaries and public camera-tracking transport, not proving-scene-only hacks. Claim the bead on start, add focused regression coverage, and update the plan with the exact public API and validation.
 
 **Folders Created/Deleted/Modified:**
-- owner-correct source/test folders in `REF-02` and `REF-07`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/`
 
 **Files Created/Deleted/Modified:**
-- replay/camera-tracking transport files to be identified during implementation
-- focused tests/probes/docs in `REF-02` / `REF-07`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingBackend.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingPreviewPresenter.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/README.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the camera-tracking replay transport exposure layer in `REF-02` without widening into consumer migration. `CameraTrackingBackend.gd` now defines the public replay transport vocabulary/result shape plus a truthful `approx_time_seek` fallback derived from existing replay playback status. `CameraTracking.gd` now exposes `get_replay_transport_capabilities()`, `get_replay_transport_status()`, `step_replay_frames(...)`, and `seek_replay_to_frame(...)`, delegates exact transports when a backend overrides them, and keeps unchanged consumers on the existing playback-status seam. `CameraTrackingPreviewPresenter.gd` now mirrors replay transport capability/status snapshots for downstream debug/proving UIs, and `test_CameraTracking.gd` adds regression coverage for both the derived approximate fallback and an exact delegated fake transport while preserving the existing vendor replay/start-stop proof. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` (35/35 passing). Commit: `a3fb78c` (`Expose truthful replay transport through camera tracking`) pushed to `origin/main` in `REF-02`. Limitation left explicit for `10V`: the current shipped MediaPipe replay path still only proves `transport_mode=approx_time_seek`, so proving-scene consumers must use the new capability/status surface to disable or relabel exact frame-step UX instead of assuming exact stepping exists.
+
+---
+
+### Task 10V: Migrate aerobeat-input-camera-tracking proving/testbed consumers to the new replay transport model
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.8`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-05`, `REF-07`, `REF-08`
+**Prompt:** After camera-tracking exposes the new replay transport, update the `aerobeat-input-camera-tracking` testbed/proving scene consumers to use the new transport/capability model instead of the old paused timestamp-seek path. The boxing proving scene UI should reflect the truth: enable real frame-step controls only when the replay source reports an exact supported stepping tier, and otherwise show the explicit fallback/unsupported behavior rather than pretending exact frame stepping exists. Use `godotenv-sync` for refresh/sync work instead of the plain `godotenv` CLI to avoid UID/churn noise. Keep YAML edits outside Godot. Claim the bead on start, add focused proof, and update this plan with exact files, validation, and commits.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.testbed/scenes/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+
+**Files Created/Deleted/Modified:**
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- proving/testbed consumer files to be identified during implementation
+- focused tests/probes as needed
 
 **Status:** ⏳ Pending
 
