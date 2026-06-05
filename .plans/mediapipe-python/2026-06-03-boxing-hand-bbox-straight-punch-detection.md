@@ -1385,6 +1385,68 @@ Net gold-truth mismatch improved truthfully versus Task 10AC: replay moved from 
 
 ---
 
+### Task 10AE: Repair startup and right-side straight-punch timing toward 4-of-4 replay hits
+
+**Bead ID:** `aerobeat-input-camera-tracking-rya`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`, `REF-06`
+**Prompt:** After Task 10AD preserved replay straight-punch velocity overlap and improved replay truth to 3/4 left and 1/4 right, keep pushing toward a truthful 4/4 pass on both left and right straight-punch fixture replays. Start from `.testbed/test-results/task10ad-velocity-window-rerun-2026-06-05/` and the current straight-punch traces. Focus narrowly on the remaining seams: the left startup window, the right early/mid windows, and the right-side timing that is still firing slightly early. Implement only the smallest owner-correct detector/provider/config seam the fixtures can prove, without widening into unrelated transport or UI work. Keep YAML edits outside Godot, use `godotenv-sync` if refresh work is needed, add focused proof/tests/probes, and update this plan with exact evidence, validation, commits, and any remaining mismatch.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.testbed/test-results/`
+- owner-correct detector/provider/config folders in `REF-01` only if proven necessary
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- focused detector/tuning/probe files to be identified during implementation
+
+**Status:** ❌ Failed
+
+**Results:** 2026-06-05 coder probe completed, but no landable implementation slice survived proving. I tested one narrow owner-correct provider seam: for replay/video-file sessions, feed the straight-punch detector playback-time milliseconds from `get_playback_status().current_time_sec` instead of the vendor frame's wallclock `timestamp_ms`. The probe lived only in `src/providers/camera_tracking_provider.gd` plus a focused regression in `.testbed/tests/unit/test_camera_tracking_provider.gd` proving replay detector timestamps followed playback time. Validation while the probe was applied passed locally (`test_camera_tracking_provider.gd` 12/12, `test_pose_detector_substrate.gd` 22/22), but the truthful fixture rerun falsified the seam and it was reverted instead of committed.
+
+Exact falsifying evidence from `.testbed/test-results/task10ae-replay-time-provider-rerun-2026-06-05/` versus the Task 10AD baseline in `.testbed/test-results/task10ad-velocity-window-rerun-2026-06-05/`:
+- Left replay got noisier, not cleaner. Old punch events began at `2258`, `2313`, `2977`, `3352`, `3531`, `4579`, `5052`, `5598`…; the replay-time seam shifted them to `916`, `923`, `2708`, `2866`, `3729`, `4196`, `4671`, `4779`, `4879`, `5355`, `5903`… with new startup false positives instead of recovering the missing startup truth window.
+- Left trace quality worsened too: the first new trigger moved to `2160ms` with `bbox_growth=-0.000330` and only `recent_peak_bbox_area_growth=0.000258`, which is less truthful than the Task 10AD left first trigger at `2223ms` on positive growth.
+- Right replay also regressed. Old key right-punch timings were `1728`, `2934`, `4955`, `5883`; the replay-time seam changed them to `1501`, `2165`, `3483`, `4109`, `5690`, `6496`, `6698`, `9540`, pushing the already-early windows even farther away from the gold truth and adding extra false positives.
+- The right trace showed the same failure mode: the old first right trigger at `1696ms` became `1413ms`, and the old late-window trigger at `4908ms` became `4242ms` with an obviously unstable `recent_peak_wrist_velocity=13.0866`.
+
+Because the probe made both fixtures less truthful, I reverted the code/test changes with `git checkout -- src/providers/camera_tracking_provider.gd .testbed/tests/unit/test_camera_tracking_provider.gd`. No implementation commit was created or pushed. Remaining mismatch after this falsified seam is unchanged from Task 10AD: left still misses the startup truth window, and right still has the early/mid timing mismatch. The next slice should stay inside detector/config ownership rather than replay timestamp remapping.
+
+---
+
+### Task 10AF: Repair remaining startup and right-side straight-punch timing inside detector/config ownership
+
+**Bead ID:** `aerobeat-input-camera-tracking-hsz`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`, `REF-06`
+**Prompt:** After Task 10AE falsified replay timestamp remapping, keep the next slice strictly inside detector/config ownership. Starting from `.testbed/test-results/task10ad-velocity-window-rerun-2026-06-05/` and the falsification evidence under `.testbed/test-results/task10ae-replay-time-provider-rerun-2026-06-05/`, repair the smallest owner-correct seam still blocking the left startup window and the right early/mid timing windows. Do not retry replay timestamp remapping or widen into transport/UI work. Keep YAML edits outside Godot, use `godotenv-sync` if refresh work is needed, add focused proof/tests/probes, and update this plan with exact evidence, validation, commits, and any remaining mismatch.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.testbed/test-results/`
+- owner-correct detector/config folders in `REF-01` only if proven necessary
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `src/detectors/pose_detector_substrate.gd` (prototype only; reverted)
+- `.testbed/tests/unit/test_pose_detector_substrate.gd` (prototype only; reverted)
+- `.testbed/test-results/task10af-probes/`
+- `.testbed/test-results/task10af-candidate/`
+- `.testbed/test-results/task10af-reacquire-growth-velocity-peak-rerun-2026-06-05/`
+
+**Status:** ❌ Failed
+
+**Results:** I stayed strictly inside detector/config ownership and falsified another seemingly-plausible straight-punch seam instead of widening into provider/transport/UI work. The explored detector prototype did two narrow things inside `src/detectors/pose_detector_substrate.gd`: (1) carry the last valid bbox area across a brief `tracking_lost` gap so reacquire could measure immediate bbox growth from the last truthful sample instead of resetting to zero, and (2) stop letting zero-velocity fresh samples erase the recent wrist-velocity peak unless a new stronger sample arrived. I also added focused unit coverage for those behaviors in `.testbed/tests/unit/test_pose_detector_substrate.gd`; the prototype passed `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` at **24/24 tests passed** before I decided whether to keep it.
+
+Exact replay evidence was not stable enough to land truthfully. Fresh control reruns under the current baseline (`.testbed/test-results/task10af-probes/baseline/`) already showed today’s MediaPipe replay output drifting from Task 10AD’s archived evidence: left only hit `3333-3833` (`3811ms`) and right missed all four gold windows (`1400, 2458, 4215, 5007, 5868ms` out-of-window triggers). The detector prototype intermittently improved some reruns — for example `.testbed/test-results/task10af-candidate/` produced left hits at `2570ms` (`2150-2650`) and `4858ms` (`4833-5088`), plus a right early-window hit at `1720ms` (`1700-2000`) — but the clean final rerun in `.testbed/test-results/task10af-reacquire-growth-velocity-peak-rerun-2026-06-05/summary.txt` regressed again to left-only hits at `2581ms` and `4857ms`, with right back out-of-window at `1358, 1675, 4100, 5013, 5892ms` and no `1700-2000` / `3100-3400` truth hit. Because the improvement was intermittent rather than reproducible, I reverted both prototype files with `git checkout -- src/detectors/pose_detector_substrate.gd .testbed/tests/unit/test_pose_detector_substrate.gd` and created **no implementation commit**.
+
+Net result: the gold-truth mismatch did **not** improve truthfully enough to land. The remaining mismatch is still the same owner-scope seam called out by Task 10AE: left startup is still missing, and the right early/mid timing windows remain unstable or out-of-window even when a detector-only prototype occasionally helps a single rerun.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`
@@ -1422,19 +1484,35 @@ Net gold-truth mismatch improved truthfully versus Task 10AC: replay moved from 
 - final plan results
 - audit notes/artifacts if generated
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** Independent audit completed across the input (`REF-01`), tool (`REF-02`), and vendor (`REF-03`) repos. Readiness does **not** pass yet, so this bead stays open.
+
+Audit findings with exact evidence:
+- **State-machine behavior:** **PASS.** The landed straight-punch implementation in `REF-01` `src/detectors/pose_detector_substrate.gd:740-868` matches the approved lifecycle: invalid samples hard-reset into `tracking_lost`; `tracking_lost` requires `lost_tracking_reacquire_stable_frames` fresh valid samples before returning to `ready`; `ready` triggers only on fresh samples when recent wrist-velocity peak, recent bbox-growth peak, and positive-growth-sample count all satisfy thresholds; `triggered` holds for the configured grace window before entering `not_ready`; `not_ready` only rearms after bbox area retracts below `trigger_bbox_area - bbox_area_retract_epsilon`. Fresh audit rerun: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ (`22/22` passed).
+- **Config ownership split:** **PASS.** `REF-01` still owns the gameplay/profile YAMLs, while `REF-02` documents that it only consumes `aerobeat/camera_tracking_config` and does **not** own/parse `aerobeat/gesture_detection_config` (`/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/docs/tracker-config-schema.md`, sections `Canonical file producers` and `Ownership boundary`).
+- **Four canonical YAML files in the owning repo:** **PASS.** Present in `REF-01` `assets/`: `boxing.camera_tracking.yaml`, `flow.camera_tracking.yaml`, `boxing.gesture_detection.yaml`, `flow.gesture_detection.yaml`. I also confirmed the expected schema/version/profile headers in those files. Note: the repo also now contains `boxing.testbed_debug.yaml` and `flow.testbed_debug.yaml`, but those are additional proving/debug assets and do not change the canonical four-file gameplay/config split.
+- **Tracker schema documented in the tool repo:** **PASS.** `REF-02` `docs/tracker-config-schema.md` exists and still documents the tracker-facing field set plus the normalized hand output contract.
+- **Tracker QA happened before boxing QA:** **PASS.** The plan records tracker-contract QA first in Task 9, with proving captures under `.testbed/test-results/task9-qa-captures/2026-06-04-062207/`, and boxing straight-punch QA afterward in Task 10, with captures under `.testbed/test-results/task10-qa-captures/2026-06-04-063854/`.
+- **Proving-scene/debug behavior vs agreed design:** **PASS.** Fresh audit rerun of `res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` and `res://tests/unit/test_camera_tracking_config_profiles.gd` passed ✅ (`15/15` combined inside the `37/37` audit rerun). This re-confirmed: no in-scene arbitrary profile picker; resolved Tracker/Gesture YAML paths are shown; boxing/flow profile bundles drive overlay visibility; hand bbox overlays are preview-owned; hover/inspector surfaces expose live bbox decision inputs; paused inspector state freezes truthfully; `Event payload snapshot` is absent from the inspector body; and paused-only playback step controls remain capability-gated. Task 10Q’s captured replay evidence under `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/` still matches that design.
+- **Boxing QA used `REF-05` / `REF-06` plus gold-truth YAMLs as intended:** **PASS for method, FAIL for outcome.** The fixture folders exist and contain both the `.mp4` clips and gold-truth `.yaml` timing files. Task 10 and later replay reruns explicitly used those folders and compared observed triggers against the expected windows in those YAMLs.
+- **Final readiness / truth gate:** **FAIL.** The implementation is still not ready to close. Task 10 originally failed at `0/8` punch-window hits. Task `10AD` improved the best truthful replay to `3/4` in-window left hits and `1/4` in-window right hits, but Task `10AF` then showed that improvement was not stable enough to land: `.testbed/test-results/task10af-reacquire-growth-velocity-peak-rerun-2026-06-05/summary.txt` still reports left only hitting windows `2150-2650` and `4833-5088`, while right misses **all four** gold windows (`400-600`, `1700-2000`, `3100-3400`, `4400-4900`). The plan’s Task 10AF notes also document that same regression and the prototype reversion. Because the replay gold-truth gate is still failing and unstable, I am not approving final readiness.
+- **Independent audit reruns performed in this task:**
+  - `REF-01`: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`37/37` passed, `337` asserts)
+  - `REF-02`: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` ✅ (`32/32` passed, `311` asserts)
+  - `REF-03`: `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` ✅ (`32` tests)
+
+Audit conclusion: cross-repo contract ownership, schema documentation, tracker behavior, proving-scene debug behavior, and the approved straight-punch state-machine structure all audit cleanly. The blocking failure is the end-to-end boxing truth gate against `REF-05` / `REF-06`: replay evidence is still not reproducibly matching the gold punch windows, especially on the right side and startup/early windows. Keep this bead open until a fresh boxing QA pass proves stable gold-truth alignment.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ❌ Blocked
 
-**What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability and ownership correctness. The current state includes: vendor hand bbox payload exposure, tool-layer normalized hand payload + bbox preview support, input-layer bbox straight-punch state-machine wiring, tracker-contract QA pass, visible proving-scene collider debug rings, input-owned proving-scene debug config, preview-space vs gameplay-space landmark separation, the upstream pose-side hand lock repair across occlusion/reacquire, and explicit parser guards against tab-indented boxing profile regressions. Late-session tracing narrowed the YAML-reset suspicion: Godot/editor load+play was proven read-only for the boxing YAMLs, and a controlled clean launch of the boxing proving scene did not re-dirty them. The remaining blockers are (1) the wider external workflow that can restore pre-existing dirty local YAML state around Derrick's real retest loop, and (2) the replay stack still lacking a truthful decoded-frame stepping primitive; the current paused step UI is only a timestamp-seek approximation and should be replaced in the owner video/camera-tracking layers.
+**What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability, replay transport truthfulness, and ownership correctness. The landed state now includes: vendor hand bbox payload exposure; tool-layer normalized hand payload + bbox preview support; input-layer bbox straight-punch state-machine wiring; tracker-contract QA pass; input-owned boxing/flow tracker + gesture YAMLs; input-owned proving-scene debug YAMLs; preview-space vs gameplay-space landmark separation; upstream pose-side lock preservation plus the single-candidate reacquire bias repair; explicit tab-indentation parser guards; and truthful replay transport capability surfacing through the video/tool layers.
 
-**Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices landed; `REF-05` / `REF-06` fixture-based straight-punch QA is still the outstanding truth gate. Task 10K closed the live `Hand tracking - disabled` seam by restoring the boxing profile path and adding a parser guard against tab-indented regressions. Tasks 10L–10N then proved that clean Godot load/play does not itself rewrite the boxing YAMLs; the unresolved blocker is reproducing and stopping the wider local workflow that reintroduces dirty tab-indented YAML before some retests.
+**Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices and debug/transport ownership repairs audit cleanly, and the proving-scene/debug contract matches the approved design. `REF-05` / `REF-06` were used correctly as the deterministic boxing truth fixtures, but the final boxing truth gate is still failing: the latest truthful evidence in Task 10AF remains below gold truth and was not stable enough to land. This plan therefore stays blocked on reproducible end-to-end straight-punch alignment against the fixture timing YAMLs.
 
 **Commits:**
 - `2357784` (`REF-03`) - Expose MediaPipe hand landmarks and bbox payloads
