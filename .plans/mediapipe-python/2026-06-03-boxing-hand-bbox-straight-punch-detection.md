@@ -1197,7 +1197,7 @@ Validation:
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_aero_camera_tracking.gd -gexit` ✅ (`15/15` tests, `104` asserts)
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` ✅ (`117/117` tests, `710` asserts; pre-existing orphan/RID leak warnings still present in testbed shutdown)
 
-Commits for this slice: pending local commit at time of plan update.
+Commits for this slice: `7888e78` (`Fix paused replay seek resume seam`).
 
 Remaining limitation: this slice keeps the current fallback transport honest but does not invent exact stepping. Paused seek on `approx_time_seek` now remains truthfully paused and resumes from the seek target, but seek precision is still bounded by the existing approximate time-based replay transport in the owner/tool/video layers.
 
