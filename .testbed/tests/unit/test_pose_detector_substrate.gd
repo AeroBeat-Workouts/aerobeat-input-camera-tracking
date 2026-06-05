@@ -156,6 +156,44 @@ func test_straight_punch_ignores_stale_hand_samples_for_trigger_evaluation() -> 
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
 
+func test_straight_punch_dedupes_replayed_tracked_samples_until_hand_frame_advances() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(
+		_make_pose_frame(),
+		1100,
+		_make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0))
+	)
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
+
+	state = substrate.process_landmarks(
+		_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}),
+		1180,
+		_make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1))
+	)
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(
+		_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.08}}),
+		1200,
+		_make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 12, 1.2), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 12, 1.2))
+	)
+	state = substrate.process_landmarks(
+		_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.12}}),
+		1210,
+		_make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 12, 1.2), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 12, 1.2))
+	)
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_true(is_equal_approx(float(left_debug.get("bbox_area_growth", 0.0)), 0.002))
+	assert_eq(int(left_debug.get("positive_growth_samples", 0)), 1)
+
+	state = substrate.process_landmarks(
+		_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.20}}),
+		1280,
+		_make_tracking_frame(_tracked_hand_payload("left", 0.0272, "tracked", true, 0, 13, 1.3), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 13, 1.3))
+	)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
+
 func test_straight_punch_grace_rearm_and_reacquire_transitions() -> void:
 	_calibrate_stance()
 	var frames := [
@@ -401,15 +439,15 @@ func _make_tracking_frame(left_hand: Dictionary = {}, right_hand: Dictionary = {
 		},
 	}
 
-func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0) -> Dictionary:
+func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0, frame_index: int = 1, timestamp_seconds: float = 0.0) -> Dictionary:
 	var width := 0.10
 	var height := bbox_area / width if width > 0.0 else 0.0
 	var x := 0.18 if side == "left" else 0.72
 	return {
 		"tracking_valid": tracking_valid,
 		"tracking_state": tracking_state,
-		"frame_index": 1,
-		"timestamp_seconds": 0.0,
+		"frame_index": frame_index,
+		"timestamp_seconds": timestamp_seconds,
 		"stale_frames": stale_frames,
 		"association": {
 			"side": side,

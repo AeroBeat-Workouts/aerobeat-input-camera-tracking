@@ -746,7 +746,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var bbox_area := maxf(float(bbox.get("area", 0.0)), 0.0)
 	var hand_tracking_state := String(hand_payload.get("tracking_state", "idle"))
 	var hand_tracking_valid := bool(hand_payload.get("tracking_valid", false))
-	var fresh_sample := _is_fresh_tracking_hand_sample(hand_payload)
+	var fresh_sample := _is_fresh_tracking_hand_sample(hand_payload, state)
 	var valid_sample := _is_valid_tracking_hand_sample(hand_payload)
 	var wrist_velocity := maxf(float(measurements.get("%s_forward_velocity" % side, 0.0)), 0.0)
 	state["last_bbox_area"] = bbox_area
@@ -782,6 +782,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["bbox_area_history"] = history
 		state["positive_growth_samples"] = _count_positive_bbox_growth_samples(history)
 		state["last_bbox_area_growth"] = _window_bbox_area_growth(history)
+		state["last_observation_frame_index"] = int(hand_payload.get("frame_index", -1))
+		state["last_observation_timestamp_seconds"] = float(hand_payload.get("timestamp_seconds", -1.0))
 	else:
 		state["bbox_area_history"] = history
 
@@ -1195,6 +1197,8 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"last_bbox_area_growth": 0.0,
 		"last_wrist_velocity": 0.0,
 		"last_sample_fresh": false,
+		"last_observation_frame_index": -1,
+		"last_observation_timestamp_seconds": -1.0,
 		"hand_tracking_state": "idle",
 		"hand_tracking_valid": false,
 		"stale_frames": 0,
@@ -1251,10 +1255,22 @@ func _get_tracking_hand_payload(tracking_frame: Dictionary, side: String) -> Dic
 func _is_valid_tracking_hand_sample(hand_payload: Dictionary) -> bool:
 	return bool(hand_payload.get("tracking_valid", false))
 
-func _is_fresh_tracking_hand_sample(hand_payload: Dictionary) -> bool:
+func _is_fresh_tracking_hand_sample(hand_payload: Dictionary, state: Dictionary) -> bool:
 	if not bool(hand_payload.get("tracking_valid", false)):
 		return false
-	return String(hand_payload.get("tracking_state", "")) == "tracked"
+	if String(hand_payload.get("tracking_state", "")) != "tracked":
+		return false
+	var frame_index := int(hand_payload.get("frame_index", -1))
+	var timestamp_seconds := float(hand_payload.get("timestamp_seconds", -1.0))
+	var last_frame_index := int(state.get("last_observation_frame_index", -1))
+	var last_timestamp_seconds := float(state.get("last_observation_timestamp_seconds", -1.0))
+	if frame_index >= 0 and frame_index != last_frame_index:
+		return true
+	if timestamp_seconds >= 0.0 and not is_equal_approx(timestamp_seconds, last_timestamp_seconds):
+		return true
+	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
+	var bbox_area := maxf(float(bbox.get("area", 0.0)), 0.0)
+	return absf(bbox_area - float(state.get("last_bbox_area", 0.0))) > 0.000001
 
 func _count_positive_bbox_growth_samples(history: Array) -> int:
 	if history.size() < 2:

@@ -1213,6 +1213,60 @@ Remaining limitation: this slice keeps the current fallback transport honest but
 
 ---
 
+### Task 10Z: Diagnose and repair the straight-punch gold-truth mismatch after replay-transport completion
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.12`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-05`, `REF-06`
+**Prompt:** The replay-transport slice is now truthful, so return to the older unresolved blocker from Task 10: end-to-end straight-punch detection still misses all gold-truth windows on the left/right fixture replays. Start from the existing QA evidence and traces in `.testbed/test-results/task10-qa-captures/2026-06-04-063854/`. Diagnose the narrowest real cause or first dominant cause among startup timing, positive-growth count accumulation, bbox growth thresholds, fresh-sample gating, and/or replay-cadence interactions. Implement only the smallest owner-correct repair or tuning seam you can prove against the fixtures, then update this plan with exact evidence, validation, commits, and any remaining mismatch. Keep YAML edits outside Godot and use `godotenv-sync` if refresh work is needed.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.testbed/test-results/`
+- owner-correct source/test folders in `REF-01` / `REF-02` only if proven necessary
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/test-results/task10z-fresh-sample-rerun/left/straight_punch_trace.json`
+- `.testbed/test-results/task10z-fresh-sample-rerun/right/straight_punch_trace.json`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `src/detectors/pose_detector_substrate.gd`
+
+**Status:** ⚠️ Partial
+
+**Results:** Claimed the bead with `bd update aerobeat-input-camera-tracking-35y.12 --status in_progress --json` and started from the failing QA evidence in `.testbed/test-results/task10-qa-captures/2026-06-04-063854/`.
+
+Exact evidence gathered:
+- The original straight-punch traces still never reached `triggered`, and the per-side debug topped out at `positive_growth_samples=1`.
+- The proving-report state timelines showed the pose-side forward-velocity signal *did* spike inside the later gold windows, which ruled out replay transport as the current blocker:
+  - left fixture: `9.32 @ 2586ms`, `3.96 @ 3741ms`, `7.81 @ 5019ms`
+  - right fixture: `2.51 @ 1880ms`, `2.31 @ 3190ms`, `17.17 @ 4582ms`
+- That exposed a truth bug in `REF-01`: `_is_fresh_tracking_hand_sample()` treated any `tracking_state == "tracked"` payload as fresh, even if the underlying hand observation had not advanced. Under replay cadence, duplicate tracked payloads were therefore appended as new straight-punch history.
+
+Landed repair:
+- `src/detectors/pose_detector_substrate.gd`: straight-punch fresh-sample gating now requires an advanced hand observation (`frame_index`, `timestamp_seconds`, or a last-resort bbox-area change fallback) before bbox-growth history is updated.
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`: added `test_straight_punch_dedupes_replayed_tracked_samples_until_hand_frame_advances()` and extended the test hand-payload helper so duplicate replay samples can be proven non-fresh.
+
+Validation:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ (`18/18` passed)
+- `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` ✅
+- Reran the focused straight-punch traces into `.testbed/test-results/task10z-fresh-sample-rerun/left/straight_punch_trace.json` and `.testbed/test-results/task10z-fresh-sample-rerun/right/straight_punch_trace.json` ✅
+
+Post-fix truth:
+- The fresh-sample seam is now owner-correct, but the fixture replays still miss every gold window end to end.
+- The rerun traces still top out at `positive_growth_samples=1`, and the target-side bbox growth remains far below the current YAML threshold (`0.006`):
+  - left later-window max growths ≈ `0.000187`, `0.000147`, `0.000385`
+  - right later-window max growths ≈ `0.000157`, `0.000148`, `0.001152`
+- The remaining blocker is now narrower and clearer: replay cadence no longer lies about hand-sample freshness, but the current trigger still depends on same-sample hand-growth + instantaneous wrist-velocity coincidence that these fixture replays do not reliably produce. The next seam is still-open velocity/growth windowing or tuning, not replay transport.
+
+Commits:
+- `1b77be0` — `Fix straight-punch fresh sample truth gating`
+
+Remaining mismatch: no `punch_left` / `punch_right` event lands inside the gold windows yet, so Task 10Z is not audit-ready.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
