@@ -1513,6 +1513,51 @@ Focused proof/validation for this slice:
 
 ---
 
+### Task 10AI: Make proving debug refresh knobs YAML-owned and switch wrist velocity to configurable time window
+
+**Bead ID:** `aerobeat-input-camera-tracking-k2z`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick's live boxing-scene testing exposed two follow-up needs. First, the proving-scene debug refresh knobs added in Task 10AH should be true public config in `assets/boxing.testbed_debug.yaml` and `assets/flow.testbed_debug.yaml`, then loaded through the existing input-owned testbed debug config path instead of living only as script defaults. Second, the current straight-punch wrist velocity calculation is still effectively a previous-sample derivative and looks too jittery/similar between guard and punching hands. Replace that with the smallest truthful velocity-over-time-window implementation you can prove, where the window duration is a public YAML-tunable millisecond value in the gesture config path. Keep the slice narrow to input-owner detector/config/proving wiring, keep YAML edits outside Godot, add focused proof/tests/probes, rerun enough validation/replay context to support Derrick's next manual QA pass, and update this plan with exact files changed, validation, commits, and the specific YAML fields Derrick can tune afterward.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `assets/boxing.testbed_debug.yaml`
+- `assets/flow.testbed_debug.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the narrow detector/config/proving slice. `assets/boxing.testbed_debug.yaml` and `assets/flow.testbed_debug.yaml` now own the proving-scene refresh knobs under `refresh.debug_panel_refresh_interval_frames` and `refresh.inspector_live_refresh_interval_ms`, and `ProvingHarness` now loads those through the existing selected-profile/testbed-debug bundle path for both the flow base harness and boxing harness profile sync path. `assets/boxing.gesture_detection.yaml` now exposes `straight_punch.evaluation.wrist_velocity_window_ms`, and `PoseDetectorSubstrate` now computes straight-punch wrist velocity from the oldest/newest fresh wrist positions inside that millisecond window instead of from an effectively previous-sample derivative. Focused proof added config/proving regression checks plus a detector test that proves the reported wrist velocity stays tied to the configured window span. Boxing proving UI copy now also surfaces the configured wrist velocity window in the straight-punch inspector summary.
+
+Specific YAML fields Derrick can tune after this slice:
+- `assets/boxing.testbed_debug.yaml` → `refresh.debug_panel_refresh_interval_frames`
+- `assets/boxing.testbed_debug.yaml` → `refresh.inspector_live_refresh_interval_ms`
+- `assets/flow.testbed_debug.yaml` → `refresh.debug_panel_refresh_interval_frames`
+- `assets/flow.testbed_debug.yaml` → `refresh.inspector_live_refresh_interval_ms`
+- `assets/boxing.gesture_detection.yaml` → `straight_punch.evaluation.wrist_velocity_window_ms`
+
+Focused proof/validation for this slice:
+- `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` ✅
+- `godot --headless --path .testbed --import --quit-after 1000` ✅
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ (`40/40` passed, `374` asserts). Existing orphan/RID/resource leak shutdown noise remained pre-existing and unchanged.
+
+Commits: pending until task lands.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`

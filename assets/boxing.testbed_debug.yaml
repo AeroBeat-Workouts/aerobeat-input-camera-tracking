@@ -7,3 +7,6 @@ visuals:
   show_hand_bbox_overlay: true
   show_landmark_hit_targets: false
   show_landmark_hit_target_labels: false
+refresh:
+  debug_panel_refresh_interval_frames: 10
+  inspector_live_refresh_interval_ms: 120

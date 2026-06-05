@@ -26,6 +26,8 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(String(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("landmark_mode", "")), "lite")
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("bbox", {}).get("enabled", false)))
 	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", false)))
+	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_frames", -1)), 10)
+	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	var config = CameraTrackingConfigScript.new()
@@ -40,6 +42,8 @@ func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	assert_eq(String(bundle.get("gesture_detection", {}).get("profile", "")), "flow")
 	assert_eq(String(bundle.get("testbed_debug", {}).get("profile", "")), "flow")
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", true)))
+	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_frames", -1)), 10)
+	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
 
 func test_profile_config_loader_rejects_header_mismatches() -> void:
 	var loader = ProfileConfigLoaderScript.new()

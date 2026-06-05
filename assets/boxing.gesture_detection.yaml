@@ -7,6 +7,7 @@ straight_punch:
     fresh_samples_only: true
     sample_window_size: 4
     min_positive_growth_samples: 1
+    wrist_velocity_window_ms: 160
   thresholds:
     min_wrist_velocity: 0.18
     min_bbox_area_growth: 0.00014

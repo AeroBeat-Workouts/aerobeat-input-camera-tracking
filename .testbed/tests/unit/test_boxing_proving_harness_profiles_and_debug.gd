@@ -99,6 +99,20 @@ func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> 
 	assert_true(String(bundle.get("testbed_debug_path", "")).ends_with("assets/flow.testbed_debug.yaml"))
 	assert_false(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", true)))
 
+
+func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
+	var harness: Variant = ProvingHarnessScript.new()
+	harness.set("harness_mode", int(ProvingHarnessScript.HarnessMode.FLOW))
+
+	var config: Variant = harness._build_runtime_config()
+	assert_not_null(config)
+	assert_eq(String(config.get_selected_profile_id()), "flow")
+	assert_eq(int(harness.get("debug_panel_refresh_interval_frames")), 10)
+	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
+	var bundle: Dictionary = config.get_selected_profile_bundle()
+	assert_true(bool(bundle.get("ok", false)))
+	assert_eq(String(bundle.get("profile", "")), "flow")
+
 func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	var harness: Variant = _new_harness()
 	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
@@ -110,6 +124,8 @@ func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 
 	harness.set("_selected_profile_id", "boxing")
 	harness._sync_profile_visual_config()
+	assert_eq(int(harness.get("debug_panel_refresh_interval_frames")), 10)
+	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
 	assert_true(bool(harness.get("show_landmarks")))
 	assert_false(bool(harness.get("show_trails")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))

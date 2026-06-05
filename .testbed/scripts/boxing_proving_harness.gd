@@ -13,7 +13,6 @@ const HOVER_CARD_BODY_FONT_SIZE := 14
 const HOVER_CARD_TITLE_FONT_SIZE := 18
 const HOVER_CARD_GESTURE_FONT_SIZE := 16
 const BBOX_DRAWER_Z_INDEX := 21
-const PROFILE_BOXING := "boxing"
 const BOARD_ICON_PATHS := {
 	"punch": "res://assets/icons/boxing-punch-1.svg",
 	"hook": "res://assets/icons/boxing-hook-1.svg",
@@ -425,6 +424,7 @@ func _refresh_profile_controls() -> void:
 
 func _sync_profile_visual_config(bundle: Dictionary = {}) -> void:
 	var resolved_bundle := bundle if not bundle.is_empty() else _current_profile_bundle()
+	_apply_testbed_debug_profile_bundle(resolved_bundle)
 	var testbed_debug: Dictionary = resolved_bundle.get("testbed_debug", {}) if resolved_bundle.get("testbed_debug", {}) is Dictionary else {}
 	var visuals: Dictionary = testbed_debug.get("visuals", {}) if testbed_debug.get("visuals", {}) is Dictionary else {}
 	if visuals.is_empty():
@@ -1248,6 +1248,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Enabled: %s" % _fmt_bool(bool(straight_config.get("enabled", false))))
 	lines.append("Fresh samples only: %s" % _fmt_bool(bool(straight_eval.get("fresh_samples_only", true))))
 	lines.append("Sample window size: %d" % int(straight_eval.get("sample_window_size", 0)))
+	lines.append("Wrist velocity window: %dms" % int(straight_eval.get("wrist_velocity_window_ms", 0)))
 	lines.append("Positive growth samples: %d" % int(straight_eval.get("min_positive_growth_samples", 0)))
 	lines.append("Min wrist xyz velocity: %s" % _fmt_float(straight_thresholds.get("min_wrist_velocity", 0.0)))
 	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))

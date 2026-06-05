@@ -2,6 +2,8 @@ extends Control
 ## Shared proving harness for live Boxing / Flow detector tuning.
 
 const CameraTrackingConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd")
+const PROFILE_BOXING := "boxing"
+const PROFILE_FLOW := "flow"
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const VENDOR_REPO_ROOT := "res://addons/aerobeat-vendor-mediapipe-python"
 const VENDOR_RUNTIME_ENTRYPOINT := "runtime/mediapipe_runtime_probe.py"
@@ -286,6 +288,7 @@ func _ready() -> void:
 	_ensure_overlay_drawers_ready()
 	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
+	_apply_current_testbed_debug_profile()
 	_left_trail_debug = _make_trail_debug_state("left")
 	_right_trail_debug = _make_trail_debug_state("right")
 	_reset_last_flow_events()
@@ -1058,9 +1061,26 @@ func _remember_mode_signal_relay(signal_name: String, callback: Callable) -> voi
 	_provider_mode_signal_relays[signal_name] = callback
 	_connect_provider_signal(signal_name, callback)
 
+func _profile_id_for_harness_mode() -> String:
+	return PROFILE_FLOW if harness_mode == HarnessMode.FLOW else PROFILE_BOXING
+
+func _apply_current_testbed_debug_profile() -> void:
+	var config := CameraTrackingConfigScript.new()
+	_apply_testbed_debug_profile_bundle(config.load_selected_profile_bundle(_profile_id_for_harness_mode()))
+
+func _apply_testbed_debug_profile_bundle(bundle: Dictionary) -> void:
+	if bundle.is_empty() or not bool(bundle.get("ok", false)):
+		return
+	var testbed_debug: Dictionary = bundle.get("testbed_debug", {}) if bundle.get("testbed_debug", {}) is Dictionary else {}
+	var refresh: Dictionary = testbed_debug.get("refresh", {}) if testbed_debug.get("refresh", {}) is Dictionary else {}
+	debug_panel_refresh_interval_frames = maxi(1, int(refresh.get("debug_panel_refresh_interval_frames", DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_FRAMES)))
+	inspector_live_refresh_interval_ms = maxi(1, int(refresh.get("inspector_live_refresh_interval_ms", DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS)))
+
 func _build_runtime_config() -> Variant:
 	var config := CameraTrackingConfigScript.new()
-	config.get_selected_profile_bundle()
+	var selected_profile_id := _profile_id_for_harness_mode()
+	config.set_profile_id(selected_profile_id)
+	_apply_testbed_debug_profile_bundle(config.get_selected_profile_bundle())
 	config.min_visibility = overlay_visibility_threshold
 	config.track_left_foot = true
 	config.track_right_foot = true
