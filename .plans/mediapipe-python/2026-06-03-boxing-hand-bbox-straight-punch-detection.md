@@ -1162,7 +1162,7 @@ Validation rerun for this slice:
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd -gexit` ✅ (`36/36` tests, `168` asserts)
 - `godot --headless --path .testbed --script ../.plans/mediapipe-python/artifacts/task10u-replay-transport-qa/boxing_replay_transport_probe_rerun.gd` ✅; copied focused evidence into `.plans/mediapipe-python/artifacts/task10x-replay-pause-state-repair/`. The headless probe now shows the original blocker repaired: paused controller state and paused transport status both hold truthfully at `1.4333s` (`state=paused`, `paused=true`) while fallback transport reporting remains `approx_time_seek`.
 
-Commits for this slice: `1664cd1` (`Fix replay pause-state reporting seam`) landed the wrapper fix, regression test, Task 10X probe artifacts, and the first pass of this plan update.
+Commits for this slice: `1664cd1` (`Fix replay pause-state reporting seam`) landed the wrapper fix, regression test, and Task 10X probe artifacts; `c18ebd4` (`Document Task 10X replay pause-state repair`) finalized the plan record for this slice.
 
 Remaining limitation: this slice intentionally did **not** widen into paused-seek/resume semantics. The same headless probe still shows `seek_replay_playback()` re-enters play on the shipped approx-time path, so `seek_while_paused_preserves_pause` and the subsequent `resume_restores_playback` truth checks remain false. That is a separate replay-seek behavior seam beyond this pause-state reporting repair.
 
