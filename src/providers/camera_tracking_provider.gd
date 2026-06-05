@@ -389,9 +389,11 @@ func _get_live_camera_source_id(source: Dictionary) -> String:
 	return String(source.get("path", "")).strip_edges()
 
 func _ensure_detector_substrate() -> void:
+	var active_config: Variant = _ensure_config()
 	if _detector_substrate != null:
+		_detector_substrate.configure(active_config)
 		return
-	_detector_substrate = PoseDetectorSubstrate.new().configure(_ensure_config())
+	_detector_substrate = PoseDetectorSubstrate.new().configure(active_config)
 
 func _ensure_tracking_frame_adapter_script() -> Variant:
 	if _tracking_frame_adapter_script != null:

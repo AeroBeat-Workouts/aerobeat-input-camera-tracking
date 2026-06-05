@@ -537,9 +537,11 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary, ha
 		"phase": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
 		"state": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
+		"recent_peak_wrist_velocity": float(state.get("recent_peak_wrist_velocity", 0.0)),
 		"min_wrist_velocity": float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)),
 		"bbox_area": float(bbox.get("area", state.get("last_bbox_area", 0.0))),
 		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),
+		"recent_peak_bbox_area_growth": float(state.get("recent_peak_bbox_area_growth", 0.0)),
 		"growth_window_areas": (state.get("bbox_area_history", []) as Array).duplicate(true),
 		"positive_growth_samples": int(state.get("positive_growth_samples", 0)),
 		"min_positive_growth_samples": int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)),
@@ -753,6 +755,16 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	state["last_wrist_velocity"] = wrist_velocity
 	state["last_sample_fresh"] = fresh_sample
 	state["hand_tracking_state"] = hand_tracking_state
+	var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
+	var wrist_velocity_history: Array = (state.get("wrist_velocity_history", []) as Array).duplicate(true)
+	wrist_velocity_history.append(wrist_velocity)
+	while wrist_velocity_history.size() > sample_window_size:
+		wrist_velocity_history.remove_at(0)
+	state["wrist_velocity_history"] = wrist_velocity_history
+	state["recent_peak_wrist_velocity"] = _window_peak_float(wrist_velocity_history)
+	var bbox_area_growth_history: Array = (state.get("bbox_area_growth_history", []) as Array).duplicate(true)
+	state["bbox_area_growth_history"] = bbox_area_growth_history
+	state["recent_peak_bbox_area_growth"] = _window_peak_float(bbox_area_growth_history)
 	state["hand_tracking_valid"] = hand_tracking_valid
 	state["stale_frames"] = int(hand_payload.get("stale_frames", 0))
 	if shoulder.is_empty() or wrist.is_empty() or shoulder_width <= 0.0:
@@ -763,6 +775,10 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["hand_tracking_valid"] = false
 	if not valid_sample:
 		state["bbox_area_history"] = []
+		state["wrist_velocity_history"] = []
+		state["recent_peak_wrist_velocity"] = 0.0
+		state["bbox_area_growth_history"] = []
+		state["recent_peak_bbox_area_growth"] = 0.0
 		state["positive_growth_samples"] = 0
 		state["reacquire_valid_samples"] = 0
 		state["grace_frames_remaining"] = 0
@@ -776,16 +792,21 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var history: Array = (state.get("bbox_area_history", []) as Array).duplicate(true)
 	if fresh_sample:
 		history.append(bbox_area)
-		var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
 		while history.size() > sample_window_size:
 			history.remove_at(0)
 		state["bbox_area_history"] = history
 		state["positive_growth_samples"] = _count_positive_bbox_growth_samples(history)
 		state["last_bbox_area_growth"] = _window_bbox_area_growth(history)
+		bbox_area_growth_history.append(float(state.get("last_bbox_area_growth", 0.0)))
+		while bbox_area_growth_history.size() > sample_window_size:
+			bbox_area_growth_history.remove_at(0)
+		state["bbox_area_growth_history"] = bbox_area_growth_history
+		state["recent_peak_bbox_area_growth"] = _window_peak_float(bbox_area_growth_history)
 		state["last_observation_frame_index"] = int(hand_payload.get("frame_index", -1))
 		state["last_observation_timestamp_seconds"] = float(hand_payload.get("timestamp_seconds", -1.0))
 	else:
 		state["bbox_area_history"] = history
+		state["bbox_area_growth_history"] = bbox_area_growth_history
 
 	if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST:
 		if fresh_sample:
@@ -793,6 +814,10 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			var reacquire_stable_frames := max(1, int(straight_punch_config.get("lost_tracking_reacquire_stable_frames", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES)))
 			if int(state.get("reacquire_valid_samples", 0)) >= reacquire_stable_frames:
 				state["bbox_area_history"] = [bbox_area]
+				state["wrist_velocity_history"] = [wrist_velocity]
+				state["recent_peak_wrist_velocity"] = wrist_velocity
+				state["bbox_area_growth_history"] = []
+				state["recent_peak_bbox_area_growth"] = 0.0
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth"] = 0.0
 				state["reacquire_valid_samples"] = 0
@@ -805,10 +830,12 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			var min_wrist_velocity := maxf(float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.0)
 			var min_bbox_area_growth := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.0)
 			var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
-			if wrist_velocity >= min_wrist_velocity and float(state.get("last_bbox_area_growth", 0.0)) + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples:
+			var recent_peak_wrist_velocity := maxf(float(state.get("recent_peak_wrist_velocity", wrist_velocity)), wrist_velocity)
+			var recent_peak_bbox_area_growth := maxf(float(state.get("recent_peak_bbox_area_growth", state.get("last_bbox_area_growth", 0.0))), float(state.get("last_bbox_area_growth", 0.0)))
+			if recent_peak_wrist_velocity >= min_wrist_velocity and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples:
 				state["trigger_bbox_area"] = bbox_area
 				state["grace_frames_remaining"] = max(0, int(straight_punch_config.get("triggered_grace_frames", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES)))
-				_emit_power_event(events, event_name, _compute_straight_punch_power(wrist_velocity, bbox_area, state, straight_punch_config))
+				_emit_power_event(events, event_name, _compute_straight_punch_power(recent_peak_wrist_velocity, bbox_area, state, straight_punch_config, recent_peak_bbox_area_growth))
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRIGGERED)
 		_set_straight_punch_state(side, state)
 		return
@@ -828,6 +855,10 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			state["trigger_bbox_area"] = 0.0
 			state["grace_frames_remaining"] = 0
 			state["bbox_area_history"] = [bbox_area]
+			state["wrist_velocity_history"] = [wrist_velocity]
+			state["recent_peak_wrist_velocity"] = wrist_velocity
+			state["bbox_area_growth_history"] = []
+			state["recent_peak_bbox_area_growth"] = 0.0
 			state["positive_growth_samples"] = 0
 			state["last_bbox_area_growth"] = 0.0
 			_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
@@ -1194,6 +1225,10 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"grace_frames_remaining": 0,
 		"reacquire_valid_samples": 0,
 		"last_bbox_area": 0.0,
+		"wrist_velocity_history": [],
+		"recent_peak_wrist_velocity": 0.0,
+		"bbox_area_growth_history": [],
+		"recent_peak_bbox_area_growth": 0.0,
 		"last_bbox_area_growth": 0.0,
 		"last_wrist_velocity": 0.0,
 		"last_sample_fresh": false,
@@ -1287,10 +1322,16 @@ func _window_bbox_area_growth(history: Array) -> float:
 		return 0.0
 	return float(history[history.size() - 1]) - float(history[0])
 
-func _compute_straight_punch_power(wrist_velocity: float, bbox_area: float, state: Dictionary, straight_punch_config: Dictionary) -> float:
+func _window_peak_float(history: Array) -> float:
+	var peak := 0.0
+	for value_variant: Variant in history:
+		peak = maxf(peak, float(value_variant))
+	return peak
+
+func _compute_straight_punch_power(wrist_velocity: float, bbox_area: float, state: Dictionary, straight_punch_config: Dictionary, bbox_growth_override: float = -1.0) -> float:
 	var velocity_floor := maxf(float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.000001)
 	var growth_floor := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.000001)
-	var bbox_growth := maxf(float(state.get("last_bbox_area_growth", 0.0)), 0.0)
+	var bbox_growth := maxf(bbox_growth_override if bbox_growth_override >= 0.0 else float(state.get("last_bbox_area_growth", 0.0)), 0.0)
 	var velocity_power := wrist_velocity / (velocity_floor * 3.0)
 	var growth_power := bbox_growth / (growth_floor * 2.0)
 	var area_power := bbox_area / maxf(float(state.get("trigger_bbox_area", bbox_area)), 0.000001)

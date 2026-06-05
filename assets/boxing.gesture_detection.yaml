@@ -6,10 +6,10 @@ straight_punch:
   evaluation:
     fresh_samples_only: true
     sample_window_size: 4
-    min_positive_growth_samples: 2
+    min_positive_growth_samples: 1
   thresholds:
     min_wrist_velocity: 0.18
-    min_bbox_area_growth: 0.006
+    min_bbox_area_growth: 0.00014
   timing:
     triggered_grace_frames: 3
   rearm:

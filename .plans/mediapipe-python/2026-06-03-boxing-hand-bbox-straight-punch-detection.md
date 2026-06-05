@@ -1267,6 +1267,54 @@ Remaining mismatch: no `punch_left` / `punch_right` event lands inside the gold 
 
 ---
 
+### Task 10AA: Repair straight-punch trigger windowing/tuning against replay fixture magnitudes
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.13`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`, `REF-06`
+**Prompt:** After Task 10Z fixed fresh-sample truth, the remaining dominant blocker is that the trigger still requires same-sample hand-growth plus instantaneous wrist-velocity coincidence, while replay-fixture bbox growth magnitudes remain far below the current YAML threshold. Starting from the fresh-sample rerun traces under `.testbed/test-results/task10z-fresh-sample-rerun/`, implement the smallest owner-correct windowing and/or threshold tuning seam that can be proved against the replay fixtures without widening into unrelated transport work. Keep YAML edits outside Godot, use `godotenv-sync` if refresh work is needed, add focused proof/tests/probes, and update this plan with exact evidence, validation, commits, and any remaining mismatch.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.testbed/test-results/`
+- `assets/` and detector/test folders in `REF-01` only if proven necessary
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- focused detector/tuning/probe files to be identified during implementation
+
+**Status:** ✅ Complete
+
+**Results:** Landed the smallest owner-correct implementation slice that the replay fixtures actually proved: (1) `REF-01` now keeps a recent positive bbox-growth peak alongside the existing recent wrist-velocity peak so a fresh tracked sample can trigger when growth and velocity land on adjacent replayed hand samples instead of requiring same-sample coincidence; (2) the replay/live provider path now reconfigures the detector substrate against the active runtime config before processing, which fixed the proving path silently running with the baked-in `0.006 / 2` straight-punch defaults after `_ready()` constructed the substrate too early; and (3) the boxing profile YAML was normalized/fixed in-owner (`assets/boxing.gesture_detection.yaml` tuned to `min_positive_growth_samples: 1` and `min_bbox_area_growth: 0.00014`, `assets/boxing.camera_tracking.yaml` indentation repaired so the selected profile bundle loads truthfully during replay). Focused proof: `.testbed/tests/unit/test_pose_detector_substrate.gd` now includes a regression that only passes when recent bbox-growth peak carryover can trigger on a later high-velocity fresh hand sample; `res://tests/unit/test_camera_tracking_config_profiles.gd` re-passed after the profile-YAML repair. Replay evidence was regenerated at `.testbed/test-results/task10aa-windowing-rerun-2026-06-05-providerfix/` using `capture_fixture_proving.gd` plus `task10_straight_punch_trace.gd`. Exact outcome from that rerun: the live replay path finally consumed the tuned boxing profile (`min_bbox_area_growth: 0.00014`, `min_positive_growth_samples: 1` visible in the trace debug), and gold-truth mismatch improved from zero straight-punch detections to one in-window left hit (`left` event at `4848ms` inside the `4833-5088ms` gold window). Remaining mismatch is explicit and still unresolved: left windows `1150-1300`, `2150-2650`, `3333-3833` still missed; right windows `400-600`, `1700-2000`, `3100-3400`, `4400-4900` still missed; replay also emitted false-positive out-of-window punches (`left`: `2774`, `2926`, `4260`, `5985`, `6455`, `6560`, `6675`; `right`: `1367`, `4203`, `5023`). Trace inspection shows the next blocker is no longer raw threshold ownership: several gold windows are spent in `not_ready` / `tracking_lost`, and some velocity/growth peaks still fail to overlap inside the current ready/rearm lifecycle even with the new carry window. Validation run during this slice:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit`
+- replay capture + trace rerun under `.testbed/test-results/task10aa-windowing-rerun-2026-06-05-providerfix/` for both `punch_left` and `punch_right` fixtures.
+
+---
+
+### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
+
+**Bead ID:** `aerobeat-input-camera-tracking-575`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-01`, `REF-02`, `REF-07`, `REF-08`
+**Prompt:** Research whether the current Godot video playback path used by this work can truthfully support any acceptable next/previous-step fallback short of exact frame stepping. Be explicit about what the current built-in Godot `.ogv` backend exposes (time seek precision, pause/play semantics, frame index visibility, minimum seek granularity if any), whether a tiny time nudge such as 0.1ms is actually meaningful or just rounded/decoder-limited noise, and whether `aerobeat-input-camera-tracking` could honestly offer a "smallest available time step" UX instead of exact frame stepping. Use real upstream/local docs and code paths where possible, distinguish what is proven versus assumed, and recommend the narrowest truthful next move.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- research artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable research notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Research completed against the real owner stack plus upstream Godot 4.6.2/Theora evidence. Proven facts: the current shipped AeroBeat replay path is still the built-in Godot `.ogv` path surfaced through `REF-07`/`REF-08`, and the owner code only exposes/plays with seconds-based transport (`paused`, `stream_position`, `play`, `stop`, `is_playing`, position/duration snapshots). `REF-08` explicitly reports `transport_mode=approx_time_seek`, `can_step_forward=false`, `can_step_backward=false`, `can_seek_frame=false`, `frame_index=null`, `frame_count=null`, and refuses `step_frames()` / `seek_to_frame()` instead of faking success. `REF-01` / `REF-02` only forward that truth upward. Upstream Godot 4.6-stable source proves Theora seek now exists by time, but it is not frame-addressed: `VideoStreamPlaybackTheora::seek()` takes a float seconds target, computes `video_frame = int64_t(p_time / frame_duration)`, backtracks toward a prior keyframe window, then decodes forward until it passes the requested time. The same source keeps frame counters internal and does not expose a public frame index on `VideoStreamPlayer`; docs still only expose seconds-based `stream_position`, pause/play/stop, and note that `is_playing()` stays true while paused, `play()` does not unpause, and `stop()` resets position without making frame 0 the current displayed frame. Proven consequence: a 0.1 ms nudge is not a truthful stepping primitive here for visual replay, because visible seek behavior is bounded by decoded frame timing plus keyframe/backtracking behavior, not by arbitrary sub-millisecond caller precision. Additional important limit: the Aero vendor backend's `nominal_fps` / `frame_duration_sec` are only informational metadata derived from source `fps_hint`, not decoder-proven exact frame timing, so they are useful hints but not a trustworthy exact-step contract. Recommendation: do not market this backend as supporting a “smallest available time step” or next/previous frame fallback. The narrow truthful fallback, if Derrick still wants a manual nudge affordance, is to label it explicitly as an approximate time nudge (for example, “Jump by nominal frame time (approx)” or plain millisecond nudge) and only when an FPS hint exists, with copy that it may land on the same decoded frame or skip based on codec/keyframe behavior. Otherwise keep exact-step UI disabled for the current `.ogv` stack until a lower owner can prove exact frame-addressed transport.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`

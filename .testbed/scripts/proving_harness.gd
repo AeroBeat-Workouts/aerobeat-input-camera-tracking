@@ -1056,6 +1056,7 @@ func _remember_mode_signal_relay(signal_name: String, callback: Callable) -> voi
 
 func _build_runtime_config() -> Variant:
 	var config := CameraTrackingConfigScript.new()
+	config.get_selected_profile_bundle()
 	config.min_visibility = overlay_visibility_threshold
 	config.track_left_foot = true
 	config.track_right_foot = true
