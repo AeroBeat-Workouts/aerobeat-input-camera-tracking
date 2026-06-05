@@ -65,8 +65,8 @@ tracking:
       prefer_existing_pose_side_binding: true
       nearest_wrist_fallback: true
     validity:
-      max_stale_frames: 2
-      reacquire_stable_frames: 2
+      max_stale_ms: 80
+      reacquire_stable_ms: 40
 ```
 
 ### Locked tracker field ownership
@@ -90,8 +90,8 @@ tracking:
 - `tracking.hands.bbox.enabled: true`
 - `tracking.hands.association.prefer_existing_pose_side_binding: true`
 - `tracking.hands.association.nearest_wrist_fallback: true`
-- `tracking.hands.validity.max_stale_frames: 2`
-- `tracking.hands.validity.reacquire_stable_frames: 2`
+- `tracking.hands.validity.max_stale_ms: 80`
+- `tracking.hands.validity.reacquire_stable_ms: 40`
 
 #### Flow tracker defaults
 
@@ -105,8 +105,8 @@ tracking:
 - `tracking.hands.bbox.enabled: true`
 - `tracking.hands.association.prefer_existing_pose_side_binding: true`
 - `tracking.hands.association.nearest_wrist_fallback: true`
-- `tracking.hands.validity.max_stale_frames: 2`
-- `tracking.hands.validity.reacquire_stable_frames: 2`
+- `tracking.hands.validity.max_stale_ms: 80`
+- `tracking.hands.validity.reacquire_stable_ms: 40`
 
 ## Locked v1 gesture schema
 
@@ -124,11 +124,11 @@ straight_punch:
     min_wrist_velocity: 0.18
     min_bbox_area_growth: 0.006
   timing:
-    triggered_grace_frames: 3
+    triggered_grace_ms: 240
   rearm:
     bbox_area_retract_epsilon: 0.003
   state_machine:
-    lost_tracking_reacquire_stable_frames: 2
+    lost_tracking_reacquire_stable_ms: 40
 ```
 
 ### Locked gesture field ownership
@@ -150,9 +150,9 @@ straight_punch:
 - `straight_punch.evaluation.min_positive_growth_samples: 2`
 - `straight_punch.thresholds.min_wrist_velocity: 0.18`
 - `straight_punch.thresholds.min_bbox_area_growth: 0.006`
-- `straight_punch.timing.triggered_grace_frames: 3`
+- `straight_punch.timing.triggered_grace_ms: 240`
 - `straight_punch.rearm.bbox_area_retract_epsilon: 0.003`
-- `straight_punch.state_machine.lost_tracking_reacquire_stable_frames: 2`
+- `straight_punch.state_machine.lost_tracking_reacquire_stable_ms: 40`
 
 #### Flow gesture defaults
 

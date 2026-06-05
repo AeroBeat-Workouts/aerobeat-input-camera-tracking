@@ -17,8 +17,8 @@ tracking:
       prefer_existing_pose_side_binding: true
       nearest_wrist_fallback: true
     validity:
-      max_stale_frames: 2
-      reacquire_stable_frames: 2
+      max_stale_ms: 80
+      reacquire_stable_ms: 40
     grace:
       enabled: true
       position_decay: 1.0

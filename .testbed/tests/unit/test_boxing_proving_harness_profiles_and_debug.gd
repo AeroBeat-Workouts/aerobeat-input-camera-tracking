@@ -64,13 +64,19 @@ func _has_editor_exposed_property(subject: Object, property_name: String) -> boo
 		return (int(property_info.get("usage", 0)) & PROPERTY_USAGE_EDITOR) != 0
 	return false
 
-func test_hand_bbox_drawer_prefers_grace_tracking_state_when_gesture_state_is_not_colored() -> void:
+func test_hand_bbox_drawer_prefers_grace_tracking_state_over_gesture_state() -> void:
 	var drawer = add_child_autoqfree(HandBBoxDrawerScript.new())
+	drawer.update_snapshot({}, {
+		"left": {
+			"state": "triggered",
+		}
+	})
 	var state_name: String = drawer._resolve_side_state("left", {
 		"tracking_valid": true,
 		"tracking_state": "grace",
 	})
 	assert_eq(String(state_name), "grace")
+	assert_eq(drawer.STATE_COLORS["grace"], Color8(0xff, 0x4f, 0xd8, 0xff))
 
 func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
@@ -195,6 +201,9 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 				"tracking_state": "tracked",
 				"tracking_valid": true,
 				"stale_frames": 0,
+				"stale_ms": 0,
+				"grace_ms": 0,
+				"stable_ms": 80,
 				"bbox": {
 					"area": 0.055,
 				}
@@ -211,7 +220,9 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	assert_string_contains(line, "bbox_area=0.055")
 	assert_string_contains(line, "bbox_growth=0.015")
 	assert_string_contains(line, "grace=160ms")
-	assert_string_contains(line, "reacquire=1")
+	assert_string_contains(line, "hand_grace=0ms")
+	assert_string_contains(line, "hand_stable=80ms")
+	assert_string_contains(line, "stale=0ms")
 
 func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void:
 	var harness = _new_harness()
@@ -223,6 +234,10 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"tracking_state": "tracked",
 					"tracking_valid": true,
 					"stale_frames": 1,
+					"stale_ms": 40,
+					"grace_frames": 1,
+					"grace_ms": 40,
+					"stable_ms": 120,
 					"fresh_sample": true,
 					"wrist_velocity": 0.420,
 					"wrist_forward_velocity": 0.150,
@@ -249,7 +264,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(model.get("title", "")), "Straight Punch L")
 	assert_eq(String(rows[1].get("current_text", "")), "not_ready")
-	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, stale_frames=1")
+	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, stale=40ms (1 frames), grace=40ms (1 frames), stable=120ms")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[4].get("current_text", "")), "waiting for first straight-punch state change")
 	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 bbox=0.052 growth=0.015 fresh=true grace=0ms valid=true")
@@ -270,6 +285,10 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"tracking_state": "tracked",
 					"tracking_valid": true,
 					"stale_frames": 0,
+					"stale_ms": 0,
+					"grace_frames": 0,
+					"grace_ms": 0,
+					"stable_ms": 160,
 					"fresh_sample": false,
 					"wrist_velocity": 0.310,
 					"wrist_forward_velocity": 0.120,
@@ -295,7 +314,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_right")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Current state - triggered")
-	assert_string_contains(body, "Hand tracking - tracked, valid=true, stale_frames=0")
+	assert_string_contains(body, "Hand tracking - tracked, valid=true, stale=0ms (0 frames), grace=0ms (0 frames), stable=160ms")
 	assert_string_contains(body, "Fresh sample valid - false")
 	assert_false(body.contains("Event payload snapshot"))
 	assert_string_contains(body, "Wrist xyz velocity >= 0.180 - 0.310")
@@ -317,6 +336,10 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"tracking_state": "tracked",
 					"tracking_valid": true,
 					"stale_frames": 0,
+					"stale_ms": 0,
+					"grace_frames": 0,
+					"grace_ms": 0,
+					"stable_ms": 160,
 					"fresh_sample": true,
 					"wrist_velocity": 0.310,
 					"wrist_forward_velocity": 0.120,
@@ -347,6 +370,10 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 			"tracking_state": "tracked",
 			"tracking_valid": true,
 			"stale_frames": 0,
+			"stale_ms": 0,
+			"grace_frames": 0,
+			"grace_ms": 0,
+			"stable_ms": 160,
 			"fresh_sample": true,
 			"wrist_velocity": 0.310,
 			"bbox_area": 0.071,
@@ -368,6 +395,10 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"tracking_state": "tracked",
 					"tracking_valid": true,
 					"stale_frames": 0,
+					"stale_ms": 0,
+					"grace_frames": 0,
+					"grace_ms": 0,
+					"stable_ms": 160,
 					"fresh_sample": false,
 					"wrist_velocity": 0.0,
 					"min_wrist_velocity": 0.180,
@@ -438,6 +469,10 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 			"tracking_state": "tracked",
 			"tracking_valid": true,
 			"stale_frames": 0,
+			"stale_ms": 0,
+			"grace_frames": 0,
+			"grace_ms": 0,
+			"stable_ms": 160,
 			"fresh_sample": true,
 			"wrist_velocity": 0.280,
 			"bbox_area": 0.064,

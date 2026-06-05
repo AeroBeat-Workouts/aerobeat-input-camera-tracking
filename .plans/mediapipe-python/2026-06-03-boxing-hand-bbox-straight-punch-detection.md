@@ -1664,6 +1664,70 @@ Commits:
 
 ---
 
+### Task 10AM: Audit live hand grace wiring against current YAML-tuned repo state
+
+**Bead ID:** `aerobeat-input-camera-tracking-hss`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Derrick manually edited the YAMLs to his current values and observed live boxing-scene hand tracking still jittering directly between tracked and not-tracked states without ever visibly showing `grace`. Audit whether the new hand grace system is truthfully implemented and actually reachable in the current live-camera path. First capture the current repo state (including Derrick's latest local YAML edits) rather than assuming older committed defaults. Then inspect the tool/input wiring to determine whether grace is disabled by config, bypassed by the live path, hidden by the testbed display, or otherwise not being surfaced truthfully. Do not guess. Use code + current repo state evidence, identify the exact gating condition or bug if found, and report the narrowest truthful next fix. Update this plan task with findings/evidence.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Audit completed against the *current local repo state first*, not older assumptions. Current state at audit time: `REF-01` on `main` at `70e3e7e` (`Document hand grace prediction slice`), `REF-02` on `main` at `22a5125` (`Add hand grace bbox prediction`); the only dirty file in `REF-01` was this plan, so Derrick had **no uncommitted YAML edits** beyond the current checked-in boxing values. The active boxing profile currently has hand grace enabled in `REF-01` `assets/boxing.camera_tracking.yaml:9-25` with `tracking.hands.enabled=true`, `validity.max_stale_frames=2`, and `grace.enabled=true` plus full decay passthrough (`position_decay=1.0`, `size_decay=1.0`). The boxing gesture profile currently has straight-punch `triggered_grace_ms=240` in `REF-01` `assets/boxing.gesture_detection.yaml:4-20`. Profile loading/wiring is live-path correct: `REF-01` `src/config/camera_tracking_config.gd:63-90` loads the selected boxing bundle from the repo-owned YAML files, and `src/providers/camera_tracking_provider.gd:324-340` forwards the resolved `tracking.hands` config directly into the tool tracking session config. Tool-side implementation is present and reachable: `REF-02` `src/CameraTrackingFrame.gd:303-308` enters predicted hand grace when a prior hand sample exists, the miss count is within `max_stale_frames`, and `grace.enabled` is true; `src/CameraTrackingFrame.gd:589-604` emits `tracking_state="grace"`, `tracking_valid=true`, `grace_frames=stale_frames`, `predicted=true`, and predicted bbox/landmarks. The documented contract also still says grace frames remain valid downstream samples (`REF-02` `docs/tracker-config-schema.md:136-142`, `188-191`). Input-side consumption is also wired truthfully: `REF-01` `src/detectors/pose_detector_substrate.gd:1348-1360` explicitly accepts both `tracked` and `grace` as fresh hand samples, and the current focused test still proves that a `grace` hand sample can trigger a punch (`REF-01` `.testbed/tests/unit/test_pose_detector_substrate.gd:137-156`). Fresh audit reruns passed on current code: `REF-01` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`44/44`); `REF-02` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` ✅ (`33/33`). Audit conclusion: the new hand grace system is **enabled in the current boxing YAML, implemented in the tool layer, forwarded through the live boxing path, and reachable**. The truthful mismatch is the **boxing proving/live display**, not the tracker path: the boxing overlay currently prefers straight-punch gesture state coloring over raw hand tracking state (`REF-01` `.testbed/scripts/hand_bbox_state_drawer.gd:52-64`), so when a hand is in tracker `grace` but the straight-punch state is still `ready` / `triggered` / `not_ready`, the overlay shows the gesture state instead of visibly showing `grace`. The proving/debug panels do still carry the truth textually (`REF-01` `.testbed/scripts/boxing_proving_harness.gd:824-913`, `1312-1332`), but the overlay surface Derrick watches can hide it. Secondary visibility constraint: the current tuned grace budget is only `max_stale_frames=2`, so even when grace is occurring it lasts only two tracker frames before `tracking_lost`, making it easy to miss live. Narrowest truthful next fix: update the boxing hand-bbox overlay/debug wording so tracker `hand.tracking_state == "grace"` is surfaced explicitly even when the gesture state remains colorable (for example `ready (hand grace)` / dedicated grace badge/color precedence), rather than changing tracker behavior or YAML defaults first.
+
+---
+
+### Task 10AN: Show hand grace explicitly and convert hand grace/reacquire timing from frames to milliseconds
+
+**Bead ID:** `aerobeat-input-camera-tracking-vnl`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Derrick confirmed the next fixes after the live grace audit. First, make hand `grace` visually explicit in the boxing/input testbed scenes: pink bbox and `grace` text should win visibly over the generic gesture-state presentation whenever the underlying hand tracking state is grace. Second, convert the hand grace duration and hand reacquire stability controls from frame-count semantics to millisecond semantics so tuning is consistent with the newer time-window model; this belongs in the tool-owned hand tracking config/state path, with input consuming the truthful downstream state/readouts. Keep the slice as narrow and truthful as possible across the owner repos, keep YAML edits outside Godot, add focused proof/tests/probes, rerun enough validation for Derrick's next manual QA pass, and update this plan with exact files changed, validation, commits, and the exact new YAML knobs Derrick should tune.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `assets/`
+- `docs/`
+- `src/detectors/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/docs/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scripts/hand_bbox_state_drawer.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_camera_tracking_provider.gd`
+- `assets/boxing.camera_tracking.yaml`
+- `assets/flow.camera_tracking.yaml`
+- `docs/cross-repo-config-contract.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/README.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/docs/tracker-config-schema.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingPreviewPresenter.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the owner-correct hand-grace/timing slice across the tool and input repos. In the tool repo, hand validity config now normalizes to `tracking.hands.validity.max_stale_ms` and `tracking.hands.validity.reacquire_stable_ms`, downstream hand payloads/snapshots now expose truthful `timestamp_ms`, `stale_ms`, `grace_ms`, and `stable_ms` readouts, grace expiration now keys off elapsed sample age in milliseconds, and hand reacquire validity now keys off continuous observed time in milliseconds instead of frame counts. In the input repo, the boxing/testbed hand bbox overlay now makes tracker `grace` visually win over gesture-state coloring, using an explicit pink grace color and `grace` label whenever the underlying hand tracking state is `grace`; boxing debug/readout surfaces now consume the tool-owned ms state/readouts instead of frame-only semantics; and the boxing/flow camera-tracking YAMLs now use the new ms knobs. Exact YAML knobs Derrick should tune for this slice: `tracking.hands.validity.max_stale_ms` and `tracking.hands.validity.reacquire_stable_ms` in `assets/boxing.camera_tracking.yaml` and `assets/flow.camera_tracking.yaml` (currently `80` and `40` respectively). Focused validation rerun after landing the slice: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `godot --headless --path .testbed --import` ✅; `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_CameraTracking.gd -gexit` ✅ (`34/34`); `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --import` ✅; `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_camera_tracking_provider.gd -gexit` ✅ (`11/11`); `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`13/13`, expected existing orphan warnings only). Commits: tool repo `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `8e2a417` (`Convert hand validity timing to milliseconds`); input repo commit pending from this task handoff.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`

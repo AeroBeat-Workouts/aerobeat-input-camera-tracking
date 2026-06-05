@@ -835,6 +835,10 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var tracking_valid := bool(straight_side.get("tracking_valid", false))
 	var tracking_state := String(straight_side.get("tracking_state", "idle"))
 	var stale_frames := int(straight_side.get("stale_frames", 0))
+	var stale_ms := int(straight_side.get("stale_ms", 0))
+	var grace_frames := int(straight_side.get("grace_frames", 0))
+	var grace_ms := int(straight_side.get("grace_ms", 0))
+	var hand_stable_ms := int(straight_side.get("stable_ms", 0))
 	var transition_timestamp_ms := int(straight_side.get("timestamp_ms", 0))
 	var previous_state := String(straight_side.get("previous_state", ""))
 	var grace_ms_remaining := int(straight_side.get("grace_ms_remaining", 0))
@@ -853,7 +857,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			current_text = state_name
 			passed = state_name != "tracking_lost"
 		"tracking_status":
-			current_text = "%s, valid=%s, stale_frames=%d" % [tracking_state, _fmt_bool(tracking_valid), stale_frames]
+			current_text = "%s, valid=%s, stale=%dms (%d frames), grace=%dms (%d frames), stable=%dms" % [tracking_state, _fmt_bool(tracking_valid), stale_ms, stale_frames, grace_ms, grace_frames, hand_stable_ms]
 			passed = tracking_valid
 		"fresh_sample":
 			current_text = _fmt_bool(fresh_sample)
@@ -1239,8 +1243,8 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Hand cadence: every %s frame(s)" % str(int(hands_config.get("inference_interval_frames", 1))))
 	lines.append("BBox recompute cadence: every %s frame(s)" % str(int(hands_config.get("bbox_recompute_interval_frames", 1))))
 	lines.append("Hand tracking enabled: %s" % _fmt_bool(bool(hands_config.get("enabled", false))))
-	lines.append("Hand reacquire stable frames: %d" % int(hand_validity.get("reacquire_stable_frames", 0)))
-	lines.append("Hand max stale frames: %d" % int(hand_validity.get("max_stale_frames", 0)))
+	lines.append("Hand reacquire stable window: %dms" % int(hand_validity.get("reacquire_stable_ms", 0)))
+	lines.append("Hand grace/stale window: %dms" % int(hand_validity.get("max_stale_ms", 0)))
 
 	lines.append("")
 	lines.append("Straight-punch tuning")
@@ -1317,7 +1321,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 	var side_debug: Dictionary = (straight_punch_debug.get(side, {}) as Dictionary)
 	var state_name := String(side_debug.get("state", side_debug.get("phase", hand.get("tracking_state", "tracking_lost"))))
 	var bbox: Dictionary = hand.get("bbox", {}) if hand.get("bbox", {}) is Dictionary else {}
-	return "%s: state=%s tracking=%s valid=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms reacquire=%d stale=%d" % [
+	return "%s: state=%s tracking=%s valid=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms hand_grace=%dms hand_stable=%dms stale=%dms" % [
 		"L" if side == "left" else "R",
 		state_name,
 		String(hand.get("tracking_state", "idle")),
@@ -1327,8 +1331,9 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		_fmt_float(bbox.get("area", side_debug.get("bbox_area", 0.0))),
 		_fmt_float(side_debug.get("bbox_area_growth", 0.0)),
 		int(side_debug.get("grace_ms_remaining", 0)),
-		int(side_debug.get("reacquire_valid_samples", 0)),
-		int(hand.get("stale_frames", 0)),
+		int(hand.get("grace_ms", 0)),
+		int(hand.get("stable_ms", 0)),
+		int(hand.get("stale_ms", 0)),
 	]
 
 func _fmt_playback_status(playback: Dictionary) -> String:

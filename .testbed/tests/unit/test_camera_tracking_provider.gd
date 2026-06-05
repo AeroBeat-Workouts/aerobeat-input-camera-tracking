@@ -326,7 +326,8 @@ func test_camera_tracking_provider_live_start_forwards_boxing_pose_and_hand_prof
 	assert_true(bool(active_config.get("tracking", {}).get("pose", {}).get("enabled", false)))
 	assert_true(bool(active_config.get("tracking", {}).get("hands", {}).get("enabled", false)))
 	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("inference_interval_frames", -1)), 1)
-	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("validity", {}).get("max_stale_frames", -1)), 2)
+	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("validity", {}).get("max_stale_ms", -1)), 80)
+	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("validity", {}).get("reacquire_stable_ms", -1)), 40)
 
 func test_camera_tracking_provider_polls_tracking_session_frames_between_signals() -> void:
 	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
