@@ -156,6 +156,42 @@ func test_straight_punch_ignores_stale_hand_samples_for_trigger_evaluation() -> 
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
 
+func test_straight_punch_uses_xyz_wrist_velocity_magnitude_for_trigger_gate() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(
+		_make_pose_frame({
+			PoseLandmarkIds.LEFT_WRIST: {"x": 0.32, "y": 0.56, "z": -0.01},
+			PoseLandmarkIds.LEFT_ELBOW: {"x": 0.33, "y": 0.62, "z": -0.005},
+		}),
+		1180,
+		_make_tracking_frame(_tracked_hand_payload("left", 0.021), _tracked_hand_payload("right", 0.020))
+	)
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(
+		_make_pose_frame({
+			PoseLandmarkIds.LEFT_WRIST: {"x": 0.38, "y": 0.48, "z": -0.02},
+			PoseLandmarkIds.LEFT_ELBOW: {"x": 0.37, "y": 0.56, "z": -0.010},
+		}),
+		1260,
+		_make_tracking_frame(_tracked_hand_payload("left", 0.023), _tracked_hand_payload("right", 0.020))
+	)
+	state = substrate.process_landmarks(
+		_make_pose_frame({
+			PoseLandmarkIds.LEFT_WRIST: {"x": 0.42, "y": 0.42, "z": -0.03},
+			PoseLandmarkIds.LEFT_ELBOW: {"x": 0.40, "y": 0.50, "z": -0.015},
+		}),
+		1340,
+		_make_tracking_frame(_tracked_hand_payload("left", 0.0275), _tracked_hand_payload("right", 0.020))
+	)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(left_debug.get("wrist_forward_velocity", 0.0)) < float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) > float(state.get("metrics", {}).get("measurements", {}).get("left_forward_velocity", 0.0)))
+
 func test_straight_punch_uses_recent_wrist_velocity_peak_when_growth_lands_on_next_hand_sample() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0)))

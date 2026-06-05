@@ -161,7 +161,7 @@ const PUNCH_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "wrist_velocity",
-		"label": "Wrist velocity >= {threshold}",
+		"label": "Wrist xyz velocity >= {threshold}",
 	},
 	{
 		"id": "bbox_area",
@@ -1249,7 +1249,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Fresh samples only: %s" % _fmt_bool(bool(straight_eval.get("fresh_samples_only", true))))
 	lines.append("Sample window size: %d" % int(straight_eval.get("sample_window_size", 0)))
 	lines.append("Positive growth samples: %d" % int(straight_eval.get("min_positive_growth_samples", 0)))
-	lines.append("Min wrist velocity: %s" % _fmt_float(straight_thresholds.get("min_wrist_velocity", 0.0)))
+	lines.append("Min wrist xyz velocity: %s" % _fmt_float(straight_thresholds.get("min_wrist_velocity", 0.0)))
 	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))
 	lines.append("Triggered grace frames: %d" % int(straight_timing.get("triggered_grace_frames", 0)))
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
@@ -1316,12 +1316,13 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 	var side_debug: Dictionary = (straight_punch_debug.get(side, {}) as Dictionary)
 	var state_name := String(side_debug.get("state", side_debug.get("phase", hand.get("tracking_state", "tracking_lost"))))
 	var bbox: Dictionary = hand.get("bbox", {}) if hand.get("bbox", {}) is Dictionary else {}
-	return "%s: state=%s tracking=%s valid=%s wrist_vel=%s bbox_area=%s bbox_growth=%s grace=%d reacquire=%d stale=%d" % [
+	return "%s: state=%s tracking=%s valid=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%d reacquire=%d stale=%d" % [
 		"L" if side == "left" else "R",
 		state_name,
 		String(hand.get("tracking_state", "idle")),
 		_fmt_bool(bool(hand.get("tracking_valid", false))),
 		_fmt_float(side_debug.get("wrist_velocity", 0.0)),
+		_fmt_float(side_debug.get("wrist_forward_velocity", 0.0)),
 		_fmt_float(bbox.get("area", side_debug.get("bbox_area", 0.0))),
 		_fmt_float(side_debug.get("bbox_area_growth", 0.0)),
 		int(side_debug.get("grace_frames_remaining", 0)),

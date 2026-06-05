@@ -1447,6 +1447,39 @@ Net result: the gold-truth mismatch did **not** improve truthfully enough to lan
 
 ---
 
+### Task 10AG: Swap straight-punch wrist velocity gate to xyz magnitude for manual QA
+
+**Bead ID:** `aerobeat-input-camera-tracking-7t9`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`, `REF-06`
+**Prompt:** Derrick wants the next manual-testable slice to replace straight-punch wrist velocity gating from pose-z-only forward velocity to full wrist xyz velocity magnitude, while keeping hand bbox growth as the separate "moving closer" truth gate. Implement the smallest owner-correct detector/config/debug change that makes the proving scene testable for manual QA and YAML tuning. Keep the slice narrow to `REF-01`, keep YAML edits outside Godot, use `godotenv-sync` if refresh work is needed, add focused proof/tests/probes, rerun the left/right replay fixtures for truth context, and update this plan with exact evidence, validation, commits, and the specific YAML knobs Derrick should tune manually afterward. Stop at a clean coder handoff state for Derrick’s manual QA/audit pass rather than blindly continuing beyond that handoff gate.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.testbed/test-results/`
+- owner-correct detector/config folders in `REF-01` only if proven necessary
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/test-results/task10ag-xyz-velocity-rerun-2026-06-05/`
+
+**Status:** ✅ Complete
+
+**Results:** Kept the slice strictly inside `REF-01` and replaced the straight-punch wrist-velocity gate from pose-`z`-only forward velocity to full wrist `xyz` velocity magnitude in `src/detectors/pose_detector_substrate.gd`, while leaving hand bbox growth as the separate “moving closer” truth gate. The detector now records both values explicitly: `wrist_velocity` / `recent_peak_wrist_velocity` are the `xyz` magnitude used for thresholding, and `wrist_forward_velocity` remains exposed only as debug context so Derrick can compare “overall arm speed” against “moving toward camera.” I also extended the straight-punch debug/event payloads with `wrist_forward_velocity` and updated the boxing proving harness copy so the manual-QA surfaces truthfully say `Wrist xyz velocity` and the per-hand live debug line now prints both `wrist_xyz_vel` and `wrist_forward_vel`.
+
+Focused proof landed before replay reruns. `.testbed/tests/unit/test_pose_detector_substrate.gd` now includes `test_straight_punch_uses_xyz_wrist_velocity_magnitude_for_trigger_gate()`, which proves a punch can trigger when bbox growth is valid and full `xyz` wrist speed clears threshold even though forward-only `z` velocity stays below `min_wrist_velocity`; that is the exact behavioral seam Derrick asked for. `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` was updated so the proving-scene debug/inspector expectations match the new truthful terminology and the new `wrist_forward_velocity` debug field. Validation run from repo root: `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`; `godot --headless --path .testbed --import --quit-after 1000`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`38/38` passed, `349` asserts). Existing GUT orphan/RID leak shutdown noise remained unchanged and there were no new failing tests.
+
+Fresh replay truth context was regenerated under `.testbed/test-results/task10ag-xyz-velocity-rerun-2026-06-05/` using the same proving capture + Task 10 trace harness pattern as earlier tasks for both `REF-05` and `REF-06`. Left fixture result (`REF-05`): `punch_left` hits landed at `2059, 2158, 2268, 2530, 2756, 2914, 3842, 4259, 4685, 4798ms`; only the `2150-2650ms` gold window matched (`2158, 2268, 2530`), while `1150-1300`, `3333-3833`, and `4833-5088` still missed and out-of-window left positives remained at `2059, 2756, 2914, 3842, 4259, 4685, 4798ms`. Right fixture result (`REF-06`): `punch_right` hits landed at `1142, 1357, 2440, 3029, 3144, 4230, 4650, 5033, 5901ms`; this rerun now matched `3100-3400` (`3144`) and `4400-4900` (`4650`) while still missing the startup `400-600` and early-mid `1700-2000` windows, with out-of-window right positives at `1142, 1357, 2440, 3029, 4230, 5033, 5901ms`. The new trace summary also records the higher speed envelope introduced by the `xyz` gate: left peak `wrist_velocity_xyz=0.904` vs `wrist_forward_velocity=0.483`, right peak `wrist_velocity_xyz=1.018` vs `wrist_forward_velocity=0.811` (`summary.txt` / `summary.json`). That makes this slice useful for manual QA/YAML tuning even though it is not a final truth-pass.
+
+Manual YAML knobs for Derrick to try next in `assets/boxing.gesture_detection.yaml` (outside Godot): (1) start with `straight_punch.thresholds.min_wrist_velocity` because the new `xyz` peaks are much larger than the old forward-only values, so the current `0.18` floor is now permissive and likely contributes to the out-of-window triggers; try stepping it upward first while watching the proving scene’s `wrist_xyz_vel` vs `wrist_forward_vel` line. (2) If higher `min_wrist_velocity` suppresses true hits too aggressively, then tune the separate closeness gate with `straight_punch.thresholds.min_bbox_area_growth` and, secondarily, `straight_punch.evaluation.min_positive_growth_samples` rather than folding that responsibility back into velocity. (3) If the scene still feels sticky/retrigger-happy after threshold tuning, adjust `straight_punch.rearm.bbox_area_retract_epsilon` and `straight_punch.timing.triggered_grace_frames` while using the proving inspector’s stored-trigger-bbox / grace readouts. I intentionally did **not** widen into transport/UI work or in-editor YAML mutation; this is a clean coder handoff for Derrick’s manual QA/audit pass.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`

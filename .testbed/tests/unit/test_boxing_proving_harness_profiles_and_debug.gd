@@ -153,6 +153,7 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 				"left": {
 					"state": "triggered",
 					"wrist_velocity": 0.42,
+					"wrist_forward_velocity": 0.09,
 					"bbox_area_growth": 0.015,
 					"grace_frames_remaining": 2,
 					"reacquire_valid_samples": 1,
@@ -177,7 +178,8 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	assert_string_contains(line, "L: state=triggered")
 	assert_string_contains(line, "tracking=tracked")
 	assert_string_contains(line, "valid=true")
-	assert_string_contains(line, "wrist_vel=0.420")
+	assert_string_contains(line, "wrist_xyz_vel=0.420")
+	assert_string_contains(line, "wrist_forward_vel=0.090")
 	assert_string_contains(line, "bbox_area=0.055")
 	assert_string_contains(line, "bbox_growth=0.015")
 	assert_string_contains(line, "grace=2")
@@ -195,6 +197,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"stale_frames": 1,
 					"fresh_sample": true,
 					"wrist_velocity": 0.420,
+					"wrist_forward_velocity": 0.150,
 					"min_wrist_velocity": 0.180,
 					"bbox_area": 0.052,
 					"bbox_area_growth": 0.015,
@@ -241,6 +244,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"stale_frames": 0,
 					"fresh_sample": false,
 					"wrist_velocity": 0.310,
+					"wrist_forward_velocity": 0.120,
 					"min_wrist_velocity": 0.180,
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.012,
@@ -266,7 +270,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Hand tracking - tracked, valid=true, stale_frames=0")
 	assert_string_contains(body, "Fresh sample valid - false")
 	assert_false(body.contains("Event payload snapshot"))
-	assert_string_contains(body, "Wrist velocity >= 0.180 - 0.310")
+	assert_string_contains(body, "Wrist xyz velocity >= 0.180 - 0.310")
 	assert_string_contains(body, "BBox area - 0.071")
 	assert_string_contains(body, "BBox area growth >= 0.010 - 0.012")
 	assert_string_contains(body, "Positive growth samples >= 3/4 - 4/4")
@@ -287,6 +291,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"stale_frames": 0,
 					"fresh_sample": true,
 					"wrist_velocity": 0.310,
+					"wrist_forward_velocity": 0.120,
 					"min_wrist_velocity": 0.180,
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.012,
@@ -360,7 +365,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 
 	assert_eq(still_frozen_body, frozen_body)
 	assert_string_contains(still_frozen_body, "Latest state change - ready -> triggered")
-	assert_string_contains(still_frozen_body, "Wrist velocity >= 0.180 - 0.310")
+	assert_string_contains(still_frozen_body, "Wrist xyz velocity >= 0.180 - 0.310")
 	assert_string_contains(still_frozen_body, "BBox area growth >= 0.010 - 0.012")
 	assert_false(still_frozen_body.contains("Event payload snapshot"))
 

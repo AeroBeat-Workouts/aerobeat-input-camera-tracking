@@ -286,8 +286,12 @@ func _build_metrics(landmarks_by_id: Dictionary, timestamp_ms: int) -> Dictionar
 	}
 	var left_forward_distance := float(left_shoulder.get("z", 0.0)) - float(left_wrist.get("z", 0.0))
 	var right_forward_distance := float(right_shoulder.get("z", 0.0)) - float(right_wrist.get("z", 0.0))
-	var left_forward_velocity := -float((velocities.get("left_hand", Vector3.ZERO) as Vector3).z)
-	var right_forward_velocity := -float((velocities.get("right_hand", Vector3.ZERO) as Vector3).z)
+	var left_wrist_velocity_vector: Vector3 = velocities.get("left_hand", Vector3.ZERO) as Vector3
+	var right_wrist_velocity_vector: Vector3 = velocities.get("right_hand", Vector3.ZERO) as Vector3
+	var left_forward_velocity := -float(left_wrist_velocity_vector.z)
+	var right_forward_velocity := -float(right_wrist_velocity_vector.z)
+	var left_wrist_velocity_magnitude := left_wrist_velocity_vector.length()
+	var right_wrist_velocity_magnitude := right_wrist_velocity_vector.length()
 	var left_outward_distance := float(left_shoulder.get("x", 0.0)) - float(left_wrist.get("x", 0.0))
 	var right_outward_distance := float(right_wrist.get("x", 0.0)) - float(right_shoulder.get("x", 0.0))
 
@@ -351,6 +355,8 @@ func _build_metrics(landmarks_by_id: Dictionary, timestamp_ms: int) -> Dictionar
 		"right_forward_distance": right_forward_distance,
 		"left_forward_velocity": left_forward_velocity,
 		"right_forward_velocity": right_forward_velocity,
+		"left_wrist_velocity_magnitude": left_wrist_velocity_magnitude,
+		"right_wrist_velocity_magnitude": right_wrist_velocity_magnitude,
 		"left_outward_distance": left_outward_distance,
 		"right_outward_distance": right_outward_distance,
 		"left_lane_offset_ratio": left_lane_offset_ratio,
@@ -537,6 +543,7 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary, ha
 		"phase": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
 		"state": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
+		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),
 		"recent_peak_wrist_velocity": float(state.get("recent_peak_wrist_velocity", 0.0)),
 		"min_wrist_velocity": float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)),
 		"bbox_area": float(bbox.get("area", state.get("last_bbox_area", 0.0))),
@@ -750,9 +757,11 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var hand_tracking_valid := bool(hand_payload.get("tracking_valid", false))
 	var fresh_sample := _is_fresh_tracking_hand_sample(hand_payload, state)
 	var valid_sample := _is_valid_tracking_hand_sample(hand_payload)
-	var wrist_velocity := maxf(float(measurements.get("%s_forward_velocity" % side, 0.0)), 0.0)
+	var wrist_velocity := maxf(float(measurements.get("%s_wrist_velocity_magnitude" % side, 0.0)), 0.0)
+	var wrist_forward_velocity := maxf(float(measurements.get("%s_forward_velocity" % side, 0.0)), 0.0)
 	state["last_bbox_area"] = bbox_area
 	state["last_wrist_velocity"] = wrist_velocity
+	state["last_wrist_forward_velocity"] = wrist_forward_velocity
 	state["last_sample_fresh"] = fresh_sample
 	state["hand_tracking_state"] = hand_tracking_state
 	var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
@@ -1234,6 +1243,7 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"recent_peak_bbox_area_growth": 0.0,
 		"last_bbox_area_growth": 0.0,
 		"last_wrist_velocity": 0.0,
+		"last_wrist_forward_velocity": 0.0,
 		"last_sample_fresh": false,
 		"last_observation_frame_index": -1,
 		"last_observation_timestamp_seconds": -1.0,
@@ -1356,6 +1366,7 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),
 		"positive_growth_samples": int(state.get("positive_growth_samples", 0)),
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
+		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),
 		"tracking_state": String(state.get("hand_tracking_state", "idle")),
 		"tracking_valid": bool(state.get("hand_tracking_valid", false)),
