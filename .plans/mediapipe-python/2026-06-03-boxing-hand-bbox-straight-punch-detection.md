@@ -1293,6 +1293,62 @@ Remaining mismatch: no `punch_left` / `punch_right` event lands inside the gold 
 
 ---
 
+### Task 10AC: Repair straight-punch ready/rearm lifecycle timing against replay fixtures
+
+**Bead ID:** `aerobeat-input-camera-tracking-iw9`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`, `REF-06`
+**Prompt:** After Task 10AA proved the next blocker is no longer raw threshold ownership, repair the smallest owner-correct ready/rearm lifecycle seam that keeps several replay gold windows trapped in `not_ready` or `tracking_lost`. Start from `.testbed/test-results/task10aa-windowing-rerun-2026-06-05-providerfix/` and the current straight-punch traces. Implement only the narrowest detector/provider lifecycle fix or tuning seam that can be proved against the replay fixtures without widening into unrelated transport or UI work. Keep YAML edits outside Godot, use `godotenv-sync` if refresh work is needed, add focused proof/tests/probes, and update this plan with exact evidence, validation, commits, and any remaining mismatch.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.testbed/test-results/`
+- owner-correct detector/provider/config folders in `REF-01` only if proven necessary
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `.testbed/test-results/task10ac-rearm-rerun-2026-06-05/left/straight_punch_trace.json`
+- `.testbed/test-results/task10ac-rearm-rerun-2026-06-05/right/straight_punch_trace.json`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed the bead with `bd update aerobeat-input-camera-tracking-iw9 --status in_progress --json` and started from `.testbed/test-results/task10aa-windowing-rerun-2026-06-05-providerfix/` plus the current straight-punch traces.
+
+Landed the smallest owner-correct lifecycle seam the replay fixtures actually proved: the tuned straight-punch rearm epsilon in `assets/boxing.gesture_detection.yaml` now matches the Task 10AA replay-scale bbox magnitudes (`bbox_area_retract_epsilon: 0.0003` instead of the legacy `0.003`). The earlier value was still scaled for the pre-provider-fix larger growth regime, so once a replay false-positive or early punch fired it could leave the detector parked in `not_ready` until bbox area collapsed by ~60-75% from trigger magnitude—something the replay windows often never did. That made the third/fourth left-punch gold windows and the second right-punch gold window spend their useful time stuck in lifecycle recovery instead of evaluating as `ready`.
+
+Focused proof added:
+- `.testbed/tests/unit/test_pose_detector_substrate.gd` now includes `test_straight_punch_rearms_between_tuned_fixture_scale_punches()`, which configures the replay-scale straight-punch thresholds and proves the detector can transition `triggered -> not_ready -> ready -> triggered` again once bbox area retracts by the tuned `0.0003` amount.
+
+Validation:
+- `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` ✅
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`25/25` passed)
+- Reran focused replay traces into `.testbed/test-results/task10ac-rearm-rerun-2026-06-05/left/straight_punch_trace.json` and `.testbed/test-results/task10ac-rearm-rerun-2026-06-05/right/straight_punch_trace.json` ✅
+
+Exact replay evidence versus Task 10AA baseline:
+- left replay:
+  - Task 10AA baseline hit only `4833-5088` (`punch_left @ 4948ms`), while `3333-3833` was trapped entirely in `not_ready` (`16/16` samples).
+  - Task 10AC rerun now hits `3333-3833` and `4833-5088` (`punch_left @ 3828ms` and `4844ms`).
+  - The third left gold window is no longer trapped: `3333-3833` changed from `not_ready: 16` to `ready: 16`.
+- right replay:
+  - Task 10AA baseline had the second gold window `1700-2000` trapped entirely in `not_ready` (`10/10` samples).
+  - Task 10AC rerun clears that lifecycle trap: `1700-2000` is now `ready: 10`, and the later `4400-4900` window improved from `not_ready: 1, tracking_lost: 5, ready: 10` to `tracking_lost: 4, ready: 12`.
+  - No in-window `punch_right` landed yet, so the right replay remains a mismatch, but the dominant `not_ready` trap is no longer the blocker in those windows.
+
+Post-fix truth:
+- Gold-truth mismatch improved from one in-window left hit to two in-window left hits.
+- Remaining misses are explicit:
+  - left gold windows still missed: `1150-1300`, `2150-2650`
+  - right gold windows still missed: `400-600`, `1700-2000`, `3100-3400`, `4400-4900`
+- Remaining blocker is narrower: after the rearm fix, the unresolved misses are no longer dominated by the stale large retract epsilon. The next seam is still unresolved right-side/early-window readiness-to-trigger overlap, especially the windows that stay `tracking_lost` or never accumulate enough same-window forward-signal overlap even after rearm.
+
+Commits:
+- `74e2e26` — `Tune straight-punch rearm for replay fixtures`
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`

@@ -13,6 +13,6 @@ straight_punch:
   timing:
     triggered_grace_frames: 3
   rearm:
-    bbox_area_retract_epsilon: 0.003
+    bbox_area_retract_epsilon: 0.0003
   state_machine:
     lost_tracking_reacquire_stable_frames: 2
