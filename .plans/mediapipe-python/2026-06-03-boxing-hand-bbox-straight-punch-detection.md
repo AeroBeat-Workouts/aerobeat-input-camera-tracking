@@ -849,14 +849,38 @@ Landed the smallest owner-correct fix in `REF-02` only: `CameraTrackingFrame.gd`
 
 **Folders Created/Deleted/Modified:**
 - validation-only use of relevant `.testbed` project(s) and capture artifacts as needed
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/` (gitignored QA probes + reports)
 
 **Files Created/Deleted/Modified:**
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
-- QA artifacts/captures if generated
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/task10q_pause_probe.gd` (gitignored)
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/task10q_side_trace.gd` (gitignored)
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/left/pause_probe.json` (gitignored)
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/left/side_trace.json` (gitignored)
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/left/report.json` / `report.md` (gitignored)
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/right/side_trace.json` (gitignored)
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/right/report.json` / `report.md` (gitignored)
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/input-unit-rerun.log` (gitignored)
+- `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/tool-single-reacquire.log` / `tool-pose-lock.log` (gitignored)
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA completed with fresh repo-local validation and deterministic proving/replay probes. Artifacts live under `.testbed/test-results/task10q-qa-captures/2026-06-04-211034/` (gitignored).
+
+- **Environment note / repro hazard:** the first focused GUT pass surfaced the known boxing YAML tab-indentation hazard (`assets/boxing.camera_tracking.yaml`, `assets/boxing.gesture_detection.yaml`) in the local checkout. I restored both from `HEAD` outside Godot via `git restore --source=HEAD -- ...` before rerunning. Final tracked repo state was clean.
+- **Repo-local unit coverage:** `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → **11/11 passed** on rerun (`input-unit-rerun.log`). This directly revalidated the paused inspector freeze behavior, the removed `Event payload snapshot` line, and paused-only playback-step button enablement.
+- **Upstream side-ownership regression coverage:** in `REF-02`, `test_frame_normalization_single_reacquired_candidate_chooses_nearest_locked_side_without_left_bias` and `test_frame_normalization_preserves_pose_side_lock_across_tracking_lost_reacquire` both passed (`tool-single-reacquire.log`, `tool-pose-lock.log`).
+- **Deterministic proving captures:** reran `capture_fixture_proving.gd` against `REF-05` left/right boxing fixtures. JSON/Markdown reports were produced under `left/` and `right/`; headless screenshots failed under the dummy renderer (`Parameter "t" is null`) but the replay/state reports were still written truthfully.
+- **Paused replay debugger truthfulness / removed payload line / manual scroll / pause-resume behavior / paused-only stepping:** the left-fixture pause probe (`left/pause_probe.json`) showed:
+  - while replay was **playing**, step buttons were disabled
+  - after toggling to **paused**, step buttons became enabled and the inspector body stayed frozen/truthful
+  - paused replay time/frame stayed fixed at **0.8s / frame 60** across a 600 ms wait (`paused_time_initial == paused_time_after_wait`, `paused_frame_index_initial == paused_frame_index_after_wait`)
+  - the inspector body stayed byte-stable while paused and did **not** contain `Event payload snapshot`
+  - the detected-event panel manual scroll position stayed fixed while paused (`scroll_before == scroll_after == 628.0`), so it did not snap back to the top
+  - paused button + keyboard stepping changed the paused playback cursor, and those controls were only enabled in the paused state
+  - after resume, playback continued forward from the stepped paused position (`3.066...s -> 4.233...s`) instead of jumping back to startup, which matches the intended “no stale restart-looking debug state” behavior
+- **Specific left-punch wrong-side-flash concern:** fresh side traces (`left/side_trace.json`, `right/side_trace.json`) plus the upstream regression tests give materially stronger evidence that the single-candidate reacquire bias is fixed. In the left replay trace, there were **no valid samples** where the normalized **left** lane was reassigned to a valid **right-labeled** source. The only non-left `source_label` cases for the left lane were blank/invalid frames during a brief `tracking_lost` gap at **3669 / 3691 / 3734 ms**, followed by correct left-lane reacquire by **3756 ms**. That means the earlier brief wrong-side flash now appears **resolved at the normalized hand-ownership layer**. If Derrick still sees a visible flash in a separate UI path, the stronger remaining explanation is raw-handedness/debug-label presentation or another display seam, not the old upstream left-bias reacquire bug.
+- **Out-of-scope but relevant truth:** the left/right proving captures still produced only `guard_*` events rather than matching all gold punch windows. I did **not** widen into threshold tuning; for this QA slice, the trustworthy pass/fail evidence for side ownership came from the paused replay probe, the side traces, and the focused upstream ownership tests.
 
 ---
 
