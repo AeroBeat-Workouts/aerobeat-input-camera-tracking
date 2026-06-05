@@ -34,6 +34,8 @@ const PLAYBACK_ICON_PLAY := "▶"
 const PLAYBACK_ICON_PAUSE := "⏸"
 const PLAYBACK_ICON_STEP_BACK := "⏮"
 const PLAYBACK_ICON_STEP_FORWARD := "⏭"
+const PLAYBACK_TRANSPORT_MODE_EXACT_OWNED_FRAME_INDEX := "exact_owned_frame_index"
+const PLAYBACK_TRANSPORT_MODE_APPROX_TIME_SEEK := "approx_time_seek"
 const DEFAULT_PLAYBACK_FRAME_STEP_SEC := 1.0 / 30.0
 const LANDMARK_DRAWER_Z_INDEX := 20
 const TRAIL_DRAWER_Z_INDEX := 19
@@ -243,9 +245,12 @@ var _playback_bar_panel: PanelContainer = null
 var _playback_toggle_button: Button = null
 var _playback_seek_slider: HSlider = null
 var _playback_time_label: Label = null
+var _playback_step_status_label: Label = null
 var _playback_step_back_button: Button = null
 var _playback_step_forward_button: Button = null
 var _playback_status := {}
+var _playback_transport_capabilities := {}
+var _playback_transport_status := {}
 var _playback_last_position_sec := -1.0
 var _playback_last_frame_step_sec := DEFAULT_PLAYBACK_FRAME_STEP_SEC
 var _playback_status_poll_due_ms := 0
@@ -398,12 +403,17 @@ func _ensure_playback_controls() -> void:
 	margin.add_theme_constant_override("margin_bottom", 8)
 	_playback_bar_panel.add_child(margin)
 
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 4)
+	margin.add_child(column)
+
 	var row := HBoxContainer.new()
 	row.custom_minimum_size = Vector2(0.0, PLAYBACK_CONTROL_ROW_HEIGHT)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_theme_constant_override("separation", 10)
-	margin.add_child(row)
+	column.add_child(row)
 
 	var toggle_host := CenterContainer.new()
 	toggle_host.custom_minimum_size = Vector2(PLAYBACK_TOGGLE_BUTTON_WIDTH, PLAYBACK_CONTROL_ROW_HEIGHT)
@@ -469,6 +479,15 @@ func _ensure_playback_controls() -> void:
 	)
 	time_host.add_child(_playback_step_forward_button)
 
+	_playback_step_status_label = Label.new()
+	_playback_step_status_label.custom_minimum_size = Vector2(0.0, 18.0)
+	_playback_step_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_playback_step_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_playback_step_status_label.add_theme_font_size_override("font_size", 11)
+	_playback_step_status_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.72))
+	_playback_step_status_label.visible = false
+	column.add_child(_playback_step_status_label)
+
 func _resolve_playback_controller(log_missing: bool = true) -> Node:
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	if tracking_singleton != null and tracking_singleton.has_method("ensure_replay_playback_loaded"):
@@ -518,6 +537,58 @@ func _playback_controller_unload() -> void:
 	var tracking_singleton := _resolve_playback_controller(false)
 	if tracking_singleton != null and tracking_singleton.has_method("unload_replay_playback"):
 		tracking_singleton.unload_replay_playback()
+
+func _playback_controller_get_tracking_session() -> Node:
+	var tracking_singleton := _resolve_playback_controller(false)
+	if tracking_singleton != null and tracking_singleton.has_method("get_tracking_session_if_ready"):
+		var tracking_session: Variant = tracking_singleton.get_tracking_session_if_ready()
+		if tracking_session is Node:
+			return tracking_session
+	return null
+
+func _playback_controller_get_transport_capabilities() -> Dictionary:
+	var tracking_singleton := _resolve_playback_controller(false)
+	if tracking_singleton != null and tracking_singleton.has_method("get_replay_transport_capabilities"):
+		var capabilities: Variant = tracking_singleton.get_replay_transport_capabilities()
+		if capabilities is Dictionary:
+			return capabilities.duplicate(true)
+	var tracking_session := _playback_controller_get_tracking_session()
+	if tracking_session != null and tracking_session.has_method("get_replay_transport_capabilities"):
+		var capabilities: Variant = tracking_session.get_replay_transport_capabilities()
+		if capabilities is Dictionary:
+			return capabilities.duplicate(true)
+	return {}
+
+func _playback_controller_get_transport_status() -> Dictionary:
+	var tracking_singleton := _resolve_playback_controller(false)
+	if tracking_singleton != null and tracking_singleton.has_method("get_replay_transport_status"):
+		var status: Variant = tracking_singleton.get_replay_transport_status()
+		if status is Dictionary:
+			return status.duplicate(true)
+	var tracking_session := _playback_controller_get_tracking_session()
+	if tracking_session != null and tracking_session.has_method("get_replay_transport_status"):
+		var status: Variant = tracking_session.get_replay_transport_status()
+		if status is Dictionary:
+			return status.duplicate(true)
+	return {}
+
+func _playback_controller_step_frames(delta_frames: int) -> Dictionary:
+	var tracking_singleton := _resolve_playback_controller(false)
+	if tracking_singleton != null and tracking_singleton.has_method("step_replay_frames"):
+		var result: Variant = tracking_singleton.step_replay_frames(delta_frames)
+		if result is Dictionary:
+			return result.duplicate(true)
+	var tracking_session := _playback_controller_get_tracking_session()
+	if tracking_session != null and tracking_session.has_method("step_replay_frames"):
+		var result: Variant = tracking_session.step_replay_frames(delta_frames)
+		if result is Dictionary:
+			return result.duplicate(true)
+	return {
+		"success": false,
+		"code": "replay_transport_unavailable",
+		"message": "No replay transport step API is available on the active playback controller.",
+		"detail": {"delta_frames": delta_frames},
+	}
 
 func _ensure_overlay_drawers_ready() -> void:
 	_configure_overlay_drawer(landmark_drawer, LANDMARK_DRAWER_Z_INDEX)
@@ -1688,6 +1759,8 @@ func _refresh_playback_controls_visibility() -> void:
 	elif not playback_visible and _playback_visibility_active:
 		_playback_controller_unload()
 		_playback_status = {}
+		_playback_transport_capabilities = {}
+		_playback_transport_status = {}
 		_playback_autoplay_pending = false
 		_playback_autoplay_base_url = ""
 	_playback_visibility_active = playback_visible
@@ -1713,6 +1786,10 @@ func _sync_playback_status_from_manager() -> void:
 	if backend_state is Dictionary:
 		for status_key: Variant in backend_state.keys():
 			_playback_status[status_key] = backend_state[status_key]
+	_playback_transport_capabilities = _playback_controller_get_transport_capabilities()
+	_playback_transport_status = _playback_controller_get_transport_status()
+	_playback_status["replay_transport_capabilities"] = _playback_transport_capabilities.duplicate(true)
+	_playback_status["replay_transport_status"] = _playback_transport_status.duplicate(true)
 	var paused := bool(_playback_status.get("paused", false))
 	if not paused and _playback_last_position_sec >= 0.0 and playback_position > _playback_last_position_sec:
 		var inferred_step := playback_position - _playback_last_position_sec
@@ -1736,11 +1813,18 @@ func _refresh_playback_controls_state() -> void:
 	var controls_enabled := _is_prerecorded_source_active() and _playback_controller_has_loaded_media()
 	_playback_toggle_button.disabled = not controls_enabled
 	_playback_seek_slider.editable = controls_enabled
-	var step_enabled := controls_enabled and paused
+	var can_step_backward := controls_enabled and paused and _playback_transport_step_supported(-1)
+	var can_step_forward := controls_enabled and paused and _playback_transport_step_supported(1)
+	var step_status_text := _playback_transport_step_status_text(controls_enabled)
 	if _playback_step_back_button != null:
-		_playback_step_back_button.disabled = not step_enabled
+		_playback_step_back_button.disabled = not can_step_backward
+		_playback_step_back_button.tooltip_text = _playback_step_tooltip_text(-1, step_status_text)
 	if _playback_step_forward_button != null:
-		_playback_step_forward_button.disabled = not step_enabled
+		_playback_step_forward_button.disabled = not can_step_forward
+		_playback_step_forward_button.tooltip_text = _playback_step_tooltip_text(1, step_status_text)
+	if _playback_step_status_label != null:
+		_playback_step_status_label.text = step_status_text
+		_playback_step_status_label.visible = not step_status_text.is_empty()
 	if not _playback_slider_drag_active:
 		_playback_seek_slider.value = float(_playback_status.get("progress", 0.0))
 	_playback_time_label.text = "%s / %s" % [
@@ -1777,33 +1861,65 @@ func _on_playback_seek_drag_ended(value_changed: bool) -> void:
 	_refresh_playback_status(true)
 
 func _can_step_paused_playback() -> bool:
-	return _is_prerecorded_source_active() and _playback_controller_has_loaded_media() and bool(_playback_status.get("paused", false))
+	return _is_prerecorded_source_active() and _playback_controller_has_loaded_media() and bool(_playback_status.get("paused", false)) and _playback_transport_supports_exact_frame_step()
 
 func _playback_frame_step_seconds() -> float:
 	return maxf(_playback_last_frame_step_sec, DEFAULT_PLAYBACK_FRAME_STEP_SEC)
 
+func _playback_transport_mode() -> String:
+	var mode := String(_playback_transport_status.get("transport_mode", _playback_transport_capabilities.get("transport_mode", ""))).strip_edges()
+	if mode.is_empty():
+		mode = String(_playback_status.get("transport_mode", "")).strip_edges()
+	return mode
+
+func _playback_transport_supports_exact_frame_step() -> bool:
+	if _playback_transport_mode() != PLAYBACK_TRANSPORT_MODE_EXACT_OWNED_FRAME_INDEX:
+		return false
+	return bool(_playback_transport_capabilities.get("can_step_forward", false)) or bool(_playback_transport_capabilities.get("can_step_backward", false))
+
+func _playback_transport_step_supported(direction: int) -> bool:
+	if direction == 0 or not _playback_transport_supports_exact_frame_step():
+		return false
+	if direction < 0:
+		return bool(_playback_transport_status.get("can_step_backward", _playback_transport_capabilities.get("can_step_backward", false)))
+	return bool(_playback_transport_status.get("can_step_forward", _playback_transport_capabilities.get("can_step_forward", false)))
+
+func _playback_transport_step_status_text(controls_enabled: bool) -> String:
+	if not controls_enabled:
+		return ""
+	if _playback_transport_supports_exact_frame_step():
+		return "Exact frame stepping available for this replay source."
+	var transport_mode := _playback_transport_mode()
+	var exactness_note := String(_playback_transport_status.get("exactness_note", _playback_transport_capabilities.get("exactness_note", ""))).strip_edges()
+	if transport_mode == PLAYBACK_TRANSPORT_MODE_APPROX_TIME_SEEK:
+		if exactness_note.is_empty():
+			exactness_note = "This replay source only supports approximate time seek here; exact frame stepping is unavailable."
+		return "Frame step unavailable (%s). %s" % [transport_mode, exactness_note]
+	if transport_mode.is_empty():
+		return "Frame step unavailable: replay transport capabilities are not available from the active source."
+	if exactness_note.is_empty():
+		exactness_note = "Exact frame stepping is not supported by the active replay transport."
+	return "Frame step unavailable (%s). %s" % [transport_mode, exactness_note]
+
+func _playback_step_tooltip_text(direction: int, step_status_text: String) -> String:
+	var action_label := "Step backward one frame (Left Arrow)" if direction < 0 else "Step forward one frame (Right Arrow)"
+	if _playback_transport_step_supported(direction):
+		return action_label
+	if step_status_text.is_empty():
+		return action_label
+	return "%s\n%s" % [action_label, step_status_text]
+
 func _request_playback_frame_step(direction: int) -> void:
-	if direction == 0 or not _can_step_paused_playback():
+	if direction == 0 or not _can_step_paused_playback() or not _playback_transport_step_supported(direction):
 		return
 	if not _load_playback_source_if_needed():
 		return
-	var duration := float(_playback_status.get("duration_sec", 0.0))
-	var current_sec := float(_playback_status.get("current_time_sec", 0.0))
-	var target_sec := current_sec + (float(direction) * _playback_frame_step_seconds())
-	if duration > 0.0:
-		target_sec = clampf(target_sec, 0.0, duration)
-	else:
-		target_sec = maxf(target_sec, 0.0)
-	if is_equal_approx(target_sec, current_sec):
-		return
-	_reset_runtime_debug_state_for_seek()
-	_shared_inspector_frozen_model = {}
-	_shared_inspector_live_model = {}
-	_shared_inspector_live_refresh_due_ms = 0
-	_playback_controller_seek(target_sec)
-	_refresh_playback_status(true)
-	_playback_controller_pause()
-	_sync_playback_status_from_manager()
+	var result := _playback_controller_step_frames(signi(direction))
+	if bool(result.get("success", false)):
+		_reset_runtime_debug_state_for_seek()
+		_shared_inspector_frozen_model = {}
+		_shared_inspector_live_model = {}
+		_shared_inspector_live_refresh_due_ms = 0
 	_refresh_playback_status(true)
 
 func _reset_runtime_debug_state_for_seek() -> void:

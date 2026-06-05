@@ -1061,12 +1061,13 @@ Limitations left explicit on purpose:
 
 **Files Created/Deleted/Modified:**
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
-- proving/testbed consumer files to be identified during implementation
-- focused tests/probes as needed
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_proving_harness_trails.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Migrated the proving/testbed replay consumer to the truthful replay transport surface from `REF-02` without widening into deeper vendor exactness work. `proving_harness.gd` now reads replay transport capabilities/status from the active tracking session, keeps play/pause/time-seek behavior unchanged for normal replay use, and only enables paused left/right frame-step controls when the transport honestly reports `transport_mode=exact_owned_frame_index` plus per-direction step support. When the active replay path is still the shipped approximate MediaPipe/Godot flow (`transport_mode=approx_time_seek`), the step buttons stay disabled and the boxing/proving UI now shows an explicit fallback message instead of pretending timestamp seeks are exact frame steps. Focused proof landed in `test_proving_harness_trails.gd` for both the approximate fallback and an exact delegated fake transport, and `test_boxing_proving_harness_profiles_and_debug.gd` was updated so its paused-button expectation now seeds exact transport support explicitly instead of relying on the old paused-only assumption. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_proving_harness_trails.gd -gexit` (35/35 passing) and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit` (11/11 passing). A broader all-unit run still hit the pre-existing flaky preview JPEG load error in `test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls`, unrelated to this transport slice. Commit: `11c2bfb` (`Truthfully gate replay frame stepping in proving harness`). Remaining limitation: the current shipped MediaPipe replay path still reports `approx_time_seek`, so the truthful UX for this slice is disabled exact-step controls plus explicit fallback messaging until a lower layer can prove exact frame-addressed replay.
 
 ---
 

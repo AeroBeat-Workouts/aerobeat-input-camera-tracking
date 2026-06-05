@@ -138,6 +138,104 @@ class FakeLiveTrackingContractSingleton:
 		})
 		return true
 
+class FakeReplayTransportSingleton:
+	extends Node
+
+	var replay_state := {
+		"state": "paused",
+		"position": 4.0,
+		"duration": 12.0,
+		"media_loaded": true,
+		"source": {"path": "res://fixtures/replay/example.mp4", "kind": "file"},
+	}
+	var transport_capabilities := {
+		"transport_mode": "approx_time_seek",
+		"can_step_forward": false,
+		"can_step_backward": false,
+		"can_seek_frame": false,
+		"nominal_fps": null,
+		"frame_duration_sec": null,
+		"exactness_note": "Approximate time seek only.",
+		"limitation_code": "transport_unsupported",
+	}
+	var transport_status := {
+		"transport_mode": "approx_time_seek",
+		"can_step_forward": false,
+		"can_step_backward": false,
+		"can_seek_frame": false,
+		"frame_index": null,
+		"frame_count": null,
+		"nominal_fps": null,
+		"frame_duration_sec": null,
+		"paused": true,
+		"position_sec": 4.0,
+		"duration_sec": 12.0,
+		"exactness_note": "Approximate time seek only.",
+		"limitation_code": "transport_unsupported",
+	}
+	var step_calls: Array[int] = []
+
+	func ensure_replay_playback_loaded(source_path: String) -> bool:
+		replay_state["media_loaded"] = true
+		replay_state["source"] = {"path": source_path, "kind": "file"}
+		return true
+
+	func get_replay_playback_state() -> Dictionary:
+		var state := replay_state.duplicate(true)
+		state["status"] = {
+			"current_time_sec": float(state.get("position", 0.0)),
+			"duration_sec": float(state.get("duration", 0.0)),
+			"progress": float(state.get("position", 0.0)) / float(state.get("duration", 1.0)) if float(state.get("duration", 0.0)) > 0.0 else 0.0,
+			"paused": String(state.get("state", "idle")) != "playing",
+			"is_file_source": true,
+		}
+		return state
+
+	func refresh_replay_playback_status() -> Dictionary:
+		return get_replay_playback_state()
+
+	func play_replay_playback() -> bool:
+		replay_state["state"] = "playing"
+		transport_status["paused"] = false
+		return true
+
+	func pause_replay_playback() -> bool:
+		replay_state["state"] = "paused"
+		transport_status["paused"] = true
+		return true
+
+	func seek_replay_playback(seconds: float) -> bool:
+		replay_state["position"] = seconds
+		transport_status["position_sec"] = seconds
+		return true
+
+	func unload_replay_playback() -> void:
+		replay_state["media_loaded"] = false
+
+	func get_replay_transport_capabilities() -> Dictionary:
+		return transport_capabilities.duplicate(true)
+
+	func get_replay_transport_status() -> Dictionary:
+		return transport_status.duplicate(true)
+
+	func step_replay_frames(delta_frames: int) -> Dictionary:
+		step_calls.append(delta_frames)
+		var frame_index := int(transport_status.get("frame_index", 0)) + delta_frames
+		transport_status["frame_index"] = frame_index
+		var frame_duration := float(transport_status.get("frame_duration_sec", 0.0))
+		if frame_duration > 0.0:
+			var next_position := maxf(float(transport_status.get("position_sec", replay_state.get("position", 0.0))) + (frame_duration * delta_frames), 0.0)
+			transport_status["position_sec"] = next_position
+			replay_state["position"] = next_position
+		replay_state["state"] = "paused"
+		transport_status["paused"] = true
+		return {
+			"success": true,
+			"code": "ok",
+			"message": "stepped",
+			"detail": {"delta_frames": delta_frames, "frame_index": frame_index},
+		}
+
 var harness: ProvingHarness = null
 var _replay_requests: Array[String] = []
 var _replay_responses: Dictionary = {}
@@ -675,6 +773,117 @@ func test_playback_seek_slider_expands_without_losing_vertical_alignment() -> vo
 	assert_gt(slider_rect.size.x, 300.0)
 	assert_almost_eq(slider_rect.get_center().y, toggle_rect.get_center().y, 1.0)
 	assert_almost_eq(slider_rect.get_center().y, time_rect.get_center().y, 1.0)
+
+func test_replay_step_controls_report_approximate_transport_truthfully() -> void:
+	if harness != null:
+		harness.free()
+	harness = ContractAwareHarness.new()
+	var fake_singleton := add_child_autoqfree(FakeReplayTransportSingleton.new()) as FakeReplayTransportSingleton
+	fake_singleton.transport_capabilities = {
+		"transport_mode": "approx_time_seek",
+		"can_step_forward": false,
+		"can_step_backward": false,
+		"can_seek_frame": false,
+		"nominal_fps": 30.0,
+		"frame_duration_sec": 1.0 / 30.0,
+		"exactness_note": "Only approximate time seek is available on this replay path.",
+		"limitation_code": "transport_unsupported",
+	}
+	fake_singleton.transport_status = {
+		"transport_mode": "approx_time_seek",
+		"can_step_forward": false,
+		"can_step_backward": false,
+		"can_seek_frame": false,
+		"frame_index": null,
+		"frame_count": null,
+		"nominal_fps": 30.0,
+		"frame_duration_sec": 1.0 / 30.0,
+		"paused": true,
+		"position_sec": 4.0,
+		"duration_sec": 12.0,
+		"exactness_note": "Only approximate time seek is available on this replay path.",
+		"limitation_code": "transport_unsupported",
+	}
+	harness.fake_singleton = fake_singleton
+	harness.prerecorded_video_source = "res://fixtures/replay/example.mp4"
+	var camera_panel := Control.new()
+	camera_panel.custom_minimum_size = Vector2(640.0, 360.0)
+	camera_panel.size = Vector2(640.0, 360.0)
+	add_child(camera_panel)
+	camera_panel.add_child(harness)
+	var display := TextureRect.new()
+	display.name = "CameraDisplay"
+	display.set_anchors_preset(Control.PRESET_FULL_RECT)
+	camera_panel.add_child(display)
+	harness.camera_display = display
+	harness._ensure_playback_controls()
+	harness._playback_autoplay_base_url = harness._playback_base_url()
+	harness._playback_autoplay_pending = false
+	harness._refresh_playback_status(true)
+
+	assert_true(harness._playback_step_back_button.disabled)
+	assert_true(harness._playback_step_forward_button.disabled)
+	assert_false(harness._can_step_paused_playback())
+	assert_true(String(harness._playback_step_status_label.text).contains("approx_time_seek"))
+	assert_true(String(harness._playback_step_status_label.text).contains("Frame step unavailable"))
+	harness._request_playback_frame_step(1)
+	assert_eq(fake_singleton.step_calls, [])
+
+func test_replay_step_controls_delegate_exact_transport_steps() -> void:
+	if harness != null:
+		harness.free()
+	harness = ContractAwareHarness.new()
+	var fake_singleton := add_child_autoqfree(FakeReplayTransportSingleton.new()) as FakeReplayTransportSingleton
+	fake_singleton.transport_capabilities = {
+		"transport_mode": "exact_owned_frame_index",
+		"can_step_forward": true,
+		"can_step_backward": true,
+		"can_seek_frame": true,
+		"nominal_fps": 30.0,
+		"frame_duration_sec": 1.0 / 30.0,
+		"exactness_note": "Owned frame index stepping is exact on this fake transport.",
+		"limitation_code": "",
+	}
+	fake_singleton.transport_status = {
+		"transport_mode": "exact_owned_frame_index",
+		"can_step_forward": true,
+		"can_step_backward": true,
+		"can_seek_frame": true,
+		"frame_index": 120,
+		"frame_count": 360,
+		"nominal_fps": 30.0,
+		"frame_duration_sec": 1.0 / 30.0,
+		"paused": true,
+		"position_sec": 4.0,
+		"duration_sec": 12.0,
+		"exactness_note": "Owned frame index stepping is exact on this fake transport.",
+		"limitation_code": "",
+	}
+	harness.fake_singleton = fake_singleton
+	harness.prerecorded_video_source = "res://fixtures/replay/example.mp4"
+	var camera_panel := Control.new()
+	camera_panel.custom_minimum_size = Vector2(640.0, 360.0)
+	camera_panel.size = Vector2(640.0, 360.0)
+	add_child(camera_panel)
+	camera_panel.add_child(harness)
+	var display := TextureRect.new()
+	display.name = "CameraDisplay"
+	display.set_anchors_preset(Control.PRESET_FULL_RECT)
+	camera_panel.add_child(display)
+	harness.camera_display = display
+	harness._ensure_playback_controls()
+	harness._playback_autoplay_base_url = harness._playback_base_url()
+	harness._playback_autoplay_pending = false
+	harness._refresh_playback_status(true)
+
+	assert_false(harness._playback_step_back_button.disabled)
+	assert_false(harness._playback_step_forward_button.disabled)
+	assert_true(harness._can_step_paused_playback())
+	assert_eq(String(harness._playback_step_status_label.text), "Exact frame stepping available for this replay source.")
+	harness._request_playback_frame_step(1)
+	assert_eq(fake_singleton.step_calls, [1])
+	assert_eq(int(fake_singleton.transport_status.get("frame_index", -1)), 121)
+	assert_almost_eq(float(harness._playback_status.get("current_time_sec", -1.0)), float(fake_singleton.replay_state.get("position", -1.0)), 0.0001)
 
 func _fake_replay_transport_request(url: String) -> Dictionary:
 	_replay_requests.append(url)

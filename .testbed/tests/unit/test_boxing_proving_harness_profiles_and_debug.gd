@@ -374,6 +374,17 @@ func test_playback_step_buttons_only_enable_while_paused() -> void:
 	harness.set("_playback_step_back_button", step_back)
 	harness.set("_playback_step_forward_button", step_forward)
 	harness.set("camera_source", "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+	harness.set("_playback_transport_capabilities", {
+		"transport_mode": "exact_owned_frame_index",
+		"can_step_forward": true,
+		"can_step_backward": true,
+	})
+	harness.set("_playback_transport_status", {
+		"transport_mode": "exact_owned_frame_index",
+		"can_step_forward": true,
+		"can_step_backward": true,
+		"paused": true,
+	})
 	harness.set("_playback_status", {"paused": true, "current_time_sec": 1.0, "duration_sec": 2.0, "progress": 0.5})
 	harness._refresh_playback_controls_state()
 	assert_false(step_back.disabled)
