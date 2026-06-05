@@ -73,6 +73,67 @@ class PausePreservingTrackingSession extends CameraTrackingScript:
 		_state = STATE_IDLE
 		state_changed.emit(_state, {})
 
+class StalePlaybackStatusTrackingSession extends CameraTrackingScript:
+	var stop_preserving_calls := 0
+	var transport_status: Dictionary = {
+		"transport_mode": "approx_time_seek",
+		"can_step_forward": false,
+		"can_step_backward": false,
+		"can_seek_frame": false,
+		"frame_index": null,
+		"frame_count": null,
+		"nominal_fps": null,
+		"frame_duration_sec": null,
+		"paused": false,
+		"position_sec": 0.0,
+		"duration_sec": 30.0,
+		"exactness_note": "Approximate time seek only.",
+		"limitation_code": "backend_transport_unsupported",
+	}
+
+	func prime_replay_snapshot(source_path: String, current_time_sec: float, tracking_frame: Dictionary, preview_descriptor: Dictionary = {}) -> void:
+		_active_config = {
+			"source": {
+				"kind": "video_file",
+				"path": source_path,
+			},
+		}
+		_tracking_frame = tracking_frame.duplicate(true)
+		_preview_descriptor = preview_descriptor.duplicate(true)
+		_playback_status = {
+			"source": source_path,
+			"state": "playing",
+			"paused": false,
+			"current_time_sec": current_time_sec,
+			"duration_sec": 30.0,
+			"progress": current_time_sec / 30.0,
+			"is_file_source": true,
+		}
+		transport_status["paused"] = false
+		transport_status["position_sec"] = current_time_sec
+		transport_status["duration_sec"] = 30.0
+		_state = STATE_RUNNING
+
+	func stop_preserving_runtime_state() -> void:
+		stop_preserving_calls += 1
+		_state = STATE_IDLE
+		state_changed.emit(_state, {})
+
+	func get_replay_transport_capabilities() -> Dictionary:
+		return {
+			"transport_mode": transport_status.get("transport_mode", "approx_time_seek"),
+			"can_step_forward": transport_status.get("can_step_forward", false),
+			"can_step_backward": transport_status.get("can_step_backward", false),
+			"can_seek_frame": transport_status.get("can_seek_frame", false),
+			"nominal_fps": transport_status.get("nominal_fps", null),
+			"frame_duration_sec": transport_status.get("frame_duration_sec", null),
+			"exactness_note": transport_status.get("exactness_note", ""),
+			"limitation_code": transport_status.get("limitation_code", "backend_transport_unsupported"),
+		}
+
+	func get_replay_transport_status() -> Dictionary:
+		return transport_status.duplicate(true)
+
 func before_each() -> void:
 	CameraTrackingBackendRegistryScript.clear()
 	TeardownTrackingSession.total_stop_calls = 0
@@ -294,6 +355,40 @@ func test_aero_camera_tracking_pause_preserves_visible_tracking_state_as_paused(
 	assert_true(bool(paused_status.get("paused", false)))
 	assert_eq(String(singleton.get_replay_playback_state().get("state", "")), "paused")
 	assert_eq(float(paused_status.get("current_time_sec", -1.0)), 7.5)
+
+func test_aero_camera_tracking_pause_preserves_paused_public_state_when_tracking_session_status_stays_stale_playing() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var tracker := StalePlaybackStatusTrackingSession.new()
+	var replay_path := ProjectSettings.globalize_path("res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
+	var frame := {
+		"timestamp_ms": 123,
+		"source_id": replay_path,
+		"tracking_state": "tracked",
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": [
+			{"id": 0, "x": 0.5, "y": 0.15, "z": 0.0, "visibility": 0.95},
+		],
+	}
+	tracker.prime_replay_snapshot(replay_path, 7.5, frame)
+	singleton.set_tracking_session(tracker)
+	singleton.set("_replay_source_path", replay_path)
+	singleton.set("_replay_loaded", true)
+	singleton.set("_replay_playing", true)
+	singleton.set("_replay_position_sec", 7.5)
+	var paused_head_position = singleton.get_provider().get_head_position()
+
+	assert_true(singleton.pause_replay_playback())
+	assert_eq(singleton.get_provider().get_head_position(), paused_head_position)
+	assert_eq(tracker.stop_preserving_calls, 1)
+	var paused_state: Dictionary = singleton.get_replay_playback_state()
+	assert_eq(String(paused_state.get("state", "")), "paused")
+	assert_true(bool((paused_state.get("status", {}) as Dictionary).get("paused", false)))
+	assert_eq(float((paused_state.get("status", {}) as Dictionary).get("current_time_sec", -1.0)), 7.5)
+	var transport_status: Dictionary = singleton.get_replay_transport_status()
+	assert_true(bool(transport_status.get("paused", false)))
+	assert_eq(float(transport_status.get("position_sec", -1.0)), 7.5)
+	assert_eq(String(transport_status.get("transport_mode", "")), "approx_time_seek")
+	assert_eq(String(transport_status.get("limitation_code", "")), "backend_transport_unsupported")
 
 func test_aero_camera_tracking_resume_preserves_replay_loop_origin() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())

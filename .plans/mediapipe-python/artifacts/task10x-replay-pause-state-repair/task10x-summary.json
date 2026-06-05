@@ -1,0 +1,443 @@
+{
+	"controller_states": {
+		"held_paused_playback_status": {
+			"current_time_sec": 1.43333333333333,
+			"duration_sec": 6.0,
+			"is_file_source": true,
+			"paused": true,
+			"progress": 0.238888888888889,
+			"replay_transport_capabilities": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_duration_sec": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"transport_mode": "approx_time_seek"
+			},
+			"replay_transport_status": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"duration_sec": 6.0,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_count": null,
+				"frame_duration_sec": null,
+				"frame_index": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"paused": true,
+				"position_sec": 1.43333333333333,
+				"transport_mode": "approx_time_seek"
+			}
+		},
+		"held_paused_state": {
+			"duration": 6.0,
+			"media_loaded": true,
+			"position": 1.43333333333333,
+			"source": {
+				"kind": "file",
+				"path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4"
+			},
+			"state": "paused",
+			"status": {
+				"current_time_sec": 1.43333333333333,
+				"duration_sec": 6.0,
+				"is_file_source": true,
+				"paused": true,
+				"progress": 0.238888888888889
+			}
+		},
+		"held_paused_transport_status": {
+			"can_seek_frame": false,
+			"can_step_backward": false,
+			"can_step_forward": false,
+			"duration_sec": 6.0,
+			"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+			"frame_count": null,
+			"frame_duration_sec": null,
+			"frame_index": null,
+			"limitation_code": "backend_transport_unsupported",
+			"nominal_fps": null,
+			"paused": true,
+			"position_sec": 1.43333333333333,
+			"transport_mode": "approx_time_seek"
+		},
+		"initial_playback_status": {
+			"current_time_sec": 1.36666666666667,
+			"duration_sec": 6.0,
+			"is_file_source": true,
+			"paused": false,
+			"progress": 0.227777777777778,
+			"replay_transport_capabilities": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_duration_sec": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"transport_mode": "approx_time_seek"
+			},
+			"replay_transport_status": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"duration_sec": 6.0,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_count": null,
+				"frame_duration_sec": null,
+				"frame_index": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"paused": false,
+				"position_sec": 1.36666666666667,
+				"transport_mode": "approx_time_seek"
+			}
+		},
+		"initial_state": {
+			"duration": 6.0,
+			"media_loaded": true,
+			"position": 1.4,
+			"source": {
+				"kind": "file",
+				"path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4"
+			},
+			"state": "playing",
+			"status": {
+				"current_time_sec": 1.4,
+				"duration_sec": 6.0,
+				"is_file_source": true,
+				"paused": false,
+				"progress": 0.233333333333333
+			}
+		},
+		"paused_after_seek_playback_status": {
+			"current_time_sec": 5.26666666666667,
+			"duration_sec": 6.0,
+			"is_file_source": true,
+			"paused": false,
+			"progress": 0.877777777777778,
+			"replay_transport_capabilities": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_duration_sec": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"transport_mode": "approx_time_seek"
+			},
+			"replay_transport_status": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"duration_sec": 6.0,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_count": null,
+				"frame_duration_sec": null,
+				"frame_index": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"paused": false,
+				"position_sec": 5.26666666666667,
+				"transport_mode": "approx_time_seek"
+			}
+		},
+		"paused_after_seek_state": {
+			"duration": 6.0,
+			"media_loaded": true,
+			"position": 5.26666666666667,
+			"source": {
+				"kind": "file",
+				"path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4"
+			},
+			"state": "playing",
+			"status": {
+				"current_time_sec": 5.26666666666667,
+				"duration_sec": 6.0,
+				"is_file_source": true,
+				"paused": false,
+				"progress": 0.877777777777778
+			}
+		},
+		"paused_after_seek_transport_status": {
+			"can_seek_frame": false,
+			"can_step_backward": false,
+			"can_step_forward": false,
+			"duration_sec": 6.0,
+			"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+			"frame_count": null,
+			"frame_duration_sec": null,
+			"frame_index": null,
+			"limitation_code": "backend_transport_unsupported",
+			"nominal_fps": null,
+			"paused": false,
+			"position_sec": 5.26666666666667,
+			"transport_mode": "approx_time_seek"
+		},
+		"paused_playback_status": {
+			"current_time_sec": 1.43333333333333,
+			"duration_sec": 6.0,
+			"is_file_source": true,
+			"paused": true,
+			"progress": 0.238888888888889,
+			"replay_transport_capabilities": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_duration_sec": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"transport_mode": "approx_time_seek"
+			},
+			"replay_transport_status": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"duration_sec": 6.0,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_count": null,
+				"frame_duration_sec": null,
+				"frame_index": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"paused": true,
+				"position_sec": 1.43333333333333,
+				"transport_mode": "approx_time_seek"
+			}
+		},
+		"paused_state": {
+			"duration": 6.0,
+			"media_loaded": true,
+			"position": 1.43333333333333,
+			"source": {
+				"kind": "file",
+				"path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4"
+			},
+			"state": "paused",
+			"status": {
+				"current_time_sec": 1.43333333333333,
+				"duration_sec": 6.0,
+				"is_file_source": true,
+				"paused": true,
+				"progress": 0.238888888888889
+			}
+		},
+		"paused_transport_status": {
+			"can_seek_frame": false,
+			"can_step_backward": false,
+			"can_step_forward": false,
+			"duration_sec": 6.0,
+			"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+			"frame_count": null,
+			"frame_duration_sec": null,
+			"frame_index": null,
+			"limitation_code": "backend_transport_unsupported",
+			"nominal_fps": null,
+			"paused": true,
+			"position_sec": 1.43333333333333,
+			"transport_mode": "approx_time_seek"
+		},
+		"paused_ui": {
+			"can_step_paused_playback": false,
+			"status_label": "Boxing harness live",
+			"step_back_disabled": true,
+			"step_forward_disabled": true,
+			"step_status_label": "Frame step unavailable (approx_time_seek). This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping."
+		},
+		"resumed_playback_status": {
+			"current_time_sec": 5.3,
+			"duration_sec": 6.0,
+			"is_file_source": true,
+			"paused": true,
+			"progress": 0.883333333333333,
+			"replay_transport_capabilities": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_duration_sec": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"transport_mode": "approx_time_seek"
+			},
+			"replay_transport_status": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"duration_sec": 6.0,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_count": null,
+				"frame_duration_sec": null,
+				"frame_index": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"paused": true,
+				"position_sec": 5.3,
+				"transport_mode": "approx_time_seek"
+			}
+		},
+		"resumed_state": {
+			"duration": 6.0,
+			"media_loaded": true,
+			"position": 5.3,
+			"source": {
+				"kind": "file",
+				"path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4"
+			},
+			"state": "paused",
+			"status": {
+				"current_time_sec": 5.3,
+				"duration_sec": 6.0,
+				"is_file_source": true,
+				"paused": true,
+				"progress": 0.883333333333333
+			}
+		},
+		"resumed_transport_status": {
+			"can_seek_frame": false,
+			"can_step_backward": false,
+			"can_step_forward": false,
+			"duration_sec": 6.0,
+			"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+			"frame_count": null,
+			"frame_duration_sec": null,
+			"frame_index": null,
+			"limitation_code": "backend_transport_unsupported",
+			"nominal_fps": null,
+			"paused": true,
+			"position_sec": 5.3,
+			"transport_mode": "approx_time_seek"
+		},
+		"seek_playback_status": {
+			"current_time_sec": 4.86666666666667,
+			"duration_sec": 6.0,
+			"is_file_source": true,
+			"paused": false,
+			"progress": 0.811111111111111,
+			"replay_transport_capabilities": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_duration_sec": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"transport_mode": "approx_time_seek"
+			},
+			"replay_transport_status": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"duration_sec": 6.0,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_count": null,
+				"frame_duration_sec": null,
+				"frame_index": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"paused": false,
+				"position_sec": 4.9,
+				"transport_mode": "approx_time_seek"
+			}
+		},
+		"seek_state": {
+			"duration": 6.0,
+			"media_loaded": true,
+			"position": 4.9,
+			"source": {
+				"kind": "file",
+				"path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4"
+			},
+			"state": "playing",
+			"status": {
+				"current_time_sec": 4.9,
+				"duration_sec": 6.0,
+				"is_file_source": true,
+				"paused": false,
+				"progress": 0.816666666666667
+			}
+		},
+		"seek_transport_status": {
+			"can_seek_frame": false,
+			"can_step_backward": false,
+			"can_step_forward": false,
+			"duration_sec": 6.0,
+			"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+			"frame_count": null,
+			"frame_duration_sec": null,
+			"frame_index": null,
+			"limitation_code": "backend_transport_unsupported",
+			"nominal_fps": null,
+			"paused": false,
+			"position_sec": 4.9,
+			"transport_mode": "approx_time_seek"
+		}
+	},
+	"fixture": "res://assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+	"qa_truth": {
+		"exact_step_ui_truthful_for_shipped_path": true,
+		"observed_limit_code": "backend_transport_unsupported",
+		"observed_transport_mode": "approx_time_seek",
+		"pause_persists_in_headless_boxing_probe": true,
+		"resume_restores_playback": false,
+		"scene_consumes_transport_surface": true,
+		"seek_while_paused_preserves_pause": false,
+		"shipped_path_exact_support_proven_end_to_end": false
+	},
+	"scene": "res://scenes/boxing_proving.tscn",
+	"step_attempt_result": {
+		"code": "backend_transport_unsupported",
+		"detail": {
+			"capabilities": {
+				"can_seek_frame": false,
+				"can_step_backward": false,
+				"can_step_forward": false,
+				"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+				"frame_duration_sec": null,
+				"limitation_code": "backend_transport_unsupported",
+				"nominal_fps": null,
+				"transport_mode": "approx_time_seek"
+			},
+			"method": "step_replay_frames",
+			"transport_mode": "approx_time_seek"
+		},
+		"message": "step_replay_frames requires exact frame-addressed replay transport, but this backend only supports approx_time_seek.",
+		"success": false
+	},
+	"transport_capabilities": {
+		"can_seek_frame": false,
+		"can_step_backward": false,
+		"can_step_forward": false,
+		"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+		"frame_duration_sec": null,
+		"limitation_code": "backend_transport_unsupported",
+		"nominal_fps": null,
+		"transport_mode": "approx_time_seek"
+	},
+	"transport_status_initial": {
+		"can_seek_frame": false,
+		"can_step_backward": false,
+		"can_step_forward": false,
+		"duration_sec": 6.0,
+		"exactness_note": "This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.",
+		"frame_count": null,
+		"frame_duration_sec": null,
+		"frame_index": null,
+		"limitation_code": "backend_transport_unsupported",
+		"nominal_fps": null,
+		"paused": false,
+		"position_sec": 1.36666666666667,
+		"transport_mode": "approx_time_seek"
+	},
+	"ui_initial": {
+		"can_step_paused_playback": false,
+		"status_label": "Boxing harness live",
+		"step_back_disabled": true,
+		"step_forward_disabled": true,
+		"step_status_label": "Frame step unavailable (approx_time_seek). This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping."
+	}
+}

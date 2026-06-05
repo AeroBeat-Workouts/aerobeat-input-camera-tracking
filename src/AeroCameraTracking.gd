@@ -270,6 +270,36 @@ func get_replay_playback_state() -> Dictionary:
 func get_replay_playback_status() -> Dictionary:
 	return get_replay_playback_state().get("status", {}).duplicate(true)
 
+func get_replay_transport_capabilities() -> Dictionary:
+	if has_tracking_contract() and _tracking_session.has_method("get_replay_transport_capabilities"):
+		var capabilities: Variant = _tracking_session.get_replay_transport_capabilities()
+		if capabilities is Dictionary:
+			return capabilities.duplicate(true)
+	return {}
+
+func get_replay_transport_status() -> Dictionary:
+	var playback_state: Dictionary = get_replay_playback_state()
+	var playback_status: Dictionary = playback_state.get("status", {}).duplicate(true)
+	var transport_status := {}
+	if has_tracking_contract() and _tracking_session.has_method("get_replay_transport_status"):
+		var status: Variant = _tracking_session.get_replay_transport_status()
+		if status is Dictionary:
+			transport_status = status.duplicate(true)
+	var capabilities := get_replay_transport_capabilities()
+	var state_name := String(playback_state.get("state", "")).strip_edges().to_lower()
+	transport_status["transport_mode"] = str(transport_status.get("transport_mode", capabilities.get("transport_mode", "approx_time_seek")))
+	transport_status["can_step_forward"] = bool(transport_status.get("can_step_forward", capabilities.get("can_step_forward", false)))
+	transport_status["can_step_backward"] = bool(transport_status.get("can_step_backward", capabilities.get("can_step_backward", false)))
+	transport_status["can_seek_frame"] = bool(transport_status.get("can_seek_frame", capabilities.get("can_seek_frame", false)))
+	transport_status["nominal_fps"] = transport_status.get("nominal_fps", capabilities.get("nominal_fps", null))
+	transport_status["frame_duration_sec"] = transport_status.get("frame_duration_sec", capabilities.get("frame_duration_sec", null))
+	transport_status["paused"] = bool(playback_status.get("paused", state_name == "paused" or state_name == "ended"))
+	transport_status["position_sec"] = float(playback_status.get("current_time_sec", playback_status.get("position_sec", 0.0)))
+	transport_status["duration_sec"] = float(playback_status.get("duration_sec", transport_status.get("duration_sec", 0.0)))
+	transport_status["exactness_note"] = str(transport_status.get("exactness_note", capabilities.get("exactness_note", "")))
+	transport_status["limitation_code"] = str(transport_status.get("limitation_code", capabilities.get("limitation_code", "")))
+	return transport_status
+
 func play_replay_playback() -> bool:
 	if not _replay_loaded and _replay_source_path.is_empty():
 		return false
@@ -431,10 +461,35 @@ func _apply_tracking_session_playback_status(status: Dictionary) -> bool:
 		next_position = minf(next_position, _replay_duration_sec)
 	_replay_position_sec = next_position
 	var state_name := String(status.get("state", "")).strip_edges().to_lower()
-	_replay_playing = not bool(status.get("paused", false)) and state_name != "paused" and state_name != "ended"
+	var paused := bool(status.get("paused", false)) or state_name == "paused" or state_name == "ended"
+	if _should_preserve_local_paused_replay_state(status, state_name, paused):
+		paused = true
+		state_name = "paused"
+	_replay_playing = not paused and state_name != "ended"
 	_replay_started_at_position_sec = _replay_position_sec
-	_replay_started_at_msec = Time.get_ticks_msec()
+	_replay_started_at_msec = 0 if paused else Time.get_ticks_msec()
 	return true
+
+func _should_preserve_local_paused_replay_state(status: Dictionary, state_name: String, paused: bool) -> bool:
+	if not _replay_loaded:
+		return false
+	if _replay_playing:
+		return false
+	if paused:
+		return false
+	if state_name != "playing":
+		return false
+	if _tracking_session_replay_runtime_is_running():
+		return false
+	return bool(status.get("is_file_source", false))
+
+func _tracking_session_replay_runtime_is_running() -> bool:
+	if not has_tracking_contract() or not _tracking_session.has_method("get_state"):
+		return false
+	var state_snapshot: Variant = _tracking_session.get_state()
+	if not state_snapshot is Dictionary:
+		return false
+	return String(state_snapshot.get("state", "")).strip_edges().to_lower() == "running"
 
 func _get_live_camera_source_id(source: Dictionary) -> String:
 	var camera_id := String(source.get("camera_id", "")).strip_edges()

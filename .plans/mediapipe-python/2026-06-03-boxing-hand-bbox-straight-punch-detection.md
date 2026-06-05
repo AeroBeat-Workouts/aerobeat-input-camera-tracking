@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-04 22:29 EDT
+**Last Updated:** 2026-06-05 04:22 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -1125,6 +1125,44 @@ Final QA truth: the new transport capability/status surface is wired correctly a
 **Status:** ✅ Complete
 
 **Results:** Root cause proved to be in the proving consumer (`REF-01`), not the lower replay owners (`REF-02`, `REF-07`, `REF-08`). After the transport migration, `_refresh_playback_status(true)` still flows back through `_load_playback_source_if_needed()`, whose autoplay branch will resume any loaded replay that is “not playing.” A manual in-scene pause correctly drove the singleton/session into paused state, but the proving harness could immediately re-arm playback during its own post-pause refresh path, so end-to-end boxing replay looked like it never stayed paused even though owner-layer pause preservation tests still passed in isolation. The repair stayed tightly on that consumer seam: `proving_harness.gd` now tracks a `_playback_pause_hold` latch set by manual pause and cleared on explicit play or fresh source/visibility reloads, and the autoplay branch now honors that latch instead of auto-resuming a user-paused replay. Added focused proof in `test_proving_harness_trails.gd::test_replay_pause_hold_blocks_refresh_autoplay_after_user_pause`, which forces the exact stale-autoplay condition and verifies a post-pause refresh leaves the replay controller paused. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gexit` → 114/114 passing (existing GUT orphan/RID leak warnings unchanged). Commits: `c74b042` - `Hold proving replay pause across transport refresh`. Remaining limitation: this only fixes pause-hold at the proving consumer seam; the shipped replay path still truthfully reports `approx_time_seek`, so exact frame stepping remains unavailable until a lower owner can prove it.
+
+---
+
+### Task 10X: Repair remaining shipped replay pause-state reporting seam in boxing proving flow
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.10`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-05`, `REF-07`, `REF-08`
+**Prompt:** QA rerun after Task 10W proved that the boxing proving scene now reports replay transport fallback truthfully, but the shipped replay path still does not hold/report a paused state end to end: after in-scene pause, controller and transport status still say `state=playing` / `paused=false` even while time appears held. Diagnose and repair that remaining shipped replay pause-state seam without widening into exact-frame transport work. Keep scope tightly on the consumer/owner integration path that leaves scene-visible playback state inconsistent with actual held replay state. Use `godotenv-sync` for refresh if needed, keep YAML edits outside Godot, add focused proof, and update this plan with the exact root cause, validation, commits, and any remaining limitation.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `.testbed/`
+- `src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.plans/mediapipe-python/artifacts/task10x-replay-pause-state-repair/boxing_replay_pause_state_probe.gd`
+- `.plans/mediapipe-python/artifacts/task10x-replay-pause-state-repair/boxing_replay_pause_state_probe.json`
+- `.plans/mediapipe-python/artifacts/task10x-replay-pause-state-repair/task10x-summary.json`
+- `.plans/mediapipe-python/artifacts/task10x-replay-pause-state-repair/task10x-summary.md`
+- `.testbed/tests/unit/test_aero_camera_tracking.gd`
+- `src/AeroCameraTracking.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Root cause was a stale replay-status seam at the input-owner wrapper in `REF-01`, not a new transport-capability issue in `REF-02` / `REF-07` / `REF-08`. `AeroCameraTracking` refreshes its public replay status from `CameraTracking.get_playback_status()`, but `CameraTracking` only refreshes backend playback/transport snapshots while its state is `running`; once the shipped replay pause path stops the session while preserving runtime state, the tracking-session contract can keep returning the last cached `state=playing` / `paused=false` snapshot even though time is now held. That meant the proving scene could honestly show `approx_time_seek` transport fallback after Task 10W while still publishing a false playing-state snapshot after in-scene pause.
+
+The repair stayed tightly on the consumer integration seam in `REF-01`. `src/AeroCameraTracking.gd` now (1) preserves a local paused replay truth when the wrapper is already paused, the replay is still loaded, and the tracking session is no longer actively running replay even if the stale cached status still says `playing`; and (2) exposes wrapper-owned `get_replay_transport_capabilities()` / `get_replay_transport_status()` so proving consumers prefer the wrapper’s corrected paused/position truth while still preserving the lower-layer truthful fallback/capability model (`transport_mode=approx_time_seek`, `limitation_code=backend_transport_unsupported`, no fake exact stepping). Focused proof landed in `.testbed/tests/unit/test_aero_camera_tracking.gd::test_aero_camera_tracking_pause_preserves_paused_public_state_when_tracking_session_status_stays_stale_playing`, which reproduces the exact shipped seam with an idle tracking session that still reports cached `playing` status and proves both public controller state and replay transport status stay paused.
+
+Validation rerun for this slice:
+- `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` ✅
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_aero_camera_tracking.gd -gexit` ✅ (`14/14` tests, `87` asserts)
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd -gexit` ✅ (`36/36` tests, `168` asserts)
+- `godot --headless --path .testbed --script ../.plans/mediapipe-python/artifacts/task10u-replay-transport-qa/boxing_replay_transport_probe_rerun.gd` ✅; copied focused evidence into `.plans/mediapipe-python/artifacts/task10x-replay-pause-state-repair/`. The headless probe now shows the original blocker repaired: paused controller state and paused transport status both hold truthfully at `1.4333s` (`state=paused`, `paused=true`) while fallback transport reporting remains `approx_time_seek`.
+
+Remaining limitation: this slice intentionally did **not** widen into paused-seek/resume semantics. The same headless probe still shows `seek_replay_playback()` re-enters play on the shipped approx-time path, so `seek_while_paused_preserves_pause` and the subsequent `resume_restores_playback` truth checks remain false. That is a separate replay-seek behavior seam beyond this pause-state reporting repair.
 
 ---
 
