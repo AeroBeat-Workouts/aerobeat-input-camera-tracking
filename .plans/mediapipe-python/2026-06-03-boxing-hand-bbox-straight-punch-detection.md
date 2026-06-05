@@ -1345,7 +1345,7 @@ Post-fix truth:
 - Remaining blocker is narrower: after the rearm fix, the unresolved misses are no longer dominated by the stale large retract epsilon. The next seam is still unresolved right-side/early-window readiness-to-trigger overlap, especially the windows that stay `tracking_lost` or never accumulate enough same-window forward-signal overlap even after rearm.
 
 Commits:
-- `74e2e26` — `Tune straight-punch rearm for replay fixtures`
+- `f61507d` — `Tune straight-punch rearm for replay fixtures`
 
 ---
 
