@@ -47,12 +47,12 @@
 
 ## Playback controller observations
 
-- `initial_state`: state=`playing` position=`1.3` paused=`false`
-- `paused_state`: state=`playing` position=`1.4` paused=`false`
-- `held_paused_state`: state=`playing` position=`1.4` paused=`false`
-- `seek_state`: state=`playing` position=`4.9` paused=`false`
-- `paused_after_seek_state`: state=`playing` position=`5.3` paused=`false`
-- `resumed_state`: state=`playing` position=`5.3` paused=`false`
+- `initial_state`: state=`` position=`1.4` paused=`false`
+- `paused_state`: state=`paused` position=`1.46666666666667` paused=`true`
+- `held_paused_state`: state=`paused` position=`1.46666666666667` paused=`true`
+- `seek_state`: state=`paused` position=`4.6` paused=`true`
+- `paused_after_seek_state`: state=`paused` position=`4.6` paused=`true`
+- `resumed_state`: state=`playing` position=`5.4` paused=`false`
 
 ## QA truth
 
@@ -61,6 +61,6 @@
 - `shipped_path_exact_support_proven_end_to_end`: `false`
 - `observed_transport_mode`: `approx_time_seek`
 - `observed_limit_code`: `backend_transport_unsupported`
-- `pause_persists_in_headless_boxing_probe`: `false`
-- `seek_while_paused_preserves_pause`: `false`
-- `resume_restores_playback`: `false`
+- `pause_persists_in_headless_boxing_probe`: `true`
+- `seek_while_paused_preserves_pause`: `true`
+- `resume_restores_playback`: `true`
