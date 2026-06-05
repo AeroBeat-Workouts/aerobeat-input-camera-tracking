@@ -822,15 +822,20 @@ Immediate post-launch check was unchanged for the target files: `git status --sh
 
 **Folders Created/Deleted/Modified:**
 - `.plans/mediapipe-python/`
-- owner-correct source/test folders in `REF-01` / `REF-02` / `REF-03` only if a proven narrow fix lands
+- `REF-02` source/test folders in `aerobeat-tool-camera-tracking`
 
 **Files Created/Deleted/Modified:**
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
-- focused diagnostic tests/probes/artifacts if added
+- `REF-02` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd`
+- `REF-02` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Diagnosis first, then a narrow upstream repair. The remaining transient wrong-side flash was **not** a proving-scene lag artifact, mirrored-only presentation mismatch, or downstream `AeroCameraTracking` / detector-side relabeling seam. The real current path was still upstream in `REF-02` `aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd::_assign_hand_candidates()`: after Task 10C preserved `_pose_side_locked`, the tracker still assigned candidates with a fixed per-side loop (`left` then `right`) in both `prefer_existing_pose_side_binding` and `nearest_wrist_fallback`. When only **one** hand candidate was visible on reacquire, `_nearest_candidate_index()` returned that lone candidate for any non-empty anchor, so the left-side pass could claim it first purely because it was evaluated first, not because it was the nearest surviving locked side. That leaves a real transient seam where the opposite hand can disappear during a left straight extension, return first as the only visible hand sample, briefly populate the wrong normalized side lane, then snap back once both candidates are visible again.
+
+Evidence path: `REF-02` `CameraTrackingFrame.gd::_normalize_hands_by_side()` preserves `_pose_side_locked` through `stale` and `tracking_lost`, but reacquire ownership still flowed through `_assign_hand_candidates()`'s ordered side loop. The new focused regression `REF-02` `.testbed/tests/test_CameraTracking.gd::test_frame_normalization_single_reacquired_candidate_chooses_nearest_locked_side_without_left_bias()` proves the real seam directly: tracked → stale → tracking_lost → one-candidate reacquire with both pose wrists present and only the right-hand sample visible. Before the repair, the left lane could steal that sole candidate because it was visited first; after the repair, the right locked side wins because it is actually nearest.
+
+Landed the smallest owner-correct fix in `REF-02` only: `CameraTrackingFrame.gd` now batches eligible side-assignment requests for each association phase and resolves them by **global nearest distance** instead of hardcoded left-before-right iteration. That keeps the earlier pose-side lock repair intact while removing the remaining single-candidate reacquire bias. No YAMLs were touched; no punch threshold tuning was widened. Validation run from `REF-02` repo root: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gunit_test_name=single_reacquired_candidate -gexit` ✅ (`1/1` passed, `6` asserts) and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gunit_test_name=preserves_pose_side_lock_across_tracking_lost_reacquire -gexit` ✅ (`1/1` passed, `9` asserts). Upstream commit pushed: `38d38b2` - `Fix single-candidate hand reacquire side bias`.
 
 ---
 
