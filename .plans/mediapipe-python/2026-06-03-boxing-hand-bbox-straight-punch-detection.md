@@ -1557,7 +1557,6 @@ Focused proof/validation for this slice:
 
 Commits:
 - `5ee10aa` - Move proving refresh knobs into YAML and window straight-punch velocity
-- `57f2fd5` - Document Task 10AI landing details
 
 ---
 
