@@ -64,6 +64,14 @@ func _has_editor_exposed_property(subject: Object, property_name: String) -> boo
 		return (int(property_info.get("usage", 0)) & PROPERTY_USAGE_EDITOR) != 0
 	return false
 
+func test_hand_bbox_drawer_prefers_grace_tracking_state_when_gesture_state_is_not_colored() -> void:
+	var drawer = add_child_autoqfree(HandBBoxDrawerScript.new())
+	var state_name: String = drawer._resolve_side_state("left", {
+		"tracking_valid": true,
+		"tracking_state": "grace",
+	})
+	assert_eq(String(state_name), "grace")
+
 func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)

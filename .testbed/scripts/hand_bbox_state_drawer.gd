@@ -5,6 +5,7 @@ const STATE_COLORS := {
 	"ready": Color8(0xff, 0xd6, 0x00, 0xff),
 	"triggered": Color8(0x32, 0xd7, 0x4b, 0xff),
 	"not_ready": Color8(0xff, 0x45, 0x45, 0xff),
+	"grace": Color8(0x58, 0xa6, 0xff, 0xff),
 	"tracking_lost": Color8(0x7f, 0x10, 0x10, 0xff),
 }
 const FALLBACK_COLOR := Color8(0xc0, 0xc7, 0xd1, 0xff)
@@ -55,6 +56,9 @@ func _resolve_side_state(side: String, hand: Dictionary) -> String:
 		state_name = String(hand.get("tracking_state", "tracking_lost")).strip_edges().to_lower()
 	if STATE_COLORS.has(state_name):
 		return state_name
+	var tracking_state := String(hand.get("tracking_state", "tracking_lost")).strip_edges().to_lower()
+	if STATE_COLORS.has(tracking_state):
+		return tracking_state
 	if not bool(hand.get("tracking_valid", false)):
 		return "tracking_lost"
 	return "not_ready"

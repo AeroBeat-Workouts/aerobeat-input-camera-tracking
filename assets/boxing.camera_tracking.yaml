@@ -19,3 +19,7 @@ tracking:
     validity:
       max_stale_frames: 2
       reacquire_stable_frames: 2
+    grace:
+      enabled: true
+      position_decay: 1.0
+      size_decay: 1.0

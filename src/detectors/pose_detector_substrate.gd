@@ -1348,7 +1348,8 @@ func _is_valid_tracking_hand_sample(hand_payload: Dictionary) -> bool:
 func _is_fresh_tracking_hand_sample(hand_payload: Dictionary, state: Dictionary) -> bool:
 	if not bool(hand_payload.get("tracking_valid", false)):
 		return false
-	if String(hand_payload.get("tracking_state", "")) != "tracked":
+	var tracking_state := String(hand_payload.get("tracking_state", ""))
+	if not ["tracked", "grace"].has(tracking_state):
 		return false
 	var frame_index := int(hand_payload.get("frame_index", -1))
 	var timestamp_seconds := float(hand_payload.get("timestamp_seconds", -1.0))
