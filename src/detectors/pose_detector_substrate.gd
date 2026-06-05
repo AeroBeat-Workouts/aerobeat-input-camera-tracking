@@ -757,9 +757,6 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	state["hand_tracking_state"] = hand_tracking_state
 	var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
 	var wrist_velocity_history: Array = (state.get("wrist_velocity_history", []) as Array).duplicate(true)
-	wrist_velocity_history.append(wrist_velocity)
-	while wrist_velocity_history.size() > sample_window_size:
-		wrist_velocity_history.remove_at(0)
 	state["wrist_velocity_history"] = wrist_velocity_history
 	state["recent_peak_wrist_velocity"] = _window_peak_float(wrist_velocity_history)
 	var bbox_area_growth_history: Array = (state.get("bbox_area_growth_history", []) as Array).duplicate(true)
@@ -791,6 +788,11 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var phase := String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST))
 	var history: Array = (state.get("bbox_area_history", []) as Array).duplicate(true)
 	if fresh_sample:
+		wrist_velocity_history.append(wrist_velocity)
+		while wrist_velocity_history.size() > sample_window_size:
+			wrist_velocity_history.remove_at(0)
+		state["wrist_velocity_history"] = wrist_velocity_history
+		state["recent_peak_wrist_velocity"] = _window_peak_float(wrist_velocity_history)
 		history.append(bbox_area)
 		while history.size() > sample_window_size:
 			history.remove_at(0)
@@ -806,6 +808,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["last_observation_timestamp_seconds"] = float(hand_payload.get("timestamp_seconds", -1.0))
 	else:
 		state["bbox_area_history"] = history
+		state["wrist_velocity_history"] = wrist_velocity_history
 		state["bbox_area_growth_history"] = bbox_area_growth_history
 
 	if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST:

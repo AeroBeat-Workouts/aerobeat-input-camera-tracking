@@ -1349,6 +1349,42 @@ Commits:
 
 ---
 
+### Task 10AD: Repair right-side and early-window straight-punch trigger overlap against replay fixtures
+
+**Bead ID:** `aerobeat-input-camera-tracking-pmi`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`, `REF-06`
+**Prompt:** After Task 10AC removed the oversized rearm-epsilon trap, repair the smallest owner-correct seam still blocking replay gold-truth hits in the right side and early windows. Start from `.testbed/test-results/task10ac-rearm-rerun-2026-06-05/` and current straight-punch traces. Focus narrowly on right-side / early-window readiness-to-trigger overlap and residual `tracking_lost` pockets; implement only the smallest detector/provider/config seam that the fixtures can prove, without widening into unrelated transport or UI work. Keep YAML edits outside Godot, use `godotenv-sync` if refresh work is needed, add focused proof/tests/probes, and update this plan with exact evidence, validation, commits, and any remaining mismatch.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `.testbed/test-results/`
+- owner-correct detector/provider/config folders in `REF-01` only if proven necessary
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/test-results/task10ad-velocity-window-rerun-2026-06-05/`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the smallest owner-correct detector seam the replay fixtures actually proved: in `src/detectors/pose_detector_substrate.gd`, the straight-punch state machine now advances `wrist_velocity_history` only on **fresh tracked hand samples**, matching the existing bbox-growth window cadence instead of aging the recent wrist-velocity peak out on every non-fresh replayed pose frame. That preserves real forward-velocity evidence across replay duplicate frames until the next fresh hand bbox sample arrives, which is exactly the overlap seam Task 10AD targeted. Added focused regression coverage in `.testbed/tests/unit/test_pose_detector_substrate.gd` via `test_straight_punch_keeps_recent_velocity_peak_across_non_fresh_replay_duplicates()`, which proves replay-style duplicate tracked samples no longer erase a qualifying recent wrist-velocity peak before the next fresh bbox-growth sample triggers.
+
+Focused validation run in-owner:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=recent_velocity_peak -gexit` ✅ (`1/1` passed, `16` asserts)
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ (`22/22` passed, `226` asserts)
+- replay rerun under `.testbed/test-results/task10ad-velocity-window-rerun-2026-06-05/` using `capture_fixture_proving.gd` plus `task10_straight_punch_trace.gd` for both fixtures ✅
+
+Exact replay evidence from the rerun:
+- Left fixture (`REF-05`) `punch_left` events moved from one in-window hit to **three** in-window hits: `2202ms` inside `2150-2650`, `3418ms` inside `3333-3833`, and `4922ms` inside `4833-5088`. Remaining left mismatch is now only the startup-first window `1150-1300`; out-of-window left positives remain at `3235`, `4451`, and `5581`.
+- Right fixture (`REF-06`) gained its first in-window right-side replay hit: `punch_right` at `4845ms` inside `4400-4900`. The earlier `1700-2000` window also improved from pure `ready` occupancy in Task 10AC to `triggered: 2`, `not_ready: 1`, `ready: 17`, showing the overlap seam is materially better even though the observed `punch_right` still lands slightly early at `1650ms` instead of inside the gold window. Remaining right mismatches are the first/startup window `400-600` plus misses at `1700-2000` and `3100-3400`; out-of-window right positives remain at `1650`, `2852`, and `5757`.
+
+Net gold-truth mismatch improved truthfully versus Task 10AC: replay moved from left-only later-window hits plus zero in-window right hits to **3/4** in-window left hits and **1/4** in-window right hits, while the dominant remaining blocker narrowed to startup/trace-alignment plus still-late right-side trigger timing rather than fresh-sample overlap decay. Commit: `PENDING`.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`

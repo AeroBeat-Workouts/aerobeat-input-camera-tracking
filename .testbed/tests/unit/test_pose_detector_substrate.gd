@@ -201,6 +201,26 @@ func test_straight_punch_uses_recent_bbox_growth_peak_when_velocity_lands_on_nex
 	assert_true(float(left_debug.get("recent_peak_bbox_area_growth", 0.0)) > float(left_debug.get("bbox_area_growth", 0.0)))
 	assert_true(float(left_debug.get("bbox_area_growth", 0.0)) < float(left_debug.get("min_bbox_area_growth", 0.0)))
 
+func test_straight_punch_keeps_recent_velocity_peak_across_non_fresh_replay_duplicates() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1)))
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.12}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 12, 1.2), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 12, 1.2)))
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+
+	for duplicate_time in [1270, 1280, 1290, 1300, 1310]:
+		state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.121}}), duplicate_time, _make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 12, 1.2), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 12, 1.2)))
+		assert_false(_event_names(state.get("events", [])).has("punch_left"))
+
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.122}}), 1420, _make_tracking_frame(_tracked_hand_payload("left", 0.0272, "tracked", true, 0, 13, 1.3), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 13, 1.3)))
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
+	var duplicate_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_true(float(duplicate_debug.get("recent_peak_wrist_velocity", 0.0)) > float(duplicate_debug.get("wrist_velocity", 0.0)))
+	assert_true(float(duplicate_debug.get("wrist_velocity", 0.0)) < float(duplicate_debug.get("min_wrist_velocity", 0.0)))
+
 func test_straight_punch_dedupes_replayed_tracked_samples_until_hand_frame_advances() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(
