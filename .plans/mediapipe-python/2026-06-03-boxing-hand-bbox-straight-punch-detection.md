@@ -1627,6 +1627,43 @@ Commits:
 
 ---
 
+### Task 10AL: Implement tool-owned hand grace prediction state and expose it to input testbed
+
+**Bead ID:** `aerobeat-input-camera-tracking-5bl`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-05`, `REF-06`
+**Prompt:** Derrick approved implementation of a tool-owned hand grace/prediction system. Build the smallest truthful cross-repo slice that puts the grace logic in `aerobeat-tool-camera-tracking` (vendor changes only if truly necessary), exposes public YAML tuning knobs that flow into the tool layer, and lets `aerobeat-input-camera-tracking` consume/show the hand state as `grace` in the proving/testbed scenes. During grace, predicted hand bbox position/size should continue following the recent movement/growth trend and remain eligible for downstream gesture triggering; input should not treat grace as full tracking loss for cancellation purposes. Keep scope to hands only, keep YAML edits outside Godot, add focused proof/tests/probes across the touched owner repos, rerun enough validation for Derrick's manual QA pass, and update this plan with exact files changed, validation, commits, and the exact YAML knobs Derrick can tune.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/docs/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `assets/boxing.camera_tracking.yaml`
+- `assets/flow.camera_tracking.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/hand_bbox_state_drawer.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingPreviewPresenter.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/docs/tracker-config-schema.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the hand grace/prediction slice with the tracker as the owner of the missing-hand behavior. In `REF-02` the normalized hand contract now supports `tracking_state=grace`, `predicted=true`, and `grace_frames`, and predicted grace frames continue advancing bbox position/size by the most recent tracker-owned delta with configurable decay. Tool config defaults/normalization now accept public knobs at `tracking.hands.grace.enabled`, `tracking.hands.grace.position_decay`, and `tracking.hands.grace.size_decay`, while still using `tracking.hands.validity.max_stale_frames` as the grace-frame budget. `REF-02` preview/debug snapshots now expose `grace_frames` + `predicted`, and the tracker schema doc records the new config + output contract. In `REF-01`, the boxing/flow camera-tracking YAMLs now publish those grace knobs, straight-punch freshness accepts `grace` samples the same way it already accepted `tracked`, and the proving/testbed bbox overlay now renders the hand tracking state as `grace` instead of collapsing it into generic `not_ready`. Validation reruns: `REF-02` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` ✅ (`33/33` passed); `REF-01` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`44/44` passed, with the pre-existing proving-harness orphan/leak warnings). Commits: `22a5125` (`REF-02`) and `1036b19` (`REF-01`). Exact YAML knobs Derrick can tune in the owner repo: `tracking.hands.validity.max_stale_frames`, `tracking.hands.grace.enabled`, `tracking.hands.grace.position_decay`, `tracking.hands.grace.size_decay`.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`
