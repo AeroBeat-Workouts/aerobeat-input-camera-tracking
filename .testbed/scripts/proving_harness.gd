@@ -258,6 +258,7 @@ var _playback_slider_drag_active := false
 var _playback_visibility_active := false
 var _playback_autoplay_pending := false
 var _playback_autoplay_base_url := ""
+var _playback_pause_hold := false
 
 func _enter_tree() -> void:
 	if startup_mode != StartupMode.GODOT_ONLY_DEBUG:
@@ -519,11 +520,13 @@ func _playback_controller_refresh_status() -> Dictionary:
 	return {}
 
 func _playback_controller_play() -> void:
+	_playback_pause_hold = false
 	var tracking_singleton := _resolve_playback_controller()
 	if tracking_singleton != null and tracking_singleton.has_method("play_replay_playback"):
 		tracking_singleton.play_replay_playback()
 
 func _playback_controller_pause() -> void:
+	_playback_pause_hold = true
 	var tracking_singleton := _resolve_playback_controller()
 	if tracking_singleton != null and tracking_singleton.has_method("pause_replay_playback"):
 		tracking_singleton.pause_replay_playback()
@@ -1733,11 +1736,15 @@ func _load_playback_source_if_needed() -> bool:
 	if _playback_autoplay_base_url != playback_base_url:
 		_playback_autoplay_base_url = playback_base_url
 		_playback_autoplay_pending = true
+		_playback_pause_hold = false
 	var playback_state := _get_playback_controller_state()
 	var playback_state_name := String(playback_state.get("state", ""))
 	if not was_loaded:
 		_playback_autoplay_pending = true
-	if _playback_autoplay_pending and playback_state_name != "playing":
+		_playback_pause_hold = false
+	if _playback_pause_hold and playback_state_name == "playing":
+		_playback_pause_hold = false
+	if _playback_autoplay_pending and playback_state_name != "playing" and not _playback_pause_hold:
 		_playback_autoplay_pending = false
 		_playback_controller_play()
 		playback_state = _get_playback_controller_state()
@@ -1756,6 +1763,7 @@ func _refresh_playback_controls_visibility() -> void:
 	if playback_visible and not _playback_visibility_active:
 		_playback_autoplay_pending = true
 		_playback_autoplay_base_url = ""
+		_playback_pause_hold = false
 	elif not playback_visible and _playback_visibility_active:
 		_playback_controller_unload()
 		_playback_status = {}
@@ -1763,6 +1771,7 @@ func _refresh_playback_controls_visibility() -> void:
 		_playback_transport_status = {}
 		_playback_autoplay_pending = false
 		_playback_autoplay_base_url = ""
+		_playback_pause_hold = false
 	_playback_visibility_active = playback_visible
 	_refresh_playback_controls_state()
 
@@ -2848,6 +2857,7 @@ func _stop_everything(_reason: String = "unknown") -> void:
 	_playback_visibility_active = false
 	_playback_autoplay_pending = false
 	_playback_autoplay_base_url = ""
+	_playback_pause_hold = false
 	if camera_view and camera_view.has_method("is_streaming") and camera_view.is_streaming():
 		camera_view.stop_stream()
 	if camera_view and is_instance_valid(camera_view):

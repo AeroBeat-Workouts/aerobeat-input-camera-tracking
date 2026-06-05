@@ -476,6 +476,31 @@ func test_replay_proving_autoplays_when_same_source_is_already_loaded_but_paused
 	assert_eq([], _replay_requests)
 	assert_false(harness._playback_autoplay_pending)
 
+func test_replay_pause_hold_blocks_refresh_autoplay_after_user_pause() -> void:
+	var fake_singleton := add_child_autoqfree(FakeReplayTransportSingleton.new()) as FakeReplayTransportSingleton
+	harness = ContractAwareHarness.new()
+	harness.fake_singleton = fake_singleton
+	harness.prerecorded_video_source = "res://fixtures/replay/example.mp4"
+	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
+	harness.camera_view = TextureRect.new()
+	harness.add_child(harness.camera_view)
+	add_child(harness)
+
+	fake_singleton.replay_state["state"] = "playing"
+	fake_singleton.transport_status["paused"] = false
+	harness._playback_autoplay_pending = true
+	harness._sync_playback_status_from_manager()
+	assert_false(bool(harness._playback_status.get("paused", true)))
+
+	harness._on_playback_toggle_pressed()
+	harness._playback_autoplay_pending = true
+	harness._refresh_playback_status(true)
+
+	assert_true(bool(harness._playback_status.get("paused", false)))
+	assert_eq(String(fake_singleton.replay_state.get("state", "")), "paused")
+	assert_true(harness._playback_pause_hold)
+	assert_true(harness._playback_autoplay_pending)
+
 func test_prerecorded_visibility_refresh_stays_active_in_godot_only_replay_mode() -> void:
 	harness.prerecorded_video_source = "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4"
 	harness.startup_mode = harness.StartupMode.GODOT_ONLY_DEBUG
