@@ -850,7 +850,8 @@ func test_replay_step_controls_report_approximate_transport_truthfully() -> void
 	assert_true(harness._playback_step_forward_button.disabled)
 	assert_false(harness._can_step_paused_playback())
 	assert_true(String(harness._playback_step_status_label.text).contains("approx_time_seek"))
-	assert_true(String(harness._playback_step_status_label.text).contains("Frame step unavailable"))
+	assert_true(String(harness._playback_step_back_button.tooltip_text).contains("Frame step unavailable"))
+	assert_false(harness._playback_step_status_label.visible)
 	harness._request_playback_frame_step(1)
 	assert_eq(fake_singleton.step_calls, [])
 
@@ -905,6 +906,7 @@ func test_replay_step_controls_delegate_exact_transport_steps() -> void:
 	assert_false(harness._playback_step_forward_button.disabled)
 	assert_true(harness._can_step_paused_playback())
 	assert_eq(String(harness._playback_step_status_label.text), "Exact frame stepping available for this replay source.")
+	assert_true(harness._playback_step_status_label.visible)
 	harness._request_playback_frame_step(1)
 	assert_eq(fake_singleton.step_calls, [1])
 	assert_eq(int(fake_singleton.transport_status.get("frame_index", -1)), 121)

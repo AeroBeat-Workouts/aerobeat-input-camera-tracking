@@ -39,7 +39,8 @@ const PLAYBACK_TRANSPORT_MODE_APPROX_TIME_SEEK := "approx_time_seek"
 const DEFAULT_PLAYBACK_FRAME_STEP_SEC := 1.0 / 30.0
 const LANDMARK_DRAWER_Z_INDEX := 20
 const TRAIL_DRAWER_Z_INDEX := 19
-const INSPECTOR_LIVE_REFRESH_INTERVAL_MS := 120
+const DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS := 120
+const DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_FRAMES := 10
 const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
 const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
@@ -174,6 +175,8 @@ enum TrackingSmoothingStyle {
 var overlay_visibility_threshold := 0.35
 var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.LITE_FILTERED
 var gesture_eval_interval_frames := 1
+var debug_panel_refresh_interval_frames := DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_FRAMES
+var inspector_live_refresh_interval_ms := DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS
 var show_landmarks := true
 var show_trails := true
 
@@ -893,7 +896,8 @@ func _process(_delta: float) -> void:
 			_update_status("Python server died", Color.RED)
 			_server_ready = false
 
-	if _frame_count % 10 == 0:
+	var debug_panel_refresh_frames := maxi(1, debug_panel_refresh_interval_frames)
+	if _frame_count % debug_panel_refresh_frames == 0:
 		if provider != null:
 			_latest_state = provider.get_detector_state()
 		_refresh_debug_panels()
@@ -1586,7 +1590,7 @@ func _resolve_shared_inspector_model(force: bool = false) -> Dictionary:
 		if not force and not _shared_inspector_live_model.is_empty() and now_ms < _shared_inspector_live_refresh_due_ms:
 			return _shared_inspector_live_model
 		_shared_inspector_live_model = _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
-		_shared_inspector_live_refresh_due_ms = now_ms + INSPECTOR_LIVE_REFRESH_INTERVAL_MS
+		_shared_inspector_live_refresh_due_ms = now_ms + maxi(1, inspector_live_refresh_interval_ms)
 		return _shared_inspector_live_model
 	return _build_shared_inspector_model(_shared_inspector_target_type, _shared_inspector_target_key)
 
@@ -1640,7 +1644,7 @@ func _build_landmark_inspector_model(landmark_id: int) -> Dictionary:
 	lines.append("Detector pose lock: %s" % _tracking_status_text(_latest_state))
 	var footer := INSPECTOR_FOOTER_TEXT
 	if _shared_inspector_target_type == "landmark" and not _should_use_frozen_shared_inspector():
-		footer = "Live values refresh about every %.2fs for readability. %s" % [float(INSPECTOR_LIVE_REFRESH_INTERVAL_MS) / 1000.0, INSPECTOR_FOOTER_TEXT]
+		footer = "Live values refresh about every %.2fs for readability. %s" % [float(maxi(1, inspector_live_refresh_interval_ms)) / 1000.0, INSPECTOR_FOOTER_TEXT]
 	return {
 		"title": "Landmark Inspector",
 		"subtitle": subtitle,
@@ -1834,7 +1838,7 @@ func _refresh_playback_controls_state() -> void:
 		_playback_step_forward_button.tooltip_text = _playback_step_tooltip_text(1, step_status_text)
 	if _playback_step_status_label != null:
 		_playback_step_status_label.text = step_status_text
-		_playback_step_status_label.visible = not step_status_text.is_empty()
+		_playback_step_status_label.visible = _playback_transport_supports_exact_frame_step() and not step_status_text.is_empty()
 	if not _playback_slider_drag_active:
 		_playback_seek_slider.value = float(_playback_status.get("progress", 0.0))
 	_playback_time_label.text = "%s / %s" % [

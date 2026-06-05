@@ -78,6 +78,10 @@ func test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface()
 	assert_false(_has_editor_exposed_property(harness, "overlay_visibility_threshold"))
 	assert_false(_has_editor_exposed_property(harness, "tracking_smoothing_style"))
 	assert_false(_has_editor_exposed_property(harness, "gesture_eval_interval_frames"))
+	assert_false(_has_editor_exposed_property(harness, "debug_panel_refresh_interval_frames"))
+	assert_false(_has_editor_exposed_property(harness, "inspector_live_refresh_interval_ms"))
+	assert_eq(int(harness.get("debug_panel_refresh_interval_frames")), 10)
+	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
 
 func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> void:
 	var harness = _new_harness()

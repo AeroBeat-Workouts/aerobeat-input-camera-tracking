@@ -1480,6 +1480,39 @@ Manual YAML knobs for Derrick to try next in `assets/boxing.gesture_detection.ya
 
 ---
 
+### Task 10AH: Remove frame-step fallback banner and identify boxing proving debug update-rate knobs
+
+**Bead ID:** `aerobeat-input-camera-tracking-bo9`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick wants a small proving-scene cleanup and usability pass during manual QA: remove the visible replay fallback banner text in the boxing proving scene (`Frame step unavailable (approx_time_seek)...`) and identify the best variable/knob to slow down or lower the rate at which the popup/debug info boxes change so the values are readable during manual tuning. Keep the slice narrow to the input repo proving scene/debug UI; do not widen back into transport work. Update the active plan with exact files changed, validation, and the specific variable names Derrick can tune. If a small implementation change is needed to make the debug refresh rate controllable, land the smallest truthful version and commit/push it. Close the bead when done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- owner-correct proving-scene/debug files in `REF-01`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_proving_harness_trails.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Kept this slice narrowly inside the input repo proving-scene UI/debug seam. Removed the visible replay fallback banner from the boxing/proving playback bar without lying about transport truth: the exact-step limitation text still exists for step-button tooltips, but `_playback_step_status_label` now only renders when exact frame stepping is actually available, so the `approx_time_seek` fallback message is no longer shown as a visible banner in the boxing proving scene. I also landed the smallest truthful refresh-rate control seam in `.testbed/scripts/proving_harness.gd`: the hard-coded inspector and debug-panel cadences are now runtime vars Derrick can tune directly without widening into transport/config ownership.
+
+Specific knobs Derrick can tune for manual readability:
+- `debug_panel_refresh_interval_frames` in `.testbed/scripts/proving_harness.gd` — controls how often the large proving-scene debug panels refresh from `_process()`. Default `10`; raise it (for example `20` or `30`) to slow the big popup/debug boxes.
+- `inspector_live_refresh_interval_ms` in `.testbed/scripts/proving_harness.gd` — controls live inspector popup refresh cadence. Default `120`; raise it (for example `250` or `500`) to make hover/click inspector values change less often.
+
+Focused proof/validation for this slice:
+- `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` ✅
+- `godot --headless --path .testbed --import --quit-after 1000` ✅
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`47/47` passed, `252` asserts). Existing orphan/RID leak shutdown noise remained pre-existing and unchanged.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`
