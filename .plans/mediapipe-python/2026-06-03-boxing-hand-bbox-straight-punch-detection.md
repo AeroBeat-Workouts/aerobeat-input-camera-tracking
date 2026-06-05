@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-04 20:57 EDT
+**Last Updated:** 2026-06-04 22:29 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -36,6 +36,8 @@ The straight-punch detector will use a four-state machine: `ready`, `triggered`,
 | `REF-04` | Secondary consumer that will later need its own tracker config against the same schema | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-gesture-control` |
 | `REF-05` | Boxing proving-harness straight left punch fixture folder containing the video and human-verified gold-truth timing YAML | `/home/derrick/Documents/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left` |
 | `REF-06` | Boxing proving-harness straight right punch fixture folder containing the video and human-verified gold-truth timing YAML | `/home/derrick/Documents/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_right` |
+| `REF-07` | Replay/video owner repo that should provide truthful paused stepping and playback transport primitives | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-video-player` |
+| `REF-08` | Godot video vendor dependency under the replay owner that may need lower-level decoder or transport support | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-godot-video` |
 
 Use these IDs in implementation, QA, and audit so cross-repo contract changes stay explicit.
 
@@ -884,6 +886,155 @@ Landed the smallest owner-correct fix in `REF-02` only: `CameraTrackingFrame.gd`
 
 ---
 
+### Task 10R: Design truthful paused replay stepping across video + camera-tracking ownership layers
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.4`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-02`, `REF-07`, `REF-08`
+**Prompt:** Design the owner-correct replay stepping solution for boxing proving replay. Start from the current truthful diagnosis: the proving harness only performs paused timestamp seeks, not actual one-frame stepping. Audit the current replay stack across `aerobeat-tool-video-player`, `aerobeat-vendor-godot-video`, and `aerobeat-tool-camera-tracking` to determine what transport/control surface exists today, whether Godot/.ogv can support exact decoded-frame stepping in this stack, and where the new primitive must live. Produce a sharp design for a real solution rather than a proving-harness approximation, including API shape, ownership boundaries, fallback behavior if exact frame stepping is impossible for some sources, and the validation seam. Claim the bead on start and stop once the plan is updated with the proven design and the next narrow implementation slices.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Completed the cross-repo replay transport audit and locked the owner-correct design for truthful paused replay stepping.
+
+Audit findings by layer:
+- `REF-01` proving harness is still only doing paused timestamp nudges, not frame stepping. Evidence path: `.testbed/scripts/proving_harness.gd::_request_playback_frame_step()` computes `target_sec = current_time_sec +/- _playback_frame_step_seconds()`, calls `_playback_controller_seek(target_sec)`, then pauses again. No frame index or decoder-owned step primitive is involved.
+- `REF-01` replay wrapper still restarts the tracking lane for pause/seek. Evidence path: `src/AeroCameraTracking.gd::pause_replay_playback()` calls `provider.stop(true)`, `seek_replay_playback(seconds)` mutates `_replay_position_sec` / `_replay_loop_origin_sec` and immediately calls `play_replay_playback()`, while `set_replay_playback_transport_request()` and `get_replay_playback_backend()` are still stubs. This proves the current owner repo has no real replay transport delegation yet.
+- `REF-02` camera-tracking tool currently exposes **status only**, not replay transport. Evidence path: `src/CameraTrackingBackend.gd` only defines `get_playback_status()`, `src/CameraTracking.gd` only mirrors that dictionary via `get_playback_status()`, and `src/CameraTrackingPreviewPresenter.gd::get_playback_status_snapshot()` only reads the passive status surface. There are no public `play/pause/seek/step/frame-index` methods in the tool repo today.
+- `REF-07` video owner stack currently owns generic lifecycle + time seek, but no frame-addressed transport. Evidence path: `src/AeroVideoPlayerBackend.gd` only defines `load/play/pause/stop/unload/seek/set_loop/set_rate/set_fit_mode/set_audio_level`, and `src/AeroVideoPlayerManager.gd` only forwards those methods. There is no `step_frames`, `seek_frame`, `get_transport_capabilities`, or frame cursor/status contract.
+- `REF-08` Godot video vendor is currently a timestamp-seek backend only. Evidence path: `src/AeroGodotVideoBackend.gd` implements playback via Godot `VideoStreamPlayer` / `VideoStreamTheora`, mutates `paused` and `stream_position`, and reports position/duration state; there is no decoded-frame callback, frame index, reverse-step, or seek-by-frame primitive in this backend surface. The verified media target in this repo is `.ogv`, and the implementation only proves Godot built-in `.ogv` play/pause/seek-by-time.
+
+Design conclusion / exactness contract:
+- The **primitive must live first in the video owner stack** (`REF-07` facade + `REF-08` vendor backend surface), because decoded media transport ownership belongs there, not in the boxing proving harness and not in `REF-02` camera-tracking UI code.
+- `REF-02` should then expose that transport upward as camera-tracking replay ownership, but must not invent its own fake frame step by restarting sessions around timestamp seeks.
+- Current Godot built-in `.ogv` in this stack **cannot truthfully promise exact decoded-frame stepping or exact reverse stepping**. The present backend only proves time seeks (`stream_position`) and paused/play state. So the contract must advertise capability tiers instead of pretending every backend can do exact frame stepping.
+
+Locked transport design:
+1. **New video-owner transport contract in `REF-07`:**
+   - extend `AeroVideoPlayerBackend.gd` and `AeroVideoPlayerManager.gd` with replay-transport primitives:
+     - `get_transport_capabilities(slot_name := "") -> Dictionary`
+     - `get_transport_status(slot_name := "") -> Dictionary`
+     - `step_frames(delta_frames: int, slot_name := "") -> Dictionary`
+     - `seek_to_frame(frame_index: int, slot_name := "") -> Dictionary`
+   - `get_transport_status()` should carry a stable frame-cursor payload when the backend can prove it, e.g.:
+     - `transport_mode`: `exact_decoded_frame` | `exact_owned_frame_index` | `approx_time_seek`
+     - `can_step_forward`, `can_step_backward`, `can_seek_frame`
+     - `frame_index` (nullable/absent when unprovable)
+     - `frame_count` (nullable/absent when unprovable)
+     - `nominal_fps` / `frame_duration_sec` when known
+     - `paused`, `position_sec`, `duration_sec`, `source`
+     - `exactness_note` / `limitation_code`
+   - `step_frames()` and `seek_to_frame()` must return an explicit failure code when exact frame addressing is unavailable instead of silently converting into timestamp seeks.
+
+2. **Capability tiers are explicit and truthful:**
+   - `exact_decoded_frame`: backend owns a real decoded-frame cursor and can step to adjacent decoded frames exactly.
+   - `exact_owned_frame_index`: backend cannot prove decoder-native stepping but does own a stable frame index contract (for example a vendor-owned indexed frame source/cache) and can step that index exactly.
+   - `approx_time_seek`: backend can only move by timestamp. This is the truthful status of the current `REF-08` Godot `.ogv` path.
+
+3. **`REF-08` Godot vendor behavior for current `.ogv`:**
+   - in the current implementation slice, `AeroGodotVideoBackend` should report `transport_mode = approx_time_seek`, `can_seek_frame = false`, `can_step_forward = false`, and `can_step_backward = false` for exact frame stepping.
+   - If Derrick later wants exact frame stepping for `.ogv`, that requires a **different lower-level vendor implementation** than the current `VideoStreamPlayer` + `VideoStreamTheora` path (for example a vendor-owned indexed/frame-cached replay path). It is not something the current Godot built-in backend can honestly fake.
+
+4. **Camera-tracking ownership in `REF-02`:**
+   - add a public replay-transport surface to `CameraTrackingBackend.gd` / `CameraTracking.gd` that mirrors the video-owner contract instead of only surfacing passive playback status:
+     - `get_replay_transport_capabilities()`
+     - `get_replay_transport_status()`
+     - `step_replay_frames(delta_frames: int)`
+     - `seek_replay_to_frame(frame_index: int)`
+   - `get_playback_status()` can remain as the lightweight status snapshot, but frame-addressed replay must move to the new explicit transport methods.
+   - `AeroCameraTracking.gd` should stop using `pause_replay_playback() -> provider.stop(true)` plus `seek_replay_playback() -> play_replay_playback()` as its paused-step mechanism. Instead it should delegate to the real replay transport when available and preserve one loaded paused session/cursor.
+
+5. **Fallback behavior / UI contract:**
+   - if the active replay transport reports `approx_time_seek`, the boxing proving scene must not present left/right arrows as truthful one-frame controls. It may either disable exact step controls or relabel them as non-exact time nudges, but it must not overclaim frame stepping.
+   - exact paused frame stepping UI should only be enabled when `can_step_forward` / `can_step_backward` are true from the public transport capability surface.
+
+Key blocker discovered and documented sharply:
+- Full **video + tracking** truth will still require a matching frame-addressed replay seam below the camera-tracking service. The present replay/tracking vendor path outside this three-repo audit still starts replay by timestamp (`start_time_sec`) and, in the Python runtime, rewinds via OpenCV `CAP_PROP_POS_MSEC`, not by owned frame index. So `10S/10T` can and should fix the public owner layers first, but literal end-to-end tracking-frame exactness remains blocked until the underlying tracking vendor path also grows a compatible frame-index transport or the replay source owner is unified beneath both presentation and tracking. This is the real blocker; the proving harness should not keep papering over it.
+
+Concrete next seams:
+- **Task 10S (`REF-07` + `REF-08`):** land the new replay-transport contract in the video owner stack, including manager/backend API additions, transport capability/status payloads, and a truthful `approx_time_seek` capability implementation in `AeroGodotVideoBackend` for current `.ogv`. Add focused tests proving the manager exposes the new contract and that the Godot backend explicitly refuses exact frame step/seek-by-frame instead of silently time-seeking.
+- **Task 10T (`REF-02`):** expose that transport upward through camera-tracking ownership, replace the current `AeroCameraTracking` paused-step restart/seek approximation with delegation to the new replay transport, preserve paused loaded-session identity, and make the public camera-tracking replay API capability-driven. If exact frame addressing is still unavailable from the active transport, `REF-02` should surface that truthfully so `REF-01` can disable or relabel exact step UI instead of faking it.
+
+Validation strategy:
+- `REF-07` unit tests: contract round-trip for `get_transport_capabilities`, `get_transport_status`, `step_frames`, and `seek_to_frame`; explicit unsupported-result assertions for non-exact backends.
+- `REF-08` proving/tests: current `.ogv` backend reports `approx_time_seek` and exact-step unsupported codes while preserving honest pause/play/seek-by-time behavior.
+- `REF-02` unit tests: paused replay step no longer tears down/restarts the tracking session just to emulate a step; capability/status passthrough is truthful; playback status stays stable across pause/resume when the transport is merely paused.
+- Later end-to-end QA (`10U`) should assert either exact frame-index deltas when the active transport can prove them, or explicit documented fallback behavior when it cannot.
+
+---
+
+### Task 10S: Implement truthful replay-step transport in the video owner stack
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.5`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-07`, `REF-08`
+**Prompt:** Implement the owner-correct replay stepping primitive in `aerobeat-tool-video-player` and `aerobeat-vendor-godot-video` if the design proves that lower-level video transport changes are required. The goal is a truthful paused-step capability that advances or rewinds by decoded frame/owned frame index rather than timestamp approximation, or the strongest truthful exactness contract the stack can support if literal decoded-frame stepping is impossible for some formats. Keep this slice in the video owner layers only; do not patch the proving harness to fake it. Claim the bead on start, add focused regression coverage, and document any source-format limitations explicitly.
+
+**Folders Created/Deleted/Modified:**
+- owner-correct source/test folders in `REF-07` and `REF-08`
+
+**Files Created/Deleted/Modified:**
+- replay/video transport files to be identified during implementation
+- focused tests/probes/docs in `REF-07` / `REF-08`
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10T: Expose truthful replay stepping through camera-tracking replay ownership
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.6`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-02`, `REF-07`, `REF-08`
+**Prompt:** After the video-owner primitive exists, expose that truthful paused-step capability through `aerobeat-tool-camera-tracking` and the camera-tracking replay surface consumed by the proving scene. Replace the current timestamp-seek approximation path with the new replay-step transport while preserving pause/play/seek behavior for existing consumers. Keep this slice focused on replay ownership boundaries and public camera-tracking transport, not proving-scene-only hacks. Claim the bead on start, add focused regression coverage, and update the plan with the exact public API and validation.
+
+**Folders Created/Deleted/Modified:**
+- owner-correct source/test folders in `REF-02` and `REF-07`
+
+**Files Created/Deleted/Modified:**
+- replay/camera-tracking transport files to be identified during implementation
+- focused tests/probes/docs in `REF-02` / `REF-07`
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10U: QA truthful frame stepping end to end in boxing proving replay
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.7`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-02`, `REF-05`, `REF-06`, `REF-07`, `REF-08`
+**Prompt:** Verify the new replay stepping behavior end to end in boxing proving replay. Confirm whether paused left/right stepping now advances and rewinds by truthful single-frame increments for the relevant replay sources, or else verify the exact documented fallback behavior if the stack cannot provide literal decoded-frame stepping for some sources. Capture exact repro steps, observed frame/time/index behavior, and any remaining source-format caveats. Claim the bead on start and leave clear evidence in the plan.
+
+**Folders Created/Deleted/Modified:**
+- validation-only use of relevant testbed/project repos and capture artifacts as needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- QA artifacts/captures if generated
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
@@ -909,7 +1060,7 @@ Landed the smallest owner-correct fix in `REF-02` only: `CameraTrackingFrame.gd`
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability and ownership correctness. The current state includes: vendor hand bbox payload exposure, tool-layer normalized hand payload + bbox preview support, input-layer bbox straight-punch state-machine wiring, tracker-contract QA pass, visible proving-scene collider debug rings, input-owned proving-scene debug config, preview-space vs gameplay-space landmark separation, the upstream pose-side hand lock repair across occlusion/reacquire, and explicit parser guards against tab-indented boxing profile regressions. Late-session tracing narrowed the YAML-reset suspicion: Godot/editor load+play was proven read-only for the boxing YAMLs, and a controlled clean launch of the boxing proving scene did not re-dirty them. The remaining blocker is the wider external workflow that can restore pre-existing dirty local YAML state around Derrick's real retest loop.
+**What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability and ownership correctness. The current state includes: vendor hand bbox payload exposure, tool-layer normalized hand payload + bbox preview support, input-layer bbox straight-punch state-machine wiring, tracker-contract QA pass, visible proving-scene collider debug rings, input-owned proving-scene debug config, preview-space vs gameplay-space landmark separation, the upstream pose-side hand lock repair across occlusion/reacquire, and explicit parser guards against tab-indented boxing profile regressions. Late-session tracing narrowed the YAML-reset suspicion: Godot/editor load+play was proven read-only for the boxing YAMLs, and a controlled clean launch of the boxing proving scene did not re-dirty them. The remaining blockers are (1) the wider external workflow that can restore pre-existing dirty local YAML state around Derrick's real retest loop, and (2) the replay stack still lacking a truthful decoded-frame stepping primitive; the current paused step UI is only a timestamp-seek approximation and should be replaced in the owner video/camera-tracking layers.
 
 **Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices landed; `REF-05` / `REF-06` fixture-based straight-punch QA is still the outstanding truth gate. Task 10K closed the live `Hand tracking - disabled` seam by restoring the boxing profile path and adding a parser guard against tab-indented regressions. Tasks 10L–10N then proved that clean Godot load/play does not itself rewrite the boxing YAMLs; the unresolved blocker is reproducing and stopping the wider local workflow that reintroduces dirty tab-indented YAML before some retests.
 
