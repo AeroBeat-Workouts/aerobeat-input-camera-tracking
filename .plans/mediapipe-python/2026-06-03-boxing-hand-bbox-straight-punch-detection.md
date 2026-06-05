@@ -1099,6 +1099,28 @@ However, this QA slice did **not** clear the full end-to-end acceptance gate yet
 
 ---
 
+### Task 10W: Repair boxing proving replay pause-hold behavior after transport migration
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.9`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-05`, `REF-07`, `REF-08`
+**Prompt:** QA proved that the boxing proving scene now consumes the new replay transport truthfully, but end-to-end in-scene pause does not hold the controller in a paused state on the shipped replay path even though lower-layer pause semantics still pass in isolation. Repair that boxing-scene replay pause-hold seam without reintroducing fake frame-step assumptions. Keep the slice focused on the consumer/transport integration path that leaves replay effectively playing after an in-scene pause request. Use `godotenv-sync` for any refresh work, keep YAML edits outside Godot, add focused proof, and update this plan with the exact root cause, validation, and commits.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_proving_harness_trails.gd`
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Root cause proved to be in the proving consumer (`REF-01`), not the lower replay owners (`REF-02`, `REF-07`, `REF-08`). After the transport migration, `_refresh_playback_status(true)` still flows back through `_load_playback_source_if_needed()`, whose autoplay branch will resume any loaded replay that is “not playing.” A manual in-scene pause correctly drove the singleton/session into paused state, but the proving harness could immediately re-arm playback during its own post-pause refresh path, so end-to-end boxing replay looked like it never stayed paused even though owner-layer pause preservation tests still passed in isolation. The repair stayed tightly on that consumer seam: `proving_harness.gd` now tracks a `_playback_pause_hold` latch set by manual pause and cleared on explicit play or fresh source/visibility reloads, and the autoplay branch now honors that latch instead of auto-resuming a user-paused replay. Added focused proof in `test_proving_harness_trails.gd::test_replay_pause_hold_blocks_refresh_autoplay_after_user_pause`, which forces the exact stale-autoplay condition and verifies a post-pause refresh leaves the replay controller paused. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gexit` → 114/114 passing (existing GUT orphan/RID leak warnings unchanged). Commits: `c74b042` - `Hold proving replay pause across transport refresh`. Remaining limitation: this only fixes pause-hold at the proving consumer seam; the shipped replay path still truthfully reports `approx_time_seek`, so exact frame stepping remains unavailable until a lower owner can prove it.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
