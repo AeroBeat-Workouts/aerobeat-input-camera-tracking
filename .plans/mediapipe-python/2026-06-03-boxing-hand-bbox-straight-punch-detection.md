@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-05 04:22 EDT
+**Last Updated:** 2026-06-05 16:39 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -1725,6 +1725,77 @@ Commits:
 **Status:** ✅ Complete
 
 **Results:** Landed the owner-correct hand-grace/timing slice across the tool and input repos. In the tool repo, hand validity config now normalizes to `tracking.hands.validity.max_stale_ms` and `tracking.hands.validity.reacquire_stable_ms`, downstream hand payloads/snapshots now expose truthful `timestamp_ms`, `stale_ms`, `grace_ms`, and `stable_ms` readouts, grace expiration now keys off elapsed sample age in milliseconds, and hand reacquire validity now keys off continuous observed time in milliseconds instead of frame counts. In the input repo, the boxing/testbed hand bbox overlay now makes tracker `grace` visually win over gesture-state coloring, using an explicit pink grace color and `grace` label whenever the underlying hand tracking state is `grace`; boxing debug/readout surfaces now consume the tool-owned ms state/readouts instead of frame-only semantics; and the boxing/flow camera-tracking YAMLs now use the new ms knobs. Exact YAML knobs Derrick should tune for this slice: `tracking.hands.validity.max_stale_ms` and `tracking.hands.validity.reacquire_stable_ms` in `assets/boxing.camera_tracking.yaml` and `assets/flow.camera_tracking.yaml` (currently `80` and `40` respectively). Focused validation rerun after landing the slice: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `godot --headless --path .testbed --import` ✅; `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_CameraTracking.gd -gexit` ✅ (`34/34`); `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --import` ✅; `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_camera_tracking_provider.gd -gexit` ✅ (`11/11`); `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`13/13`, expected existing orphan warnings only). Commits: tool repo `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `8e2a417` (`Convert hand validity timing to milliseconds`); input repo `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `7a17ae2` (`Make boxing hand grace visually explicit`).
+
+---
+
+### Task 10AO: QA hand grace visual/timing slice for live manual-ready boxing scene
+
+**Bead ID:** `aerobeat-input-camera-tracking-5n7`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`
+**Prompt:** QA the latest hand grace slice, focusing on whether the changed surfaces are truly ready for Derrick's next manual live-camera boxing test. Verify the live/proving scene uses explicit pink `grace` bbox state, the hand timing knobs are now millisecond-based (`max_stale_ms`, `reacquire_stable_ms`), the input side consumes the new tool timing/state payload truthfully, and the changed validation surface still passes. This is a QA pass for the latest slice, not a broad replay-truth closeout. Update the plan with exact QA findings/evidence and say clearly whether the scene is ready for Derrick's manual test.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Focused QA of the latest hand-grace slice passed for the intended scope, and the scene is **ready for Derrick's next manual live-camera hand-grace test**.
+
+Exact QA evidence gathered:
+- **Explicit pink `grace` bbox surface:** verified directly in `REF-01` `.testbed/scripts/hand_bbox_state_drawer.gd`. `STATE_COLORS["grace"]` is explicit pink (`Color8(0xff, 0x4f, 0xd8, 0xff)`), and `_resolve_side_state()` now gives tracker `hand.tracking_state == "grace"` precedence over the gesture-state coloring path so the overlay cannot silently stay yellow/green/red when the underlying hand payload is in grace. Focused proving-surface regression rerun passed: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`13/13` passed). That file includes `test_hand_bbox_drawer_prefers_grace_tracking_state_over_gesture_state`, which directly proves the visual precedence rule.
+- **Hand timing knobs are ms-based in the public config/tool owner path:** verified current owner YAML in `REF-01` `assets/boxing.camera_tracking.yaml` now uses `tracking.hands.validity.max_stale_ms: 80` and `tracking.hands.validity.reacquire_stable_ms: 40` with no frame-based equivalents. Tool ownership is truthful in `REF-02` `src/CameraTrackingConfig.gd`: defaults/normalization now define `DEFAULT_HAND_VALIDITY_MAX_STALE_MS` / `DEFAULT_HAND_VALIDITY_REACQUIRE_STABLE_MS`, normalize `max_stale_ms` and `reacquire_stable_ms`, and erase the old `max_stale_frames` / `reacquire_stable_frames` compatibility keys. Runtime compatibility also forwards them as `runtime.hand_max_stale_ms` and `runtime.hand_reacquire_stable_ms`.
+- **Input consumes the new tool timing/state payload truthfully:** verified across the owner seam, not just by static config names. `REF-02` `src/CameraTrackingFrame.gd` now emits hand payload fields `timestamp_ms`, `stale_ms`, `grace_ms`, `stable_ms`, `predicted`, and `tracking_state` (`tracked` / `reacquiring` / `grace`) while computing reacquire validity from elapsed milliseconds. `REF-01` `src/providers/camera_tracking_provider.gd` forwards the repo-owned `tracking.hands` profile bundle directly into the tool tracking session, and `REF-01` proving/debug consumers now read the ms payload truthfully: `src/detectors/pose_detector_substrate.gd` carries `stale_ms`, `grace_ms`, and `stable_ms` into straight-punch debug state, while `.testbed/scripts/boxing_proving_harness.gd` renders those exact ms values in the live debug/inspector text (`grace=%dms`, `stable=%dms`, `stale=%dms`, `Hand grace/stale window: %dms`, `Hand reacquire stable window: %dms`).
+- **Changed validation surface still passes:** reran the narrow changed surfaces in both owner repos:
+  - `REF-02`: `godot --headless --path .testbed --import && godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_CameraTracking.gd -gexit` ✅ (`34/34` passed, `337` asserts)
+  - `REF-01`: `godot --headless --path .testbed --import && godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_camera_tracking_provider.gd -gexit` ✅ (`11/11` passed, `66` asserts)
+  - `REF-01`: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`13/13` passed, `94` asserts)
+  - Non-blocking noise observed during the proving-harness suite remained the pre-existing orphan / RID / invalid-UID warning noise on shutdown; assertions still passed and there was no new grace-slice failure.
+
+QA conclusion for this slice only:
+- **Ready for Derrick's manual test:** **Yes**, for the intended hand-grace visual/timing/manual-live-boxing check.
+- **Not claimed by this QA pass:** this does **not** close the older broader straight-punch replay gold-truth mismatch work. The hand-grace visual/timing slice itself is good to manually test live, but the broader end-to-end punch-truth blocker elsewhere in Task 10 remains a separate issue outside this QA scope.
+
+---
+
+### Task 10AP: Audit hand grace visual/timing slice after QA
+
+**Bead ID:** `aerobeat-input-camera-tracking-xfa`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Independently audit the latest hand grace visual/timing slice after QA. Confirm the tool repo truly owns the hand grace and ms timing semantics, confirm the input repo only consumes/displays them, confirm the public YAML knobs are the new ms-based fields, and truth-check that the boxing/proving scene now surfaces `grace` visibly. Report pass/fail for this latest slice only, independent of the broader unresolved straight-punch gold-truth work. Update the plan with exact audit findings/evidence.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Focused audit result for the latest hand-grace visual/timing slice: **PASS for this slice only**.
+
+Exact audit findings/evidence:
+- **Tool repo owns hand grace + ms timing semantics:** confirmed in `REF-02` `src/CameraTrackingFrame.gd`. The tracker computes `stale_ms` and gates grace on `max_stale_ms` (`314-319`), computes reacquire validity from elapsed `reacquire_stable_ms` (`578-580`), and emits tracker-owned hand payload truth including `tracking_state: "grace"`, `grace_frames`, `grace_ms`, `stable_ms`, and `predicted` (`622-634`). Ownership is also enforced in `REF-02` `src/CameraTrackingConfig.gd`, which normalizes the public hand validity config to `max_stale_ms` / `reacquire_stable_ms` and erases legacy frame keys (`190-203`), then forwards the same ms/runtime knobs as `hand_max_stale_ms` and `hand_reacquire_stable_ms` (`257-264`). Focused owner validation rerun passed: `test_CameraTracking.gd` ✅ `34/34`.
+- **Input repo only consumes/displays the tracker-owned hand grace payload:** confirmed in `REF-01` `src/detectors/pose_detector_substrate.gd` (`560-578`), where the input side copies `tracking_valid`, `tracking_state`, `stale_ms`, `grace_ms`, `stable_ms`, and related hand fields from `hand_payload` into straight-punch debug output instead of recomputing hand grace/timing semantics locally. `REF-01` `src/providers/camera_tracking_provider.gd` focused validation also passed, proving the profile bundle forwards `tracking.hands.validity.max_stale_ms == 80` and `reacquire_stable_ms == 40` into the tracking session config without inventing a second owner seam. Provider suite rerun: `test_camera_tracking_provider.gd` ✅ `11/11`.
+- **Public YAML knobs are the new ms-based hand fields:** confirmed directly in `REF-01` `assets/boxing.camera_tracking.yaml` (`19-25`) and `assets/flow.camera_tracking.yaml` (`19-25`): public hand validity now exposes `max_stale_ms` and `reacquire_stable_ms`, with grace settings under `tracking.hands.grace`. The cross-repo contract doc in `REF-01` also records those same locked defaults. I did not find active public hand-profile YAML still using `max_stale_frames` / `reacquire_stable_frames`.
+- **Boxing/proving scene surfaces `grace` visibly:** confirmed in `REF-01` `.testbed/scripts/hand_bbox_state_drawer.gd`. The drawer has an explicit pink grace color (`STATE_COLORS["grace"] = Color8(0xff, 0x4f, 0xd8, 0xff)`, lines `4-10`) and gives `hand.tracking_state == "grace"` precedence in `_resolve_side_state()` (`52-66`). The proving harness also surfaces the timing text live: tracker hand row renders `grace=%dms (%d frames)` (`858-861`), straight-punch event text renders `grace=%dms` (`877-886`), the triggered-grace timer row renders `%d/%dms remaining` (`909-917`), and the tuning summary exposes `Hand reacquire stable window: %dms` / `Hand grace/stale window: %dms` (`1245-1247`). Focused proving-surface suite rerun passed: `test_boxing_proving_harness_profiles_and_debug.gd` ✅ `13/13`, including the explicit `test_hand_bbox_drawer_prefers_grace_tracking_state_over_gesture_state` proof.
+- **Important boundary truth:** this pass is specifically about **hand** grace/timing ownership. The input repo still legitimately owns separate **straight-punch** state-machine grace (`grace_ms_remaining`, `triggered_grace_ms`) in `pose_detector_substrate.gd`; that does not contradict the hand-grace ownership audit because it is a different layer/feature.
+- **Remaining gap outside this slice:** the broader repo is not fully green because `test_camera_tracking_config_profiles.gd` currently fails at line `34`, still expecting `gesture_detection.straight_punch.evaluation.bbox_area_growth_window_ms == 240`, while `assets/boxing.gesture_detection.yaml` now says `1000` (`line 11`). That mismatch is real, but it is **outside the audited hand-grace slice** and did not change the pass/fail call above.
+
+Audit conclusion:
+- **Pass/Fail for this latest slice:** **PASS**
+- **What passed:** tracker/tool ownership of hand grace + ms timing semantics, input-side consumer/display behavior, public hand YAML ms knobs, and visible `grace` surfacing in the boxing/proving scene.
+- **What remains open:** the unrelated boxing gesture-profile expectation drift (`240` vs `1000`) and the broader unresolved straight-punch gold-truth work remain outside this slice.
 
 ---
 
