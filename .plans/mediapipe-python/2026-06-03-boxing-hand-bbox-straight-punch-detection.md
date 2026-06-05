@@ -1560,6 +1560,46 @@ Commits:
 
 ---
 
+### Task 10AJ: Fix replay loop origin after seek and window straight-punch bbox growth over time
+
+**Bead ID:** `aerobeat-input-camera-tracking-1it`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`, `REF-06`
+**Prompt:** Derrick confirmed two concrete follow-up changes during live QA. First, fix the replay seek/loop bug so looping still returns to the true replay start instead of the last seek position. Second, make straight-punch bbox area growth use a configurable over-time window model like wrist velocity now does, and expose that new millisecond window as a public YAML knob so `min_bbox_area_growth` becomes a time-windowed signal rather than raw frame-based jitter. Keep the slice as narrow as truthfully possible across the owner repos involved: input-owner detector/config/proving wiring for the bbox-growth window change, and the minimal owner-correct replay-loop fix for the seek baseline bug. Keep YAML edits outside Godot, add focused proof/tests/probes, rerun enough validation/replay context to support Derrick’s next manual QA pass, and update this plan with exact files changed, validation, commits, and the exact YAML fields Derrick should tune afterward.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/`
+- minimal owner-correct replay transport files if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/tests/unit/test_aero_camera_tracking.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `src/AeroCameraTracking.gd`
+- `src/detectors/pose_detector_substrate.gd`
+
+**Status:** ✅ Complete
+
+**Results:**
+- Fixed the replay seek/loop baseline bug in `src/AeroCameraTracking.gd` by keeping `_replay_loop_origin_sec` stable across `seek_replay_playback()`. Seeking now restarts playback from the requested seek time while preserving the true loop origin for future replay wraps instead of rebasing the loop to the most recent seek point.
+- Reworked straight-punch bbox growth in `src/detectors/pose_detector_substrate.gd` from raw sample-count deltas to a timestamp-windowed signal. The detector now tracks bbox areas across `straight_punch.evaluation.bbox_area_growth_window_ms`, computes `last_bbox_area_growth` from oldest/newest samples still inside that millisecond window, exposes the current window span in debug state, and keeps `recent_peak_bbox_area_growth` / `min_bbox_area_growth` operating on that time-windowed value.
+- Added focused proof in `.testbed/tests/unit/test_aero_camera_tracking.gd` and `.testbed/tests/unit/test_pose_detector_substrate.gd` for seek-loop preservation plus time-windowed bbox growth behavior, and extended `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` so the boxing YAML bundle proves the new public knob loads from disk.
+- Published the new boxing profile knob in `assets/boxing.gesture_detection.yaml` as `straight_punch.evaluation.bbox_area_growth_window_ms: 240`. Derrick should tune these YAML fields together after manual replay QA: `straight_punch.evaluation.bbox_area_growth_window_ms` and `straight_punch.thresholds.min_bbox_area_growth`.
+- Validation:
+  - `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` ✅
+  - `godot --headless --path .testbed --import --quit-after 1000` ✅
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_aero_camera_tracking.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`56/56` passed, `488` asserts)
+  - One broader all-unit rerun hit an existing flaky preview-frame load error in `test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls`; rerunning that file in isolation passed unchanged (`12/12`).
+- Commit:
+  - `72a52a9` - `Fix replay loop seek baseline and bbox growth window`
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`
