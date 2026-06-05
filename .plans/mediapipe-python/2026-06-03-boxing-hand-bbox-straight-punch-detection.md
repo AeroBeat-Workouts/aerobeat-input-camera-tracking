@@ -1080,15 +1080,22 @@ Limitations left explicit on purpose:
 **Prompt:** Verify the new replay stepping behavior end to end in boxing proving replay. Confirm whether paused left/right stepping now advances and rewinds by truthful single-frame increments for the relevant replay sources, or else verify the exact documented fallback behavior if the stack cannot provide literal decoded-frame stepping for some sources. Capture exact repro steps, observed frame/time/index behavior, and any remaining source-format caveats. Claim the bead on start and leave clear evidence in the plan.
 
 **Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/artifacts/task10u-replay-transport-qa/`
 - validation-only use of relevant testbed/project repos and capture artifacts as needed
 
 **Files Created/Deleted/Modified:**
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
-- QA artifacts/captures if generated
+- `.plans/mediapipe-python/artifacts/task10u-replay-transport-qa/task10u-summary.md`
+- `.plans/mediapipe-python/artifacts/task10u-replay-transport-qa/task10u-summary.json`
+- `.plans/mediapipe-python/artifacts/task10u-replay-transport-qa/boxing_replay_transport_playback_state_probe.json`
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** QAed the new replay transport truth surface end to end against the boxing proving replay path using the shipped boxing punch-left fixture and a focused headless boxing-scene probe plus owner-layer regression tests. Repro/validation steps: (1) `bd update aerobeat-input-camera-tracking-35y.7 --status in_progress --json`; (2) `godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`; (3) because the working tree had unrelated dirty tab-indented `assets/boxing.camera_tracking.yaml` + `assets/boxing.gesture_detection.yaml`, temporarily restored those two files to `HEAD` for safe QA-only runtime execution, then restored the dirty copies afterward; (4) `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_proving_harness_trails.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` (46/46 passing with only existing orphan/leak warnings); (5) `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_aero_camera_tracking.gd -gexit` (13/13 passing); (6) runtime boxing-scene probe against `res://scenes/boxing_proving.tscn` + `res://assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4`, summarized in `.plans/mediapipe-python/artifacts/task10u-replay-transport-qa/task10u-summary.md` / `.json` with raw controller-state capture in `.plans/mediapipe-python/artifacts/task10u-replay-transport-qa/boxing_replay_transport_playback_state_probe.json`.
+
+Observed boxing proving truth from the shipped replay path (`REF-02`, `REF-07`, `REF-08`): `transport_mode=approx_time_seek`, `can_step_forward=false`, `can_step_backward=false`, `can_seek_frame=false`, `frame_index=null`, `frame_count=null`, `limitation_code=backend_transport_unsupported`. The boxing proving scene is now consuming that capability/status surface: the step UI rendered `Frame step unavailable (approx_time_seek). This backend exposes replay time/paused status for video-file sessions but does not prove exact frame-addressed stepping.`, both step buttons stayed disabled, and a direct step request returned `backend_transport_unsupported` with `step_replay_frames requires exact frame-addressed replay transport, but this backend only supports approx_time_seek.` That satisfies the truthful fallback portion of the gate: the current shipped MediaPipe replay path no longer pretends exact frame stepping exists.
+
+However, this QA slice did **not** clear the full end-to-end acceptance gate yet. The same boxing-scene runtime probe proved normal seek/resume movement (`position` advanced from ~2.53s → ~4.27s after seek and ~5.13s after resume), but a direct in-scene pause attempt did not persist a paused boxing replay controller state in the probe (`paused_state.status.paused` stayed `false` and controller `state` stayed `playing`). Lower-layer replay-owner regression coverage still passes for pause semantics in isolation (`test_aero_camera_tracking_pause_preserves_visible_tracking_state_as_paused` in owner-layer coverage), so the unresolved gap is specifically that this boxing proving end-to-end QA could not truthfully prove normal pause behavior at the scene level. Final QA truth: the new transport capability/status surface is wired correctly and the truthful result for every currently shipped real source path is still approx-only, with **no real end-to-end exact-support source proven today** beyond fake/exact unit-test doubles; but the scene-level play/pause/time-seek acceptance remains incomplete because pause did not hold in the headless boxing proving probe.
 
 ---
 
