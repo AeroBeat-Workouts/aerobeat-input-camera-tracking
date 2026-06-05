@@ -1554,7 +1554,9 @@ Focused proof/validation for this slice:
 - `godot --headless --path .testbed --import --quit-after 1000` ✅
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ (`40/40` passed, `374` asserts). Existing orphan/RID/resource leak shutdown noise remained pre-existing and unchanged.
 
-Commits: pending until task lands.
+Commits:
+- `5ee10aa` - Move proving refresh knobs into YAML and window straight-punch velocity
+- `57f2fd5` - Document Task 10AI landing details
 
 ---
 
