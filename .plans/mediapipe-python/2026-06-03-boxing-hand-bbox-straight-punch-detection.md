@@ -1168,6 +1168,41 @@ Remaining limitation: this slice intentionally did **not** widen into paused-see
 
 ---
 
+### Task 10Y: Repair shipped approx-time paused-seek/resume semantics in boxing proving replay
+
+**Bead ID:** `aerobeat-input-camera-tracking-35y.11`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-05`, `REF-07`, `REF-08`
+**Prompt:** After Task 10X, the shipped replay path now reports paused state truthfully while held, but QA evidence still shows that paused seek on the `approx_time_seek` path re-enters play and leaves no truthful paused state for subsequent resume. Repair the shipped approx-time paused-seek/resume semantics without pretending exact frame stepping exists. Keep scope tightly on the consumer/owner integration path for pause → seek while paused → resume behavior, preserve the truthful fallback transport model, use `godotenv-sync` for any refresh work, keep YAML edits outside Godot, add focused proof, and update this plan with the exact root cause, validation, commits, and any remaining limitation.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/tests/unit/test_aero_camera_tracking.gd`
+- `src/AeroCameraTracking.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Root cause confirmed in the owner/input wrapper from `REF-01`: `AeroCameraTracking.seek_replay_playback()` always delegated to `play_replay_playback()` after updating `_replay_position_sec` and `_replay_loop_origin_sec`. On the shipped `approx_time_seek` fallback path, a paused seek therefore always restarted replay and exposed a stale/playing transport surface instead of preserving truthful paused semantics for the subsequent resume seam.
+
+Fix landed narrowly in `src/AeroCameraTracking.gd`: the wrapper now records whether replay was already playing before the seek, restarts the replay at the new approx-time position as before, and immediately re-applies `pause_replay_playback()` when the seek originated from a paused state. That preserves the existing truthful fallback transport/capability model, keeps `approx_time_seek` honest about not being exact frame stepping, and makes the next resume use the newly-seeked `start_time_sec` / `loop_start_time_sec` rather than the pre-seek hold position.
+
+Focused proof landed in `.testbed/tests/unit/test_aero_camera_tracking.gd` via `PausedSeekResumeTrackingSession` plus `test_aero_camera_tracking_paused_approx_seek_stays_truthfully_paused_and_resume_uses_new_position()`. The regression reproduces the stale-playing approx-time transport seam, verifies that pause → seek while paused still reports `state=paused` / `paused=true` at the new position, and then verifies that a later resume restarts from that new position.
+
+Validation:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_aero_camera_tracking.gd -gexit` ✅ (`15/15` tests, `104` asserts)
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` ✅ (`117/117` tests, `710` asserts; pre-existing orphan/RID leak warnings still present in testbed shutdown)
+
+Commits for this slice: pending local commit at time of plan update.
+
+Remaining limitation: this slice keeps the current fallback transport honest but does not invent exact stepping. Paused seek on `approx_time_seek` now remains truthfully paused and resumes from the seek target, but seek precision is still bounded by the existing approximate time-based replay transport in the owner/tool/video layers.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`

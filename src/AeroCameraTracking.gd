@@ -327,9 +327,14 @@ func pause_replay_playback() -> bool:
 func seek_replay_playback(seconds: float) -> bool:
 	if not _replay_loaded and _replay_source_path.is_empty():
 		return false
+	var was_playing := _replay_playing
 	_replay_position_sec = maxf(seconds, 0.0)
 	_replay_loop_origin_sec = _replay_position_sec
-	return play_replay_playback()
+	if not play_replay_playback():
+		return false
+	if was_playing:
+		return true
+	return pause_replay_playback()
 
 func unload_replay_playback() -> void:
 	if _provider != null and is_instance_valid(_provider) and _provider.has_method("stop"):
