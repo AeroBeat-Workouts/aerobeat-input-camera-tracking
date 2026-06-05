@@ -175,7 +175,7 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 					"wrist_velocity": 0.42,
 					"wrist_forward_velocity": 0.09,
 					"bbox_area_growth": 0.015,
-					"grace_frames_remaining": 2,
+					"grace_ms_remaining": 160,
 					"reacquire_valid_samples": 1,
 				}
 			}
@@ -202,7 +202,7 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	assert_string_contains(line, "wrist_forward_vel=0.090")
 	assert_string_contains(line, "bbox_area=0.055")
 	assert_string_contains(line, "bbox_growth=0.015")
-	assert_string_contains(line, "grace=2")
+	assert_string_contains(line, "grace=160ms")
 	assert_string_contains(line, "reacquire=1")
 
 func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void:
@@ -226,8 +226,8 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"min_positive_growth_samples": 3,
 					"sample_window_size": 4,
 					"growth_window_areas": [0.020, 0.028, 0.041, 0.052],
-					"grace_frames_remaining": 0,
-					"triggered_grace_frames": 3,
+					"grace_ms_remaining": 0,
+					"triggered_grace_ms": 240,
 					"trigger_bbox_area": 0.061,
 					"bbox_area_retract_epsilon": 0.003,
 					"reacquire_valid_samples": 1,
@@ -244,7 +244,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, stale_frames=1")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[4].get("current_text", "")), "waiting for first straight-punch state change")
-	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 bbox=0.052 growth=0.015 fresh=true grace=0 valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 bbox=0.052 growth=0.015 fresh=true grace=0ms valid=true")
 	assert_eq(String(rows[7].get("threshold_text", "")), "0.180")
 	assert_eq(String(rows[7].get("current_text", "")), "0.420")
 	assert_eq(String(rows[9].get("threshold_text", "")), "0.010")
@@ -273,8 +273,8 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"min_positive_growth_samples": 3,
 					"sample_window_size": 4,
 					"growth_window_areas": [0.020, 0.038, 0.055, 0.071],
-					"grace_frames_remaining": 2,
-					"triggered_grace_frames": 3,
+					"grace_ms_remaining": 160,
+					"triggered_grace_ms": 240,
 					"trigger_bbox_area": 0.071,
 					"bbox_area_retract_epsilon": 0.003,
 					"reacquire_valid_samples": 0,
@@ -294,7 +294,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "BBox area - 0.071")
 	assert_string_contains(body, "BBox area growth >= 0.010 - 0.012")
 	assert_string_contains(body, "Positive growth samples >= 3/4 - 4/4")
-	assert_string_contains(body, "Grace timer - 2/3 remaining (active)")
+	assert_string_contains(body, "Grace timer - 160/240ms remaining (active)")
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
 	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
 
@@ -320,8 +320,8 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"min_positive_growth_samples": 3,
 					"sample_window_size": 4,
 					"growth_window_areas": [0.020, 0.038, 0.055, 0.071],
-					"grace_frames_remaining": 2,
-					"triggered_grace_frames": 3,
+					"grace_ms_remaining": 160,
+					"triggered_grace_ms": 240,
 					"trigger_bbox_area": 0.071,
 					"bbox_area_retract_epsilon": 0.003,
 					"reacquire_valid_samples": 0,
@@ -343,7 +343,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 			"wrist_velocity": 0.310,
 			"bbox_area": 0.071,
 			"bbox_area_growth": 0.012,
-			"grace_frames_remaining": 2,
+			"grace_ms_remaining": 160,
 		}
 	})
 
@@ -370,8 +370,8 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"min_positive_growth_samples": 3,
 					"sample_window_size": 4,
 					"growth_window_areas": [0.071],
-					"grace_frames_remaining": 0,
-					"triggered_grace_frames": 3,
+					"grace_ms_remaining": 0,
+					"triggered_grace_ms": 240,
 					"trigger_bbox_area": 0.071,
 					"bbox_area_retract_epsilon": 0.003,
 					"reacquire_valid_samples": 0,
@@ -434,7 +434,7 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 			"wrist_velocity": 0.280,
 			"bbox_area": 0.064,
 			"bbox_area_growth": 0.011,
-			"grace_frames_remaining": 3,
+			"grace_ms_remaining": 240,
 		},
 		"right": {},
 	})
@@ -443,4 +443,4 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 	var rows: Array = model.get("rows", [])
 	assert_string_contains(String(rows[1].get("current_text", "")), "triggered")
 	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> triggered")
-	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 bbox=0.064 growth=0.011 fresh=true grace=3 valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 bbox=0.064 growth=0.011 fresh=true grace=240ms valid=true")

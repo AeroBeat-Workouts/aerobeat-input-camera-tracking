@@ -105,7 +105,7 @@ func test_detects_straight_punch_from_bbox_growth_and_emits_state_changes() -> v
 	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["tracking_lost"])
 	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
-	assert_eq(int(left_debug.get("grace_frames_remaining", -1)), 0)
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 0)
 	assert_true(is_equal_approx(float(left_debug.get("trigger_bbox_area", 1.0)), 0.0))
 
 func test_straight_punch_debug_uses_live_metrics_hand_truth() -> void:
@@ -381,12 +381,18 @@ func test_straight_punch_grace_rearm_and_reacquire_transitions() -> void:
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "triggered")
 
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.22}}), 1500, _make_tracking_frame(_tracked_hand_payload("left", 0.0280), _tracked_hand_payload("right", 0.020)))
-	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "triggered")
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 160)
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.21}}), 1580, _make_tracking_frame(_tracked_hand_payload("left", 0.0260), _tracked_hand_payload("right", 0.020)))
-	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "triggered")
+	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 80)
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1660, _make_tracking_frame(_tracked_hand_payload("left", 0.0240), _tracked_hand_payload("right", 0.020)))
+	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["not_ready"])
-	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "not_ready")
+	assert_eq(String(left_debug.get("state", "")), "not_ready")
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 0)
 
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.03}}), 1740, _make_tracking_frame(_tracked_hand_payload("left", 0.0220), _tracked_hand_payload("right", 0.020)))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
@@ -400,6 +406,46 @@ func test_straight_punch_grace_rearm_and_reacquire_transitions() -> void:
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
+func test_straight_punch_triggered_grace_uses_elapsed_milliseconds() -> void:
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"evaluation": {
+				"sample_window_size": 4,
+				"min_positive_growth_samples": 1,
+			},
+			"thresholds": {
+				"min_wrist_velocity": 0.18,
+				"min_bbox_area_growth": 0.00014,
+			},
+			"timing": {
+				"triggered_grace_ms": 200,
+			},
+			"rearm": {
+				"bbox_area_retract_epsilon": 0.0003,
+			},
+		}
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.00460), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.00476), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.00522), _tracked_hand_payload("right", 0.020)))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 200)
+
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.17}}), 1330, _make_tracking_frame(_tracked_hand_payload("left", 0.00518), _tracked_hand_payload("right", 0.020)))
+	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 130)
+
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.16}}), 1460, _make_tracking_frame(_tracked_hand_payload("left", 0.00510), _tracked_hand_payload("right", 0.020)))
+	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["not_ready"])
+	assert_eq(String(left_debug.get("state", "")), "not_ready")
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 0)
+
 func test_straight_punch_rearms_between_tuned_fixture_scale_punches() -> void:
 	config.gesture_profile_document = {
 		"straight_punch": {
@@ -412,7 +458,7 @@ func test_straight_punch_rearms_between_tuned_fixture_scale_punches() -> void:
 				"min_bbox_area_growth": 0.00014,
 			},
 			"timing": {
-				"triggered_grace_frames": 3,
+				"triggered_grace_ms": 240,
 			},
 			"rearm": {
 				"bbox_area_retract_epsilon": 0.0003,

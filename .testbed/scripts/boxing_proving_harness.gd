@@ -837,8 +837,8 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var stale_frames := int(straight_side.get("stale_frames", 0))
 	var transition_timestamp_ms := int(straight_side.get("timestamp_ms", 0))
 	var previous_state := String(straight_side.get("previous_state", ""))
-	var grace_frames_remaining := int(straight_side.get("grace_frames_remaining", 0))
-	var triggered_grace_frames := int(straight_side.get("triggered_grace_frames", 0))
+	var grace_ms_remaining := int(straight_side.get("grace_ms_remaining", 0))
+	var triggered_grace_ms := int(straight_side.get("triggered_grace_ms", 0))
 	var trigger_bbox_area := float(straight_side.get("trigger_bbox_area", 0.0))
 	var bbox_area_retract_epsilon := float(straight_side.get("bbox_area_retract_epsilon", 0.0))
 	var rearm_threshold := maxf(trigger_bbox_area - bbox_area_retract_epsilon, 0.0)
@@ -871,13 +871,13 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					current_text += " (%s ago)" % _fmt_age_ms(_boxing_reference_time_ms() - transition_timestamp_ms)
 				passed = true
 		"state_change_payload":
-			current_text = "state=%s wrist=%s bbox=%s growth=%s fresh=%s grace=%d valid=%s" % [
+			current_text = "state=%s wrist=%s bbox=%s growth=%s fresh=%s grace=%dms valid=%s" % [
 				state_name,
 				_fmt_float(wrist_velocity),
 				_fmt_float(bbox_area),
 				_fmt_float(bbox_area_growth),
 				_fmt_bool(fresh_sample),
-				grace_frames_remaining,
+				grace_ms_remaining,
 				_fmt_bool(tracking_valid),
 			]
 			passed = transition_timestamp_ms > 0 or not straight_side.is_empty()
@@ -903,14 +903,14 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			current_text = "[" + ", ".join(area_values) + "]" if not area_values.is_empty() else "[]"
 			passed = not area_values.is_empty()
 		"grace_timer":
-			current_text = "%d/%d remaining" % [grace_frames_remaining, triggered_grace_frames]
+			current_text = "%d/%dms remaining" % [grace_ms_remaining, triggered_grace_ms]
 			if state_name == "triggered":
 				current_text += " (active)"
-			elif grace_frames_remaining > 0:
+			elif grace_ms_remaining > 0:
 				current_text += " (counting down)"
 			else:
 				current_text += " (idle)"
-			passed = state_name != "triggered" or grace_frames_remaining > 0
+			passed = state_name != "triggered" or grace_ms_remaining > 0
 		"trigger_bbox_area":
 			current_text = _fmt_float(trigger_bbox_area)
 			if trigger_bbox_area <= 0.0:
@@ -1252,7 +1252,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Positive growth samples: %d" % int(straight_eval.get("min_positive_growth_samples", 0)))
 	lines.append("Min wrist xyz velocity: %s" % _fmt_float(straight_thresholds.get("min_wrist_velocity", 0.0)))
 	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))
-	lines.append("Triggered grace frames: %d" % int(straight_timing.get("triggered_grace_frames", 0)))
+	lines.append("Triggered grace: %dms" % int(straight_timing.get("triggered_grace_ms", 0)))
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
 	lines.append("Lost reacquire stable frames: %d" % int(straight_state_machine.get("lost_tracking_reacquire_stable_frames", 0)))
 
@@ -1317,7 +1317,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 	var side_debug: Dictionary = (straight_punch_debug.get(side, {}) as Dictionary)
 	var state_name := String(side_debug.get("state", side_debug.get("phase", hand.get("tracking_state", "tracking_lost"))))
 	var bbox: Dictionary = hand.get("bbox", {}) if hand.get("bbox", {}) is Dictionary else {}
-	return "%s: state=%s tracking=%s valid=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%d reacquire=%d stale=%d" % [
+	return "%s: state=%s tracking=%s valid=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms reacquire=%d stale=%d" % [
 		"L" if side == "left" else "R",
 		state_name,
 		String(hand.get("tracking_state", "idle")),
@@ -1326,7 +1326,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		_fmt_float(side_debug.get("wrist_forward_velocity", 0.0)),
 		_fmt_float(bbox.get("area", side_debug.get("bbox_area", 0.0))),
 		_fmt_float(side_debug.get("bbox_area_growth", 0.0)),
-		int(side_debug.get("grace_frames_remaining", 0)),
+		int(side_debug.get("grace_ms_remaining", 0)),
 		int(side_debug.get("reacquire_valid_samples", 0)),
 		int(hand.get("stale_frames", 0)),
 	]

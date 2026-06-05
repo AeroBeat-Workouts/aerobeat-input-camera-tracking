@@ -13,7 +13,7 @@ straight_punch:
     min_wrist_velocity: 0.18
     min_bbox_area_growth: 0.00014
   timing:
-    triggered_grace_frames: 3
+    triggered_grace_ms: 240
   rearm:
     bbox_area_retract_epsilon: 0.0003
   state_machine:

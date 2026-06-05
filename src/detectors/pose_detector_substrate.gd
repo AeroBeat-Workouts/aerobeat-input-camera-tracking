@@ -18,7 +18,7 @@ const STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS := 160
 const STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_GROWTH_WINDOW_MS := 240
 const STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY := 0.18
 const STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH := 0.006
-const STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES := 3
+const STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS := 240
 const STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON := 0.003
 const STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES := 2
 const PUNCH_OWN_HALF_MARGIN_RATIO := 0.12
@@ -561,8 +561,8 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary, ha
 		"bbox_area_growth_window_span_ms": int(state.get("last_bbox_area_growth_window_span_ms", 0)),
 		"min_bbox_area_growth": float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)),
 		"trigger_bbox_area": float(state.get("trigger_bbox_area", 0.0)),
-		"grace_frames_remaining": int(state.get("grace_frames_remaining", 0)),
-		"triggered_grace_frames": int(straight_punch_config.get("triggered_grace_frames", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES)),
+		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
+		"triggered_grace_ms": int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)),
 		"bbox_area_retract_epsilon": float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)),
 		"reacquire_valid_samples": int(state.get("reacquire_valid_samples", 0)),
 		"reacquire_stable_frames_required": int(straight_punch_config.get("lost_tracking_reacquire_stable_frames", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES)),
@@ -802,7 +802,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["recent_peak_bbox_area_growth"] = 0.0
 		state["positive_growth_samples"] = 0
 		state["reacquire_valid_samples"] = 0
-		state["grace_frames_remaining"] = 0
+		state["grace_ms_remaining"] = 0
+		state["grace_deadline_timestamp_ms"] = 0
 		state["trigger_bbox_area"] = 0.0
 		state["last_bbox_area_growth_window_span_ms"] = 0
 		state["last_bbox_area_growth"] = 0.0
@@ -868,16 +869,19 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			var recent_peak_bbox_area_growth := maxf(float(state.get("recent_peak_bbox_area_growth", state.get("last_bbox_area_growth", 0.0))), float(state.get("last_bbox_area_growth", 0.0)))
 			if recent_peak_wrist_velocity >= min_wrist_velocity and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples:
 				state["trigger_bbox_area"] = bbox_area
-				state["grace_frames_remaining"] = max(0, int(straight_punch_config.get("triggered_grace_frames", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES)))
+				var triggered_grace_ms := max(0, int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)))
+				state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
+				state["grace_ms_remaining"] = triggered_grace_ms
 				_emit_power_event(events, event_name, _compute_straight_punch_power(recent_peak_wrist_velocity, bbox_area, state, straight_punch_config, recent_peak_bbox_area_growth))
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRIGGERED)
 		_set_straight_punch_state(side, state)
 		return
 
 	if phase == STRAIGHT_PUNCH_STATE_TRIGGERED:
-		var grace_frames_remaining := max(0, int(state.get("grace_frames_remaining", 0)) - 1)
-		state["grace_frames_remaining"] = grace_frames_remaining
-		if grace_frames_remaining <= 0:
+		var grace_deadline_timestamp_ms := int(state.get("grace_deadline_timestamp_ms", 0))
+		var grace_ms_remaining := max(0, grace_deadline_timestamp_ms - timestamp_ms)
+		state["grace_ms_remaining"] = grace_ms_remaining
+		if timestamp_ms >= grace_deadline_timestamp_ms:
 			_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_NOT_READY)
 		_set_straight_punch_state(side, state)
 		return
@@ -887,7 +891,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		var trigger_bbox_area := maxf(float(state.get("trigger_bbox_area", 0.0)), 0.0)
 		if bbox_area <= trigger_bbox_area - retract_epsilon:
 			state["trigger_bbox_area"] = 0.0
-			state["grace_frames_remaining"] = 0
+			state["grace_ms_remaining"] = 0
+			state["grace_deadline_timestamp_ms"] = 0
 			state["bbox_area_history"] = [bbox_area]
 			state["wrist_velocity_history"] = [wrist_velocity]
 			state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": wrist_position}]
@@ -1261,7 +1266,8 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"bbox_area_history": [],
 		"positive_growth_samples": 0,
 		"trigger_bbox_area": 0.0,
-		"grace_frames_remaining": 0,
+		"grace_ms_remaining": 0,
+		"grace_deadline_timestamp_ms": 0,
 		"reacquire_valid_samples": 0,
 		"last_bbox_area": 0.0,
 		"wrist_velocity_history": [],
@@ -1304,7 +1310,7 @@ func _get_straight_punch_config() -> Dictionary:
 		"bbox_area_growth_window_ms": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_GROWTH_WINDOW_MS,
 		"min_wrist_velocity": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY,
 		"min_bbox_area_growth": STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH,
-		"triggered_grace_frames": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES,
+		"triggered_grace_ms": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS,
 		"bbox_area_retract_epsilon": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON,
 		"lost_tracking_reacquire_stable_frames": STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES,
 	}
@@ -1327,7 +1333,7 @@ func _get_straight_punch_config() -> Dictionary:
 	config["bbox_area_growth_window_ms"] = max(1, int(evaluation.get("bbox_area_growth_window_ms", config.get("bbox_area_growth_window_ms", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_GROWTH_WINDOW_MS))))
 	config["min_wrist_velocity"] = maxf(0.0, float(thresholds.get("min_wrist_velocity", config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY))))
 	config["min_bbox_area_growth"] = maxf(0.0, float(thresholds.get("min_bbox_area_growth", config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH))))
-	config["triggered_grace_frames"] = max(0, int(timing.get("triggered_grace_frames", config.get("triggered_grace_frames", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_FRAMES))))
+	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["bbox_area_retract_epsilon"] = maxf(0.0, float(rearm.get("bbox_area_retract_epsilon", config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON))))
 	config["lost_tracking_reacquire_stable_frames"] = max(1, int(state_machine.get("lost_tracking_reacquire_stable_frames", config.get("lost_tracking_reacquire_stable_frames", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES))))
 	return config
@@ -1446,7 +1452,7 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"state": next_phase,
 		"previous_state": previous_phase,
 		"trigger_bbox_area": float(state.get("trigger_bbox_area", 0.0)),
-		"grace_frames_remaining": int(state.get("grace_frames_remaining", 0)),
+		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
 		"bbox_area": float(state.get("last_bbox_area", 0.0)),
 		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),
 		"positive_growth_samples": int(state.get("positive_growth_samples", 0)),

@@ -1600,6 +1600,33 @@ Commits:
 
 ---
 
+### Task 10AK: Convert straight-punch triggered grace from frames to milliseconds
+
+**Bead ID:** `aerobeat-input-camera-tracking-2rk`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`, `REF-06`
+**Prompt:** Derrick wants straight-punch `triggered_grace_frames` converted to a time-based millisecond configuration so it matches the newer over-time tuning model used for wrist velocity and bbox growth. Implement the smallest truthful input-owner detector/config/debug change that replaces frame-count grace handling with millisecond-based grace timing, updates the public YAML/documented knob name, keeps the proving/debug surfaces truthful, and preserves manual QA usability. Keep YAML edits outside Godot, add focused proof/tests/probes, rerun enough validation to support live tuning, and update this plan with exact files changed, validation, commits, and the exact new YAML field Derrick should use.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Replaced the straight-punch triggered grace knob/state/debug path from frame-count semantics to elapsed-millisecond semantics in the input-owner detector/config/debug surfaces only. `PoseDetectorSubstrate` now stores a `grace_deadline_timestamp_ms` and computes `grace_ms_remaining = max(0, grace_deadline_timestamp_ms - timestamp_ms)` on each processed sample; the triggered phase exits when `timestamp_ms >= grace_deadline_timestamp_ms`, so tuning is now stable against variable replay/live sample cadence instead of depending on how many detector ticks happened. Updated the public YAML knob Derrick should tune to `straight_punch.timing.triggered_grace_ms` (current boxing profile default: `240`). Updated proving/debug text so readouts truthfully show milliseconds (`grace=160ms`, `160/240ms remaining`, `Triggered grace: 240ms`) while keeping manual QA surfaces usable. Added focused proof in `.testbed/tests/unit/test_pose_detector_substrate.gd` covering elapsed-ms countdown behavior plus countdown assertions in the existing rearm/reacquire flow, and updated harness debug/hover/inspector tests in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`. Validation rerun for live-tuning confidence: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ (`26/26` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`12/12` passed, existing orphan/RID leak warnings only). Commit: pending before final git commit/push.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`
