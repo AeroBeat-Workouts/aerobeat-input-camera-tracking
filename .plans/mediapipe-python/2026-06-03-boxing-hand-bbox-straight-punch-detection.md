@@ -986,9 +986,35 @@ Validation strategy:
 - focused tests/probes/docs in `REF-07` / `REF-08`
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-35y.5` with `bd update aerobeat-input-camera-tracking-35y.5 --status in_progress --json`, then kept the implementation slice strictly inside the two video owner repos from `REF-07` and `REF-08`. The landed contract makes replay transport exactness explicit instead of pretending time seek equals frame stepping.
+
+What landed in `REF-07` (`/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-video-player`):
+- `src/AeroVideoPlayerBackend.gd` — added the shared transport vocabulary (`exact_decoded_frame`, `exact_owned_frame_index`, `approx_time_seek`), plus default `get_transport_capabilities()`, `get_transport_status()`, `step_frames(...)`, and `seek_to_frame(...)` surfaces with explicit transport-unsupported failures.
+- `src/AeroVideoPlayerFakeBackend.gd` — taught the fake owner backend to report `exact_owned_frame_index` truthfully, track a synthetic owned frame index from `fps_hint`/`nominal_fps`, and support exact `step_frames(...)` / `seek_to_frame(...)` for regression coverage.
+- `src/AeroVideoPlayerManager.gd` — exposed the new transport APIs on the stable public facade, surfaced backend capability/status payloads per slot, and treated transport refusal as a non-fatal slot error (`last_error` + `slot_error_raised`) rather than poisoning playback state.
+- `.testbed/tests/test_AeroVideoPlayerManager.gd` — added focused coverage that proves the fake backend advertises and executes exact owned-frame stepping, and that an injected real Godot backend reports `approx_time_seek` while refusing exact frame stepping/seek-by-frame without leaving READY state.
+- `.testbed/tests/test_example.gd`, `README.md`, and `plugin.cfg` — updated repo docs/version assertions to match the new transport contract.
+- `.testbed/assets/videos/calm_blue_sea_1.ogv` — replaced a broken cross-repo symlink with the repo-local real sample file from `REF-08` so the owner repo's existing proving tests remain truthful and self-contained.
+
+What landed in `REF-08` (`/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-godot-video`):
+- `src/AeroGodotVideoBackend.gd` — added truthful transport capability/status reporting for the current built-in Godot `.ogv` path, surfaced informational fps/frame-duration metadata when available, and made `step_frames(...)` / `seek_to_frame(...)` fail explicitly with `backend_transport_unsupported` instead of silently time-seeking.
+- `src/AeroGodotVideoBackendFactory.gd` — bumped the factory version for the new contract.
+- `.testbed/tests/test_AeroGodotVideoBackendFactory.gd` — added focused regression coverage proving the real backend advertises `approx_time_seek`, leaves `frame_index` unknown, and refuses exact frame-addressed operations without moving playback time.
+- `README.md` — documented the truthful transport tier and the explicit `.ogv` limitation.
+
+Exact validation performed:
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-godot-video && godot --headless --path .testbed --import && godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` ✅ (`19/19` tests passed, `190` asserts)
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-video-player && godot --headless --path .testbed --import && godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` ✅ (`20/20` tests passed, `209` asserts)
+
+Commits pushed:
+- `REF-07`: `8dfbf89` — `Add truthful video transport contract`
+- `REF-08`: `67ebe03` — `Report truthful Godot video transport capabilities`
+
+Limitations left explicit on purpose:
+- The current built-in Godot `.ogv` owner path still only supports `approx_time_seek`; it does **not** expose literal decoded-frame stepping or a trustworthy current frame index, and the new API now says so plainly.
+- This slice does **not** yet expose the new transport contract through camera-tracking replay ownership (`10T`), so end-to-end boxing replay stepping remains blocked on the next owner layer.
 
 ---
 
