@@ -2002,6 +2002,62 @@ Audit conclusion: after removing the stale in-scene hit-target override, all sev
 
 ---
 
+### Task 10AV: Audit and repair boxing camera-tracking YAML wiring end-to-end
+
+**Bead ID:** `aerobeat-input-camera-tracking-zsq`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick wants the same audit→repair treatment for `assets/boxing.camera_tracking.yaml`. Audit every public variable in that YAML end-to-end: selected-profile loading, input provider/runtime config building, tool/vendor/runtime consumption, preview/proving scene consumers, and any other intended surfaces. Identify any places where private defaults, legacy aliases, hardcoded values, scene-authored overrides, or stale compatibility shims are still silently winning over the repo-owned boxing config. Then repair the narrowest truthful set of issues so every intended boxing camera-tracking YAML knob is actually used through the appropriate function. Use current repo state evidence, update this plan task with exact findings/files/validation/commits, and stop at a clean handoff state for QA + audit if a repair lands.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- minimal owner-correct input/tool/vendor/runtime files if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/tests/test_mediapipe_runtime_probe.py`
+
+**Status:** ✅ Complete
+
+**Results:** Audit completed across `REF-01` input, `REF-02` tool, and `REF-03` vendor/runtime ownership boundaries using the current repo state.
+
+Public boxing camera-tracking knob verdicts:
+- `tracking.pose.enabled` → **was not truly wired**. Selected-profile loading and provider/runtime config building forwarded it, but `REF-03` runtime pose inference still ran unconditionally. Repaired in `runtime/mediapipe_runtime_probe.py` so `false` now truthfully suppresses pose landmarks, marks `tracking_state=disabled`, and surfaces `vendor_pose_tracking` metadata.
+- `tracking.pose.inference_interval_frames` → **was not truly wired**. It reached config dictionaries but the vendor runtime ignored cadence and re-inferred every frame. Repaired in `runtime/mediapipe_runtime_probe.py` so the runtime now honors the requested interval by carrying the last pose sample forward between scheduled inference frames and annotating that via `vendor_pose_tracking`.
+- `tracking.pose.smoothing_style` → **runtime-wired but not proving-truthful**. The tool/runtime path already derived `runtime.no_filter` from the profile, but `REF-01` `.testbed/scripts/proving_harness.gd` still had a hidden legacy `tracking_smoothing_style` default that could silently win/misreport over the selected profile bundle. Repaired so proving runtime config + status text now resolve smoothing style from the selected profile bundle first, with the hidden scene value only as fallback for non-bundle cases.
+- `tracking.pose.enabled` / `tracking.pose.inference_interval_frames` / `tracking.pose.smoothing_style` selected-profile loading path → **wired** through `src/config/camera_tracking_config.gd` and `src/providers/camera_tracking_provider.gd`, which still load the boxing bundle and forward the repo-owned `tracking.pose` document into the tracker contract.
+- `tracking.hands.enabled` → **wired** through provider bundle loading, vendor hand request building, and tool-side hand state consumption.
+- `tracking.hands.landmark_mode` → **wired** through provider bundle loading, vendor hand landmark normalization, and downstream normalized hand payload/preview surfaces.
+- `tracking.hands.inference_interval_frames` → **request-metadata wired**. It survives selected-profile loading and vendor hand request metadata/constraints, but this vendor slice still documents cadence as surfaced request truth rather than enforced hand scheduling.
+- `tracking.hands.bbox_recompute_interval_frames` → **request-metadata wired** for the same reason as above: forwarded and surfaced truthfully in vendor hand metadata/constraints, but not used as a separate vendor-side recompute scheduler in this slice.
+- `tracking.hands.bbox.enabled` → **wired** through vendor hand normalization and downstream bbox consumers.
+- `tracking.hands.association.prefer_existing_pose_side_binding` / `tracking.hands.association.nearest_wrist_fallback` → **wired** in `REF-02` hand-side association resolution.
+- `tracking.hands.validity.max_stale_ms` / `tracking.hands.validity.reacquire_stable_ms` → **wired** in the tool-owned hand validity / stale / reacquire state machine.
+- `tracking.hands.grace.enabled` / `tracking.hands.grace.position_decay` / `tracking.hands.grace.size_decay` → **wired** in the tool-owned grace carry-forward path and proving/gesture debug consumers.
+
+Exact repair slice landed:
+- `REF-03` `runtime/mediapipe_runtime_probe.py`: added pose-request parsing, disabled-pose handling, cadence-aware pose carry-forward, and `vendor_pose_tracking` metadata so boxing pose YAML knobs are no longer ignored.
+- `REF-03` `runtime/tests/test_mediapipe_runtime_probe.py`: added focused regression coverage for `tracking.pose.enabled=false` and `tracking.pose.inference_interval_frames=2` carry-forward behavior.
+- `REF-01` `.testbed/scripts/proving_harness.gd`: removed the stale hidden smoothing winner by resolving smoothing from the selected profile bundle before any scene fallback.
+- `REF-01` `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`: added a regression that proves boxing YAML smoothing beats the hidden legacy scene default.
+
+Validation rerun:
+- `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` from `REF-03` repo root ✅ (`35` tests)
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` from `REF-01` repo root ✅ (`15/15` passed; existing GUT orphan/UID warnings only)
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_camera_tracking_provider.gd -gexit` from `REF-01` repo root ✅ (`15/15` passed)
+
+Commits:
+- `e246756` (`REF-03`) — `Honor pose profile knobs in runtime probe`
+- `9ba1579` (`REF-01`) — `Make profile smoothing win in proving harness`
+
+Audit conclusion: the boxing camera-tracking YAML now truthfully owns pose enable/cadence/filter semantics plus the already-wired hand/association/validity/grace knobs. The remaining hand cadence fields are still only request-metadata surfaces in this vendor slice, but they are no longer silently replaced by private defaults. This slice is ready for QA/audit on the repaired repo state.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`
