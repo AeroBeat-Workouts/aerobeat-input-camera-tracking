@@ -2413,12 +2413,15 @@ QA handoff note:
 
 **Files Created/Deleted/Modified:**
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
-- the three confirmed YAML config files in `assets/`
-- any minimal doc/test files needed to keep the comments aligned with truth
+- `assets/boxing.camera_tracking.yaml`
+- `assets/boxing.gesture_detection.yaml`
+- `assets/boxing.testbed_debug.yaml`
+- `assets/flow.camera_tracking.yaml`
+- `assets/flow.testbed_debug.yaml`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Added short, scan-fast comments above the active user-facing knobs in the five YAMLs Derrick explicitly confirmed for this slice: `assets/boxing.camera_tracking.yaml`, `assets/boxing.gesture_detection.yaml`, `assets/boxing.testbed_debug.yaml`, `assets/flow.camera_tracking.yaml`, and `assets/flow.testbed_debug.yaml`. I kept the comments compact and truthful to the current runtime path: tracker knobs say when they flow into the `tool` tracker layer and onward to the `vendor`, straight-punch knobs are labeled `input`, and proving-scene-only knobs are labeled debug-only/input-owned. I intentionally did **not** comment `assets/flow.gesture_detection.yaml` because the confirmed active set for Task 10BA did not include it and this slice was supposed to stay on the currently used/user-facing files only. Focused validation passed with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`30/30` passed, `229` asserts; existing non-fatal GUT/orphan/UID noise only). Commit `c606277` landed the YAML comment changes; this plan update commit is recorded below after save.
 
 ---
 
