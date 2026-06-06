@@ -2544,7 +2544,7 @@ Validation:
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`4/4` passed, `53` asserts).
 
 Commits:
-- `PENDING` - YAML comment follow-up commit to be recorded immediately after commit/push.
+- `200e017` - Document boxing config enum option comments
 
 ---
 
