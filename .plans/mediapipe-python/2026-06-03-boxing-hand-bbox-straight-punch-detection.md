@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-05 21:31 EDT
+**Last Updated:** 2026-06-05 22:43 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2116,6 +2116,57 @@ Implementation commits landed before QA/audit handoff:
 Derrick follow-up items recorded for later slices (not implemented here):
 - add stupidly simple explanatory comments above the user-facing YAML variables
 - audit remaining frame-based systems for whether they should migrate to elapsed-millisecond timing like this hand validity/grace slice
+
+---
+
+### Task 10AX: QA hand cadence scheduling slice before plane landing
+
+**Bead ID:** `aerobeat-input-camera-tracking-b5o`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** QA the latest hand cadence scheduling slice from Task 10AW before plane landing. Verify that `tracking.hands.inference_interval_frames` is now a real runtime scheduler, skipped hand frames carry forward the last sample with current frame timestamp/frame index, carried-forward samples are marked non-fresh, the separate bbox recompute knob is gone from the active YAML/runtime path, and the updated debug/proving surfaces truthfully expose sample source. This is a QA pass for the latest cadence slice only, not a broad straight-punch closeout. Update the plan with exact QA findings/evidence and say clearly whether the YAML-backed behavior is in a clean state for landing.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** QA pass complete. Evidence:
+- Runtime scheduler is real in the vendor path, not config-only: `../aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py:2894-3026` computes `should_run_hand_inference` from `tracking.hands.inference_interval_frames`, skips inference when the frame delta is below the interval, and emits explicit carry-forward notes. The vendor regression `../aerobeat-vendor-mediapipe-python/runtime/tests/test_mediapipe_runtime_probe.py:582-634` passed and proves frame 0 runs hand inference while frame 1 with `inference_interval_frames=2` skips inference, preserves the prior hand sample, keeps the current frame timestamp (`timestamp_ms=41`) and frame index (`frame_index=1`), and records `vendor_hand_tracking.carried_forward=true` with `source_frame_index=0`.
+- Carried-forward samples stay current-frame timestamped/indexed but are not treated as fresh in the Godot-facing contract: `../aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd:339-341,613-615,655-657` marks carried-forward hand payloads `fresh_sample=false`, `sample_source="carried_forward"`, and preserves the original `source_frame_index` while the normalized frame itself advances. The contract regression `../aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd:535-607` passed and verifies a carried frame at `frame_index=5` / `timestamp_ms=433` is non-fresh, reports `sample_source="carried_forward"`, and still points back to `source_frame_index=4`.
+- The separate bbox recompute cadence knob is gone from the active YAML/runtime path. Active YAML profiles `assets/boxing.camera_tracking.yaml` and `assets/flow.camera_tracking.yaml` expose `tracking.hands.inference_interval_frames` and `tracking.hands.bbox.enabled`, but no `bbox_recompute_interval_frames`. Normalization/runtime compatibility also erase the legacy knob in both repos: `../aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd:157-161,242-246` and `../aerobeat-vendor-mediapipe-python/src/MediaPipePythonConfig.gd:219-241,390-394`. The tool regression `../aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd:451-465` passed and explicitly asserts both config and runtime omit the bbox recompute alias.
+- Debug/proving surfaces truthfully expose sample source. `../aerobeat-tool-camera-tracking/src/CameraTrackingPreviewPresenter.gd:193-195` forwards `fresh_sample`, `sample_source`, and `source_frame_index`; `./.testbed/scripts/boxing_proving_harness.gd:834-885,1244-1254,1325-1343` renders sample source in the tracking rows, state-change payload, tracker tuning summary, and per-hand truth lines. Input-side gesture debug also preserves the distinction (`src/detectors/pose_detector_substrate.gd:569-570,1470-1471`). The proving/debug regressions passed: `./.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` (15/15) and `./.testbed/tests/unit/test_pose_detector_substrate.gd` (28/28), including `test_straight_punch_carried_forward_hand_samples_are_not_fresh`.
+- Validation reruns succeeded: `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` in `aerobeat-vendor-mediapipe-python` (36/36), `godot --headless ... -gtest=res://tests/test_CameraTracking.gd` in `aerobeat-tool-camera-tracking` (36/36), and `godot --headless ...` for `test_pose_detector_substrate.gd`, `test_boxing_proving_harness_profiles_and_debug.gd`, `test_camera_tracking_config_profiles.gd`, and `test_camera_tracking_provider.gd` in this repo (58/58). The Godot proving/debug suite still reports pre-existing orphan/RID leak warnings at exit, but all assertions passed and nothing in this cadence slice contradicted the YAML-backed sample-source truth.
+
+Conclusion: for this specific YAML-backed hand cadence scheduling slice, behavior is in a clean state for landing. I did not find a remaining config/runtime mismatch around hand cadence, carry-forward freshness, or sample-source/debug truth.
+
+---
+
+### Task 10AY: Audit hand cadence scheduling slice before plane landing
+
+**Bead ID:** `aerobeat-input-camera-tracking-728`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Independently audit the latest hand cadence scheduling slice from Task 10AW before plane landing. Confirm `tracking.hands.inference_interval_frames` is now truly enforced in the real vendor runtime path, confirm carried-forward hand samples are timestamped/current-frame indexed but not treated as fresh, confirm the separate bbox recompute knob was actually removed from the active YAML/runtime path, and confirm the debug/proving surfaces truthfully distinguish fresh inference vs carried-forward vs grace-predicted. Report pass/fail for this latest cadence slice only, independent of broader unresolved straight-punch work. Update the plan with exact audit findings/evidence.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Audit PASS for this cadence slice. Independent code-path review plus rerun validation confirmed the real vendor runtime path enforces `tracking.hands.inference_interval_frames` instead of treating it as decorative config: `runtime/mediapipe_runtime_probe.py` computes `should_run_hand_inference` from `last_hand_frame_index` and the requested interval, only runs hand inference when the frame gap reaches that interval, and otherwise calls `_skip_hand_inference()` with an explicit note that the frame was skipped because of `tracking.hands.inference_interval_frames` (`REF-03`: lines 2894-3026 in the current file view). The carried-forward path is also truthful in the real runtime: `_hand_frame_with_current_sample()` clones the prior hand sample payload but preserves the current frame's `timestamp_ms` / `frame_index`, sets `vendor_hand_tracking.inference_ran=false`, `carried_forward=true`, and `source_frame_index` to the prior source frame (`REF-03`: lines 2778-2811). The focused vendor unit test rerun `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_hand_inference_interval_frames_carries_forward_last_hand_sample` passed and explicitly proves frame 1 kept `timestamp_ms=41` / `frame_index=1` while carrying forward the frame-0 hand sample with `inference_ran=false`, `carried_forward=true`, and `source_frame_index=0` (`REF-03`). On the public contract side, normalization still marks those carried-forward samples non-fresh: `src/CameraTrackingFrame.gd` maps carried-forward vendor metadata to `fresh_sample=false`, `sample_source="carried_forward"`, and preserved `source_frame_index`, while grace prediction is separately labeled `sample_source="grace_predicted"` (`REF-02`: lines 571-657). The focused tool test rerun `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` passed 36/36, including `test_config_normalization_preserves_contract_shape` and `test_frame_normalization_marks_carried_forward_hand_samples_as_not_fresh`, which assert the legacy bbox recompute knob is removed from normalized tracking/runtime config and that carried-forward hands normalize as non-fresh with `sample_source="carried_forward"` and the prior `source_frame_index` (`REF-02`). The active YAML/runtime path is clean enough on this point: `assets/boxing.camera_tracking.yaml` now exposes only `tracking.hands.inference_interval_frames` plus `bbox.enabled`, and the normalizer erases both `tracking.hands.bbox_recompute_interval_frames` and runtime alias `hand_bbox_recompute_interval_frames` (`REF-01` / `REF-02`); repo-wide searches found the old knob only inside historical `.testbed/test-results/` artifacts, not in active config/runtime files. Debug/proving surfaces also distinguish fresh inference vs carried-forward vs grace-predicted truthfully: `src/detectors/pose_detector_substrate.gd` consumes `fresh_sample` directly and echoes `sample_source` into straight-punch debug/events (`REF-01`: lines 1355-1370 and 1460-1471), while `.testbed/scripts/boxing_proving_harness.gd` renders `source=%s` in the live tracking/debug rows and inspector payloads (`REF-01`: lines 837-885). The focused owner test rerun `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` passed 43/43 and covers `test_straight_punch_carried_forward_hand_samples_are_not_fresh` plus proving-harness assertions that show `source=fresh_inference`, `source=carried_forward`, and grace-specific handling separately. Conclusion for Task 10AY only: PASS; the YAML-backed hand cadence behavior is now clean enough to land the plane for this slice, independent of any broader straight-punch backlog outside this audit scope.
 
 ---
 
