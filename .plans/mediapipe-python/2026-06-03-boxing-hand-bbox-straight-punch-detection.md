@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-06 19:17 EDT
+**Last Updated:** 2026-06-06 19:53 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2722,6 +2722,76 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 **Results:** Landed the narrow owner-repo boxing testing scene UI truth wiring for the pose-only straight-punch fallback in `.testbed/scripts/boxing_proving_harness.gd`, with focused regression coverage in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`. The scene UI now stays truthful when `tracking.hands.enabled` is `false`: the straight-punch hover/inspector surfaces explicitly report pose-only fallback state instead of pretending bbox inputs were evaluated, the boxing debug line falls back to pose-derived tracking/source truth when no hand payload exists, and the left/right punch tile activation path is regression-covered for the pose-only punch event path. Validation run for this task pass: `godot --headless --path .testbed --import --quit-after 1000` ✅ and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`18/18` tests passed, `128` asserts). Commit IDs: `774ad12` (`REF-01`) - Keep boxing UI truthful in pose-only mode.
 
 ---
+
+### Task 10BM: Use elbow plus wrist motion for pose-only straight-punch velocity
+
+**Bead ID:** `aerobeat-input-camera-tracking-ti2`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Implement the next pose-only straight-punch repair slice based on Derrick's live testing feedback. The problem: wrist-only pose velocity underestimates straight punches that move strongly in body-depth because the pose wrist landmark does not truthfully reflect forward Z motion, while the elbow pose movement still shows a useful change. In the pose-only fallback path (`tracking.hands.enabled: false`), revise the straight-punch velocity signal so it uses both wrist and elbow movement (`x/y/z`) instead of wrist-only motion. Keep the hands-enabled path unchanged. The goal is to make real punches clear the velocity threshold without forcing the threshold so low that guard noise passes. Keep the slice narrow, add focused tests/proof for guard-vs-punch style pose-only motion where possible, update this plan with exact files changed/validation/commits, and stop at a clean coder handoff for QA.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- additional narrow proof/debug files only if required
+
+**Status:** ✅ Complete
+
+**Results:** Narrow pose-only repair landed. `src/detectors/pose_detector_substrate.gd` now feeds straight-punch velocity from a combined elbow+wrist pose signal when `tracking.hands.enabled=false`, while the hands-enabled path still uses the existing wrist-only hand-tracking signal and bbox-growth gate unchanged. Added debug surfacing for `velocity_signal_source` so QA can confirm which path was used. Focused unit proof landed in `.testbed/tests/unit/test_pose_detector_substrate.gd`: one new pose-only test proves a punch can trigger when raw wrist-only pose velocity stays below the configured threshold but elbow+wrist combined motion clears it, and the hands-enabled regression test now explicitly asserts the unchanged `wrist_only` path. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` → `34/34 passed`. Commits: `36d54ff` (`Use elbow plus wrist signal for pose-only punches`), `d0b5af7` (`Update plan for pose-only punch velocity repair`). Files changed in this slice: `src/detectors/pose_detector_substrate.gd`, `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`. 
+
+---
+
+### Task 10BN: QA elbow plus wrist pose-only straight-punch velocity
+
+**Bead ID:** `aerobeat-input-camera-tracking-v9m`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the pose-only straight-punch velocity repair. Verify the hands-disabled path now benefits from combined elbow+wrist pose motion, verify real punch-like motion clears the threshold more cleanly than guard noise, and verify the hands-enabled path still behaves as before. Record exact QA evidence and close this bead only if the new pose-only velocity signal is truthful.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BO: Audit elbow plus wrist pose-only straight-punch velocity
+
+**Bead ID:** `aerobeat-input-camera-tracking-am3`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the new elbow+wrist pose-only velocity signal. Confirm it only affects the hands-disabled fallback path, confirm it uses both elbow and wrist pose motion rather than wrist-only motion, and confirm the change is a truthful response to the guard-vs-punch weakness Derrick found in manual testing. Update this plan with exact audit findings/evidence and close this bead only if the slice passes independent audit.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 
 ## Final Results
 
