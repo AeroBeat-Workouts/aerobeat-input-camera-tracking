@@ -2058,6 +2058,67 @@ Audit conclusion: the boxing camera-tracking YAML now truthfully owns pose enabl
 
 ---
 
+### Task 10AW: Implement real hand cadence scheduling and record YAML-comment/ms-migration follow-up
+
+**Bead ID:** `aerobeat-input-camera-tracking-b6n`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick approved the remaining hand cadence implementation details. Implement the real hand cadence slice with these exact decisions: (1) use true scheduled hand inference (`tracking.hands.inference_interval_frames`) in the vendor runtime; (2) on skipped frames, carry forward the last hand sample with the current frame timestamp; (3) skipped carried-forward hand frames are not fresh; (4) tie bbox recompute to hand inference cadence rather than supporting a separate runtime scheduler, and remove the separate bbox recompute knob/usage from the YAML/runtime path as appropriate; (5) keep grace timing and reacquire timing on elapsed milliseconds; (6) make carried-forward/debug state explicit enough to distinguish fresh inference vs carried-forward vs grace-predicted. Keep the slice narrow across input/tool/vendor repos, keep YAML edits outside Godot, add focused proof/tests/probes, and update this plan with exact files changed/validation/commits. Also record, in the plan results or follow-up notes, Derrick's two higher-level follow-ups: add stupidly simple explanatory comments above YAML variables, and audit remaining frame-based systems for possible ms conversion. Stop at a clean handoff state for QA + audit before Derrick retests.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `assets/`
+- `docs/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `../aerobeat-tool-camera-tracking/src/`
+- `../aerobeat-tool-camera-tracking/docs/`
+- `../aerobeat-tool-camera-tracking/.testbed/tests/`
+- `../aerobeat-vendor-mediapipe-python/runtime/`
+- `../aerobeat-vendor-mediapipe-python/runtime/tests/`
+- `../aerobeat-vendor-mediapipe-python/src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `assets/boxing.camera_tracking.yaml`
+- `assets/flow.camera_tracking.yaml`
+- `docs/cross-repo-config-contract.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `../aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd`
+- `../aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd`
+- `../aerobeat-tool-camera-tracking/src/CameraTrackingPreviewPresenter.gd`
+- `../aerobeat-tool-camera-tracking/docs/tracker-config-schema.md`
+- `../aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
+- `../aerobeat-vendor-mediapipe-python/src/MediaPipePythonConfig.gd`
+- `../aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py`
+- `../aerobeat-vendor-mediapipe-python/runtime/tests/test_mediapipe_runtime_probe.py`
+- `../aerobeat-vendor-mediapipe-python/README.md`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the approved real hand-cadence slice across `REF-01`/`REF-02`/`REF-03` and stopped at a clean QA/audit handoff. In `REF-03`, hand inference now truly schedules off `tracking.hands.inference_interval_frames`; skipped frames carry forward the last emitted hand sample onto the current frame timestamp/frame index, mark `vendor_hand_tracking.inference_ran=false`, `carried_forward=true`, and record `source_frame_index`. The separate bbox recompute cadence knob was removed from the YAML/runtime/documented contract; bbox geometry now updates whenever a hand sample updates, which means bbox recompute is inherently tied to hand inference cadence. In `REF-02`, normalized per-hand payloads now expose `fresh_sample`, `sample_source` (`fresh_inference`, `carried_forward`, `grace_predicted`, or `none`), and `source_frame_index`, while hand/runtime metadata erases the deprecated bbox cadence field and keeps stale/reacquire timing on elapsed milliseconds. In `REF-01`, straight-punch freshness now honors explicit `fresh_sample` when present, proving/debug surfaces now print the sample source so Derrick can distinguish fresh inference vs carried-forward vs grace-predicted hands, and the boxing YAML/docs removed the old `tracking.hands.bbox_recompute_interval_frames` knob.
+
+Focused proof added and rerun:
+- `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` from `REF-03` repo root ✅ (`36` tests) including new carry-forward hand cadence coverage.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` from `REF-02` repo root ✅ (`36/36` passed; `349` asserts) including new normalized carried-forward hand freshness/source assertions.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_camera_tracking_provider.gd -gexit` from `REF-01` repo root ✅ (`58/58` passed; `516` asserts; existing orphan/RID/UID warnings only).
+
+Implementation commits landed before QA/audit handoff:
+- `537b8f3` (`REF-02`) — `Align hand bbox cadence with inference frames`
+- `fe7ad14` (`REF-03`) — `Schedule hand inference on configured cadence`
+- `7874ffe` (`REF-01`) — `Surface carried hand sample state in boxing debug`
+
+Derrick follow-up items recorded for later slices (not implemented here):
+- add stupidly simple explanatory comments above the user-facing YAML variables
+- audit remaining frame-based systems for whether they should migrate to elapsed-millisecond timing like this hand validity/grace slice
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`
