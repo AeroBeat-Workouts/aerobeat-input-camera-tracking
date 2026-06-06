@@ -58,7 +58,6 @@ tracking:
     enabled: true|false
     landmark_mode: lite
     inference_interval_frames: 1
-    bbox_recompute_interval_frames: 1
     bbox:
       enabled: true
     association:
@@ -86,7 +85,6 @@ tracking:
 - `tracking.hands.enabled: true`
 - `tracking.hands.landmark_mode: lite`
 - `tracking.hands.inference_interval_frames: 1`
-- `tracking.hands.bbox_recompute_interval_frames: 1`
 - `tracking.hands.bbox.enabled: true`
 - `tracking.hands.association.prefer_existing_pose_side_binding: true`
 - `tracking.hands.association.nearest_wrist_fallback: true`
@@ -101,7 +99,6 @@ tracking:
 - `tracking.hands.enabled: false`
 - `tracking.hands.landmark_mode: lite`
 - `tracking.hands.inference_interval_frames: 1`
-- `tracking.hands.bbox_recompute_interval_frames: 1`
 - `tracking.hands.bbox.enabled: true`
 - `tracking.hands.association.prefer_existing_pose_side_binding: true`
 - `tracking.hands.association.nearest_wrist_fallback: true`

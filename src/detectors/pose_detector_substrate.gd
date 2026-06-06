@@ -567,6 +567,7 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary, ha
 		"reacquire_valid_samples": int(state.get("reacquire_valid_samples", 0)),
 		"reacquire_stable_frames_required": int(straight_punch_config.get("lost_tracking_reacquire_stable_frames", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES)),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),
+		"sample_source": String(hand_payload.get("sample_source", state.get("hand_sample_source", "none"))),
 		"tracking_valid": bool(hand_payload.get("tracking_valid", false)),
 		"tracking_state": String(hand_payload.get("tracking_state", state.get("hand_tracking_state", "idle"))),
 		"stale_frames": int(hand_payload.get("stale_frames", state.get("stale_frames", 0))),
@@ -777,6 +778,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	state["last_wrist_forward_velocity"] = wrist_forward_velocity
 	state["last_sample_fresh"] = fresh_sample
 	state["hand_tracking_state"] = hand_tracking_state
+	state["hand_sample_source"] = String(hand_payload.get("sample_source", "none"))
 	var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
 	var wrist_velocity_history: Array = (state.get("wrist_velocity_history", []) as Array).duplicate(true)
 	state["wrist_velocity_history"] = wrist_velocity_history
@@ -1350,6 +1352,8 @@ func _is_valid_tracking_hand_sample(hand_payload: Dictionary) -> bool:
 	return bool(hand_payload.get("tracking_valid", false))
 
 func _is_fresh_tracking_hand_sample(hand_payload: Dictionary, state: Dictionary) -> bool:
+	if hand_payload.has("fresh_sample"):
+		return bool(hand_payload.get("fresh_sample", false))
 	if not bool(hand_payload.get("tracking_valid", false)):
 		return false
 	var tracking_state := String(hand_payload.get("tracking_state", ""))
@@ -1464,6 +1468,7 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
 		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),
+		"sample_source": String(state.get("hand_sample_source", "none")),
 		"tracking_state": String(state.get("hand_tracking_state", "idle")),
 		"tracking_valid": bool(state.get("hand_tracking_valid", false)),
 	})

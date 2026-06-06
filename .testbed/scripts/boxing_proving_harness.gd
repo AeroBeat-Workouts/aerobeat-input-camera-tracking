@@ -834,6 +834,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var fresh_sample := bool(straight_side.get("fresh_sample", false))
 	var tracking_valid := bool(straight_side.get("tracking_valid", false))
 	var tracking_state := String(straight_side.get("tracking_state", "idle"))
+	var sample_source := String(straight_side.get("sample_source", "none"))
 	var stale_frames := int(straight_side.get("stale_frames", 0))
 	var stale_ms := int(straight_side.get("stale_ms", 0))
 	var grace_frames := int(straight_side.get("grace_frames", 0))
@@ -857,7 +858,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			current_text = state_name
 			passed = state_name != "tracking_lost"
 		"tracking_status":
-			current_text = "%s, valid=%s, stale=%dms (%d frames), grace=%dms (%d frames), stable=%dms" % [tracking_state, _fmt_bool(tracking_valid), stale_ms, stale_frames, grace_ms, grace_frames, hand_stable_ms]
+			current_text = "%s, valid=%s, source=%s, stale=%dms (%d frames), grace=%dms (%d frames), stable=%dms" % [tracking_state, _fmt_bool(tracking_valid), sample_source, stale_ms, stale_frames, grace_ms, grace_frames, hand_stable_ms]
 			passed = tracking_valid
 		"fresh_sample":
 			current_text = _fmt_bool(fresh_sample)
@@ -875,12 +876,13 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					current_text += " (%s ago)" % _fmt_age_ms(_boxing_reference_time_ms() - transition_timestamp_ms)
 				passed = true
 		"state_change_payload":
-			current_text = "state=%s wrist=%s bbox=%s growth=%s fresh=%s grace=%dms valid=%s" % [
+			current_text = "state=%s wrist=%s bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
 				state_name,
 				_fmt_float(wrist_velocity),
 				_fmt_float(bbox_area),
 				_fmt_float(bbox_area_growth),
 				_fmt_bool(fresh_sample),
+				sample_source,
 				grace_ms_remaining,
 				_fmt_bool(tracking_valid),
 			]
@@ -1241,7 +1243,6 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Pose smoothing: %s" % String(pose_config.get("smoothing_style", _tracking_smoothing_style_spec().get("label", "unknown"))))
 	lines.append("Pose cadence: every %s frame(s)" % str(int(pose_config.get("inference_interval_frames", 1))))
 	lines.append("Hand cadence: every %s frame(s)" % str(int(hands_config.get("inference_interval_frames", 1))))
-	lines.append("BBox recompute cadence: every %s frame(s)" % str(int(hands_config.get("bbox_recompute_interval_frames", 1))))
 	lines.append("Hand tracking enabled: %s" % _fmt_bool(bool(hands_config.get("enabled", false))))
 	lines.append("Hand reacquire stable window: %dms" % int(hand_validity.get("reacquire_stable_ms", 0)))
 	lines.append("Hand grace/stale window: %dms" % int(hand_validity.get("max_stale_ms", 0)))
@@ -1321,11 +1322,13 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 	var side_debug: Dictionary = (straight_punch_debug.get(side, {}) as Dictionary)
 	var state_name := String(side_debug.get("state", side_debug.get("phase", hand.get("tracking_state", "tracking_lost"))))
 	var bbox: Dictionary = hand.get("bbox", {}) if hand.get("bbox", {}) is Dictionary else {}
-	return "%s: state=%s tracking=%s valid=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms hand_grace=%dms hand_stable=%dms stale=%dms" % [
+	var sample_source := String(hand.get("sample_source", "none"))
+	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms hand_grace=%dms hand_stable=%dms stale=%dms" % [
 		"L" if side == "left" else "R",
 		state_name,
 		String(hand.get("tracking_state", "idle")),
 		_fmt_bool(bool(hand.get("tracking_valid", false))),
+		sample_source,
 		_fmt_float(side_debug.get("wrist_velocity", 0.0)),
 		_fmt_float(side_debug.get("wrist_forward_velocity", 0.0)),
 		_fmt_float(bbox.get("area", side_debug.get("bbox_area", 0.0))),

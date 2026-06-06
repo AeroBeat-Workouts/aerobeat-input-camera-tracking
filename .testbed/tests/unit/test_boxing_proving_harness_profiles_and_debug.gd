@@ -244,6 +244,7 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	assert_string_contains(line, "L: state=triggered")
 	assert_string_contains(line, "tracking=tracked")
 	assert_string_contains(line, "valid=true")
+	assert_string_contains(line, "source=none")
 	assert_string_contains(line, "wrist_xyz_vel=0.420")
 	assert_string_contains(line, "wrist_forward_vel=0.090")
 	assert_string_contains(line, "bbox_area=0.055")
@@ -261,6 +262,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 				"left": {
 					"state": "not_ready",
 					"tracking_state": "tracked",
+					"sample_source": "fresh_inference",
 					"tracking_valid": true,
 					"stale_frames": 1,
 					"stale_ms": 40,
@@ -293,10 +295,10 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(model.get("title", "")), "Straight Punch L")
 	assert_eq(String(rows[1].get("current_text", "")), "not_ready")
-	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, stale=40ms (1 frames), grace=40ms (1 frames), stable=120ms")
+	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, source=fresh_inference, stale=40ms (1 frames), grace=40ms (1 frames), stable=120ms")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[4].get("current_text", "")), "waiting for first straight-punch state change")
-	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 bbox=0.052 growth=0.015 fresh=true grace=0ms valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 bbox=0.052 growth=0.015 fresh=true source=fresh_inference grace=0ms valid=true")
 	assert_eq(String(rows[7].get("threshold_text", "")), "0.180")
 	assert_eq(String(rows[7].get("current_text", "")), "0.420")
 	assert_eq(String(rows[9].get("threshold_text", "")), "0.010")
@@ -312,6 +314,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 				"right": {
 					"state": "triggered",
 					"tracking_state": "tracked",
+					"sample_source": "carried_forward",
 					"tracking_valid": true,
 					"stale_frames": 0,
 					"stale_ms": 0,
@@ -343,7 +346,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_right")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Current state - triggered")
-	assert_string_contains(body, "Hand tracking - tracked, valid=true, stale=0ms (0 frames), grace=0ms (0 frames), stable=160ms")
+	assert_string_contains(body, "Hand tracking - tracked, valid=true, source=carried_forward, stale=0ms (0 frames), grace=0ms (0 frames), stable=160ms")
 	assert_string_contains(body, "Fresh sample valid - false")
 	assert_false(body.contains("Event payload snapshot"))
 	assert_string_contains(body, "Wrist xyz velocity >= 0.180 - 0.310")
@@ -496,6 +499,7 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 			"previous_state": "ready",
 			"timestamp_ms": Time.get_ticks_msec() - 80,
 			"tracking_state": "tracked",
+			"sample_source": "fresh_inference",
 			"tracking_valid": true,
 			"stale_frames": 0,
 			"stale_ms": 0,
@@ -515,4 +519,4 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 	var rows: Array = model.get("rows", [])
 	assert_string_contains(String(rows[1].get("current_text", "")), "triggered")
 	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> triggered")
-	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 bbox=0.064 growth=0.011 fresh=true grace=240ms valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 bbox=0.064 growth=0.011 fresh=true source=fresh_inference grace=240ms valid=true")

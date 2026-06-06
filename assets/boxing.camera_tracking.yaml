@@ -10,7 +10,6 @@ tracking:
     enabled: true
     landmark_mode: lite
     inference_interval_frames: 1
-    bbox_recompute_interval_frames: 1
     bbox:
       enabled: true
     association:
