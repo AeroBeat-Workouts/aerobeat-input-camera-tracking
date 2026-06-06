@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-06 19:08 EDT
+**Last Updated:** 2026-06-06 19:17 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2648,7 +2648,7 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 
 **Status:** ✅ Complete
 
-**Results:** Implemented the straight-punch pose-only fallback so `tracking.hands.enabled: false` now automatically switches the detector to pose/wrist-valid gating, velocity-only trigger checks, pose-driven `tracking_lost`, and a pose-only timer rearm while preserving the existing `ready -> triggered -> not_ready -> ready` shape after firing. Added the new optional gesture-config key `straight_punch.rearm.pose_only_rearm_ms` with a default of `250` and documented it in the boxing profile bundle. Extended the boxing proving harness so the straight-punch popup/inspector and tracker-hand debug lines stay truthful in pose-only mode by surfacing pose fallback state instead of pretending hand/bbox evidence exists, and verified the punch tile left/right gesture badges still activate from pose-only punch events. Focused unit coverage now proves: the hands-enabled path still refuses to trigger without hand-growth evidence, the hands-disabled path can trigger from pose validity plus wrist velocity alone, the hands-disabled path drops to `tracking_lost` when pose/wrist availability falls below the visibility gate, the hands-disabled path rearms on the elapsed timer, the boxing proving harness text/UI truth reflects the pose-only fallback, and the punch tile activation still pulses when pose-only punch events fire. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` (`18/18` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (`33/33` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` (`4/4` passed). Commits: `5aeb36d` (`Add pose-only straight punch fallback`), `304e8fa` (`Keep boxing UI truthful in pose-only mode`).
+**Results:** Implemented the straight-punch pose-only fallback so `tracking.hands.enabled: false` now automatically switches the detector to pose/wrist-valid gating, velocity-only trigger checks, pose-driven `tracking_lost`, and a pose-only timer rearm while preserving the existing `ready -> triggered -> not_ready -> ready` shape after firing. Added the new optional gesture-config key `straight_punch.rearm.pose_only_rearm_ms` with a default of `250` and documented it in the boxing profile bundle. Extended the boxing proving harness so the straight-punch popup/inspector and tracker-hand debug lines stay truthful in pose-only mode by surfacing pose fallback state instead of pretending hand/bbox evidence exists, and verified the punch tile left/right gesture badges still activate from pose-only punch events. Focused unit coverage now proves: the hands-enabled path still refuses to trigger without hand-growth evidence, the hands-disabled path can trigger from pose validity plus wrist velocity alone, the hands-disabled path drops to `tracking_lost` when pose/wrist availability falls below the visibility gate, the hands-disabled path rearms on the elapsed timer, the boxing proving harness text/UI truth reflects the pose-only fallback, and the punch tile activation still pulses when pose-only punch events fire. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` (`18/18` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (`33/33` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` (`4/4` passed). Commits: `5aeb36d` (`Add pose-only straight punch fallback`), `774ad12` (`Keep boxing UI truthful in pose-only mode`).
 
 ---
 
@@ -2698,6 +2698,30 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 
 
 
+
+### Task 10BJ: Wire pose-only straight-punch fallback into the boxing testing scene UI
+
+**Bead ID:** `aerobeat-input-camera-tracking-n0d`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Implement the narrow scene/UI follow-up for the new pose-only straight-punch fallback. When `tracking.hands.enabled` is `false` and the fallback fires, the boxing input testing scene must still reflect that truth: (1) the straight-punch popup/inspector UI must still work truthfully, and (2) the left/right gesture buttons in the scene UI must still activate when the gesture fires. Keep this slice narrowly focused on the owner-repo scene/debug/inspector wiring needed so the existing boxing testing surfaces reflect the already-landed pose-only detector path. Add focused tests where possible, update this plan with exact files changed/validation/commits, and stop at a clean coder handoff for QA.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the narrow owner-repo boxing testing scene UI truth wiring for the pose-only straight-punch fallback in `.testbed/scripts/boxing_proving_harness.gd`, with focused regression coverage in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`. The scene UI now stays truthful when `tracking.hands.enabled` is `false`: the straight-punch hover/inspector surfaces explicitly report pose-only fallback state instead of pretending bbox inputs were evaluated, the boxing debug line falls back to pose-derived tracking/source truth when no hand payload exists, and the left/right punch tile activation path is regression-covered for the pose-only punch event path. Validation run for this task pass: `godot --headless --path .testbed --import --quit-after 1000` ✅ and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`18/18` tests passed, `128` asserts). Commit IDs: `774ad12` (`REF-01`) - Keep boxing UI truthful in pose-only mode.
+
+---
 
 ## Final Results
 
