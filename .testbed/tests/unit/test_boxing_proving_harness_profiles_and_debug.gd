@@ -354,6 +354,126 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
 	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
 
+func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"left": {
+					"state": "triggered",
+					"hand_tracking_enabled": false,
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"tracking_valid": true,
+					"sample_source": "pose",
+					"wrist_velocity": 0.42,
+					"wrist_forward_velocity": 0.09,
+					"bbox_area_growth": 0.0,
+					"grace_ms_remaining": 160,
+				}
+			}
+		}
+	})
+
+	var line: String = String(harness._build_hand_debug_line("left", {"hands": {"left": {}}}))
+	assert_string_contains(line, "L: state=triggered")
+	assert_string_contains(line, "tracking=pose_tracked")
+	assert_string_contains(line, "valid=true")
+	assert_string_contains(line, "source=pose")
+	assert_string_contains(line, "bbox_area=0.000")
+
+func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"left": {
+					"state": "not_ready",
+					"previous_state": "triggered",
+					"timestamp_ms": Time.get_ticks_msec() - 260,
+					"hand_tracking_enabled": false,
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"tracking_valid": true,
+					"sample_source": "pose",
+					"fresh_sample": true,
+					"wrist_velocity": 0.420,
+					"wrist_forward_velocity": 0.150,
+					"min_wrist_velocity": 0.180,
+					"bbox_area": 0.0,
+					"bbox_area_growth": 0.0,
+					"min_bbox_area_growth": 0.010,
+					"positive_growth_samples": 0,
+					"min_positive_growth_samples": 3,
+					"sample_window_size": 4,
+					"growth_window_areas": [],
+					"grace_ms_remaining": 0,
+					"triggered_grace_ms": 240,
+					"trigger_bbox_area": 0.0,
+					"bbox_area_retract_epsilon": 0.003,
+					"pose_only_rearm_ms": 250,
+					"reacquire_stable_ms_required": 40,
+				}
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(rows[2].get("current_text", "")), "pose-only fallback, pose_valid=true, tracking=pose_tracked, source=pose")
+	assert_eq(String(rows[8].get("current_text", "")), "pose-only fallback (bbox skipped)")
+	assert_eq(String(rows[9].get("threshold_text", "")), "skipped")
+	assert_eq(String(rows[10].get("threshold_text", "")), "skipped")
+	assert_string_contains(String(rows[15].get("current_text", "")), "elapsed (pose-only timer)")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Hand tracking - pose-only fallback, pose_valid=true, tracking=pose_tracked, source=pose")
+	assert_string_contains(body, "BBox area - pose-only fallback (bbox skipped)")
+	assert_string_contains(body, "BBox area growth >= skipped - pose-only fallback")
+	assert_string_contains(body, "Positive growth samples >= skipped - pose-only fallback")
+	assert_string_contains(body, "BBox retracted enough to rearm - ")
+	assert_string_contains(body, "pose-only timer")
+
+func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness := scene_root as Object
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"left": {
+					"state": "triggered",
+					"hand_tracking_enabled": false,
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"tracking_valid": true,
+					"sample_source": "pose",
+					"wrist_velocity": 0.42,
+					"min_wrist_velocity": 0.18,
+					"bbox_area": 0.0,
+					"bbox_area_growth": 0.0,
+					"pose_only_rearm_ms": 250,
+				}
+			}
+		}
+	})
+	harness._on_straight_punch_state_changed("left", "triggered", {
+		"state": "triggered",
+		"previous_state": "ready",
+		"tracking_state": "pose_tracked",
+		"tracking_valid": true,
+		"sample_source": "pose",
+		"wrist_velocity": 0.42,
+		"bbox_area": 0.0,
+		"bbox_area_growth": 0.0,
+	})
+	harness._record_event("punch_left", {"power": 0.75})
+	harness._update_tile_states()
+	var punch_tile: Dictionary = harness.get("_tile_refs").get("punch", {})
+	var left_badge: Dictionary = punch_tile.get("left", {})
+	assert_eq(String(left_badge.get("style_key", "")), "active")
+	assert_eq(harness._event_count("punch_left"), 1)
+
 func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> void:
 	var harness = _new_harness()
 	harness.set("_playback_status", {"paused": true})

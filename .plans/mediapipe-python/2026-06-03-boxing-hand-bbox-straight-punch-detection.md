@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-06 18:53 EDT
+**Last Updated:** 2026-06-06 19:08 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2345,6 +2345,8 @@ Audit conclusion: cross-repo contract ownership, schema documentation, tracker b
 - `.testbed/scripts/boxing_proving_harness.gd`
 - `.testbed/scripts/proving_harness.gd`
 - `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 - `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
 - `.testbed/tests/unit/test_pose_detector_substrate.gd`
 - `assets/boxing.gesture_detection.yaml`
@@ -2627,7 +2629,7 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 **SubAgent:** `primary`
 **Role:** `coder`
 **References:** `REF-01`, `REF-02`
-**Prompt:** Implement a narrow pose-only straight-punch fallback in `aerobeat-input-camera-tracking` that automatically activates when `tracking.hands.enabled` is `false`. The requested behavior is: (1) `ready -> triggered` requires valid pose/wrist tracking for the correct side plus wrist velocity above the configured threshold; (2) hand-dependent checks are skipped in this mode, including hand fresh-sample/bbox-growth requirements; (3) `tracking_lost` is based on pose/wrist availability in this mode; (4) keep the existing post-trigger state-machine shape, but replace hand/bbox-based rearm with a millisecond-based timer rearm when hands are disabled; (5) set the default pose-only rearm timer to `250ms`; (6) enable this solely by `tracking.hands.enabled: false`, without adding a separate gesture-mode toggle. Keep the slice narrow, YAML edits outside Godot, add focused tests/debug proof, update this plan with exact files changed/validation/commits, and stop at a clean coder handoff for QA.
+**Prompt:** Implement a narrow pose-only straight-punch fallback in `aerobeat-input-camera-tracking` that automatically activates when `tracking.hands.enabled` is `false`. The requested behavior is: (1) `ready -> triggered` requires valid pose/wrist tracking for the correct side plus wrist velocity above the configured threshold; (2) hand-dependent checks are skipped in this mode, including hand fresh-sample/bbox-growth requirements; (3) `tracking_lost` is based on pose/wrist availability in this mode; (4) keep the existing post-trigger state-machine shape, but replace hand/bbox-based rearm with a millisecond-based timer rearm when hands are disabled; (5) set the default pose-only rearm timer to `250ms`; (6) enable this solely by `tracking.hands.enabled: false`, without adding a separate gesture-mode toggle. Keep the slice narrow, YAML edits outside Godot, add focused tests/debug proof, preserve truthful straight-punch popup/inspector output plus left/right gesture button activation in the boxing testing scene when the pose-only fallback is active, update this plan with exact files changed/validation/commits, and stop at a clean coder handoff for QA.
 
 **Folders Created/Deleted/Modified:**
 - `assets/`
@@ -2637,6 +2639,8 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 
 **Files Created/Deleted/Modified:**
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 - `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
 - `.testbed/tests/unit/test_pose_detector_substrate.gd`
 - `assets/boxing.gesture_detection.yaml`
@@ -2644,7 +2648,7 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 
 **Status:** ✅ Complete
 
-**Results:** Implemented the straight-punch pose-only fallback so `tracking.hands.enabled: false` now automatically switches the detector to pose/wrist-valid gating, velocity-only trigger checks, pose-driven `tracking_lost`, and a pose-only timer rearm while preserving the existing `ready -> triggered -> not_ready -> ready` shape after firing. Added the new optional gesture-config key `straight_punch.rearm.pose_only_rearm_ms` with a default of `250` and documented it in the boxing profile bundle. Focused unit coverage now proves: the hands-enabled path still refuses to trigger without hand-growth evidence, the hands-disabled path can trigger from pose validity plus wrist velocity alone, the hands-disabled path drops to `tracking_lost` when pose/wrist availability falls below the visibility gate, and the hands-disabled path rearms on the elapsed timer. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (`33/33` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` (`4/4` passed). Commit: `5aeb36d` (`Add pose-only straight punch fallback`).
+**Results:** Implemented the straight-punch pose-only fallback so `tracking.hands.enabled: false` now automatically switches the detector to pose/wrist-valid gating, velocity-only trigger checks, pose-driven `tracking_lost`, and a pose-only timer rearm while preserving the existing `ready -> triggered -> not_ready -> ready` shape after firing. Added the new optional gesture-config key `straight_punch.rearm.pose_only_rearm_ms` with a default of `250` and documented it in the boxing profile bundle. Extended the boxing proving harness so the straight-punch popup/inspector and tracker-hand debug lines stay truthful in pose-only mode by surfacing pose fallback state instead of pretending hand/bbox evidence exists, and verified the punch tile left/right gesture badges still activate from pose-only punch events. Focused unit coverage now proves: the hands-enabled path still refuses to trigger without hand-growth evidence, the hands-disabled path can trigger from pose validity plus wrist velocity alone, the hands-disabled path drops to `tracking_lost` when pose/wrist availability falls below the visibility gate, the hands-disabled path rearms on the elapsed timer, the boxing proving harness text/UI truth reflects the pose-only fallback, and the punch tile activation still pulses when pose-only punch events fire. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` (`18/18` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (`33/33` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` (`4/4` passed). Commits: `5aeb36d` (`Add pose-only straight punch fallback`), `304e8fa` (`Keep boxing UI truthful in pose-only mode`).
 
 ---
 
@@ -2691,6 +2695,8 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 **Results:** Pending.
 
 ---
+
+
 
 
 ## Final Results
