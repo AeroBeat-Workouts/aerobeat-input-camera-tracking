@@ -140,7 +140,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_landmarks")
-show_debug_hit_targets = true
 
 [node name="TrailDrawer" type="Control" parent="Margin/VSplit/Content/LeftColumn/CameraPanel/CameraDisplay" unique_id=990877793]
 layout_mode = 1

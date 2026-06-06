@@ -28,10 +28,14 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("grace", {}).get("enabled", false)))
 	assert_true(is_equal_approx(float(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("grace", {}).get("position_decay", 0.0)), 1.0))
 	assert_true(is_equal_approx(float(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("grace", {}).get("size_decay", 0.0)), 1.0))
+	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmarks", false)))
+	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_trails", true)))
 	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", false)))
+	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_targets", true)))
+	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_target_labels", true)))
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_frames", -1)), 10)
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
-	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).get("bbox_area_growth_window_ms", -1)), 240)
+	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).get("bbox_area_growth_window_ms", -1)), 1000)
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	var config = CameraTrackingConfigScript.new()
@@ -45,7 +49,11 @@ func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	assert_eq(String(bundle.get("camera_tracking", {}).get("profile", "")), "flow")
 	assert_eq(String(bundle.get("gesture_detection", {}).get("profile", "")), "flow")
 	assert_eq(String(bundle.get("testbed_debug", {}).get("profile", "")), "flow")
+	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmarks", false)))
+	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_trails", false)))
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", true)))
+	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_targets", true)))
+	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_target_labels", true)))
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_frames", -1)), 10)
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
 

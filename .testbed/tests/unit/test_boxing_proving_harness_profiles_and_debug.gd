@@ -86,6 +86,24 @@ func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() 
 	assert_not_null(scene_root.find_child("TrackerConfigPath", true, false))
 	assert_not_null(scene_root.find_child("GestureConfigPath", true, false))
 
+func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	assert_not_null(scene_root)
+	var harness := scene_root as Object
+	var landmark_drawer := scene_root.find_child("LandmarkDrawer", true, false) as Control
+	var trail_drawer := scene_root.find_child("TrailDrawer", true, false) as Control
+	var hand_bbox_drawer := scene_root.find_child("HandBBoxDrawer", true, false) as Control
+	assert_not_null(landmark_drawer)
+	assert_not_null(trail_drawer)
+	assert_not_null(hand_bbox_drawer)
+	assert_eq(int(harness.get("debug_panel_refresh_interval_frames")), 10)
+	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
+	assert_true(bool(harness.get("show_landmarks")))
+	assert_false(bool(harness.get("show_trails")))
+	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))
+	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
+	assert_true(hand_bbox_drawer.visible)
+
 func test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface() -> void:
 	var harness: Object = ProvingHarnessScript.new()
 	assert_true(_has_editor_exposed_property(harness, "scene_title"))
