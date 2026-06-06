@@ -537,9 +537,31 @@ func test_straight_punch_hands_enabled_still_requires_hand_growth_signal() -> vo
 	assert_false(_event_names(state.get("events", [])).has("punch_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_true(bool(left_debug.get("hand_tracking_enabled", false)))
+	assert_eq(String(left_debug.get("velocity_signal_source", "")), "wrist_only")
 	assert_eq(String(left_debug.get("state", "")), "ready")
 
-func test_straight_punch_pose_only_mode_triggers_from_pose_and_wrist_velocity_only() -> void:
+func test_straight_punch_pose_only_mode_combines_elbow_and_wrist_velocity_signal() -> void:
+	_disable_hand_tracking_for_straight_punch()
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"z": -0.01},
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.02},
+	}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"z": -0.09},
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.03},
+	}), 1220)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("velocity_signal_source", "")), "pose_elbow_plus_wrist")
+	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) < float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+
+func test_straight_punch_pose_only_mode_triggers_from_pose_velocity_without_hand_growth() -> void:
 	_disable_hand_tracking_for_straight_punch()
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
@@ -552,6 +574,7 @@ func test_straight_punch_pose_only_mode_triggers_from_pose_and_wrist_velocity_on
 	assert_false(bool(left_debug.get("hand_tracking_enabled", true)))
 	assert_true(bool(left_debug.get("pose_tracking_valid", false)))
 	assert_eq(String(left_debug.get("sample_source", "")), "pose")
+	assert_eq(String(left_debug.get("velocity_signal_source", "")), "pose_elbow_plus_wrist")
 	assert_eq(int(left_debug.get("positive_growth_samples", -1)), 0)
 	assert_true(is_equal_approx(float(left_debug.get("bbox_area_growth", -1.0)), 0.0))
 	assert_eq(String(left_debug.get("state", "")), "triggered")

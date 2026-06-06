@@ -573,6 +573,7 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary, ha
 		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),
 		"sample_source": String(hand_payload.get("sample_source", state.get("hand_sample_source", "none"))),
+		"velocity_signal_source": String(state.get("velocity_signal_source", "wrist_only")),
 		"tracking_valid": bool(hand_payload.get("tracking_valid", state.get("hand_tracking_valid", false))),
 		"tracking_state": String(hand_payload.get("tracking_state", state.get("hand_tracking_state", "idle"))),
 		"stale_frames": int(hand_payload.get("stale_frames", state.get("stale_frames", 0))),
@@ -744,8 +745,8 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if right_foot_confidence >= lower_body_confidence_gate:
 		_process_knee(events, "right", float(measurements.get("right_knee_rise", 0.0)), float(measurements.get("right_foot_rise", 0.0)), float(measurements.get("left_knee_rise", 0.0)), right_hip, right_ankle, torso_height)
 		_process_leg_lift(events, "right", float(measurements.get("right_leg_angle_from_core_deg", 0.0)), right_hip, right_ankle, torso_height)
-	_process_straight_punch(events, "left", left_shoulder, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
-	_process_straight_punch(events, "right", right_shoulder, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
+	_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
+	_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 	if not _get_state("guard"):
 		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), left_hand_velocity, shoulder_width)
 		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), right_hand_velocity, shoulder_width)
@@ -759,7 +760,7 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 		_process_flow_swing(events, "right", right_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
 	return events
 
-func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, wrist: Dictionary, measurements: Dictionary, shoulder_width: float, timestamp_ms: int, tracking_frame: Dictionary = {}) -> void:
+func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, measurements: Dictionary, shoulder_width: float, timestamp_ms: int, tracking_frame: Dictionary = {}) -> void:
 	var straight_punch_config := _get_straight_punch_config()
 	if not bool(straight_punch_config.get("enabled", true)):
 		_set_straight_punch_state(side, _build_straight_punch_state(STRAIGHT_PUNCH_STATE_TRACKING_LOST))
@@ -776,7 +777,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var fresh_sample := _is_fresh_tracking_hand_sample(hand_payload, state) if use_hand_tracking else pose_tracking_valid
 	var valid_sample := _is_valid_tracking_hand_sample(hand_payload) if use_hand_tracking else pose_tracking_valid
 	var wrist_position := PoseMetrics.to_vector3(wrist)
-	var wrist_velocity_vector := _resolve_straight_punch_wrist_velocity(state, wrist_position, timestamp_ms, fresh_sample, straight_punch_config)
+	var wrist_velocity_vector := _resolve_straight_punch_velocity_signal(state, elbow, wrist_position, timestamp_ms, fresh_sample, straight_punch_config, use_hand_tracking)
 	var wrist_velocity := maxf(wrist_velocity_vector.length(), 0.0)
 	var wrist_forward_velocity := maxf(-float(wrist_velocity_vector.z), 0.0)
 	state["last_bbox_area"] = bbox_area
@@ -1335,6 +1336,7 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"last_observation_frame_index": -1,
 		"last_observation_timestamp_seconds": -1.0,
 		"hand_tracking_state": "idle",
+		"velocity_signal_source": "wrist_only",
 		"hand_tracking_valid": false,
 		"pose_tracking_valid": false,
 		"stale_frames": 0,
@@ -1411,6 +1413,15 @@ func _is_pose_valid_for_straight_punch(shoulder: Dictionary, wrist: Dictionary, 
 		return false
 	var min_visibility := _get_min_visibility()
 	return float(shoulder.get("v", 0.0)) >= min_visibility and float(wrist.get("v", 0.0)) >= min_visibility
+
+func _resolve_straight_punch_velocity_signal(state: Dictionary, elbow: Dictionary, wrist_position: Vector3, timestamp_ms: int, fresh_sample: bool, straight_punch_config: Dictionary, use_hand_tracking: bool) -> Vector3:
+	if use_hand_tracking or elbow.is_empty() or float(elbow.get("v", 0.0)) < _get_min_visibility():
+		state["velocity_signal_source"] = "wrist_only"
+		return _resolve_straight_punch_wrist_velocity(state, wrist_position, timestamp_ms, fresh_sample, straight_punch_config)
+	var elbow_position := PoseMetrics.to_vector3(elbow)
+	var combined_position := (elbow_position + wrist_position) * 0.5
+	state["velocity_signal_source"] = "pose_elbow_plus_wrist"
+	return _resolve_straight_punch_wrist_velocity(state, combined_position, timestamp_ms, fresh_sample, straight_punch_config)
 
 func _is_valid_tracking_hand_sample(hand_payload: Dictionary) -> bool:
 	return bool(hand_payload.get("tracking_valid", false))
