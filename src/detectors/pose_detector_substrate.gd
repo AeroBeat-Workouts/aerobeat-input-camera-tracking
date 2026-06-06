@@ -21,6 +21,7 @@ const STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH := 0.006
 const STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS := 240
 const STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON := 0.003
 const STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS := 40
+const STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS := 250
 const STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES := 2
 const PUNCH_OWN_HALF_MARGIN_RATIO := 0.12
 
@@ -566,10 +567,13 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary, ha
 		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
 		"triggered_grace_ms": int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)),
 		"bbox_area_retract_epsilon": float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)),
+		"pose_only_rearm_ms": int(straight_punch_config.get("pose_only_rearm_ms", STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS)),
 		"reacquire_stable_ms_required": int(straight_punch_config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS)),
+		"hand_tracking_enabled": _straight_punch_uses_hand_tracking(),
+		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),
 		"sample_source": String(hand_payload.get("sample_source", state.get("hand_sample_source", "none"))),
-		"tracking_valid": bool(hand_payload.get("tracking_valid", false)),
+		"tracking_valid": bool(hand_payload.get("tracking_valid", state.get("hand_tracking_valid", false))),
 		"tracking_state": String(hand_payload.get("tracking_state", state.get("hand_tracking_state", "idle"))),
 		"stale_frames": int(hand_payload.get("stale_frames", state.get("stale_frames", 0))),
 		"stale_ms": int(hand_payload.get("stale_ms", 0)),
@@ -762,13 +766,15 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		return
 	var event_name := "punch_%s" % side
 	var state := _get_straight_punch_state(side)
+	var use_hand_tracking := _straight_punch_uses_hand_tracking()
+	var pose_tracking_valid := _is_pose_valid_for_straight_punch(shoulder, wrist, shoulder_width)
 	var hand_payload := _get_tracking_hand_payload(tracking_frame, side)
 	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
 	var bbox_area := maxf(float(bbox.get("area", 0.0)), 0.0)
-	var hand_tracking_state := String(hand_payload.get("tracking_state", "idle"))
-	var hand_tracking_valid := bool(hand_payload.get("tracking_valid", false))
-	var fresh_sample := _is_fresh_tracking_hand_sample(hand_payload, state)
-	var valid_sample := _is_valid_tracking_hand_sample(hand_payload)
+	var hand_tracking_state := String(hand_payload.get("tracking_state", "idle")) if use_hand_tracking else ("pose_tracked" if pose_tracking_valid else "pose_missing")
+	var hand_tracking_valid := bool(hand_payload.get("tracking_valid", false)) if use_hand_tracking else pose_tracking_valid
+	var fresh_sample := _is_fresh_tracking_hand_sample(hand_payload, state) if use_hand_tracking else pose_tracking_valid
+	var valid_sample := _is_valid_tracking_hand_sample(hand_payload) if use_hand_tracking else pose_tracking_valid
 	var wrist_position := PoseMetrics.to_vector3(wrist)
 	var wrist_velocity_vector := _resolve_straight_punch_wrist_velocity(state, wrist_position, timestamp_ms, fresh_sample, straight_punch_config)
 	var wrist_velocity := maxf(wrist_velocity_vector.length(), 0.0)
@@ -779,7 +785,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	state["last_wrist_forward_velocity"] = wrist_forward_velocity
 	state["last_sample_fresh"] = fresh_sample
 	state["hand_tracking_state"] = hand_tracking_state
-	state["hand_sample_source"] = String(hand_payload.get("sample_source", "none"))
+	state["hand_sample_source"] = String(hand_payload.get("sample_source", "none")) if use_hand_tracking else "pose"
+	state["pose_tracking_valid"] = pose_tracking_valid
 	var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
 	var wrist_velocity_history: Array = (state.get("wrist_velocity_history", []) as Array).duplicate(true)
 	state["wrist_velocity_history"] = wrist_velocity_history
@@ -790,13 +797,14 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var bbox_area_window_history: Array = (state.get("bbox_area_window_history", []) as Array).duplicate(true)
 	state["bbox_area_window_history"] = bbox_area_window_history
 	state["hand_tracking_valid"] = hand_tracking_valid
-	state["stale_frames"] = int(hand_payload.get("stale_frames", 0))
-	if shoulder.is_empty() or wrist.is_empty() or shoulder_width <= 0.0:
+	state["stale_frames"] = int(hand_payload.get("stale_frames", 0)) if use_hand_tracking else 0
+	if not pose_tracking_valid:
 		valid_sample = false
 		fresh_sample = false
 		state["last_sample_fresh"] = false
 		state["hand_tracking_state"] = "pose_missing"
 		state["hand_tracking_valid"] = false
+		state["pose_tracking_valid"] = false
 	if not valid_sample:
 		state["bbox_area_history"] = []
 		state["wrist_velocity_history"] = []
@@ -813,6 +821,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["trigger_bbox_area"] = 0.0
 		state["last_bbox_area_growth_window_span_ms"] = 0
 		state["last_bbox_area_growth"] = 0.0
+		state["reacquire_started_timestamp_ms"] = -1
+		state["not_ready_started_timestamp_ms"] = -1
 		_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRACKING_LOST)
 		_set_straight_punch_state(side, state)
 		return
@@ -836,8 +846,13 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			bbox_area_growth_history.remove_at(0)
 		state["bbox_area_growth_history"] = bbox_area_growth_history
 		state["recent_peak_bbox_area_growth"] = _window_peak_float(bbox_area_growth_history)
-		state["last_observation_frame_index"] = int(hand_payload.get("frame_index", -1))
-		state["last_observation_timestamp_seconds"] = float(hand_payload.get("timestamp_seconds", -1.0))
+		state["reacquire_started_timestamp_ms"] = timestamp_ms if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST and int(state.get("reacquire_started_timestamp_ms", -1)) < 0 else int(state.get("reacquire_started_timestamp_ms", -1))
+		if use_hand_tracking:
+			state["last_observation_frame_index"] = int(hand_payload.get("frame_index", -1))
+			state["last_observation_timestamp_seconds"] = float(hand_payload.get("timestamp_seconds", -1.0))
+		else:
+			state["last_observation_frame_index"] = -1
+			state["last_observation_timestamp_seconds"] = float(timestamp_ms) / 1000.0
 	else:
 		state["bbox_area_history"] = history
 		state["wrist_velocity_history"] = wrist_velocity_history
@@ -847,8 +862,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST:
 		if fresh_sample:
 			var reacquire_stable_ms := max(0, int(straight_punch_config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS)))
-			var hand_stable_ms := max(0, int(hand_payload.get("stable_ms", reacquire_stable_ms)))
-			if hand_stable_ms >= reacquire_stable_ms:
+			var sample_stable_ms := max(0, int(hand_payload.get("stable_ms", reacquire_stable_ms))) if use_hand_tracking else max(0, timestamp_ms - int(state.get("reacquire_started_timestamp_ms", timestamp_ms)))
+			if sample_stable_ms >= reacquire_stable_ms:
 				state["bbox_area_history"] = [bbox_area]
 				state["wrist_velocity_history"] = [wrist_velocity]
 				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": wrist_position}]
@@ -861,6 +876,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth_window_span_ms"] = 0
 				state["last_bbox_area_growth"] = 0.0
+				state["not_ready_started_timestamp_ms"] = -1
+				state["reacquire_started_timestamp_ms"] = -1
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
 		_set_straight_punch_state(side, state)
 		return
@@ -872,11 +889,15 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
 			var recent_peak_wrist_velocity := maxf(float(state.get("recent_peak_wrist_velocity", wrist_velocity)), wrist_velocity)
 			var recent_peak_bbox_area_growth := maxf(float(state.get("recent_peak_bbox_area_growth", state.get("last_bbox_area_growth", 0.0))), float(state.get("last_bbox_area_growth", 0.0)))
-			if recent_peak_wrist_velocity >= min_wrist_velocity and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples:
+			var ready_to_trigger := recent_peak_wrist_velocity >= min_wrist_velocity
+			if use_hand_tracking:
+				ready_to_trigger = ready_to_trigger and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples
+			if ready_to_trigger:
 				state["trigger_bbox_area"] = bbox_area
 				var triggered_grace_ms := max(0, int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)))
 				state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
 				state["grace_ms_remaining"] = triggered_grace_ms
+				state["not_ready_started_timestamp_ms"] = -1
 				_emit_power_event(events, event_name, _compute_straight_punch_power(recent_peak_wrist_velocity, bbox_area, state, straight_punch_config, recent_peak_bbox_area_growth))
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRIGGERED)
 		_set_straight_punch_state(side, state)
@@ -887,30 +908,54 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		var grace_ms_remaining := max(0, grace_deadline_timestamp_ms - timestamp_ms)
 		state["grace_ms_remaining"] = grace_ms_remaining
 		if timestamp_ms >= grace_deadline_timestamp_ms:
+			state["not_ready_started_timestamp_ms"] = timestamp_ms
 			_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_NOT_READY)
 		_set_straight_punch_state(side, state)
 		return
 
 	if phase == STRAIGHT_PUNCH_STATE_NOT_READY and fresh_sample:
-		var retract_epsilon := maxf(float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)), 0.0)
-		var trigger_bbox_area := maxf(float(state.get("trigger_bbox_area", 0.0)), 0.0)
-		if bbox_area <= trigger_bbox_area - retract_epsilon:
-			state["trigger_bbox_area"] = 0.0
-			state["grace_ms_remaining"] = 0
-			state["grace_deadline_timestamp_ms"] = 0
-			state["bbox_area_history"] = [bbox_area]
-			state["wrist_velocity_history"] = [wrist_velocity]
-			state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": wrist_position}]
-			state["recent_peak_wrist_velocity"] = wrist_velocity
-			state["last_wrist_velocity_vector"] = Vector3.ZERO
-			state["last_wrist_velocity_window_span_ms"] = 0
-			state["bbox_area_window_history"] = [{"timestamp_ms": timestamp_ms, "area": bbox_area}]
-			state["bbox_area_growth_history"] = []
-			state["recent_peak_bbox_area_growth"] = 0.0
-			state["positive_growth_samples"] = 0
-			state["last_bbox_area_growth_window_span_ms"] = 0
-			state["last_bbox_area_growth"] = 0.0
-			_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
+		if use_hand_tracking:
+			var retract_epsilon := maxf(float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)), 0.0)
+			var trigger_bbox_area := maxf(float(state.get("trigger_bbox_area", 0.0)), 0.0)
+			if bbox_area <= trigger_bbox_area - retract_epsilon:
+				state["trigger_bbox_area"] = 0.0
+				state["grace_ms_remaining"] = 0
+				state["grace_deadline_timestamp_ms"] = 0
+				state["bbox_area_history"] = [bbox_area]
+				state["wrist_velocity_history"] = [wrist_velocity]
+				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": wrist_position}]
+				state["recent_peak_wrist_velocity"] = wrist_velocity
+				state["last_wrist_velocity_vector"] = Vector3.ZERO
+				state["last_wrist_velocity_window_span_ms"] = 0
+				state["bbox_area_window_history"] = [{"timestamp_ms": timestamp_ms, "area": bbox_area}]
+				state["bbox_area_growth_history"] = []
+				state["recent_peak_bbox_area_growth"] = 0.0
+				state["positive_growth_samples"] = 0
+				state["last_bbox_area_growth_window_span_ms"] = 0
+				state["last_bbox_area_growth"] = 0.0
+				state["not_ready_started_timestamp_ms"] = -1
+				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
+		else:
+			var pose_only_rearm_ms := max(0, int(straight_punch_config.get("pose_only_rearm_ms", STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS)))
+			var not_ready_started_timestamp_ms := int(state.get("not_ready_started_timestamp_ms", timestamp_ms))
+			if timestamp_ms - not_ready_started_timestamp_ms >= pose_only_rearm_ms:
+				state["trigger_bbox_area"] = 0.0
+				state["grace_ms_remaining"] = 0
+				state["grace_deadline_timestamp_ms"] = 0
+				state["bbox_area_history"] = [bbox_area]
+				state["wrist_velocity_history"] = [wrist_velocity]
+				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": wrist_position}]
+				state["recent_peak_wrist_velocity"] = wrist_velocity
+				state["last_wrist_velocity_vector"] = Vector3.ZERO
+				state["last_wrist_velocity_window_span_ms"] = 0
+				state["bbox_area_window_history"] = [{"timestamp_ms": timestamp_ms, "area": bbox_area}]
+				state["bbox_area_growth_history"] = []
+				state["recent_peak_bbox_area_growth"] = 0.0
+				state["positive_growth_samples"] = 0
+				state["last_bbox_area_growth_window_span_ms"] = 0
+				state["last_bbox_area_growth"] = 0.0
+				state["not_ready_started_timestamp_ms"] = -1
+				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
 	_set_straight_punch_state(side, state)
 
 func _process_hook(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, hand_velocity: Vector3, shoulder_width: float) -> void:
@@ -1291,7 +1336,10 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"last_observation_timestamp_seconds": -1.0,
 		"hand_tracking_state": "idle",
 		"hand_tracking_valid": false,
+		"pose_tracking_valid": false,
 		"stale_frames": 0,
+		"reacquire_started_timestamp_ms": -1,
+		"not_ready_started_timestamp_ms": -1,
 	}
 
 func _get_straight_punch_state(side: String) -> Dictionary:
@@ -1316,6 +1364,7 @@ func _get_straight_punch_config() -> Dictionary:
 		"min_bbox_area_growth": STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH,
 		"triggered_grace_ms": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS,
 		"bbox_area_retract_epsilon": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON,
+		"pose_only_rearm_ms": STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS,
 	}
 	if _config == null:
@@ -1339,12 +1388,29 @@ func _get_straight_punch_config() -> Dictionary:
 	config["min_bbox_area_growth"] = maxf(0.0, float(thresholds.get("min_bbox_area_growth", config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH))))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["bbox_area_retract_epsilon"] = maxf(0.0, float(rearm.get("bbox_area_retract_epsilon", config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON))))
+	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS))))
 	return config
 
 func _get_tracking_hand_payload(tracking_frame: Dictionary, side: String) -> Dictionary:
 	var hands: Dictionary = tracking_frame.get("hands", {}) if tracking_frame.get("hands", {}) is Dictionary else {}
 	return hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
+
+func _straight_punch_uses_hand_tracking() -> bool:
+	if _config == null:
+		return true
+	var tracker_profile_document: Variant = _config.get("tracker_profile_document") if _config.has_method("get") else null
+	if not tracker_profile_document is Dictionary:
+		return true
+	var tracking: Dictionary = tracker_profile_document.get("tracking", {}) if tracker_profile_document.get("tracking", {}) is Dictionary else {}
+	var hands: Dictionary = tracking.get("hands", {}) if tracking.get("hands", {}) is Dictionary else {}
+	return bool(hands.get("enabled", true))
+
+func _is_pose_valid_for_straight_punch(shoulder: Dictionary, wrist: Dictionary, shoulder_width: float) -> bool:
+	if shoulder.is_empty() or wrist.is_empty() or shoulder_width <= 0.0:
+		return false
+	var min_visibility := _get_min_visibility()
+	return float(shoulder.get("v", 0.0)) >= min_visibility and float(wrist.get("v", 0.0)) >= min_visibility
 
 func _is_valid_tracking_hand_sample(hand_payload: Dictionary) -> bool:
 	return bool(hand_payload.get("tracking_valid", false))

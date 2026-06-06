@@ -529,6 +529,69 @@ func test_straight_punch_rearms_between_tuned_fixture_scale_punches() -> void:
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
 
+func test_straight_punch_hands_enabled_still_requires_hand_growth_signal() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020), _tracked_hand_payload("right", 0.020)))
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.20}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 2, 0.08), _tracked_hand_payload("right", 0.020)))
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_true(bool(left_debug.get("hand_tracking_enabled", false)))
+	assert_eq(String(left_debug.get("state", "")), "ready")
+
+func test_straight_punch_pose_only_mode_triggers_from_pose_and_wrist_velocity_only() -> void:
+	_disable_hand_tracking_for_straight_punch()
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1220)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_false(bool(left_debug.get("hand_tracking_enabled", true)))
+	assert_true(bool(left_debug.get("pose_tracking_valid", false)))
+	assert_eq(String(left_debug.get("sample_source", "")), "pose")
+	assert_eq(int(left_debug.get("positive_growth_samples", -1)), 0)
+	assert_true(is_equal_approx(float(left_debug.get("bbox_area_growth", -1.0)), 0.0))
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+
+func test_straight_punch_pose_only_mode_enters_tracking_lost_from_pose_loss() -> void:
+	_disable_hand_tracking_for_straight_punch()
+	_calibrate_stance()
+	substrate.process_landmarks(_make_pose_frame(), 1100)
+	var state := substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1220)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"v": 0.2},
+	}), 1300)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["tracking_lost"])
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_false(bool(left_debug.get("pose_tracking_valid", true)))
+	assert_eq(String(left_debug.get("tracking_state", "")), "pose_missing")
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
+
+func test_straight_punch_pose_only_mode_rearms_on_elapsed_timer() -> void:
+	_disable_hand_tracking_for_straight_punch()
+	_calibrate_stance()
+	substrate.process_landmarks(_make_pose_frame(), 1100)
+	var state := substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1220)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.16}}), 1460)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["not_ready"])
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(int(left_debug.get("pose_only_rearm_ms", -1)), 250)
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.08}}), 1700)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), [])
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "not_ready")
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1710)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+
 func test_detects_hook_and_uppercut_events_truthfully() -> void:
 	_calibrate_stance()
 	substrate.process_landmarks(_make_pose_frame(), 1620)
@@ -760,6 +823,27 @@ func test_gesture_eval_interval_frames_skips_detector_updates_until_configured_f
 	}), 1260, third_tracking_frame)
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+
+func _disable_hand_tracking_for_straight_punch() -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"enabled": true,
+			"thresholds": {
+				"min_wrist_velocity": 0.18,
+			},
+			"timing": {
+				"triggered_grace_ms": 240,
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
 
 func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0, frame_index: int = 1, timestamp_seconds: float = 0.0, fresh_sample: Variant = null, sample_source: String = "", stable_ms: int = -1) -> Dictionary:
 	var width := 0.10

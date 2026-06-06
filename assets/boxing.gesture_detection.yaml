@@ -24,8 +24,10 @@ straight_punch:
     # Keep the punch in its triggered state for this long after it fires. input.
     triggered_grace_ms: 500
   rearm:
-    # After a punch, bbox area must shrink by at least this much before rearming. input.
+    # After a punch, bbox area must shrink by at least this much before rearming when hands are enabled. input.
     bbox_area_retract_epsilon: 0.0003
+    # When hand tracking is disabled, wait this long before rearming from the pose-only fallback. input.
+    pose_only_rearm_ms: 250
   state_machine:
     # After tracking comes back, wait this long before punches can arm again. input.
     lost_tracking_reacquire_stable_ms: 40
