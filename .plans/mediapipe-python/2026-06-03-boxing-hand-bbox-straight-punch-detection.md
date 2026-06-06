@@ -1799,6 +1799,102 @@ Audit conclusion:
 
 ---
 
+### Task 10AQ: Audit boxing grace YAML knobs for hardcoded or bypassed live path behavior
+
+**Bead ID:** `aerobeat-input-camera-tracking-17j`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Derrick is testing on chip, synced latest, and still never sees pink `grace` / `grace` text when hand tracking degrades; he only sees `tracking_lost`. Audit the boxing grace-related config variables end-to-end and verify they are truly used in the live boxing path. Specifically inspect the current boxing tracker YAML values, the selected-profile loader path, provider/session config forwarding, tool-side config normalization, live-frame state transitions, and input overlay precedence. Confirm whether the intended YAML grace knobs are actually passed through, whether any older frame-based keys or hardcoded defaults are still secretly winning, and whether the live camera path differs from the proving/test path. Use current repo state evidence, not assumptions. Update this plan task with exact findings and the narrowest truthful fix.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** End-to-end audit completed against the **current repo state**, and the live boxing grace issue is real. Current state at audit time: `REF-01` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` at `a12e64c`, `REF-02` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` at `8e2a417`, and the active vendor backend repo `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python` at `be27590`; the only dirty tracked file in `REF-01` was this plan, and the vendor repo only had local `__pycache__` junk. The current boxing tracker YAML in `REF-01` `assets/boxing.camera_tracking.yaml:4-25` is: `tracking.hands.enabled=true`, `validity.max_stale_ms=80`, `validity.reacquire_stable_ms=40`, `grace.enabled=true`, `grace.position_decay=1.0`, `grace.size_decay=1.0`. The current boxing gesture YAML in `REF-01` `assets/boxing.gesture_detection.yaml:4-20` is also using `triggered_grace_ms=500` and `lost_tracking_reacquire_stable_frames=2`; that straight-punch frame knob is still real, but it is a **different input-layer state machine** from the tool-owned hand grace window.
+
+What the code proves about the path:
+- **Selected-profile loading is correct.** `REF-01` `src/config/profile_config_loader.gd:9-31` hard-maps boxing to `assets/boxing.camera_tracking.yaml` / `assets/boxing.gesture_detection.yaml`, and `src/config/camera_tracking_config.gd:63-90` loads/stores that boxing bundle as the selected profile.
+- **Provider/session forwarding is correct.** `REF-01` `src/providers/camera_tracking_provider.gd:303-360` copies the selected profile bundle’s `tracking.pose` and `tracking.hands` dictionaries directly into the tracking session config for both live camera and replay/video-file sessions; the only source-path difference is `source.kind` (`live_camera` vs `video_file`).
+- **Input overlay precedence is also correct now.** `REF-01` `.testbed/scripts/hand_bbox_state_drawer.gd:52-65` explicitly returns `"grace"` first whenever `hand.tracking_state == "grace"`, so if a real grace payload reaches the overlay it should render pink `grace`; the overlay is **not** what is currently hiding it.
+- **Tool-side public normalization is correct in isolation.** `REF-02` `src/CameraTrackingConfig.gd:194-203` normalizes public hand validity to `max_stale_ms` / `reacquire_stable_ms` and erases legacy frame keys, and `src/CameraTrackingFrame.gd:315-319,579-632` does the intended live-frame transitions: grace while `stale_ms <= max_stale_ms`, `tracking_lost` after that, and `tracked` only after `stable_ms >= reacquire_stable_ms`.
+
+The real bug is the **live runtime/vendor seam**:
+- `REF-02` `src/CameraTrackingFrame.gd:142-143` lets `vendor_hand_tracking.max_stale_ms` / `reacquire_stable_ms` win first, then falls back to legacy `vendor_hand_tracking.max_stale_frames` / `reacquire_stable_frames`, then to the YAML ms config.
+- But the active MediaPipe Python vendor still emits and consumes **frame-based** hand validity only. `REF-03` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/src/MediaPipePythonConfig.gd:24-25,50-54,117-120,235-250` still defines runtime/public defaults as `hand_max_stale_frames=2` and `hand_reacquire_stable_frames=2`, and `runtime/mediapipe_runtime_probe.py:474-482` builds the request using only `max_stale_frames` / `reacquire_stable_frames`. The emitted `vendor_hand_tracking` payload from `runtime/mediapipe_runtime_probe.py:2700-2747` therefore carries those legacy frame fields, not the new ms fields.
+- Because `REF-02` currently reads those legacy vendor fields as if they were millisecond overrides (`src/CameraTrackingFrame.gd:142-143`), the current live/runtime-effective hand validity becomes **2ms stale budget and 2ms reacquire window**, not the boxing YAML’s `80ms` / `40ms`.
+- With real session timestamps, that makes grace effectively invisible: once a hand is missed, the next normalized sample is almost always tens of milliseconds later, so `stale_ms > 2` immediately and the lane goes straight to `tracking_lost` in `REF-02` `src/CameraTrackingFrame.gd:317-349`. That exactly matches Derrick’s live observation that he never sees pink `grace` / `grace` text and only sees `tracking_lost`.
+
+Truth about path differences:
+- **Real live-camera and real replay/video-file sessions share the same broken seam.** `REF-01` `camera_tracking_provider.gd` forwards the same `tracking.hands` bundle to the same tool/backend path; only `source.kind` changes. So this is **not** a live-camera-only overlay bug.
+- **The important difference is real runtime vs proving/unit test coverage.** Many existing proving/tool tests use `vendor_hand_tracking: {available: true}` or explicit ms-shaped vendor metadata instead of the actual vendor-emitted legacy frame metadata (for example `REF-02` `.testbed/tests/test_CameraTracking.gd:535-612,617-660`). That means the focused tests truthfully prove the tool logic when fed ms-shaped metadata, but they did **not** cover the current real vendor seam that overwrites ms config with legacy frame fields.
+
+Audit conclusion:
+- The current boxing YAML values **are loaded and forwarded correctly**.
+- They are **not actually winning in real runtime sessions** today.
+- The current hidden winner is the vendor-emitted legacy hand validity metadata (`2` / `2` frame defaults) being misinterpreted upstream as millisecond values.
+- No newer overlay precedence issue is blocking visibility once a true `grace` payload exists.
+
+Narrowest truthful next fix:
+1. Fix the owner seam so real runtime hand validity metadata is millisecond-shaped end to end. The cleanest owner-correct repair is to update `REF-03` to normalize/emit `hand_max_stale_ms` and `hand_reacquire_stable_ms` (plus `vendor_hand_tracking.max_stale_ms` / `reacquire_stable_ms`) instead of only frame fields, keeping any legacy frame keys as compatibility aliases only if strictly needed.
+2. As a protective guard in `REF-02`, stop treating legacy `vendor_hand_tracking.max_stale_frames` / `reacquire_stable_frames` as raw millisecond overrides. If those legacy keys must remain temporarily, they should not silently clobber the YAML ms config in the live path.
+3. Add one focused cross-repo proof that uses the **actual vendor-shaped metadata path** so future tests fail if frame keys start secretly winning again.
+
+---
+
+### Task 10AR: Fix hand grace timing config propagation from testbed YAML through tool to vendor
+
+**Bead ID:** `aerobeat-input-camera-tracking-nw8`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick approved the next cross-repo fix after the live grace audit. Repair the hand grace timing seam so the ms-based hand timing values from the boxing config/testbed path are the values actually used in live runtime sessions all the way through the tool and vendor path. Specifically, stop the legacy vendor frame fields from silently clobbering the configured ms values, make the vendor/tool contract truthful for hand stale/reacquire timing, and add focused cross-repo proof that uses the real vendor-shaped metadata/runtime path rather than only isolated test doubles. Keep the slice narrow, keep YAML edits outside Godot, update this plan with exact files changed/validation/commits, and stop at a clean handoff state for QA + audit before Derrick retests.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.testbed/tests/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/tests/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/src/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/src/MediaPipePythonConfig.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/tests/test_mediapipe_runtime_probe.py`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.testbed/tests/test_mediapipe_python_backend.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/README.md`
+
+**Status:** ✅ Complete
+
+**Results:** Repaired the live hand-timing seam across the vendor/tool path so the ms-based hand timing values from `REF-01` boxing/flow camera-tracking YAML now remain the truthful source of runtime hand validity. In `REF-03`, `MediaPipePythonConfig` now normalizes public/runtime hand validity to millisecond fields (`max_stale_ms`, `reacquire_stable_ms` and runtime `hand_max_stale_ms`, `hand_reacquire_stable_ms`) while erasing the legacy frame-shaped runtime keys after compatibility normalization. `runtime/mediapipe_runtime_probe.py` now builds the hand request and emitted `raw_tracking_frame.vendor_hand_tracking` contract in milliseconds, and the README contract text now matches that emitted shape. In `REF-02`, `CameraTrackingFrame._normalize_hand_tracking_meta()` no longer treats legacy `vendor_hand_tracking.max_stale_frames` / `reacquire_stable_frames` as millisecond overrides, so stale legacy vendor metadata can no longer silently clobber the configured ms values coming from the input-owner YAML path.
+
+Focused cross-repo proof now covers the real seam instead of only idealized doubles: `REF-03` backend/config tests prove the vendor runtime config translation emits `hand_max_stale_ms` / `hand_reacquire_stable_ms` and no longer leaves the legacy frame runtime keys behind; `REF-03` Python runtime tests prove `_apply_hand_tracking()` emits `vendor_hand_tracking.max_stale_ms` / `reacquire_stable_ms` and omits the old frame fields; `REF-02` tool tests add a guard that even if legacy vendor frame keys appear, the tracker still honors the configured `80ms` / `40ms` hand validity budget instead of collapsing to `2ms` / `2ms`; and the existing `REF-01` provider proof was rerun to confirm the boxing profile still forwards `tracking.hands.validity.max_stale_ms == 80` and `reacquire_stable_ms == 40` into the live tracking session config.
+
+Validation reruns for this slice:
+- `REF-03` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python` `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` ✅ (`33` tests)
+- `REF-03` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_mediapipe_python_backend.gd -gexit` ✅ (`4/4` passed, `84` asserts)
+- `REF-02` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_CameraTracking.gd -gexit` ✅ (`35/35` passed, `341` asserts)
+- `REF-01` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_camera_tracking_provider.gd -gexit` ✅ (`11/11` passed, `66` asserts)
+
+Commits pushed for this task:
+- `ffce5e9` (`REF-02`) - Guard hand timing against legacy vendor frame aliases
+- `7f4e919` (`REF-03`) - Emit truthful hand timing metadata in milliseconds
+
+Clean handoff state for the next loop: vendor/tool timing ownership is now truthful and protected, focused proof exists for the real runtime-shaped metadata path, and the slice is ready for QA + independent audit before Derrick retests live boxing.
+
+---
+
 ### Task 10AB: Research Godot replay stepping fallback truth for near-frame time seeks
 
 **Bead ID:** `aerobeat-input-camera-tracking-575`
