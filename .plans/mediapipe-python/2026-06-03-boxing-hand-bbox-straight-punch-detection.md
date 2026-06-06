@@ -2564,9 +2564,24 @@ Commits:
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 - optional nondurable QA notes/artifacts if needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA passed for the enum-comment slice.
+
+Exact evidence checked:
+- `assets/boxing.camera_tracking.yaml` has exactly two bracketed enum lists in scope, and both match the real implemented choices:
+  - `tracking.pose.smoothing_style` comment lists `[lite_filtered, lite_raw]`. Tool normalization in `REF-02` `src/CameraTrackingConfig.gd:265-271` only preserves `lite_raw`; all other inputs normalize to default `lite_filtered`, so those are the only truthful user-facing choices.
+  - `tracking.hands.landmark_mode` comment lists `[lite, full]`. Tool normalization in `REF-02` `src/CameraTrackingConfig.gd:273-279` only preserves `full`; all other inputs normalize to default `lite`, and the vendor layer in `REF-03` also normalizes hand landmark mode to `lite|full` (`src/MediaPipePythonConfig.gd:373-379`, `runtime/mediapipe_runtime_probe.py:464-468`).
+- `assets/boxing.gesture_detection.yaml` was correctly left without bracketed enum-option comments. In-scope keys there are booleans, ints, floats, and millisecond/count knobs only (`enabled`, `fresh_samples_only`, `sample_window_size`, `min_positive_growth_samples`, `wrist_velocity_window_ms`, `bbox_area_growth_window_ms`, `min_wrist_velocity`, `min_bbox_area_growth`, `triggered_grace_ms`, `bbox_area_retract_epsilon`, `lost_tracking_reacquire_stable_ms`). No user-facing string-choice enum knob in that file was mislabeled as an enum.
+- `assets/boxing.testbed_debug.yaml` was also correctly left without bracketed enum-option comments. In-scope keys are booleans and millisecond refresh ints only (`show_*`, `debug_panel_refresh_interval_ms`, `inspector_live_refresh_interval_ms`), so there was no truthful enum list to add.
+
+Validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`4/4` passed, `53` asserts). This existing config/profile loader suite still loads the boxing camera-tracking, gesture-detection, and testbed-debug profile bundle cleanly after the comment-only YAML change.
+
+Scope note:
+- I also spot-checked the broader profile/debug test file `test_boxing_proving_harness_profiles_and_debug.gd`; it currently hits a separate pre-existing parse failure in `res://scripts/boxing_proving_harness.gd` (`_build_tooling_panel` missing). That failure is outside this comment-only QA slice and does not change the enum-comment pass/fail call above.
+
+Result: this QA slice passes and bead `aerobeat-input-camera-tracking-76d` can close. Auditor bead `aerobeat-input-camera-tracking-yh1` can start now.
 
 ---
 
@@ -2586,9 +2601,22 @@ Commits:
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 - optional nondurable audit notes/artifacts if needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit passed for the enum-comment slice.
+
+Exact audit evidence:
+- `assets/boxing.camera_tracking.yaml:10-16` contains the only two bracketed enum lists across the three in-scope YAMLs, and both are truthful and compact:
+  - `tracking.pose.smoothing_style` comment lists `[lite_filtered, lite_raw]`. Tool normalization in `REF-02` `src/CameraTrackingConfig.gd:14,265-271` defaults to `lite_filtered` and only preserves `lite_raw` as the non-default accepted string, so those are the exact implemented user-facing choices.
+  - `tracking.hands.landmark_mode` comment lists `[lite, full]`. Tool normalization in `REF-02` `src/CameraTrackingConfig.gd:16,273-279` defaults to `lite` and only preserves `full`; the vendor layer independently normalizes the same knob to `lite|full` in `REF-03` `src/MediaPipePythonConfig.gd:373-379` and `runtime/mediapipe_runtime_probe.py:464-468`, so the comment exactly matches the real pipeline contract.
+- `assets/boxing.gesture_detection.yaml` was correctly left without bracketed option lists. I audited every active knob in that file (`enabled`, `fresh_samples_only`, `sample_window_size`, `min_positive_growth_samples`, `wrist_velocity_window_ms`, `bbox_area_growth_window_ms`, `min_wrist_velocity`, `min_bbox_area_growth`, `triggered_grace_ms`, `bbox_area_retract_epsilon`, `lost_tracking_reacquire_stable_ms`); they are booleans or numeric thresholds/timings, not implemented string-choice enums.
+- `assets/boxing.testbed_debug.yaml` was also correctly left without bracketed option lists. Its active knobs (`show_landmarks`, `show_trails`, `show_hand_bbox_overlay`, `show_landmark_hit_targets`, `show_landmark_hit_target_labels`, `debug_panel_refresh_interval_ms`, `inspector_live_refresh_interval_ms`) are booleans or numeric refresh intervals only.
+- Bracketed-list grep across the three audited YAMLs returned only the two expected camera-tracking comment lines, which confirms non-enum knobs were not mislabeled.
+
+Validation rerun performed during this audit:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`4/4` passed, `53` asserts).
+
+Audit conclusion: this enum-comment slice is cleanly done. The added lists are exact, the non-enum knobs were correctly excluded, and the profile/YAML loading validation still passes. Bead `aerobeat-input-camera-tracking-yh1` can close.
 
 ---
 
