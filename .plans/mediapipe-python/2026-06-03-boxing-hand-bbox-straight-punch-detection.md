@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-05 16:39 EDT
+**Last Updated:** 2026-06-05 21:31 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -1892,6 +1892,113 @@ Commits pushed for this task:
 - `7f4e919` (`REF-03`) - Emit truthful hand timing metadata in milliseconds
 
 Clean handoff state for the next loop: vendor/tool timing ownership is now truthful and protected, focused proof exists for the real runtime-shaped metadata path, and the slice is ready for QA + independent audit before Derrick retests live boxing.
+
+---
+
+### Task 10AS: QA repaired hand timing propagation slice before live retest
+
+**Bead ID:** `aerobeat-input-camera-tracking-ysq`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** QA the repaired hand timing propagation slice from Task 10AR before Derrick retests live boxing. Verify that the changed cross-repo surfaces now consistently use the ms-based hand timing values (`max_stale_ms`, `reacquire_stable_ms`) through input → vendor → tool, that the focused validation passes, and that the slice is in a truthful ready-to-retest state. This is a QA pass for the timing-propagation repair only, not a broad straight-punch closeout. Update the plan with exact QA findings/evidence and state clearly whether Derrick should retest now.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Focused QA of the Task 10AR hand-timing propagation repair passed, and this slice is **ready for Derrick to retest live boxing now**.
+
+Exact QA evidence:
+- **Input owner config is ms-based and forwards the intended values:** `REF-01` `assets/boxing.camera_tracking.yaml` now uses `tracking.hands.validity.max_stale_ms: 80` and `tracking.hands.validity.reacquire_stable_ms: 40`. Focused provider coverage still proves the boxing profile forwards those values into the tracking session config: `REF-01` `.testbed/tests/unit/test_camera_tracking_provider.gd` asserts `max_stale_ms == 80` and `reacquire_stable_ms == 40` for the active boxing config, and the focused rerun passed with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_camera_tracking_provider.gd -gexit` ✅ (`11/11` passed, `66` asserts).
+- **Vendor runtime/config contract is now ms-shaped instead of frame-shaped:** `REF-03` `src/MediaPipePythonConfig.gd` normalizes runtime hand timing to `hand_max_stale_ms` / `hand_reacquire_stable_ms` and erases the old frame keys after compatibility normalization. `REF-03` `runtime/mediapipe_runtime_probe.py` now builds/emits `vendor_hand_tracking.max_stale_ms` and `vendor_hand_tracking.reacquire_stable_ms` and the focused Python test proves the legacy frame aliases are absent from emitted runtime metadata. Validation reruns passed: `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` ✅ (`33` tests) and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_mediapipe_python_backend.gd -gexit` ✅ (`4/4` passed, `84` asserts).
+- **Tool layer now honors ms timing and no longer lets legacy frame aliases clobber it:** `REF-02` `src/CameraTrackingFrame.gd` now reads `vendor_hand_tracking.max_stale_ms` / `reacquire_stable_ms` and falls back to the configured tool/input validity values, rather than reinterpreting legacy `max_stale_frames` / `reacquire_stable_frames` as millisecond overrides. The focused tool regression suite includes the explicit guard case where legacy frame keys are present but the normalized tracker hand-timing budget still resolves to the configured `80ms` / `40ms`. Validation rerun passed: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_CameraTracking.gd -gexit` ✅ (`35/35` passed, `341` asserts).
+- **Cross-repo propagation truth now lines up end to end:** the current evidence chain is consistent across the three owner layers — input boxing YAML publishes `80ms` / `40ms`, vendor runtime config translates/emits `hand_max_stale_ms` / `hand_reacquire_stable_ms` plus `vendor_hand_tracking.max_stale_ms` / `reacquire_stable_ms`, and tool normalization keeps those ms values authoritative without collapsing back to the old `2` / `2` legacy frame defaults.
+
+QA conclusion for this slice only:
+- **Should Derrick retest now?** **Yes.** The repaired hand-timing propagation slice is truthfully ready for Derrick’s next live boxing retest.
+- **Boundary of this QA pass:** this clears the hand timing propagation repair from Task 10AR only. It does **not** claim the broader straight-punch gold-truth work is fully closed.
+
+---
+
+### Task 10AT: Audit repaired hand timing propagation slice before live retest
+
+**Bead ID:** `aerobeat-input-camera-tracking-1wt`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Independently audit the repaired hand timing propagation slice from Task 10AR before Derrick retests live boxing. Confirm the new ms-based timing contract is truthful across input, vendor, and tool, confirm legacy vendor frame aliases no longer silently override the configured ms values, and confirm the proof/validation actually covers the real vendor-shaped runtime seam that previously broke the live path. Report pass/fail for this slice only, independent of the broader unresolved straight-punch work. Update the plan with exact audit findings/evidence.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** **PASS for this timing-propagation slice only.** Independent audit confirms the repaired hand timing contract is now millisecond-shaped and truthful across `REF-01` input config, `REF-03` vendor runtime/config emission, and `REF-02` tool consumption.
+
+Exact audit evidence:
+- `REF-01` still forwards the intended boxing/live timing budget from the input-owner YAML path: `assets/boxing.camera_tracking.yaml` and `assets/flow.camera_tracking.yaml` define `tracking.hands.validity.max_stale_ms: 80` and `reacquire_stable_ms: 40`, and `test_camera_tracking_provider.gd` proves the live boxing start path forwards those same values into the active session config (`max_stale_ms == 80`, `reacquire_stable_ms == 40`).
+- `REF-03` vendor config/runtime now preserves that contract in milliseconds instead of frame aliases. In `src/MediaPipePythonConfig.gd`, `make_vendor_runtime_config()` emits `runtime.hand_max_stale_ms` / `runtime.hand_reacquire_stable_ms`, mirrors those into `tracking.hands.validity.max_stale_ms` / `reacquire_stable_ms`, and erases `hand_max_stale_frames` / `hand_reacquire_stable_frames` from the emitted runtime config. `test_mediapipe_python_backend.gd` proves those frame keys are absent and the ms values remain `80` / `40`.
+- The real vendor-shaped runtime seam that previously broke live behavior is now covered by proof, not just isolated config mapping. In `runtime/mediapipe_runtime_probe.py`, `_hand_tracking_request()` and `_apply_hand_tracking()` emit `raw_tracking_frame.vendor_hand_tracking.max_stale_ms` / `reacquire_stable_ms` and do not emit the old frame-shaped fields. `runtime/tests/test_mediapipe_runtime_probe.py` proves the runtime-emitted `vendor_hand_tracking` payload contains the ms fields and omits `max_stale_frames` / `reacquire_stable_frames`.
+- `REF-02` tool normalization no longer lets stale legacy vendor frame aliases silently clobber the configured ms budget. `src/CameraTrackingFrame.gd` reads only `vendor_hand_tracking.max_stale_ms` / `reacquire_stable_ms` (falling back to repo config validity ms values) and never consumes `vendor_hand_tracking.max_stale_frames` / `reacquire_stable_frames` as timing overrides. `test_CameraTracking.gd` proves that even when legacy vendor frame aliases are present with `2` / `2`, the tool still keeps `hand_tracking.max_stale_ms == 80`, `reacquire_stable_ms == 40`, and enters grace for `40ms` instead of collapsing to `2ms`.
+- README contract text in `REF-03` now matches the emitted runtime shape: `raw_tracking_frame.vendor_hand_tracking` documents the upstream-honored timing budget as `max_stale_ms` / `reacquire_stable_ms`.
+
+Independent validation rerun during audit:
+- `REF-03` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python` `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` ✅ (`33` tests)
+- `REF-03` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_mediapipe_python_backend.gd -gexit` ✅ (`4/4` passed, `84` asserts)
+- `REF-02` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -gselect=test_CameraTracking.gd -gexit` ✅ (`35/35` passed, `341` asserts)
+- `REF-01` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_camera_tracking_provider.gd -gexit` ✅ (`11/11` passed, `66` asserts)
+
+Audit conclusion: **PASS**. The repaired ms-based hand timing propagation slice is truthful and protected against silent legacy frame-alias override along the input → vendor → tool path, and the proof now covers the actual runtime-shaped vendor metadata seam that previously broke the live path. Derrick can retest this hand-timing slice live now, while keeping in mind the broader straight-punch truth gate elsewhere in Task 10 remains unresolved.
+
+---
+
+### Task 10AU: Audit and repair boxing testbed debug YAML wiring end-to-end
+
+**Bead ID:** `aerobeat-input-camera-tracking-cq2`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Derrick wants the same audit→repair treatment for `assets/boxing.testbed_debug.yaml`. Audit every public variable in that YAML end-to-end: selected-profile loading, testbed debug config bundle flow, proving/boxing scene consumption, overlay/debug/inspector refresh paths, and any other surfaces that are supposed to honor those values. Identify any places where private script defaults or hardcoded values are still secretly winning. Then repair the narrowest truthful set of issues so every intended boxing testbed debug YAML knob is actually used from config through the appropriate function. Use current repo state evidence, update this plan task with exact findings/files/validation/commits, and stop at a clean handoff state for QA + audit if a repair lands.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- minimal owner-correct testbed/debug config/runtime files if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- focused config/proving/debug files to be identified during audit/repair
+
+**Status:** ✅ Complete
+
+**Results:** Audit completed against the live owner repo and a narrow repair landed. End-to-end wiring findings for `REF-01` `assets/boxing.testbed_debug.yaml`:
+- `visuals.show_landmarks` → **wired** through `src/config/profile_config_loader.gd` + `src/config/camera_tracking_config.gd` into `.testbed/scripts/boxing_proving_harness.gd::_sync_profile_visual_config()`, then consumed by `.testbed/scripts/proving_harness.gd::_on_pose_updated()` / `_refresh_landmark_interactions()` via `show_landmarks` and `landmark_drawer.visible`.
+- `visuals.show_trails` → **wired** through the same bundle path into `show_trails`, then consumed by `.testbed/scripts/proving_harness.gd::_update_motion_trails()` and `trail_drawer.visible`.
+- `visuals.show_hand_bbox_overlay` → **wired** into `hand_bbox_drawer.visible` / `clear_snapshot()` in `.testbed/scripts/boxing_proving_harness.gd::_sync_profile_visual_config()`, with live snapshot updates continuing through `_sync_hand_bbox_drawer()`.
+- `visuals.show_landmark_hit_targets` + `visuals.show_landmark_hit_target_labels` → **wired** into `LandmarkDrawer` runtime properties, which the drawer script consumes during debug hit-target rendering.
+- `refresh.debug_panel_refresh_interval_frames` → **wired** through `.testbed/scripts/proving_harness.gd::_apply_testbed_debug_profile_bundle()` and consumed by the main `_process()` debug-panel refresh cadence.
+- `refresh.inspector_live_refresh_interval_ms` → **wired** through the same bundle path and consumed by `_resolve_shared_inspector_model()` plus the inspector footer copy.
+
+Secret winner found and repaired: `.testbed/scenes/boxing_proving.tscn` still hardcoded `LandmarkDrawer.show_debug_hit_targets = true`, which meant the scene itself carried a stale alternate default instead of leaving boxing YAML as the sole source of truth. Removed that scene-authored override in commit `9070012` (`Audit boxing testbed debug YAML wiring`). I also tightened proof so the focused profile/config tests now assert all boxing + flow `testbed_debug.visuals` / `refresh` knobs, added an instantiated boxing-scene regression that proves the live nodes end up with the boxing YAML values after startup, and corrected the stale `bbox_area_growth_window_ms` expectation in the profile-bundle test from `240` to the current repo-owned `1000` so the focused config suite is truthful again.
+
+Files changed in this task: `.testbed/scenes/boxing_proving.tscn`, `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`, `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`, and this plan.
+
+Validation rerun from `REF-01` repo root:
+- `godot --headless --path .testbed --import --quit-after 1000` ✅
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`18/18` passed, `155` asserts; existing GUT orphan/UID warnings only)
+
+Audit conclusion: after removing the stale in-scene hit-target override, all seven public boxing `testbed_debug` knobs are now truthfully wired through selected-profile loading → config bundle flow → boxing/proving consumers, and this slice is ready for follow-up QA/audit on the repaired repo state.
 
 ---
 
