@@ -2806,12 +2806,36 @@ func _tracking_status_text(state: Dictionary) -> String:
 		return "invalid" if not _preview_only_invalid_reason.is_empty() else "preview_only"
 	return String(state.get("tracking_state", &"lost"))
 
-func _tracking_smoothing_style_spec() -> Dictionary:
+func _resolved_pose_smoothing_style() -> String:
+	var bundle := {}
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null and tracking_singleton.has_method("get_selected_profile_bundle"):
+		var runtime_bundle: Variant = tracking_singleton.get_selected_profile_bundle()
+		if runtime_bundle is Dictionary and bool(runtime_bundle.get("ok", false)):
+			bundle = (runtime_bundle as Dictionary).duplicate(true)
+	if bundle.is_empty():
+		var config := CameraTrackingConfigScript.new()
+		var fallback_bundle: Variant = config.load_selected_profile_bundle(_profile_id_for_harness_mode())
+		if fallback_bundle is Dictionary and bool(fallback_bundle.get("ok", false)):
+			bundle = (fallback_bundle as Dictionary).duplicate(true)
+	var tracker_document: Dictionary = bundle.get("camera_tracking", {}) if bundle.get("camera_tracking", {}) is Dictionary else {}
+	var tracking: Dictionary = tracker_document.get("tracking", {}) if tracker_document.get("tracking", {}) is Dictionary else {}
+	var pose_config: Dictionary = tracking.get("pose", {}) if tracking.get("pose", {}) is Dictionary else {}
+	var smoothing_style := String(pose_config.get("smoothing_style", "")).strip_edges().to_lower()
+	if smoothing_style == "lite_raw":
+		return "lite_raw"
+	if smoothing_style == "lite_filtered":
+		return "lite_filtered"
 	match tracking_smoothing_style:
 		TrackingSmoothingStyle.LITE_RAW:
+			return "lite_raw"
+		_:
+			return "lite_filtered"
+
+func _tracking_smoothing_style_spec() -> Dictionary:
+	match _resolved_pose_smoothing_style():
+		"lite_raw":
 			return {"label": "Lite + raw", "model_complexity": 0, "no_filter": true}
-		TrackingSmoothingStyle.LITE_FILTERED:
-			return {"label": "Lite + One-Euro", "model_complexity": 0, "no_filter": false}
 		_:
 			return {"label": "Lite + One-Euro", "model_complexity": 0, "no_filter": false}
 
