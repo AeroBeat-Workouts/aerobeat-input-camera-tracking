@@ -732,6 +732,31 @@ func _make_tracking_frame(left_hand: Dictionary = {}, right_hand: Dictionary = {
 		},
 	}
 
+func test_gesture_eval_interval_frames_skips_detector_updates_until_configured_frame() -> void:
+	config.gesture_eval_interval_frames = 2
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var first_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.021), _tracked_hand_payload("right", 0.020))
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.04},
+	}), 1100, first_tracking_frame)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), [])
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
+
+	var second_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.022), _tracked_hand_payload("right", 0.020))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.08},
+	}), 1180, second_tracking_frame)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), [])
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
+
+	var third_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.023), _tracked_hand_payload("right", 0.020))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.12},
+	}), 1260, third_tracking_frame)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+
 func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0, frame_index: int = 1, timestamp_seconds: float = 0.0, fresh_sample: Variant = null, sample_source: String = "") -> Dictionary:
 	var width := 0.10
 	var height := bbox_area / width if width > 0.0 else 0.0

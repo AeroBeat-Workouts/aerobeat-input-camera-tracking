@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-05 22:43 EDT
+**Last Updated:** 2026-06-06 08:53 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2192,6 +2192,101 @@ Conclusion: for this specific YAML-backed hand cadence scheduling slice, behavio
 
 ---
 
+
+### Task 10AZ: Truth-audit remaining frame-based timing knobs and land any proven ms conversions
+
+**Bead ID:** `aerobeat-input-camera-tracking-8mj`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Resume the approved AeroBeat config-truth plan from the current hand-cadence handoff. Audit the remaining active frame-based timing/cadence knobs across `aerobeat-input-camera-tracking`, `aerobeat-tool-camera-tracking`, and `aerobeat-vendor-mediapipe-python` that are still part of the boxing/flow camera-tracking pipeline. Focus on whether each knob is actually consumed truthfully end-to-end or whether some layer is silently substituting a private/default value instead. For each remaining frame-based knob, classify it as: (a) should stay frame-based, with exact reason; (b) should convert to milliseconds, with the smallest owner-correct implementation slice to land now; or (c) dead/duplicate and should be removed. Land any minimal proven code/config/doc changes needed to make the still-active timing knobs truthful, including ms conversion where clearly appropriate. Keep YAML edits outside Godot. If dependency refresh is needed, use `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo <repo>` instead of vanilla GodotEnv commands. Claim bead `aerobeat-input-camera-tracking-8mj` on start, update the plan with an exact inventory/results table in prose, and stop at a clean coder handoff for QA.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `assets/`
+- `docs/`
+- `src/`
+- `../aerobeat-tool-camera-tracking/`
+- `../aerobeat-vendor-mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- exact config/runtime/doc/test files to be determined by the truthful timing audit
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BA: Add stupidly simple YAML comments above the active user-facing config knobs
+
+**Bead ID:** `aerobeat-input-camera-tracking-bhy`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** After Task 10AZ, add short, stupidly simple comments above the user-facing YAML variables in the active `aerobeat-input-camera-tracking` config files that Derrick cares about for this camera-tracking pipeline. Use repo reality, not wishful wording: each comment should say what the knob controls and, when relevant, which downstream layer actually consumes it (`input`, `tool`, or `vendor`). Keep the comments compact and easy for a tired human to scan. If the audit in Task 10AZ proves only three configs are the active user-facing surface for this workload, comment those three and record why the others were excluded; otherwise comment the truthful active set. Keep YAML edits outside Godot. If dependency refresh is needed, use `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo <repo>`. Claim bead `aerobeat-input-camera-tracking-bhy` on start and stop at a clean coder handoff for QA.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `assets/`
+- optional supporting docs if wording ownership needs one short note
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- active commented YAML config files in `assets/`
+- optional one short supporting doc if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BB: QA the remaining timing-knob truth pass and YAML comment clarity
+
+**Bead ID:** `aerobeat-input-camera-tracking-gkb`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** QA the outputs of Tasks 10AZ and 10BA. Verify that any remaining frame-based timing knobs are either truthfully still frame-based, truthfully converted to milliseconds, or removed as dead duplication; verify the active runtime path no longer ignores repo-owned values in favor of hidden defaults; and verify the new YAML comments are short, simple, and accurate about downstream ownership/consumption. Use targeted repo-local validation and spot-check the real config flow across input/tool/vendor. Claim bead `aerobeat-input-camera-tracking-gkb` on start and record exact QA findings.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BC: Audit the remaining timing-knob truth pass and YAML comment clarity
+
+**Bead ID:** `aerobeat-input-camera-tracking-qwl`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Independently audit the outputs of Tasks 10AZ and 10BA after QA passes. Confirm the remaining timing knobs are truthfully owned/consumed across input/tool/vendor, confirm any ms conversions are real in the runtime path instead of decorative config, and confirm the YAML comments accurately describe what each knob does and where it flows. Claim bead `aerobeat-input-camera-tracking-qwl` on start and report pass/fail with exact evidence.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 ### Task 11: Independently audit cross-repo contract, behavior, and final readiness
 
 **Bead ID:** `aerobeat-input-camera-tracking-ej7`
@@ -2228,6 +2323,125 @@ Audit findings with exact evidence:
 Audit conclusion: cross-repo contract ownership, schema documentation, tracker behavior, proving-scene debug behavior, and the approved straight-punch state-machine structure all audit cleanly. The blocking failure is the end-to-end boxing truth gate against `REF-05` / `REF-06`: replay evidence is still not reproducibly matching the gold punch windows, especially on the right side and startup/early windows. Keep this bead open until a fresh boxing QA pass proves stable gold-truth alignment.
 
 ---
+
+
+### Task 10AZ: Audit remaining frame-based timing knobs for truthful ms migration opportunities
+
+**Bead ID:** `aerobeat-input-camera-tracking-8mj`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Resume from the approved AeroBeat camera-tracking plan and claim bead `aerobeat-input-camera-tracking-8mj` on start. Audit the remaining frame-based timing/cadence knobs still active across `aerobeat-input-camera-tracking`, `aerobeat-tool-camera-tracking`, and `aerobeat-vendor-mediapipe-python`, with special attention to places where YAMLs may now say milliseconds in some areas but frames in others. The goal is not a vague inventory; it is a truthful cross-repo ownership pass: identify which remaining frame-based knobs are still semantically correct as frame counts, which should migrate to elapsed milliseconds, and whether the full pipeline actually consumes the YAML-owned values instead of silently using private defaults or hidden scene/runtime values. If a remaining frame-based knob is clearly wrong and the smallest owner-correct ms conversion is provable, implement it in this slice; if not, document exactly why it should stay frame-based. Keep YAML edits outside Godot, and if dependency refresh is needed use `/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo <repo>` instead of vanilla `godotenv`. Update the plan with exact files touched, validations run, commits, and a crisp ledger of `kept frame-based` vs `migrated to ms` vs `already ms and truthful`.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `.testbed/tests/unit/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `src/detectors/pose_detector_substrate.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-8mj` and completed the coder truth pass for the remaining frame-based timing/cadence knobs.
+
+Ledger:
+- **Kept frame-based (truthful):**
+  - `REF-01` `assets/boxing.camera_tracking.yaml` / `assets/flow.camera_tracking.yaml` → `tracking.pose.inference_interval_frames`: correctly frame-based because the vendor scheduler in `REF-03` skips whole source frames and carries the last pose sample forward; validation already exists in `runtime.tests.test_mediapipe_runtime_probe.test_pose_inference_interval_frames_carries_forward_last_pose_sample`.
+  - `REF-01` `assets/boxing.camera_tracking.yaml` / `assets/flow.camera_tracking.yaml` → `tracking.hands.inference_interval_frames`: correctly frame-based because hand inference scheduling is intentionally every N source frames, not every N milliseconds; `REF-03` runtime enforcement and carry-forward proof already exist in `test_hand_inference_interval_frames_carries_forward_last_hand_sample`, and `REF-02`/`REF-01` normalize/consume the carried-forward `fresh_sample=false` truthfully.
+  - `REF-01` `assets/boxing.gesture_detection.yaml` → `straight_punch.state_machine.lost_tracking_reacquire_stable_frames`: kept frame/sample-based because this gate intentionally requires N consecutive **fresh hand observations** before the straight-punch state machine leaves `tracking_lost`; it is a sample-count warmup, not a wall-clock timeout, and converting it to ms would duplicate the already-tool-owned hand `reacquire_stable_ms` timing seam. Added explicit boxing-profile proof in `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` and preserved detector behavior proof in `.testbed/tests/unit/test_pose_detector_substrate.gd`.
+- **Migrated / repaired for truth:**
+  - `REF-01` runtime/editor knob `gesture_eval_interval_frames` stays frame-based, but it was not actually consumed: `PoseDetectorSubstrate.process_landmarks()` always evaluated gestures every frame, so the effective hidden default was `1`. Landed the smallest owner-correct fix in `src/detectors/pose_detector_substrate.gd` so `_should_evaluate_gestures_this_frame()` now gates `_detect_intent_events()`. Added focused regression `test_gesture_eval_interval_frames_skips_detector_updates_until_configured_frame()` proving detector state stays unchanged on skipped frames and only advances on the configured evaluation frame.
+- **Already ms and truthful (confirmed, not changed here):**
+  - `tracking.hands.validity.max_stale_ms`
+  - `tracking.hands.validity.reacquire_stable_ms`
+  - `straight_punch.evaluation.wrist_velocity_window_ms`
+  - `straight_punch.evaluation.bbox_area_growth_window_ms`
+  - `straight_punch.timing.triggered_grace_ms`
+  These were re-audited through the existing `REF-01`/`REF-02`/`REF-03` code paths and prior focused tests; no hidden frame defaults were found still overriding the YAML-owned values.
+
+Pipeline truth conclusions:
+- The active user-facing config surface for this timing pass is still the three YAMLs in `REF-01`: `assets/boxing.camera_tracking.yaml`, `assets/flow.camera_tracking.yaml`, and `assets/boxing.gesture_detection.yaml`. `flow.gesture_detection.yaml` is active for flow behavior but does not own the boxing timing knobs under audit here.
+- The pose/hand cadence YAML values are truly consumed end to end: input profile loader → provider tracking config → tool/vendor normalization → real vendor runtime scheduling.
+- The one remaining hidden-default seam in this slice was `gesture_eval_interval_frames`, and it is now repaired in the input owner.
+
+Validation rerun for this coder pass:
+- `godot --headless --path .testbed --import --quit-after 1000` ✅
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_aero_camera_tracking.gd -gexit` ✅ (`59/59` passed, `524` asserts)
+
+No YAML files changed in this slice, so Task 10BA can now add the simple comments against a truthful timing/config baseline.
+
+---
+
+### Task 10BA: Add stupidly simple explanation comments above the user-facing YAML variables
+
+**Bead ID:** `aerobeat-input-camera-tracking-bhy`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** After Task 10AZ, claim bead `aerobeat-input-camera-tracking-bhy` and add short, stupidly simple explanation comments above the user-facing YAML variables in the three active config YAMLs Derrick meant for this pass inside `aerobeat-input-camera-tracking`. First confirm exactly which three YAMLs are the active/user-facing ones for this workload from repo reality, then comment those files only. Comments should explain what each variable is for and where it goes next in the pipeline (input-owned only, passed into tool tracking config, passed into vendor runtime, or consumed by proving/debug only). Do not write essay comments; prefer one- or two-line plain-English notes above each variable/group. Keep the comments truthful to the current post-10AZ implementation, keep YAML edits outside Godot, and use `godotenv-sync` rather than vanilla `godotenv` if a dependency refresh is needed.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `assets/`
+- `docs/` if a brief contract note needs refresh
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- the three confirmed YAML config files in `assets/`
+- any minimal doc/test files needed to keep the comments aligned with truth
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BB: QA remaining timing-knob truth and YAML comment clarity after the ms audit
+
+**Bead ID:** `aerobeat-input-camera-tracking-gkb`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** After Tasks 10AZ and 10BA, claim bead `aerobeat-input-camera-tracking-gkb` and QA the resulting timing-knob truth + YAML comment slice. Verify the surviving frame-based knobs are intentionally frame-based, any converted millisecond knobs are truly used end to end, hidden/private defaults are not overriding the YAML-owned values, and the new YAML comments accurately describe the real flow into tool/vendor/debug consumers. Use focused validation in each touched repo and refresh dependencies with `godotenv-sync` if needed. Record exact repro/verification steps, evidence, and whether this slice is clean enough for independent audit.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BC: Audit remaining timing-knob truth and YAML comment clarity after the ms audit
+
+**Bead ID:** `aerobeat-input-camera-tracking-qwl`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** After Task 10BB, claim bead `aerobeat-input-camera-tracking-qwl` and independently audit the timing-knob truth + YAML comment slice. Confirm the final state matches the plan, that any migrated knobs are really millisecond-based end to end, that intentionally frame-based knobs have solid justification, that no hidden scene/runtime defaults secretly win over the YAML-owned values, and that the simplified comments in the confirmed three YAMLs are truthful rather than hand-wavy. Keep the audit independent of the coder's narrative and report pass/fail with exact evidence.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
 
 ## Final Results
 

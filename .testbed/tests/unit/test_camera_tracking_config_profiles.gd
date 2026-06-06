@@ -22,7 +22,9 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("testbed_debug", {}).get("version", -1)), ProfileConfigLoaderScript.CONFIG_VERSION)
 	assert_eq(String(bundle.get("testbed_debug", {}).get("profile", "")), "boxing")
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("enabled", false)))
+	assert_eq(int(bundle.get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("inference_interval_frames", -1)), 1)
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", false)))
+	assert_eq(int(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("inference_interval_frames", -1)), 1)
 	assert_eq(String(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("landmark_mode", "")), "lite")
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("bbox", {}).get("enabled", false)))
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("grace", {}).get("enabled", false)))
@@ -36,6 +38,7 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_frames", -1)), 10)
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).get("bbox_area_growth_window_ms", -1)), 1000)
+	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("state_machine", {}).get("lost_tracking_reacquire_stable_frames", -1)), 2)
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	var config = CameraTrackingConfigScript.new()
