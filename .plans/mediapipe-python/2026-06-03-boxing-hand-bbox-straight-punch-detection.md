@@ -2389,7 +2389,7 @@ Validation rerun for this coder pass:
 - `REF-03` `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_pose_inference_interval_frames_carries_forward_last_pose_sample runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_hand_inference_interval_frames_carries_forward_last_hand_sample` ✅ (`2/2` passed)
 
 Commit / push:
-- `c8b7ac6` — `Convert remaining boxing timing knobs to ms truth`
+- `7844d06` — `Convert remaining boxing timing knobs to ms truth`
 
 QA handoff note:
 - Verify boxing straight-punch reacquire now waits on elapsed hand `stable_ms` truth rather than fresh-sample count by exercising a brief tracking-loss/reacquire path and confirming the proving surfaces show the new `Straight-punch lost reacquire stable window: 40ms` text.
