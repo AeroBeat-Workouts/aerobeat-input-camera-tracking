@@ -42,7 +42,7 @@ const DEFAULT_PLAYBACK_FRAME_STEP_SEC := 1.0 / 30.0
 const LANDMARK_DRAWER_Z_INDEX := 20
 const TRAIL_DRAWER_Z_INDEX := 19
 const DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS := 120
-const DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_FRAMES := 10
+const DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_MS := 160
 const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
 const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
@@ -177,7 +177,7 @@ enum TrackingSmoothingStyle {
 var overlay_visibility_threshold := 0.35
 var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.LITE_FILTERED
 var gesture_eval_interval_frames := 1
-var debug_panel_refresh_interval_frames := DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_FRAMES
+var debug_panel_refresh_interval_ms := DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_MS
 var inspector_live_refresh_interval_ms := DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS
 var show_landmarks := true
 var show_trails := true
@@ -207,6 +207,7 @@ var camera_view: TextureRect = null
 var _preview_presenter: Control = null
 var _provider_mode_signal_relays: Dictionary = {}
 var _frame_count := 0
+var _debug_panel_refresh_due_ms := 0
 var _server_ready := false
 var _latest_landmarks: Array = []
 var _latest_state: Dictionary = {}
@@ -899,11 +900,12 @@ func _process(_delta: float) -> void:
 			_update_status("Python server died", Color.RED)
 			_server_ready = false
 
-	var debug_panel_refresh_frames := maxi(1, debug_panel_refresh_interval_frames)
-	if _frame_count % debug_panel_refresh_frames == 0:
+	var now_ms := Time.get_ticks_msec()
+	if _debug_panel_refresh_due_ms <= 0 or now_ms >= _debug_panel_refresh_due_ms:
 		if provider != null:
 			_latest_state = provider.get_detector_state()
 		_refresh_debug_panels()
+		_debug_panel_refresh_due_ms = now_ms + maxi(1, debug_panel_refresh_interval_ms)
 
 	_refresh_playback_polling()
 	_refresh_shared_inspector()
@@ -1073,8 +1075,9 @@ func _apply_testbed_debug_profile_bundle(bundle: Dictionary) -> void:
 		return
 	var testbed_debug: Dictionary = bundle.get("testbed_debug", {}) if bundle.get("testbed_debug", {}) is Dictionary else {}
 	var refresh: Dictionary = testbed_debug.get("refresh", {}) if testbed_debug.get("refresh", {}) is Dictionary else {}
-	debug_panel_refresh_interval_frames = maxi(1, int(refresh.get("debug_panel_refresh_interval_frames", DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_FRAMES)))
+	debug_panel_refresh_interval_ms = maxi(1, int(refresh.get("debug_panel_refresh_interval_ms", DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_MS)))
 	inspector_live_refresh_interval_ms = maxi(1, int(refresh.get("inspector_live_refresh_interval_ms", DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS)))
+	_debug_panel_refresh_due_ms = 0
 
 func _build_runtime_config() -> Variant:
 	var config := CameraTrackingConfigScript.new()

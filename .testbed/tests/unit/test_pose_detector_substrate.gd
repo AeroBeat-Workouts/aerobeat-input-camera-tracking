@@ -68,11 +68,11 @@ func test_degrades_then_reacquires_tracking_when_confidence_drops() -> void:
 
 func test_detects_straight_punch_from_bbox_growth_and_emits_state_changes() -> void:
 	_calibrate_stance()
-	var tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.020), _tracked_hand_payload("right", 0.020))
+	var tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 1, 0.0, null, "", 0), _tracked_hand_payload("right", 0.020))
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100, tracking_frame)
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
 
-	tracking_frame = _make_tracking_frame(_tracked_hand_payload("left", 0.021), _tracked_hand_payload("right", 0.020))
+	tracking_frame = _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 1, 0.0, null, "", 80), _tracked_hand_payload("right", 0.020))
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"z": -0.04},
 	}), 1180, tracking_frame)
@@ -300,8 +300,8 @@ func test_straight_punch_uses_recent_wrist_velocity_peak_when_growth_lands_on_ne
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0)))
-	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1)))
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0, null, "", 0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1, null, "", 80), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1)))
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.08}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 12, 1.2), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 12, 1.2)))
@@ -328,8 +328,8 @@ func test_straight_punch_uses_recent_bbox_growth_peak_when_velocity_lands_on_nex
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0)))
-	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.01}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1)))
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0, null, "", 0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.01}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1, null, "", 80), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1)))
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.02125, "tracked", true, 0, 12, 1.2), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 12, 1.2)))
@@ -345,8 +345,8 @@ func test_straight_punch_uses_recent_bbox_growth_peak_when_velocity_lands_on_nex
 
 func test_straight_punch_keeps_recent_velocity_peak_across_non_fresh_replay_duplicates() -> void:
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0)))
-	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1)))
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0, null, "", 0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1, null, "", 80), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1)))
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.12}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 12, 1.2), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 12, 1.2)))
@@ -368,14 +368,14 @@ func test_straight_punch_dedupes_replayed_tracked_samples_until_hand_frame_advan
 	var state := substrate.process_landmarks(
 		_make_pose_frame(),
 		1100,
-		_make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0))
+		_make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.0, null, "", 0), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 10, 1.0))
 	)
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
 
 	state = substrate.process_landmarks(
 		_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}),
 		1180,
-		_make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1))
+		_make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.1, null, "", 80), _tracked_hand_payload("right", 0.020, "tracked", true, 0, 11, 1.1))
 	)
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
@@ -437,13 +437,17 @@ func test_straight_punch_grace_rearm_and_reacquire_transitions() -> void:
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
-	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.03}}), 1820, _make_tracking_frame(_tracked_hand_payload("left", 0.040, "reacquiring", false), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.03}}), 1820, _make_tracking_frame(_tracked_hand_payload("left", 0.040, "reacquiring", false, 0, 1, 0.0, null, "", 0), _tracked_hand_payload("right", 0.020)))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["tracking_lost"])
-	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1900, _make_tracking_frame(_tracked_hand_payload("left", 0.022), _tracked_hand_payload("right", 0.020)))
-	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
-	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.01}}), 1980, _make_tracking_frame(_tracked_hand_payload("left", 0.023), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1900, _make_tracking_frame(_tracked_hand_payload("left", 0.022, "tracked", true, 0, 1, 0.0, null, "", 20), _tracked_hand_payload("right", 0.020)))
+	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
+	assert_eq(int(left_debug.get("reacquire_stable_ms_required", -1)), 40)
+	assert_eq(int(left_debug.get("stable_ms", -1)), 20)
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.01}}), 1980, _make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 1, 0.0, null, "", 40), _tracked_hand_payload("right", 0.020)))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
-	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "ready")
 
 func test_straight_punch_triggered_grace_uses_elapsed_milliseconds() -> void:
 	config.gesture_profile_document = {
@@ -466,8 +470,8 @@ func test_straight_punch_triggered_grace_uses_elapsed_milliseconds() -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.00460), _tracked_hand_payload("right", 0.020)))
-	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.00476), _tracked_hand_payload("right", 0.020)))
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.00460, "tracked", true, 0, 1, 0.0, null, "", 0), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.00476, "tracked", true, 0, 1, 0.0, null, "", 80), _tracked_hand_payload("right", 0.020)))
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.00522), _tracked_hand_payload("right", 0.020)))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
@@ -506,8 +510,8 @@ func test_straight_punch_rearms_between_tuned_fixture_scale_punches() -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.00460), _tracked_hand_payload("right", 0.020)))
-	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.00476), _tracked_hand_payload("right", 0.020)))
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.00460, "tracked", true, 0, 1, 0.0, null, "", 0), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.00476, "tracked", true, 0, 1, 0.0, null, "", 80), _tracked_hand_payload("right", 0.020)))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.00522), _tracked_hand_payload("right", 0.020)))
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
@@ -736,28 +740,28 @@ func test_gesture_eval_interval_frames_skips_detector_updates_until_configured_f
 	config.gesture_eval_interval_frames = 2
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var first_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.021), _tracked_hand_payload("right", 0.020))
+	var first_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 1, 0.0, null, "", 0), _tracked_hand_payload("right", 0.020))
 	var state := substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"z": -0.04},
 	}), 1100, first_tracking_frame)
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), [])
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
 
-	var second_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.022), _tracked_hand_payload("right", 0.020))
+	var second_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.022, "tracked", true, 0, 1, 0.0, null, "", 20), _tracked_hand_payload("right", 0.020))
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"z": -0.08},
 	}), 1180, second_tracking_frame)
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), [])
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
 
-	var third_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.023), _tracked_hand_payload("right", 0.020))
+	var third_tracking_frame := _make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 1, 0.0, null, "", 40), _tracked_hand_payload("right", 0.020))
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"z": -0.12},
 	}), 1260, third_tracking_frame)
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
-func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0, frame_index: int = 1, timestamp_seconds: float = 0.0, fresh_sample: Variant = null, sample_source: String = "") -> Dictionary:
+func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0, frame_index: int = 1, timestamp_seconds: float = 0.0, fresh_sample: Variant = null, sample_source: String = "", stable_ms: int = -1) -> Dictionary:
 	var width := 0.10
 	var height := bbox_area / width if width > 0.0 else 0.0
 	var x := 0.18 if side == "left" else 0.72
@@ -785,6 +789,8 @@ func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: Strin
 			"area_unit": "normalized_frame_area",
 		},
 	}
+	if stable_ms >= 0:
+		payload["stable_ms"] = stable_ms
 	if fresh_sample != null:
 		payload["fresh_sample"] = bool(fresh_sample)
 	if sample_source != "":

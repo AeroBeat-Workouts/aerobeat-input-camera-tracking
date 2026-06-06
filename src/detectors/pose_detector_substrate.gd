@@ -808,7 +808,6 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["bbox_area_growth_history"] = []
 		state["recent_peak_bbox_area_growth"] = 0.0
 		state["positive_growth_samples"] = 0
-		state["reacquire_valid_samples"] = 0
 		state["grace_ms_remaining"] = 0
 		state["grace_deadline_timestamp_ms"] = 0
 		state["trigger_bbox_area"] = 0.0
@@ -848,7 +847,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST:
 		if fresh_sample:
 			var reacquire_stable_ms := max(0, int(straight_punch_config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS)))
-			var hand_stable_ms := max(0, int(hand_payload.get("stable_ms", 0)))
+			var hand_stable_ms := max(0, int(hand_payload.get("stable_ms", reacquire_stable_ms)))
 			if hand_stable_ms >= reacquire_stable_ms:
 				state["bbox_area_history"] = [bbox_area]
 				state["wrist_velocity_history"] = [wrist_velocity]
@@ -1274,7 +1273,6 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"trigger_bbox_area": 0.0,
 		"grace_ms_remaining": 0,
 		"grace_deadline_timestamp_ms": 0,
-		"reacquire_valid_samples": 0,
 		"last_bbox_area": 0.0,
 		"wrist_velocity_history": [],
 		"wrist_position_history": [],
@@ -1318,7 +1316,7 @@ func _get_straight_punch_config() -> Dictionary:
 		"min_bbox_area_growth": STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH,
 		"triggered_grace_ms": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS,
 		"bbox_area_retract_epsilon": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON,
-		"lost_tracking_reacquire_stable_frames": STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES,
+		"lost_tracking_reacquire_stable_ms": STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS,
 	}
 	if _config == null:
 		return config
@@ -1341,7 +1339,7 @@ func _get_straight_punch_config() -> Dictionary:
 	config["min_bbox_area_growth"] = maxf(0.0, float(thresholds.get("min_bbox_area_growth", config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH))))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["bbox_area_retract_epsilon"] = maxf(0.0, float(rearm.get("bbox_area_retract_epsilon", config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON))))
-	config["lost_tracking_reacquire_stable_frames"] = max(1, int(state_machine.get("lost_tracking_reacquire_stable_frames", config.get("lost_tracking_reacquire_stable_frames", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES))))
+	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS))))
 	return config
 
 func _get_tracking_hand_payload(tracking_frame: Dictionary, side: String) -> Dictionary:

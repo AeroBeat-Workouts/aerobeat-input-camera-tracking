@@ -17,4 +17,4 @@ straight_punch:
   rearm:
     bbox_area_retract_epsilon: 0.0003
   state_machine:
-    lost_tracking_reacquire_stable_frames: 2
+    lost_tracking_reacquire_stable_ms: 40

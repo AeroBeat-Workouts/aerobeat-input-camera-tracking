@@ -2335,44 +2335,66 @@ Audit conclusion: cross-repo contract ownership, schema documentation, tracker b
 
 **Folders Created/Deleted/Modified:**
 - `.plans/mediapipe-python/`
+- `.testbed/scripts/`
 - `.testbed/tests/unit/`
+- `assets/`
 - `src/detectors/`
 
 **Files Created/Deleted/Modified:**
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 - `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
 - `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `assets/boxing.testbed_debug.yaml`
+- `assets/flow.testbed_debug.yaml`
 - `src/detectors/pose_detector_substrate.gd`
 
 **Status:** ✅ Complete
 
-**Results:** Claimed bead `aerobeat-input-camera-tracking-8mj` and completed the coder truth pass for the remaining frame-based timing/cadence knobs.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-8mj` and completed the coder truth pass for the remaining active frame-based timing/cadence knobs across `REF-01`/`REF-02`/`REF-03`.
 
 Ledger:
 - **Kept frame-based (truthful):**
-  - `REF-01` `assets/boxing.camera_tracking.yaml` / `assets/flow.camera_tracking.yaml` → `tracking.pose.inference_interval_frames`: correctly frame-based because the vendor scheduler in `REF-03` skips whole source frames and carries the last pose sample forward; validation already exists in `runtime.tests.test_mediapipe_runtime_probe.test_pose_inference_interval_frames_carries_forward_last_pose_sample`.
-  - `REF-01` `assets/boxing.camera_tracking.yaml` / `assets/flow.camera_tracking.yaml` → `tracking.hands.inference_interval_frames`: correctly frame-based because hand inference scheduling is intentionally every N source frames, not every N milliseconds; `REF-03` runtime enforcement and carry-forward proof already exist in `test_hand_inference_interval_frames_carries_forward_last_hand_sample`, and `REF-02`/`REF-01` normalize/consume the carried-forward `fresh_sample=false` truthfully.
-  - `REF-01` `assets/boxing.gesture_detection.yaml` → `straight_punch.state_machine.lost_tracking_reacquire_stable_frames`: kept frame/sample-based because this gate intentionally requires N consecutive **fresh hand observations** before the straight-punch state machine leaves `tracking_lost`; it is a sample-count warmup, not a wall-clock timeout, and converting it to ms would duplicate the already-tool-owned hand `reacquire_stable_ms` timing seam. Added explicit boxing-profile proof in `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` and preserved detector behavior proof in `.testbed/tests/unit/test_pose_detector_substrate.gd`.
-- **Migrated / repaired for truth:**
-  - `REF-01` runtime/editor knob `gesture_eval_interval_frames` stays frame-based, but it was not actually consumed: `PoseDetectorSubstrate.process_landmarks()` always evaluated gestures every frame, so the effective hidden default was `1`. Landed the smallest owner-correct fix in `src/detectors/pose_detector_substrate.gd` so `_should_evaluate_gestures_this_frame()` now gates `_detect_intent_events()`. Added focused regression `test_gesture_eval_interval_frames_skips_detector_updates_until_configured_frame()` proving detector state stays unchanged on skipped frames and only advances on the configured evaluation frame.
+  - `REF-01` `assets/boxing.camera_tracking.yaml` / `assets/flow.camera_tracking.yaml` → `tracking.pose.inference_interval_frames`: stays frame-based because `REF-03` intentionally schedules pose inference on source-frame boundaries and carries the last pose sample forward between scheduled frames.
+  - `REF-01` `assets/boxing.camera_tracking.yaml` / `assets/flow.camera_tracking.yaml` → `tracking.hands.inference_interval_frames`: stays frame-based because hand inference cadence is also a source-frame scheduler in `REF-03`, with `REF-02` surfacing carried-forward samples truthfully as `fresh_sample=false` / `sample_source="carried_forward"`.
+  - `REF-01` `assets/boxing.gesture_detection.yaml` → `straight_punch.evaluation.sample_window_size`: stays frame/sample-based because it is a required count of fresh evidence samples inside the already-millisecond-bounded wrist/bbox evaluation windows, not an elapsed-time timeout.
+  - `REF-01` runtime/private knob `gesture_eval_interval_frames`: stays frame-based because gesture evaluation is intentionally an every-N-detector-frames throttle rather than a wall-clock timer; audit confirmed it is already truly consumed by `_should_evaluate_gestures_this_frame()` and is not silently pinned to a hidden default.
+- **Migrated to milliseconds in this slice:**
+  - `REF-01` `assets/boxing.gesture_detection.yaml` → `straight_punch.state_machine.lost_tracking_reacquire_stable_ms: 40`: converted from `lost_tracking_reacquire_stable_frames: 2`. `PoseDetectorSubstrate` now uses the tool-owned hand `stable_ms` truth from `REF-02` when deciding whether the straight-punch state machine may leave `tracking_lost`, so the gate is now elapsed-time based instead of depending on how many fresh hand samples happened to arrive.
+  - `REF-01` `assets/boxing.testbed_debug.yaml` / `assets/flow.testbed_debug.yaml` → `refresh.debug_panel_refresh_interval_ms: 160`: converted from `debug_panel_refresh_interval_frames: 10`. `ProvingHarness` now refreshes the large debug panels off elapsed milliseconds instead of render-frame modulo, which removes a hidden framerate dependency from the proving UI refresh cadence.
 - **Already ms and truthful (confirmed, not changed here):**
   - `tracking.hands.validity.max_stale_ms`
   - `tracking.hands.validity.reacquire_stable_ms`
   - `straight_punch.evaluation.wrist_velocity_window_ms`
   - `straight_punch.evaluation.bbox_area_growth_window_ms`
   - `straight_punch.timing.triggered_grace_ms`
-  These were re-audited through the existing `REF-01`/`REF-02`/`REF-03` code paths and prior focused tests; no hidden frame defaults were found still overriding the YAML-owned values.
 
-Pipeline truth conclusions:
-- The active user-facing config surface for this timing pass is still the three YAMLs in `REF-01`: `assets/boxing.camera_tracking.yaml`, `assets/flow.camera_tracking.yaml`, and `assets/boxing.gesture_detection.yaml`. `flow.gesture_detection.yaml` is active for flow behavior but does not own the boxing timing knobs under audit here.
-- The pose/hand cadence YAML values are truly consumed end to end: input profile loader → provider tracking config → tool/vendor normalization → real vendor runtime scheduling.
-- The one remaining hidden-default seam in this slice was `gesture_eval_interval_frames`, and it is now repaired in the input owner.
+Truth-gap findings fixed in this task:
+- Straight-punch lost-tracking reacquire was still using a local frame-count gate even though upstream hand validity had already moved to elapsed milliseconds. That duplicate frame seam is now replaced by a YAML-owned `lost_tracking_reacquire_stable_ms` gate that reads the normalized hand `stable_ms` truth from `REF-02`.
+- Proving-scene debug panel refresh cadence was still tied to `_process()` frame count through a hidden scene/runtime default. That refresh cadence now loads from the repo-owned testbed-debug YAMLs as `debug_panel_refresh_interval_ms` and executes on elapsed time.
+- No remaining repo-owned YAML timing knob in this audited slice was found to be silently ignored in favor of a private/public default. The pose cadence and hand cadence YAML values remain truthfully consumed end-to-end through input profile loading → tool normalization → vendor scheduling.
+
+Active user-facing YAMLs to carry into the follow-up comments pass:
+- Primary boxing surface: `assets/boxing.camera_tracking.yaml`, `assets/boxing.gesture_detection.yaml`, `assets/boxing.testbed_debug.yaml`
+- Supporting flow proving surface still touched by this timing pass: `assets/flow.camera_tracking.yaml`, `assets/flow.testbed_debug.yaml`
+- `assets/flow.gesture_detection.yaml` remains active for flow behavior but does not own the boxing timing knobs audited here.
 
 Validation rerun for this coder pass:
-- `godot --headless --path .testbed --import --quit-after 1000` ✅
-- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_aero_camera_tracking.gd -gexit` ✅ (`59/59` passed, `524` asserts)
+- `REF-01` `godot --headless --path .testbed --import --quit-after 1000` ✅
+- `REF-01` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`48/48` passed, `466` asserts; existing orphan/UID warnings only)
+- `REF-02` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` ✅ (`36/36` passed, `349` asserts)
+- `REF-03` `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_pose_inference_interval_frames_carries_forward_last_pose_sample runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_hand_inference_interval_frames_carries_forward_last_hand_sample` ✅ (`2/2` passed)
 
-No YAML files changed in this slice, so Task 10BA can now add the simple comments against a truthful timing/config baseline.
+Commit / push:
+- `c8b7ac6` — `Convert remaining boxing timing knobs to ms truth`
+
+QA handoff note:
+- Verify boxing straight-punch reacquire now waits on elapsed hand `stable_ms` truth rather than fresh-sample count by exercising a brief tracking-loss/reacquire path and confirming the proving surfaces show the new `Straight-punch lost reacquire stable window: 40ms` text.
+- Verify both boxing and flow proving scenes honor `refresh.debug_panel_refresh_interval_ms: 160` from YAML (debug panels should refresh on a steady wall-clock cadence instead of speeding up/slowing down with render FPS).
+- Spot-check that pose/hand cadence YAMLs remain frame-based and truthful in the live pipeline: pose/hands should still schedule per source frame count, while carried-forward samples remain visibly marked as non-fresh.
 
 ---
 

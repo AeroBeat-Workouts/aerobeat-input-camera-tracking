@@ -35,10 +35,10 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", false)))
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_targets", true)))
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_target_labels", true)))
-	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_frames", -1)), 10)
+	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_ms", -1)), 160)
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).get("bbox_area_growth_window_ms", -1)), 1000)
-	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("state_machine", {}).get("lost_tracking_reacquire_stable_frames", -1)), 2)
+	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("state_machine", {}).get("lost_tracking_reacquire_stable_ms", -1)), 40)
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	var config = CameraTrackingConfigScript.new()
@@ -57,7 +57,7 @@ func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", true)))
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_targets", true)))
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_target_labels", true)))
-	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_frames", -1)), 10)
+	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_ms", -1)), 160)
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
 
 func test_profile_config_loader_rejects_header_mismatches() -> void:

@@ -848,8 +848,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var bbox_area_retract_epsilon := float(straight_side.get("bbox_area_retract_epsilon", 0.0))
 	var rearm_threshold := maxf(trigger_bbox_area - bbox_area_retract_epsilon, 0.0)
 	var rearm_ready := trigger_bbox_area > 0.0 and bbox_area <= rearm_threshold
-	var reacquire_valid_samples := int(straight_side.get("reacquire_valid_samples", 0))
-	var reacquire_stable_frames_required := int(straight_side.get("reacquire_stable_frames_required", 0))
+	var reacquire_stable_ms_required := int(straight_side.get("reacquire_stable_ms_required", 0))
 	match row_id:
 		"state_section", "trigger_section", "rearm_section":
 			current_text = ""
@@ -935,8 +934,8 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 				]
 				passed = rearm_ready
 		"reacquire_progress":
-			current_text = "%d/%d valid samples" % [reacquire_valid_samples, reacquire_stable_frames_required]
-			passed = reacquire_valid_samples >= reacquire_stable_frames_required
+			current_text = "%d/%dms hand stable" % [hand_stable_ms, reacquire_stable_ms_required]
+			passed = hand_stable_ms >= reacquire_stable_ms_required
 		_:
 			current_text = "pending"
 			passed = false
@@ -1259,7 +1258,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))
 	lines.append("Triggered grace: %dms" % int(straight_timing.get("triggered_grace_ms", 0)))
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
-	lines.append("Lost reacquire stable frames: %d" % int(straight_state_machine.get("lost_tracking_reacquire_stable_frames", 0)))
+	lines.append("Straight-punch lost reacquire stable window: %dms" % int(straight_state_machine.get("lost_tracking_reacquire_stable_ms", 0)))
 
 	lines.append("")
 	lines.append("Tracker hand truth")

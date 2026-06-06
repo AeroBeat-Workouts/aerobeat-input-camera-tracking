@@ -96,7 +96,7 @@ func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes()
 	assert_not_null(landmark_drawer)
 	assert_not_null(trail_drawer)
 	assert_not_null(hand_bbox_drawer)
-	assert_eq(int(harness.get("debug_panel_refresh_interval_frames")), 10)
+	assert_eq(int(harness.get("debug_panel_refresh_interval_ms")), 160)
 	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
 	assert_true(bool(harness.get("show_landmarks")))
 	assert_false(bool(harness.get("show_trails")))
@@ -110,9 +110,9 @@ func test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface()
 	assert_false(_has_editor_exposed_property(harness, "overlay_visibility_threshold"))
 	assert_false(_has_editor_exposed_property(harness, "tracking_smoothing_style"))
 	assert_false(_has_editor_exposed_property(harness, "gesture_eval_interval_frames"))
-	assert_false(_has_editor_exposed_property(harness, "debug_panel_refresh_interval_frames"))
+	assert_false(_has_editor_exposed_property(harness, "debug_panel_refresh_interval_ms"))
 	assert_false(_has_editor_exposed_property(harness, "inspector_live_refresh_interval_ms"))
-	assert_eq(int(harness.get("debug_panel_refresh_interval_frames")), 10)
+	assert_eq(int(harness.get("debug_panel_refresh_interval_ms")), 160)
 	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
 
 func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> void:
@@ -150,7 +150,7 @@ func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
 	var config: Variant = harness._build_runtime_config()
 	assert_not_null(config)
 	assert_eq(String(config.get_selected_profile_id()), "flow")
-	assert_eq(int(harness.get("debug_panel_refresh_interval_frames")), 10)
+	assert_eq(int(harness.get("debug_panel_refresh_interval_ms")), 160)
 	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
 	var bundle: Dictionary = config.get_selected_profile_bundle()
 	assert_true(bool(bundle.get("ok", false)))
@@ -167,7 +167,7 @@ func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 
 	harness.set("_selected_profile_id", "boxing")
 	harness._sync_profile_visual_config()
-	assert_eq(int(harness.get("debug_panel_refresh_interval_frames")), 10)
+	assert_eq(int(harness.get("debug_panel_refresh_interval_ms")), 160)
 	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
 	assert_true(bool(harness.get("show_landmarks")))
 	assert_false(bool(harness.get("show_trails")))
@@ -219,7 +219,6 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 					"wrist_forward_velocity": 0.09,
 					"bbox_area_growth": 0.015,
 					"grace_ms_remaining": 160,
-					"reacquire_valid_samples": 1,
 				}
 			}
 		}
@@ -284,8 +283,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"triggered_grace_ms": 240,
 					"trigger_bbox_area": 0.061,
 					"bbox_area_retract_epsilon": 0.003,
-					"reacquire_valid_samples": 1,
-					"reacquire_stable_frames_required": 2,
+					"reacquire_stable_ms_required": 40,
 				}
 			}
 		}
@@ -336,8 +334,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"triggered_grace_ms": 240,
 					"trigger_bbox_area": 0.071,
 					"bbox_area_retract_epsilon": 0.003,
-					"reacquire_valid_samples": 0,
-					"reacquire_stable_frames_required": 2,
+					"reacquire_stable_ms_required": 40,
 				}
 			}
 		}
@@ -387,8 +384,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"triggered_grace_ms": 240,
 					"trigger_bbox_area": 0.071,
 					"bbox_area_retract_epsilon": 0.003,
-					"reacquire_valid_samples": 0,
-					"reacquire_stable_frames_required": 2,
+					"reacquire_stable_ms_required": 40,
 				}
 			}
 		}
@@ -445,8 +441,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"triggered_grace_ms": 240,
 					"trigger_bbox_area": 0.071,
 					"bbox_area_retract_epsilon": 0.003,
-					"reacquire_valid_samples": 0,
-					"reacquire_stable_frames_required": 2,
+					"reacquire_stable_ms_required": 40,
 				}
 			}
 		}
