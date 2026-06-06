@@ -7,12 +7,12 @@ tracking:
     enabled: true
     # Run pose inference every N source frames. vendor.
     inference_interval_frames: 1
-    # Pick the pose smoothing mode after pose samples come back. tool -> vendor.
+    # [lite_filtered, lite_raw] Pick the pose smoothing mode after pose samples come back. tool -> vendor.
     smoothing_style: lite_filtered
   hands:
     # Turn hand tracking on or off for this profile. tool -> vendor.
     enabled: true
-    # Pick the hand landmark detail level. vendor.
+    # [lite, full] Pick the hand landmark detail level. vendor.
     landmark_mode: lite
     # Run hand inference every N source frames. vendor.
     inference_interval_frames: 1

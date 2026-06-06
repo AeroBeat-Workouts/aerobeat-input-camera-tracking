@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-06 08:53 EDT
+**Last Updated:** 2026-06-06 17:23 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2465,9 +2465,132 @@ Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendo
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 - optional nondurable audit notes/artifacts if needed
 
+**Status:** ✅ Complete
+
+**Results:** Audit pass. I independently re-checked the surviving timing/comment slice across input/tool/vendor and did not find a truth gap in scope.
+
+Exact audit evidence:
+- Input-owned millisecond knobs are consumed as milliseconds in real runtime paths, not decorative config:
+  - `src/detectors/pose_detector_substrate.gd:849-851` gates `lost_tracking_reacquire_stable_ms` against live `hand_payload.stable_ms` before allowing `tracking_lost -> ready`.
+  - `src/detectors/pose_detector_substrate.gd:877-889` stores `triggered_grace_ms` as a timestamp deadline and decrements `grace_ms_remaining` from elapsed wall-clock milliseconds.
+  - `src/detectors/pose_detector_substrate.gd:1374+` resolves wrist-velocity windows from `wrist_velocity_window_ms`, and the same detector file uses the bbox growth window ms path for area-growth timing.
+  - `.testbed/tests/unit/test_pose_detector_substrate.gd` explicitly covers the ms behavior (`test_straight_punch_triggered_grace_uses_elapsed_milliseconds`, `test_straight_punch_bbox_area_growth_uses_configured_time_window_instead_of_sample_count_only`, and the reacquire debug assertion expecting `reacquire_stable_ms_required == 40`).
+- Tool/runtime hand validity ms conversions are real end to end:
+  - `aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd:185-196` normalizes `max_stale_ms` / `reacquire_stable_ms` and removes the legacy frame aliases.
+  - `aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd:249-255` forwards those values into runtime compatibility keys `hand_max_stale_ms` / `hand_reacquire_stable_ms`.
+  - `aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd:141-144` reads the vendor metadata back as `max_stale_ms` / `reacquire_stable_ms`.
+  - `aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd:318-343` uses elapsed `stale_ms <= max_stale_ms` to keep stale/grace hands alive.
+  - `aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd:594-616` computes `stable_ms` from timestamps and only marks a hand `tracked` once `stable_ms >= reacquire_stable_ms`; carried-forward samples remain `fresh_sample=false`.
+  - Focused tool tests confirm that behavior: `test_frame_normalization_reacquire_uses_elapsed_milliseconds`, `test_frame_normalization_marks_carried_forward_hand_samples_as_not_fresh`, and `test_frame_normalization_ignores_legacy_vendor_frame_timing_aliases` (`.testbed/tests/test_CameraTracking.gd`).
+- Vendor/runtime truth is also real and intentionally limited:
+  - `aerobeat-vendor-mediapipe-python/src/MediaPipePythonConfig.gd:219-245` normalizes the runtime keys to `hand_max_stale_ms` / `hand_reacquire_stable_ms`, erases legacy frame aliases, and reflects the ms values back into `tracking.hands.validity`.
+  - `aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py:488-492` builds the outbound vendor request contract with `inference_interval_frames`, `max_stale_ms`, and `reacquire_stable_ms`.
+  - `aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py:502` truthfully documents that the vendor slice only surfaces the requested timing budget and that stale/reacquire semantics remain upstream responsibilities.
+  - `aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py:2892-2933` proves the intentionally frame-based hand cadence path: hand inference is skipped/run by frame interval and can carry forward the prior sample when cadence says not to infer yet.
+  - Vendor tests cover both truths: `test_apply_hand_tracking_emits_ms_timing_contract` and `test_hand_inference_interval_frames_carries_forward_last_hand_sample` in `runtime/tests/test_mediapipe_runtime_probe.py`.
+- Remaining frame-based knobs are intentional, not stale leftovers:
+  - `tracking.pose.inference_interval_frames` and `tracking.hands.inference_interval_frames` are cadence controls tied to source-frame scheduling in the vendor runtime (`runtime/mediapipe_runtime_probe.py:2890-2895`) and are accurately described in YAML as “Run ... inference every N source frames.”
+  - `straight_punch.evaluation.sample_window_size` is intentionally a sample-count/history depth knob rather than elapsed time; separate elapsed-time knobs already exist for wrist velocity and bbox growth (`wrist_velocity_window_ms`, `bbox_area_growth_window_ms`).
+  - Legacy frame aliases for the hand validity path are deliberately removed/ignored in tool+vendor config normalization, so there is no hidden fallback silently winning.
+- YAML comments in scope are accurate to the real flow:
+  - `assets/boxing.camera_tracking.yaml` / `assets/flow.camera_tracking.yaml` correctly label pose/hand cadence as `vendor`, pose smoothing as `tool -> vendor`, hand validity windows as `tool -> vendor`, bbox as `tool`, association/grace as `tool`.
+  - `assets/boxing.gesture_detection.yaml` correctly labels straight-punch timing/evaluation knobs as `input`; the detector consumes them locally in `pose_detector_substrate.gd` rather than forwarding them to tool/vendor.
+  - `assets/boxing.testbed_debug.yaml` / `assets/flow.testbed_debug.yaml` correctly label refresh controls as `input debug only`; `proving_harness.gd:1073-1080` applies those YAML values directly to `debug_panel_refresh_interval_ms` and `inspector_live_refresh_interval_ms`, and `boxing_proving_harness.gd:1244-1261` surfaces the same timing values in the proving HUD text.
+- Hidden/default override check passed:
+  - `.testbed/tests/unit/test_camera_tracking_provider.gd:test_camera_tracking_provider_live_start_forwards_boxing_pose_and_hand_profile_config` proves the live tracker start uses the YAML-owned boxing profile values (`hands.inference_interval_frames=1`, `max_stale_ms=80`, `reacquire_stable_ms=40`).
+  - `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:test_proving_runtime_config_uses_profile_yaml_pose_smoothing_over_hidden_scene_default` proves YAML pose smoothing wins over the hidden scene default.
+  - `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface` plus the same file’s boxing/flow profile bundle assertions prove the debug refresh values come from the selected YAML bundle, not editor-exposed local overrides.
+
+Validation rerun performed during audit:
+- `aerobeat-input-camera-tracking`: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`59/59` passed, `532` asserts).
+- `aerobeat-tool-camera-tracking`: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` ✅ (`36/36` passed, `349` asserts).
+- `aerobeat-vendor-mediapipe-python`: `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` ✅ (`36` tests passed).
+
+Conclusion: this config-truth/comment slice is clean enough to proceed. Derrick is clear to begin manual testing for the timing-truth/YAML-comment slice specifically. This does not change the broader straight-punch replay blocker elsewhere in the plan.
+
+
+### Task 10BD: Add enum option lists to comments in the three active config YAMLs
+
+**Bead ID:** `aerobeat-input-camera-tracking-9tt`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Update the three active user-facing config YAMLs for this slice so enum-backed knobs show their allowed values directly in the preceding comment. Follow Derrick's requested format: start the comment with bracketed enum options like `[option_a, option_b]`, then the short explanation. Keep the scope narrow to the three active config YAMLs for this request, and only add enum lists where the value is actually an enum/string-choice in the real pipeline. Keep wording truthful to the implemented config contract, keep YAML edits outside Godot, run targeted config-loading validation, update this plan with exact files changed/validation/commits, and close bead `aerobeat-input-camera-tracking-9tt` only if the slice is complete.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.camera_tracking.yaml`
+- `assets/boxing.gesture_detection.yaml`
+- `assets/boxing.testbed_debug.yaml`
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Narrow comment-format follow-up completed outside Godot. Exact file changes in scope:
+- Modified `assets/boxing.camera_tracking.yaml` only, adding bracketed enum-option lists to the two real enum-backed user-facing knobs in this slice:
+  - `tracking.pose.smoothing_style` → `[lite_filtered, lite_raw]`
+  - `tracking.hands.landmark_mode` → `[lite, full]`
+- Inspected `assets/boxing.gesture_detection.yaml` and `assets/boxing.testbed_debug.yaml` and left them unchanged because the active keys there are booleans/numbers only; no real enum-backed string-choice knobs were exposed in those files.
+- Updated this plan entry with the exact validation and slice notes.
+
+Enum truth check used for the edits:
+- `aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd:265-271` only accepts `lite_raw`, otherwise normalizes pose smoothing back to default `lite_filtered`.
+- `aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd:273-278` only accepts hand landmark mode `full`, otherwise normalizes back to default `lite`.
+
+Validation:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`4/4` passed, `53` asserts).
+
+Commits:
+- `PENDING` - YAML comment follow-up commit to be recorded immediately after commit/push.
+
+---
+
+### Task 10BE: QA enum option comment lists in the three active config YAMLs
+
+**Bead ID:** `aerobeat-input-camera-tracking-76d`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** QA the enum-option comment follow-up in the three active config YAMLs. Verify that each added bracketed list matches the real allowed enum values in the implemented pipeline, that non-enum knobs were not mislabeled as enums, and that the YAMLs still load cleanly through the existing config/profile tests. Update this plan with exact QA findings/evidence and close bead `aerobeat-input-camera-tracking-76d` only if the comment lists are correct.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
 **Status:** ⏳ Pending
 
 **Results:** Pending.
+
+---
+
+### Task 10BF: Audit enum option comment lists in the three active config YAMLs
+
+**Bead ID:** `aerobeat-input-camera-tracking-yh1`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Independently audit the enum-option comments added to the three active config YAMLs. Confirm the bracketed option lists exactly match the implemented enum choices, confirm the comments remain truthful and compact, and confirm the YAML/profile validation still passes. Update this plan with exact audit findings/evidence and close bead `aerobeat-input-camera-tracking-yh1` only if the slice passes independent audit.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
 
 
 ## Final Results
