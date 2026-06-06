@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-06 17:23 EDT
+**Last Updated:** 2026-06-06 18:53 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2617,6 +2617,78 @@ Validation rerun performed during this audit:
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`4/4` passed, `53` asserts).
 
 Audit conclusion: this enum-comment slice is cleanly done. The added lists are exact, the non-enum knobs were correctly excluded, and the profile/YAML loading validation still passes. Bead `aerobeat-input-camera-tracking-yh1` can close.
+
+---
+
+
+### Task 10BG: Implement pose-only straight-punch fallback when hand tracking is disabled
+
+**Bead ID:** `aerobeat-input-camera-tracking-it7`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Implement a narrow pose-only straight-punch fallback in `aerobeat-input-camera-tracking` that automatically activates when `tracking.hands.enabled` is `false`. The requested behavior is: (1) `ready -> triggered` requires valid pose/wrist tracking for the correct side plus wrist velocity above the configured threshold; (2) hand-dependent checks are skipped in this mode, including hand fresh-sample/bbox-growth requirements; (3) `tracking_lost` is based on pose/wrist availability in this mode; (4) keep the existing post-trigger state-machine shape, but replace hand/bbox-based rearm with a millisecond-based timer rearm when hands are disabled; (5) set the default pose-only rearm timer to `250ms`; (6) enable this solely by `tracking.hands.enabled: false`, without adding a separate gesture-mode toggle. Keep the slice narrow, YAML edits outside Godot, add focused tests/debug proof, update this plan with exact files changed/validation/commits, and stop at a clean coder handoff for QA.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the straight-punch pose-only fallback so `tracking.hands.enabled: false` now automatically switches the detector to pose/wrist-valid gating, velocity-only trigger checks, pose-driven `tracking_lost`, and a pose-only timer rearm while preserving the existing `ready -> triggered -> not_ready -> ready` shape after firing. Added the new optional gesture-config key `straight_punch.rearm.pose_only_rearm_ms` with a default of `250` and documented it in the boxing profile bundle. Focused unit coverage now proves: the hands-enabled path still refuses to trigger without hand-growth evidence, the hands-disabled path can trigger from pose validity plus wrist velocity alone, the hands-disabled path drops to `tracking_lost` when pose/wrist availability falls below the visibility gate, and the hands-disabled path rearms on the elapsed timer. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (`33/33` passed); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` (`4/4` passed). Commit: `5aeb36d` (`Add pose-only straight punch fallback`).
+
+---
+
+### Task 10BH: QA pose-only straight-punch fallback when hand tracking is disabled
+
+**Bead ID:** `aerobeat-input-camera-tracking-fgn`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the new pose-only straight-punch fallback path that activates when `tracking.hands.enabled` is `false`. Verify trigger behavior uses valid pose/wrist plus wrist velocity threshold only, verify hand-dependent checks are actually skipped, verify `tracking_lost` is pose/wrist-driven, and verify the pose-only rearm path uses the new millisecond timer defaulting to `250ms`. Record exact QA evidence and close this bead only if the fallback behaves truthfully.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BI: Audit pose-only straight-punch fallback when hand tracking is disabled
+
+**Bead ID:** `aerobeat-input-camera-tracking-cnq`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the pose-only straight-punch fallback that activates when `tracking.hands.enabled` is `false`. Confirm the fallback is automatically selected by the hands-enabled flag, confirm trigger/lost/rearm behavior matches Derrick's decisions, and confirm the new `250ms` default rearm timer is real in the runtime path. Update this plan with exact audit findings/evidence and close this bead only if the slice passes independent audit.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 
