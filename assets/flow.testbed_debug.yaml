@@ -2,11 +2,18 @@ schema: aerobeat/testbed_debug_config
 version: 1
 profile: flow
 visuals:
+  # Show the pose/hand landmark overlay in the proving scene. input debug only.
   show_landmarks: true
+  # Show movement trails in the proving scene. input debug only.
   show_trails: true
+  # Show the per-hand bbox overlay in the proving scene. input debug only.
   show_hand_bbox_overlay: false
+  # Show debug hit targets around landmarks. input debug only.
   show_landmark_hit_targets: false
+  # Show labels for those debug hit targets. input debug only.
   show_landmark_hit_target_labels: false
 refresh:
+  # Refresh the big debug panels this often so they stay readable. input debug only.
   debug_panel_refresh_interval_ms: 160
+  # Refresh the live inspector values this often. input debug only.
   inspector_live_refresh_interval_ms: 120

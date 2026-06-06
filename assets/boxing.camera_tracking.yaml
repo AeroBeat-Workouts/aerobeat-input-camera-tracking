@@ -3,22 +3,36 @@ version: 1
 profile: boxing
 tracking:
   pose:
+    # Turn pose tracking on or off. Passed through tool -> vendor.
     enabled: true
+    # Run pose inference every N source frames. vendor.
     inference_interval_frames: 1
+    # Pick the pose smoothing mode after pose samples come back. tool -> vendor.
     smoothing_style: lite_filtered
   hands:
+    # Turn hand tracking on or off for this profile. tool -> vendor.
     enabled: true
+    # Pick the hand landmark detail level. vendor.
     landmark_mode: lite
+    # Run hand inference every N source frames. vendor.
     inference_interval_frames: 1
     bbox:
+      # Include hand bbox data in the tracked hand payload. tool.
       enabled: true
     association:
+      # Keep an already-matched hand on the same body side when it still makes sense. tool.
       prefer_existing_pose_side_binding: true
+      # Fall back to the nearest wrist when side matching is not stable yet. tool.
       nearest_wrist_fallback: true
     validity:
+      # Drop a hand after this many ms without a real sample. tool -> vendor.
       max_stale_ms: 80
+      # Require this much stable time before a lost hand is trusted again. tool -> vendor.
       reacquire_stable_ms: 40
     grace:
+      # Let the tracker predict a missing hand for a short gap instead of losing it immediately. tool.
       enabled: true
+      # Keep this much of the last hand movement each grace step. tool.
       position_decay: 1.0
+      # Keep this much of the last hand size change each grace step. tool.
       size_decay: 1.0
