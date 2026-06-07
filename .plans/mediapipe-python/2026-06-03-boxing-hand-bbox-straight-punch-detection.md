@@ -2723,13 +2723,13 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 
 ---
 
-### Task 10BM: Use elbow plus wrist motion for pose-only straight-punch velocity
+### Task 10BM: Use elbow plus wrist motion for shared straight-punch velocity signal
 
 **Bead ID:** `aerobeat-input-camera-tracking-ti2`
 **SubAgent:** `primary`
 **Role:** `coder`
 **References:** `REF-01`
-**Prompt:** Implement the next pose-only straight-punch repair slice based on Derrick's live testing feedback. The problem: wrist-only pose velocity underestimates straight punches that move strongly in body-depth because the pose wrist landmark does not truthfully reflect forward Z motion, while the elbow pose movement still shows a useful change. In the pose-only fallback path (`tracking.hands.enabled: false`), revise the straight-punch velocity signal so it uses both wrist and elbow movement (`x/y/z`) instead of wrist-only motion. Keep the hands-enabled path unchanged. The goal is to make real punches clear the velocity threshold without forcing the threshold so low that guard noise passes. Keep the slice narrow, add focused tests/proof for guard-vs-punch style pose-only motion where possible, update this plan with exact files changed/validation/commits, and stop at a clean coder handoff for QA.
+**Prompt:** Implement the shared straight-punch velocity repair based on Derrick's live testing feedback. The problem: wrist-only pose velocity underestimates straight punches that move strongly in body-depth because the pose wrist landmark does not truthfully reflect forward Z motion, while the elbow pose movement still shows a useful change. Revise the shared straight-punch velocity signal so both hands-enabled and hands-disabled evaluation use combined elbow+wrist movement (`x/y/z`) instead of wrist-only motion. Keep the mode-specific hand gates intact: the hands-enabled path should still require its fresh hand sample and bbox growth/retract logic, while the hands-disabled fallback should keep its existing pose-only rearm behavior from prior slices. Keep the slice narrow, add focused tests/proof for both paths, update this plan with exact files changed/validation/commits, and stop at a clean coder handoff for QA.
 
 **Folders Created/Deleted/Modified:**
 - `src/detectors/`
@@ -2744,17 +2744,17 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 
 **Status:** ✅ Complete
 
-**Results:** Narrow pose-only repair landed. `src/detectors/pose_detector_substrate.gd` now feeds straight-punch velocity from a combined elbow+wrist pose signal when `tracking.hands.enabled=false`, while the hands-enabled path still uses the existing wrist-only hand-tracking signal and bbox-growth gate unchanged. Added debug surfacing for `velocity_signal_source` so QA can confirm which path was used. Focused unit proof landed in `.testbed/tests/unit/test_pose_detector_substrate.gd`: one new pose-only test proves a punch can trigger when raw wrist-only pose velocity stays below the configured threshold but elbow+wrist combined motion clears it, and the hands-enabled regression test now explicitly asserts the unchanged `wrist_only` path. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` → `34/34 passed`. Commit captured for the code/test slice: `36d54ff` (`Use elbow plus wrist signal for pose-only punches`). Files changed in this slice: `src/detectors/pose_detector_substrate.gd`, `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`. 
+**Results:** Final landed scope is the shared straight-punch velocity repair, broadened from the original pose-only wording after Derrick's correction. `src/detectors/pose_detector_substrate.gd` now computes the straight-punch velocity signal from combined elbow+wrist motion for both hands-enabled and hands-disabled evaluation, while preserving the existing mode-specific gates on top: hands-enabled still requires its fresh hand sample plus bbox growth/retract behavior, and hands-disabled keeps its prior pose-only rearm/lost-tracking behavior from earlier slices. The history-reset paths were updated to reseed velocity history from the same shared signal position so ready/rearm transitions do not mix wrist-only coordinates with elbow+wrist coordinates. Added debug surfacing for `velocity_signal_source` so QA can confirm the shared path is active. Focused unit proof landed in `.testbed/tests/unit/test_pose_detector_substrate.gd`: the hands-enabled regression now proves improved shared velocity can clear the threshold without bypassing bbox-growth gating, the carried-forward regression proves non-fresh hand samples still block triggering even when the shared elbow+wrist velocity clears threshold, the pose-only proof shows the same shared signal helps fallback punches clear threshold, and the existing straight-punch timing/window tests were updated to reflect the shared elbow+wrist signal consistently. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` → `34/34 passed`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → `22/22 passed` (existing orphan/RID leak shutdown noise only). Code/test commit: `8c408fa` (`Promote elbow+wrist straight-punch velocity signal`). Files changed in this final landed slice: `src/detectors/pose_detector_substrate.gd`, `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`.
 
 ---
 
-### Task 10BN: QA elbow plus wrist pose-only straight-punch velocity
+### Task 10BN: QA shared elbow plus wrist straight-punch velocity signal
 
 **Bead ID:** `aerobeat-input-camera-tracking-v9m`
 **SubAgent:** `primary`
 **Role:** `qa`
 **References:** `REF-01`
-**Prompt:** QA the pose-only straight-punch velocity repair. Verify the hands-disabled path now benefits from combined elbow+wrist pose motion, verify real punch-like motion clears the threshold more cleanly than guard noise, and verify the hands-enabled path still behaves as before. Record exact QA evidence and close this bead only if the new pose-only velocity signal is truthful.
+**Prompt:** QA the shared straight-punch velocity repair. Verify both hands-enabled and hands-disabled paths now benefit from the combined elbow+wrist velocity signal, verify the hands-enabled path still requires its hand-specific gates, verify the hands-disabled fallback keeps its prior rearm/tracking-loss behavior, and verify real punch-like motion clears threshold more cleanly than guard noise. Record exact QA evidence and close this bead only if the shared velocity signal is truthful.
 
 **Folders Created/Deleted/Modified:**
 - `.plans/mediapipe-python/`
