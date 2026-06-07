@@ -2248,7 +2248,9 @@ Commands run:
 - `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe`
 - `ssh -o BatchMode=yes -o ConnectTimeout=10 chip 'hostname && cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python && python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_uses_capture_source_timestamp_for_raw_replay_frame runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_uses_replay_source_time_for_state_write_cadence'`
 
-Commit: pending in `REF-03` at coder handoff time.
+Commits:
+- `69b5d4c` (`REF-03`) — `Pace replay publication from source timestamps`
+- `00f3620` (`REF-01` plan only) — `Document replay pacing repair slice`
 
 ---
 
