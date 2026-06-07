@@ -3721,6 +3721,8 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
 - Family-fixture required in-window hits improved materially from `0/16` to `5/16`.
 - Improvement breakdown: `hook_right 3/4`, `uppercut_left 1/4`, `uppercut_right 1/4`, `hook_left 0/4`.
 - Incidental co-fires increased under the simplified contract and remain secondary evidence rather than the main blocker.
+- Local orchestrator QA rerun on this machine after coder handoff also passed: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`57/57`, `555` asserts; same existing orphan/RID shutdown noise only).
+- Local orchestrator audit confirmed the landed repo state matches Derrick's simplified contract: `assets/boxing.gesture_detection.yaml` now exposes only `wrist_velocity_window_ms`, `min_velocity`, the family-specific dominance threshold, and the timing/rearm/reacquire knobs for hook/uppercut; `src/detectors/pose_detector_substrate.gd` now fires from `ready` using only averaged velocity + dominance threshold; and `.testbed/scripts/boxing_proving_harness.gd` now provides hook/uppercut inspector rows instead of the old `Live hookup still needed` fallback.
 
 **Next Slice:** Keep the simplified trigger contract, but continue owner-correct repair against the dedicated family fixtures in `.testbed/assets/fixtures/boxing/{hook_left,hook_right,uppercut_left,uppercut_right}/` until left-hook timing lands in-window and the remaining uppercut windows improve without the current incidental co-fire volume. The family slice is materially better now, but not yet product-complete.
 
