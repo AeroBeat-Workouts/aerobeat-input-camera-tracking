@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-07 09:36 EDT
-**Blocked Reason:** None
+**Last Updated:** 2026-06-07 15:30 EDT
+**Blocked Reason:** Waiting on Derrick's in-person validation of the replay pacing repair and next-session planning for hook/uppercut gesture detection.
 **Agent:** `pico`
 
 ---
@@ -2254,6 +2254,79 @@ Commits:
 
 ---
 
+### Task 10AZ: QA replay pacing repair on Chip after repo + godotenv-sync refresh
+
+**Bead ID:** `aerobeat-input-camera-tracking-8ig`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** After Task 10AY lands, QA the replay pacing repair on the real Chip machine. First refresh Chip’s repo/runtime state so the test is honest: update the relevant AeroBeat repos to the landed commits and run the normal dependency/runtime refresh including `godotenv-sync` before testing. Then rerun the representative pose-only replay checks that previously showed stutter not present in the raw footage, compare against the pre-fix behavior, and report whether replay smoothness, preview/state sync, and source-time pacing are materially improved. Capture exact commands, artifact paths, and verdict. Update this plan task with QA findings/evidence and close the bead only if QA is truly complete.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** QA completed on the real `chip` alias after an honest refresh of repo + addon/runtime state.
+
+Exact refresh / validation commands run on Chip:
+- `ssh chip 'cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python && git fetch origin && git merge --ff-only origin/main && cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking && git fetch origin && git merge --ff-only origin/main && cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && git fetch origin && git merge --ff-only origin/main'`
+- `ssh chip '/home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking'`
+- `ssh chip 'cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python && python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_uses_capture_source_timestamp_for_raw_replay_frame runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_uses_replay_source_time_for_state_write_cadence'` ✅
+- `ssh chip 'cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && /home/derrick/.local/bin/godot --headless --path .testbed --import --quit-after 1000'` ✅
+
+Representative real-Chip pose-only replay pacing QA artifacts were captured under `REF-01` at `.plans/mediapipe-python/artifacts/task10az-chip-replay-pacing-qa/20260607-132939/` (copied back into this repo after the remote run). The controlled runtime probes used the real shipped replay source `.testbed/assets/videos/boxing.mp4`, real Chip Python/Godot addon installs, hands disabled, and two cadence configurations that previously exposed the stutter seam: `pose_only_30_30_30` and `pose_only_60_60_60`.
+
+Truthful comparison vs the pre-fix Task 10AX baseline:
+- **Before Task 10AY on Chip:** `30/30/30` averaged about `52.491 ms` between replay updates with recurring `33.366 / 66.734 ms` jumps; `60/60/60` improved average cadence only to about `34.913 ms` but still showed frequent `66.734 ms` source-time skips. Preview-file transport lag was already small, so the dominant seam was replay publication pacing, not disk I/O.
+- **After Task 10AY on Chip (new QA artifacts):** both `pose_only_30_30_30` and `pose_only_60_60_60` now show `avg_source_delta_ms = 33.372`, `unique_source_deltas_ms = [33, 34]`, and `source_deltas_over_40ms = 0` / `source_deltas_over_50ms = 0`. That means the old recurring replay-source `66 ms` skip signature is gone in the paced runtime stream.
+- **Preview/state sync stayed tight:** `avg_abs_playback_vs_source_ms ≈ 0.50`, `avg_abs_preview_revision_vs_file_mtime_ms ≈ 0.74 ms` (`30/30/30`) and `≈ 0.60 ms` (`60/60/60`). So the repair improved source-time pacing materially **without** regressing preview/state synchronization.
+- **Interpretation:** the runtime-level replay smoothness proxy is materially improved on Chip. The old processing-driven source-time jitter is no longer reproduced in these representative pose-only replay checks. A single initial `66.733 ms` playback delta remains at startup because the first snapshot begins at `0 ms` before the first decoded replay step; after startup, the probe settles into the expected steady `33.367 ms` cadence.
+
+Verdict: **PASS for this QA slice.** The replay pacing repair from `REF-03` is present on Chip after repo refresh + `godotenv-sync`, the representative pose-only replay checks no longer reproduce the pre-fix skipped-frame pacing signature, preview/state sync remains truthful, and no new blocker was found in this narrow replay-pacing QA scope.
+
+---
+
+### Task 10BA: Audit replay pacing repair on Chip after QA
+
+**Bead ID:** `aerobeat-input-camera-tracking-tu5`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Independently audit the replay pacing repair after the Chip QA pass. Verify the owner-correct vendor change in `REF-03` truly makes replay publication follow source timestamps more faithfully, verify the representative Chip QA evidence actually eliminates the old recurring `33/66 ms` skipped-frame signature without regressing the earlier atomic-preview/memory fixes, and verify the claimed improvement is supported by the stored artifacts and validation runs rather than wishful interpretation. Use the active plan evidence plus the committed code/tests and the Chip QA artifact bundle. Update this plan task with exact audit findings/evidence and close the bead only if the replay-pacing slice passes independent audit.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Independent audit passed. The replay-pacing slice is supported by the committed vendor change, the stored Chip QA artifacts, and fresh audit-side validation rather than wishful interpretation.
+
+Exact audit evidence:
+- **Owner-correct repair really lives in `REF-03` and changes the right seam.** I audited commit `69b5d4c` (`Pace replay publication from source timestamps`) in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python`. The diff is narrowly scoped to `runtime/mediapipe_runtime_probe.py` plus vendor tests. It adds `_replay_source_timestamp_ms()`, `_replay_interval_elapsed()`, and `_sleep_to_match_replay_timestamp()`, changes replay `raw_tracking_frame.timestamp_ms` from `_now_ms()` wallclock stamping to decoded replay/source timestamp stamping, gates replay state/preview publication off **source timestamp deltas** (`last_state_source_timestamp_ms`, `last_preview_source_timestamp_ms`) instead of monotonic elapsed time, and keeps the old fixed `tracking_interval` sleep only as a fallback when replay fps/source timing is unavailable. This is the exact owner seam Task 10AX diagnosed; it is not a cosmetic plan story.
+- **Fresh audit-side vendor validation still passes.** I reran the full vendor runtime test suite directly in `REF-03` with `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` ✅ (`40` tests). That suite includes the new replay-pacing proofs (`test_run_continuous_video_file_session_uses_capture_source_timestamp_for_raw_replay_frame`, `test_run_continuous_video_file_session_uses_replay_source_time_for_state_write_cadence`) and the earlier atomic preview-write regression test (`test_write_preview_frame_writes_temp_file_then_atomically_replaces_final_path`). So the repaired replay path passes its new timing checks while the earlier atomic preview-write safeguard remains green.
+- **The representative Chip QA artifact bundle does remove the old recurring skipped-frame signature.** I audited `.plans/mediapipe-python/artifacts/task10az-chip-replay-pacing-qa/20260607-132939/summary.json` plus the per-mode `samples.json` files for `pose_only_30_30_30` and `pose_only_60_60_60`. Both refreshed Chip runs now show `sample_count=130`, `avg_source_delta_ms=33.372093...`, `unique_source_deltas_ms=[33,34]`, `source_deltas_over_40ms=0`, and `source_deltas_over_50ms=0`. Recomputing from the stored `samples.json` confirms the same result: source timestamps only advance by `33` or `34` ms, with **zero** `>40 ms` or `>50 ms` replay-source jumps. That is materially different from the pre-fix Task 10AX evidence recorded in this plan (`30/30/30` averaging about `52.491 ms` with recurring `33.366 / 66.734 ms` jumps, and `60/60/60` still showing frequent `66.734 ms` source-time skips).
+- **The remaining `66.733 ms` value in playback deltas is startup-only, not the old recurring pacing bug.** The stored QA summary reports `unique_playback_deltas_ms=[33.367,66.733]`, which could look suspicious on a casual read, so I independently checked the saved `samples.json` files. In both modes there is exactly **one** `66.733 ms` playback delta, and it is the very first transition (`playback_current_time_ms` from `0.0` to `66.733...`) while `raw_timestamp_ms` moves from `33` to `67`. After that first sample, playback deltas settle to steady `33.367 ms`. This matches Task 10AZ's explanation that the first snapshot starts at `0 ms` before the first decoded replay step; it does **not** indicate the old recurring skip pattern is still present in steady-state replay.
+- **No regression of the earlier preview atomic-write / preview-sync repair was found.** Commit `69b5d4c` does not modify the preview atomic writer path at all; it stays confined to replay timestamp/pacing logic and tests. More importantly, the Chip QA artifacts still show preview/state synchronization staying tight after the repair: `avg_abs_preview_revision_vs_file_mtime_ms ≈ 0.737 ms` (`30/30/30`) and `≈ 0.600 ms` (`60/60/60`), with max absolute deltas under `1 ms`, while `avg_abs_playback_vs_source_ms ≈ 0.503 ms`. That is consistent with the earlier atomic-preview work still holding rather than being regressed by the pacing fix. I did not find new evidence in the stored logs/artifacts of preview write churn or desynchronization reappearing.
+- **No hidden cross-repo behavior change was needed for the fix to look good.** The stored Chip QA request artifact for `pose_only_30_30_30` (`.../pose_only_30_30_30/request.json`) shows the intended config really reached runtime: replay `source.kind=video_file`, `tracking.hands.enabled=false`, `tracking.max_fps=30`, `tracking.state_update_max_fps=30`, `runtime.preview_max_fps=30`, `runtime.tracking_max_fps=30`, and `runtime.state_update_max_fps=30`. That means the improved pacing seen in the artifact bundle is not explained away by a silent downgrade to a different config path.
+
+Audit verdict:
+- **Pass:** yes, this replay-pacing repair slice passes independent audit.
+- **Why it passes:** the vendor fix is owner-correct and substantive, the Chip QA artifact bundle really removes the old recurring `33/66 ms` source-time skip signature in steady state, and the earlier atomic preview / sync protections still appear intact.
+- **Boundary of this pass:** this audit only certifies the replay-pacing repair slice. It does not claim broader straight-punch correctness or solve lower-level exact-frame transport limits beyond the truthful approx-time replay path already documented elsewhere in this plan.
+
+---
+
 ### Task 10AS: Design a truthful low-end straight-punch mode if full hand tracking stays too expensive
 
 **Bead ID:** `aerobeat-input-camera-tracking-yoj`
@@ -3383,28 +3456,26 @@ Targeted audit validation rerun from repo root: `godot --headless --path .testbe
 
 ## Final Results
 
-**Status:** ❌ Blocked
+**Status:** ⚠️ Partial / Active Handoff
 
-**What We Built:** Landed the cross-repo boxing hand-bbox straight-punch foundation across the vendor/tool/input stack, then iterated on proving-scene observability, replay transport truthfulness, and ownership correctness. The landed state now includes: vendor hand bbox payload exposure; tool-layer normalized hand payload + bbox preview support; input-layer bbox straight-punch state-machine wiring; tracker-contract QA pass; input-owned boxing/flow tracker + gesture YAMLs; input-owned proving-scene debug YAMLs; preview-space vs gameplay-space landmark separation; upstream pose-side lock preservation plus the single-candidate reacquire bias repair; explicit tab-indentation parser guards; and truthful replay transport capability surfacing through the video/tool layers.
+**What We Built:** This plan successfully turned the camera-tracking stack into a more truthful and tunable boxing proving lane across `REF-01` / `REF-02` / `REF-03`. The landed state now includes: public preview feed knobs for live/replay; public tracking/state cadence knobs; owner-correct replay pacing repaired to follow decoded source timestamps; Chip QA proving that the old recurring `33/66 ms` replay skip pattern is gone; and a clearer product truth that low-end hardware can support pose-only straight punches much better than always-on hand tracking. We also preserved the earlier atomic preview-write / memory-churn fixes while tightening preview-state synchronization and reducing transport confusion during replay debugging.
 
-**Reference Check:** `REF-01` / `REF-02` / `REF-03` implementation slices and debug/transport ownership repairs audit cleanly, and the proving-scene/debug contract matches the approved design. `REF-05` / `REF-06` were used correctly as the deterministic boxing truth fixtures, but the final boxing truth gate is still failing: the latest truthful evidence in Task 10AF remains below gold truth and was not stable enough to land. This plan therefore stays blocked on reproducible end-to-end straight-punch alignment against the fixture timing YAMLs.
+**Reference Check:** `REF-01` / `REF-02` / `REF-03` now audit cleanly for the replay pacing and preview/cadence configuration slices. The Chip QA artifact bundle at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/artifacts/task10az-chip-replay-pacing-qa/20260607-132939/summary.json` shows source-time publication at ~`33.372 ms` with `unique_source_deltas_ms = [33, 34]` and no steady-state `>40 ms` replay-source gaps in the representative pose-only replay checks. For minimum-spec product direction, the current truthful assumption is now: **straight punches on low-end devices should be designed around pose-only wrist+elbow velocity, while hand tracking remains an optional higher-end tier**.
 
 **Commits:**
-- `2357784` (`REF-03`) - Expose MediaPipe hand landmarks and bbox payloads
-- `edd416a` (`REF-02`) - Add hand bbox preview and playback debug overlays
-- `62c7d1b` (`REF-02`) - Preserve pose-side hand locks across reacquire
-- `29ca851` (`REF-01`) - Fix boxing proving scene debug surfaces
-- `5468857` (`REF-01`) - Separate preview and gameplay landmark spaces
-- `9915421` (`REF-01`) - Promote proving scene debug toggles into config
-- `2043b6a` (`REF-01`) - Fix proving scene bbox overlay wiring
-- `f5ba8fc` (`REF-01`) - Remove proving profile picker and hide tuning exports
-- `fdcd1d8` (`REF-01`) - modified testbed defaults
-- `cb50ea7` (`REF-01`) - Fix boxing proving warning seam
-- `3d5ce09` (`REF-01`) - Guard boxing profile YAML indentation
-- `4e4bc9b` (`REF-01`) - Document boxing YAML writer trace
+- `ee07371` (`REF-01`) - Expose public preview feed profile knobs
+- `7f5ab5f` (`REF-02`) - Wire public preview feed config contract
+- `581b294` (`REF-01`) - Expose public tracker cadence profile knobs
+- `db6d18d` (`REF-02`) - Expose public tracking cadence controls
+- `69b5d4c` (`REF-03`) - Pace replay publication from source timestamps
+- `ea28676` (`REF-01`) - Document Chip hand-tracking cost profile
+- `bffe8be` (`REF-01`) - Record replay pacing repair commits
+- `f2ecaa8` (`REF-01`) - Record Task 10AW cadence-slice commits
 
-**Lessons Learned:** A new concrete root cause was discovered after the last trace wave: Godot editor interaction with these repo-owned YAML files is itself unsafe because merely opening them in the editor can normalize whitespace and corrupt tab/space structure. For this workstream, YAML edits should be treated as text-editor-outside-Godot only. The hardest bugs here were seam bugs, not detector-threshold bugs: Beads ownership had to stay in the owner repo, preview-space vs gameplay-space landmark coordinates needed to be split explicitly, and hand ownership had to preserve pose-side truth across reacquire instead of relying on stale anchor continuity. Late in the slice, the YAML-reset suspicion also turned out to be a workflow-state problem more than a scene-runtime problem: clean Godot load/play was reproducibly read-only, while external sync/restore steps can resurrect old dirty YAML. The remaining work should start from Derrick's exact retest workflow evidence instead of further speculative detector changes.
+**Lessons Learned:** The biggest remaining performance truth is no longer hidden in the preview path: on Chip-class hardware, always-on hand inference is the dominant cost seam, while preview/feed settings and replay pacing are secondary but still important for perceived quality. Public YAML knobs matter because they let Derrick test the real product tradeoffs instead of inheriting silent vendor defaults. Replay smoothness also needed source-time-faithful pacing rather than wall-clock sleeps. Going forward, the product should treat hardware tiers explicitly instead of pretending one gesture-detection mode fits every device.
+
+**Next Slice:** Derrick will continue using the current left/right straight punch velocity settings as the minimum-spec baseline, with human validation of the replay pacing fix still pending. Next session should plan the next gesture family in the input system: left/right **hooks** (wrist+elbow velocity with predominantly sideways movement plus the same rearm concept) and **uppercuts** (wrist+elbow velocity with predominantly vertical movement plus the same rearm concept). Neither of those next gesture families is expected to benefit materially from hand bbox growth/shrink detection on minimum-spec hardware.
 
 ---
 
-*Drafted on 2026-06-03*
+*Drafted on 2026-06-03; handoff updated on 2026-06-07*
