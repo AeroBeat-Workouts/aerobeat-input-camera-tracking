@@ -160,7 +160,7 @@ const PUNCH_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "wrist_velocity",
-		"label": "Wrist xyz velocity >= {threshold}",
+		"label": "Punch velocity >= {threshold}",
 	},
 	{
 		"id": "bbox_area",
@@ -825,7 +825,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var pose_tracking_valid := bool(straight_side.get("pose_tracking_valid", false))
 	var state_name := String(straight_side.get("state", straight_side.get("phase", "tracking_lost")))
 	var wrist_velocity := float(straight_side.get("wrist_velocity", 0.0))
-	var min_wrist_velocity := float(straight_side.get("min_wrist_velocity", 0.0))
+	var min_punch_velocity := float(straight_side.get("min_punch_velocity", 0.0))
 	var bbox_area := float(straight_side.get("bbox_area", 0.0))
 	var bbox_area_growth := float(straight_side.get("bbox_area_growth", 0.0))
 	var min_bbox_area_growth := float(straight_side.get("min_bbox_area_growth", 0.0))
@@ -898,9 +898,9 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			]
 			passed = transition_timestamp_ms > 0 or not straight_side.is_empty()
 		"wrist_velocity":
-			threshold_text = _fmt_float(min_wrist_velocity)
+			threshold_text = _fmt_float(min_punch_velocity)
 			current_text = _fmt_float(wrist_velocity)
-			passed = wrist_velocity >= min_wrist_velocity
+			passed = wrist_velocity >= min_punch_velocity
 		"bbox_area":
 			if hand_tracking_enabled:
 				current_text = _fmt_float(bbox_area)
@@ -1302,7 +1302,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Sample window size: %d" % int(straight_eval.get("sample_window_size", 0)))
 	lines.append("Wrist velocity window: %dms" % int(straight_eval.get("wrist_velocity_window_ms", 0)))
 	lines.append("Positive growth samples: %d" % int(straight_eval.get("min_positive_growth_samples", 0)))
-	lines.append("Min wrist xyz velocity: %s" % _fmt_float(straight_thresholds.get("min_wrist_velocity", 0.0)))
+	lines.append("Min punch velocity: %s" % _fmt_float(straight_thresholds.get("min_punch_velocity", straight_thresholds.get("min_wrist_velocity", 0.0))))
 	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))
 	lines.append("Triggered grace: %dms" % int(straight_timing.get("triggered_grace_ms", 0)))
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))

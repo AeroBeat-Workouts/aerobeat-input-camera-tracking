@@ -117,6 +117,21 @@ func test_straight_punch_debug_uses_live_metrics_hand_truth() -> void:
 	assert_true(bool(left_debug.get("tracking_valid", false)))
 	assert_eq(String(left_debug.get("tracking_state", "")), "tracked")
 
+func test_straight_punch_threshold_aliases_old_min_wrist_velocity_key() -> void:
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"thresholds": {
+				"min_wrist_velocity": 0.33,
+			}
+		}
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020), _tracked_hand_payload("right", 0.020)))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_true(is_equal_approx(float(left_debug.get("min_punch_velocity", 0.0)), 0.33))
+	assert_false(left_debug.has("min_wrist_velocity"))
+
 func test_straight_punch_uses_window_growth_with_subthreshold_step_deltas() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020), _tracked_hand_payload("right", 0.020)))
@@ -175,8 +190,8 @@ func test_straight_punch_carried_forward_hand_samples_are_not_fresh() -> void:
 	assert_eq(String(left_debug.get("sample_source", "")), "carried_forward")
 	assert_false(bool(left_debug.get("fresh_sample", true)))
 	assert_eq(String(left_debug.get("velocity_signal_source", "")), "elbow_plus_wrist")
-	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) < float(left_debug.get("min_wrist_velocity", 0.0)))
-	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) < float(left_debug.get("min_punch_velocity", 0.0)))
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_punch_velocity", 0.0)))
 	assert_false(_event_names(state.get("events", [])).has("punch_left"))
 
 func test_straight_punch_ignores_stale_hand_samples_for_trigger_evaluation() -> void:
@@ -233,8 +248,8 @@ func test_straight_punch_uses_xyz_wrist_velocity_magnitude_for_trigger_gate() ->
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
-	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_wrist_velocity", 0.0)))
-	assert_true(float(left_debug.get("wrist_forward_velocity", 0.0)) < float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_punch_velocity", 0.0)))
+	assert_true(float(left_debug.get("wrist_forward_velocity", 0.0)) < float(left_debug.get("min_punch_velocity", 0.0)))
 	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) > float(state.get("metrics", {}).get("measurements", {}).get("left_forward_velocity", 0.0)))
 
 
@@ -247,7 +262,7 @@ func test_straight_punch_wrist_velocity_uses_configured_time_window_instead_of_l
 				"wrist_velocity_window_ms": 160,
 			},
 			"thresholds": {
-				"min_wrist_velocity": 0.18,
+				"min_punch_velocity": 0.18,
 				"min_bbox_area_growth": 0.00014,
 			},
 		},
@@ -282,7 +297,7 @@ func test_straight_punch_bbox_area_growth_uses_configured_time_window_instead_of
 				"bbox_area_growth_window_ms": 160,
 			},
 			"thresholds": {
-				"min_wrist_velocity": 99.0,
+				"min_punch_velocity": 99.0,
 				"min_bbox_area_growth": 99.0,
 			},
 		},
@@ -311,7 +326,7 @@ func test_straight_punch_uses_recent_wrist_velocity_peak_when_growth_lands_on_ne
 				"wrist_velocity_window_ms": 80,
 			},
 			"thresholds": {
-				"min_wrist_velocity": 0.18,
+				"min_punch_velocity": 0.18,
 				"min_bbox_area_growth": 0.006,
 			},
 		},
@@ -329,7 +344,7 @@ func test_straight_punch_uses_recent_wrist_velocity_peak_when_growth_lands_on_ne
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_true(float(left_debug.get("recent_peak_wrist_velocity", 0.0)) > float(left_debug.get("wrist_velocity", 0.0)))
-	assert_true(float(left_debug.get("wrist_velocity", 0.0)) < float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) < float(left_debug.get("min_punch_velocity", 0.0)))
 
 func test_straight_punch_uses_recent_bbox_growth_peak_when_velocity_lands_on_next_hand_sample() -> void:
 	config.gesture_profile_document = {
@@ -339,7 +354,7 @@ func test_straight_punch_uses_recent_bbox_growth_peak_when_velocity_lands_on_nex
 				"min_positive_growth_samples": 1,
 			},
 			"thresholds": {
-				"min_wrist_velocity": 0.18,
+				"min_punch_velocity": 0.18,
 				"min_bbox_area_growth": 0.00014,
 			},
 		},
@@ -391,7 +406,7 @@ func test_straight_punch_keeps_recent_velocity_peak_across_non_fresh_replay_dupl
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
 	var duplicate_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_true(float(duplicate_debug.get("recent_peak_wrist_velocity", 0.0)) > float(duplicate_debug.get("wrist_velocity", 0.0)))
-	assert_true(float(duplicate_debug.get("wrist_velocity", 0.0)) < float(duplicate_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(duplicate_debug.get("wrist_velocity", 0.0)) < float(duplicate_debug.get("min_punch_velocity", 0.0)))
 
 func test_straight_punch_dedupes_replayed_tracked_samples_until_hand_frame_advances() -> void:
 	_calibrate_stance()
@@ -487,7 +502,7 @@ func test_straight_punch_triggered_grace_uses_elapsed_milliseconds() -> void:
 				"min_positive_growth_samples": 1,
 			},
 			"thresholds": {
-				"min_wrist_velocity": 0.18,
+				"min_punch_velocity": 0.18,
 				"min_bbox_area_growth": 0.00014,
 			},
 			"timing": {
@@ -527,7 +542,7 @@ func test_straight_punch_rearms_between_tuned_fixture_scale_punches() -> void:
 				"min_positive_growth_samples": 1,
 			},
 			"thresholds": {
-				"min_wrist_velocity": 0.18,
+				"min_punch_velocity": 0.18,
 				"min_bbox_area_growth": 0.00014,
 			},
 			"timing": {
@@ -571,8 +586,8 @@ func test_straight_punch_hands_enabled_still_requires_hand_growth_signal() -> vo
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_true(bool(left_debug.get("hand_tracking_enabled", false)))
 	assert_eq(String(left_debug.get("velocity_signal_source", "")), "elbow_plus_wrist")
-	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) < float(left_debug.get("min_wrist_velocity", 0.0)))
-	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) < float(left_debug.get("min_punch_velocity", 0.0)))
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_punch_velocity", 0.0)))
 	assert_eq(String(left_debug.get("state", "")), "ready")
 
 func test_straight_punch_pose_only_mode_combines_elbow_and_wrist_velocity_signal() -> void:
@@ -592,8 +607,8 @@ func test_straight_punch_pose_only_mode_combines_elbow_and_wrist_velocity_signal
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_eq(String(left_debug.get("velocity_signal_source", "")), "elbow_plus_wrist")
-	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) < float(left_debug.get("min_wrist_velocity", 0.0)))
-	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_wrist_velocity", 0.0)))
+	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) < float(left_debug.get("min_punch_velocity", 0.0)))
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > float(left_debug.get("min_punch_velocity", 0.0)))
 	assert_eq(String(left_debug.get("state", "")), "triggered")
 
 func test_straight_punch_pose_only_mode_triggers_from_pose_velocity_without_hand_growth() -> void:
@@ -894,7 +909,7 @@ func _disable_hand_tracking_for_straight_punch() -> void:
 		"straight_punch": {
 			"enabled": true,
 			"thresholds": {
-				"min_wrist_velocity": 0.18,
+				"min_punch_velocity": 0.18,
 			},
 			"timing": {
 				"triggered_grace_ms": 240,

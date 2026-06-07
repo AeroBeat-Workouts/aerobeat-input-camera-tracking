@@ -38,6 +38,8 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_ms", -1)), 160)
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).get("bbox_area_growth_window_ms", -1)), 1000)
+	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).get("min_punch_velocity", -1.0)), 0.25))
+	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).has("min_wrist_velocity"))
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("rearm", {}).get("pose_only_rearm_ms", -1)), 250)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("state_machine", {}).get("lost_tracking_reacquire_stable_ms", -1)), 40)
 

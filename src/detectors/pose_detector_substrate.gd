@@ -550,7 +550,7 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary, ha
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
 		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),
 		"recent_peak_wrist_velocity": float(state.get("recent_peak_wrist_velocity", 0.0)),
-		"min_wrist_velocity": float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)),
+		"min_punch_velocity": float(straight_punch_config.get("min_punch_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)),
 		"bbox_area": float(bbox.get("area", state.get("last_bbox_area", 0.0))),
 		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),
 		"recent_peak_bbox_area_growth": float(state.get("recent_peak_bbox_area_growth", 0.0)),
@@ -886,12 +886,12 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 
 	if phase == STRAIGHT_PUNCH_STATE_READY:
 		if fresh_sample:
-			var min_wrist_velocity := maxf(float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.0)
+			var min_punch_velocity := maxf(float(straight_punch_config.get("min_punch_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.0)
 			var min_bbox_area_growth := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.0)
 			var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
 			var recent_peak_wrist_velocity := maxf(float(state.get("recent_peak_wrist_velocity", wrist_velocity)), wrist_velocity)
 			var recent_peak_bbox_area_growth := maxf(float(state.get("recent_peak_bbox_area_growth", state.get("last_bbox_area_growth", 0.0))), float(state.get("last_bbox_area_growth", 0.0)))
-			var ready_to_trigger := recent_peak_wrist_velocity >= min_wrist_velocity
+			var ready_to_trigger := recent_peak_wrist_velocity >= min_punch_velocity
 			if use_hand_tracking:
 				ready_to_trigger = ready_to_trigger and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples
 			if ready_to_trigger:
@@ -1363,7 +1363,7 @@ func _get_straight_punch_config() -> Dictionary:
 		"min_positive_growth_samples": STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES,
 		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
 		"bbox_area_growth_window_ms": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_GROWTH_WINDOW_MS,
-		"min_wrist_velocity": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY,
+		"min_punch_velocity": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY,
 		"min_bbox_area_growth": STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH,
 		"triggered_grace_ms": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS,
 		"bbox_area_retract_epsilon": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON,
@@ -1387,7 +1387,7 @@ func _get_straight_punch_config() -> Dictionary:
 	config["min_positive_growth_samples"] = max(1, int(evaluation.get("min_positive_growth_samples", config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES))))
 	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
 	config["bbox_area_growth_window_ms"] = max(1, int(evaluation.get("bbox_area_growth_window_ms", config.get("bbox_area_growth_window_ms", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_GROWTH_WINDOW_MS))))
-	config["min_wrist_velocity"] = maxf(0.0, float(thresholds.get("min_wrist_velocity", config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY))))
+	config["min_punch_velocity"] = maxf(0.0, float(thresholds.get("min_punch_velocity", thresholds.get("min_wrist_velocity", config.get("min_punch_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)))))
 	config["min_bbox_area_growth"] = maxf(0.0, float(thresholds.get("min_bbox_area_growth", config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH))))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["bbox_area_retract_epsilon"] = maxf(0.0, float(rearm.get("bbox_area_retract_epsilon", config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON))))
@@ -1517,7 +1517,7 @@ func _window_peak_float(history: Array) -> float:
 	return peak
 
 func _compute_straight_punch_power(wrist_velocity: float, bbox_area: float, state: Dictionary, straight_punch_config: Dictionary, bbox_growth_override: float = -1.0) -> float:
-	var velocity_floor := maxf(float(straight_punch_config.get("min_wrist_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.000001)
+	var velocity_floor := maxf(float(straight_punch_config.get("min_punch_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.000001)
 	var growth_floor := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.000001)
 	var bbox_growth := maxf(bbox_growth_override if bbox_growth_override >= 0.0 else float(state.get("last_bbox_area_growth", 0.0)), 0.0)
 	var velocity_power := wrist_velocity / (velocity_floor * 3.0)

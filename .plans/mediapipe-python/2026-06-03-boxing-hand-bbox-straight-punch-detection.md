@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-06 19:53 EDT
+**Last Updated:** 2026-06-06 20:25 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2777,6 +2777,83 @@ Audit conclusion: this enum-comment slice is cleanly done. The added lists are e
 **Role:** `auditor`
 **References:** `REF-01`
 **Prompt:** Independently audit the new elbow+wrist pose-only velocity signal. Confirm it only affects the hands-disabled fallback path, confirm it uses both elbow and wrist pose motion rather than wrist-only motion, and confirm the change is a truthful response to the guard-vs-punch weakness Derrick found in manual testing. Update this plan with exact audit findings/evidence and close this bead only if the slice passes independent audit.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+
+### Task 10BP: Rename straight-punch threshold from `min_wrist_velocity` to `min_punch_velocity`
+
+**Bead ID:** `aerobeat-input-camera-tracking-iqe`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Rename the straight-punch threshold knob from `min_wrist_velocity` to `min_punch_velocity` so the config name matches the now-shared elbow+wrist velocity signal. Keep the slice narrow but complete: update the owner YAML, loader/normalization, detector use sites, debug text/comments, and focused tests so the new name is the truthful public config surface. Preserve compatibility only if it is clearly needed for a safe transition and document it truthfully if you do. Update this plan with exact files changed/validation/commits and stop at a clean coder handoff for QA.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `assets/boxing.gesture_detection.yaml`
+- `docs/cross-repo-config-contract.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Renamed the truthful public straight-punch threshold knob to `straight_punch.thresholds.min_punch_velocity` in the owner boxing gesture YAML and cross-repo contract doc, then updated the detector/config/debug path so the renamed key is what surfaces everywhere user-facing. In `src/detectors/pose_detector_substrate.gd`, the normalized straight-punch config/debug dictionary now uses `min_punch_velocity`, the trigger gate compares the shared elbow+wrist velocity signal against `min_punch_velocity`, and straight-punch power normalization also reads the renamed key. In `.testbed/scripts/boxing_proving_harness.gd`, the hover/inspector requirement row now says `Punch velocity >= ...` and the tuning summary now says `Min punch velocity`, matching the post-Task-10BM shared elbow+wrist signal instead of implying wrist-only ownership.
+
+Compatibility aliasing was kept narrowly for safe transition: the loader still accepts legacy `straight_punch.thresholds.min_wrist_velocity` if an older profile document is passed in, but it immediately normalizes that value onto the new public/debug key `min_punch_velocity`, and the focused substrate regression now proves the old alias is accepted while the debug/config surface no longer exposes `min_wrist_velocity`. Focused tests/docs were updated accordingly: the canonical boxing profile bundle test now asserts `min_punch_velocity` is present and `min_wrist_velocity` is absent from the shipped YAML; proving-harness tests now expect the renamed debug copy; and straight-punch detector tests now assert against `min_punch_velocity` while covering the compatibility alias. Exact targeted validation run from repo root: `godot --headless --path .testbed --import --quit-after 1000` ✅; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`57/57` passed, `560` asserts; existing non-fatal GUT orphan/RID leak shutdown noise only). Commit IDs: `aa1fad8` (`Rename straight-punch velocity threshold`).
+
+---
+
+### Task 10BQ: QA `min_punch_velocity` rename across config and detector
+
+**Bead ID:** `aerobeat-input-camera-tracking-pzv`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the `min_punch_velocity` rename. Verify the public YAML/config surface now uses the truthful name, verify the detector/debug path reads the renamed key correctly, and verify any compatibility handling is truthful if present. Record exact QA evidence and close this bead only if the rename is clean.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BR: Audit `min_punch_velocity` rename across config and detector
+
+**Bead ID:** `aerobeat-input-camera-tracking-ibl`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the `min_punch_velocity` rename. Confirm the new name is the truthful public surface for the shared elbow+wrist velocity signal, confirm the old name no longer misleads users (or is compatibility-aliased in a clearly documented way if intentionally kept), and confirm validation still passes. Update this plan with exact audit findings/evidence and close this bead only if the slice passes independent audit.
 
 **Folders Created/Deleted/Modified:**
 - `.plans/mediapipe-python/`

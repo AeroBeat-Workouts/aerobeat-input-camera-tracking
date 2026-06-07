@@ -118,7 +118,7 @@ straight_punch:
     sample_window_size: 4
     min_positive_growth_samples: 2
   thresholds:
-    min_wrist_velocity: 0.18
+    min_punch_velocity: 0.18
     min_bbox_area_growth: 0.006
   timing:
     triggered_grace_ms: 240
@@ -145,7 +145,7 @@ straight_punch:
 - `straight_punch.evaluation.fresh_samples_only: true`
 - `straight_punch.evaluation.sample_window_size: 4`
 - `straight_punch.evaluation.min_positive_growth_samples: 2`
-- `straight_punch.thresholds.min_wrist_velocity: 0.18`
+- `straight_punch.thresholds.min_punch_velocity: 0.18`
 - `straight_punch.thresholds.min_bbox_area_growth: 0.006`
 - `straight_punch.timing.triggered_grace_ms: 240`
 - `straight_punch.rearm.bbox_area_retract_epsilon: 0.003`

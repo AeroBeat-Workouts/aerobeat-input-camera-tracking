@@ -16,8 +16,8 @@ straight_punch:
     # Measure bbox growth across this much recent time. input.
     bbox_area_growth_window_ms: 1000
   thresholds:
-    # Wrist speed must reach at least this value to count as a punch. input.
-    min_wrist_velocity: 0.25
+    # Shared elbow+wrist punch speed must reach at least this value to count as a punch. input.
+    min_punch_velocity: 0.25
     # Hand bbox growth must reach at least this value to count as a punch. input.
     min_bbox_area_growth: 0.003
   timing:
