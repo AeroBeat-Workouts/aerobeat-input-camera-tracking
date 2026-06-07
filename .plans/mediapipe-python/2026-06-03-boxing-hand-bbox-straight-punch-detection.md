@@ -2138,8 +2138,8 @@ Validation reruns for this coder slice:
 - `REF-01` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`15/15` passed, `159` asserts)
 
 Commits pushed for this task:
-- `PENDING-REF-02` (`REF-02`) - <fill after commit>
-- `PENDING-REF-01` (`REF-01`) - <fill after commit>
+- `db6d18d` (`REF-02`) - Expose public tracking cadence controls
+- `581b294` (`REF-01`) - Expose public tracker cadence profile knobs
 
 ---
 
