@@ -8,7 +8,7 @@ preview:
     # Emit a live preview feed only when this profile wants one. input -> tool -> vendor.
     enabled: true
     # Throttle live preview updates without changing live tracking cadence. tool -> vendor.
-    max_fps: 30
+    max_fps: 60
     # Resize emitted live preview frames without pretending to change live decode/inference. tool -> vendor.
     width: 960
     height: 540
@@ -17,7 +17,7 @@ preview:
     # Emit a replay preview feed only when this profile wants one. input -> tool -> vendor.
     enabled: true
     # Throttle replay preview updates without inventing replay decode controls the vendor does not support. tool -> vendor.
-    max_fps: 30
+    max_fps: 60
     width: 960
     height: 540
     quality: 75
@@ -32,7 +32,7 @@ source:
     requested_width: 960
     requested_height: 540
     # Request this live capture cadence from the real camera path. tool -> vendor.
-    requested_fps: 30
+    requested_fps: 60
 tracking:
   # Cap tracker sampling work. This is a requested upper bound, not a promise of achieved FPS on all hardware. input -> tool -> vendor.
   max_fps: 30
