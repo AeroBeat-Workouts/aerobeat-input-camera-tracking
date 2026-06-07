@@ -8,7 +8,7 @@ preview:
     # Emit a live preview feed only when this profile wants one. input -> tool -> vendor.
     enabled: true
     # Throttle live preview updates without changing live tracking cadence. tool -> vendor.
-    max_fps: 10
+    max_fps: 30
     # Resize emitted live preview frames without pretending to change live decode/inference. tool -> vendor.
     width: 960
     height: 540
