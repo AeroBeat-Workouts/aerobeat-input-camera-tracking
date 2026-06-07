@@ -777,7 +777,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var fresh_sample := _is_fresh_tracking_hand_sample(hand_payload, state) if use_hand_tracking else pose_tracking_valid
 	var valid_sample := _is_valid_tracking_hand_sample(hand_payload) if use_hand_tracking else pose_tracking_valid
 	var wrist_position := PoseMetrics.to_vector3(wrist)
-	var wrist_velocity_vector := _resolve_straight_punch_velocity_signal(state, elbow, wrist_position, timestamp_ms, fresh_sample, straight_punch_config, use_hand_tracking)
+	var velocity_signal_position := _resolve_straight_punch_velocity_signal_position(state, elbow, wrist_position)
+	var wrist_velocity_vector := _resolve_straight_punch_wrist_velocity(state, velocity_signal_position, timestamp_ms, fresh_sample, straight_punch_config)
 	var wrist_velocity := maxf(wrist_velocity_vector.length(), 0.0)
 	var wrist_forward_velocity := maxf(-float(wrist_velocity_vector.z), 0.0)
 	state["last_bbox_area"] = bbox_area
@@ -867,7 +868,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			if sample_stable_ms >= reacquire_stable_ms:
 				state["bbox_area_history"] = [bbox_area]
 				state["wrist_velocity_history"] = [wrist_velocity]
-				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": wrist_position}]
+				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": velocity_signal_position}]
 				state["recent_peak_wrist_velocity"] = wrist_velocity
 				state["last_wrist_velocity_vector"] = Vector3.ZERO
 				state["last_wrist_velocity_window_span_ms"] = 0
@@ -924,7 +925,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["grace_deadline_timestamp_ms"] = 0
 				state["bbox_area_history"] = [bbox_area]
 				state["wrist_velocity_history"] = [wrist_velocity]
-				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": wrist_position}]
+				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": velocity_signal_position}]
 				state["recent_peak_wrist_velocity"] = wrist_velocity
 				state["last_wrist_velocity_vector"] = Vector3.ZERO
 				state["last_wrist_velocity_window_span_ms"] = 0
@@ -945,7 +946,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["grace_deadline_timestamp_ms"] = 0
 				state["bbox_area_history"] = [bbox_area]
 				state["wrist_velocity_history"] = [wrist_velocity]
-				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": wrist_position}]
+				state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": velocity_signal_position}]
 				state["recent_peak_wrist_velocity"] = wrist_velocity
 				state["last_wrist_velocity_vector"] = Vector3.ZERO
 				state["last_wrist_velocity_window_span_ms"] = 0
@@ -1414,14 +1415,13 @@ func _is_pose_valid_for_straight_punch(shoulder: Dictionary, wrist: Dictionary, 
 	var min_visibility := _get_min_visibility()
 	return float(shoulder.get("v", 0.0)) >= min_visibility and float(wrist.get("v", 0.0)) >= min_visibility
 
-func _resolve_straight_punch_velocity_signal(state: Dictionary, elbow: Dictionary, wrist_position: Vector3, timestamp_ms: int, fresh_sample: bool, straight_punch_config: Dictionary, use_hand_tracking: bool) -> Vector3:
-	if use_hand_tracking or elbow.is_empty() or float(elbow.get("v", 0.0)) < _get_min_visibility():
+func _resolve_straight_punch_velocity_signal_position(state: Dictionary, elbow: Dictionary, wrist_position: Vector3) -> Vector3:
+	if elbow.is_empty() or float(elbow.get("v", 0.0)) < _get_min_visibility():
 		state["velocity_signal_source"] = "wrist_only"
-		return _resolve_straight_punch_wrist_velocity(state, wrist_position, timestamp_ms, fresh_sample, straight_punch_config)
+		return wrist_position
 	var elbow_position := PoseMetrics.to_vector3(elbow)
-	var combined_position := (elbow_position + wrist_position) * 0.5
-	state["velocity_signal_source"] = "pose_elbow_plus_wrist"
-	return _resolve_straight_punch_wrist_velocity(state, combined_position, timestamp_ms, fresh_sample, straight_punch_config)
+	state["velocity_signal_source"] = "elbow_plus_wrist"
+	return (elbow_position + wrist_position) * 0.5
 
 func _is_valid_tracking_hand_sample(hand_payload: Dictionary) -> bool:
 	return bool(hand_payload.get("tracking_valid", false))
