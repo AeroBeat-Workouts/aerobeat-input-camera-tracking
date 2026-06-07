@@ -3693,6 +3693,7 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
 - `ea28676` (`REF-01`) - Document Chip hand-tracking cost profile
 - `bffe8be` (`REF-01`) - Record replay pacing repair commits
 - `f2ecaa8` (`REF-01`) - Record Task 10AW cadence-slice commits
+- `14993b0` (`REF-01`) - Simplify hook and uppercut pose trigger contract
 
 **Lessons Learned:** The biggest remaining performance truth is no longer hidden in the preview path: on Chip-class hardware, always-on hand inference is the dominant cost seam, while preview/feed settings and replay pacing are secondary but still important for perceived quality. Public YAML knobs matter because they let Derrick test the real product tradeoffs instead of inheriting silent vendor defaults. Replay smoothness also needed source-time-faithful pacing rather than wall-clock sleeps. Going forward, the product should treat hardware tiers explicitly instead of pretending one gesture-detection mode fits every device.
 
