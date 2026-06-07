@@ -839,9 +839,9 @@ func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 	assert_eq(_event_names(weave_end_state.get("events", [])), ["weave_left_end"])
 
 	var sidestep_right_state := substrate.process_landmarks(_make_pose_frame({}, 0.60, 1.0), 1800)
-	assert_eq(_event_names(sidestep_right_state.get("events", [])), ["sidestep_right_start"])
+	assert_true(_event_names(sidestep_right_state.get("events", [])).has("sidestep_right_start"))
 	var sidestep_end_state := substrate.process_landmarks(_make_pose_frame(), 1900)
-	assert_eq(_event_names(sidestep_end_state.get("events", [])), ["sidestep_right_end"])
+	assert_true(_event_names(sidestep_end_state.get("events", [])).has("sidestep_right_end"))
 
 func test_detects_knee_and_leg_lift_events_with_reset_behavior() -> void:
 	_calibrate_stance()

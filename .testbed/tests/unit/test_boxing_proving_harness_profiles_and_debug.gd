@@ -433,9 +433,54 @@ func test_boxing_event_feed_text_lists_hook_and_uppercut_tuning_sections() -> vo
 	var harness = _new_harness()
 	var text_body := String(harness._build_boxing_event_feed_text())
 	assert_string_contains(text_body, "Hook tuning")
+	assert_string_contains(text_body, "Min velocity")
 	assert_string_contains(text_body, "Min lateral dominance")
 	assert_string_contains(text_body, "Uppercut tuning")
 	assert_string_contains(text_body, "Min vertical dominance")
+
+func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"hook": {
+				"left": {
+					"state": "not_ready",
+					"previous_state": "triggered",
+					"timestamp_ms": Time.get_ticks_msec() - 260,
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"sample_source": "pose",
+					"wrist_velocity_window_ms": 120,
+					"wrist_velocity_window_span_ms": 118,
+					"wrist_velocity": 0.420,
+					"min_velocity": 0.080,
+					"dominance_ratio": 0.740,
+					"min_lateral_dominance_ratio": 0.500,
+					"grace_ms_remaining": 0,
+					"triggered_grace_ms": 240,
+					"pose_only_rearm_ms": 250,
+					"reacquire_stable_ms_required": 40,
+				}
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("hook_left")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose")
+	assert_eq(String(rows[4].get("current_text", "")), "120ms configured, 118ms averaged span")
+	assert_eq(String(rows[5].get("threshold_text", "")), "0.080")
+	assert_eq(String(rows[5].get("current_text", "")), "0.420")
+	assert_eq(String(rows[6].get("threshold_text", "")), "0.500")
+	assert_eq(String(rows[6].get("current_text", "")), "0.740")
+	assert_string_contains(String(rows[9].get("current_text", "")), "elapsed (pose-only timer)")
+	assert_eq(String(rows[10].get("current_text", "")), "tracked / 40ms required")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Averaged velocity >= 0.080 - 0.420")
+	assert_string_contains(body, "Dominance ratio >= 0.500 - 0.740")
+	assert_string_contains(body, "Pose-only rearm - ")
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:
 	var harness = _new_harness()

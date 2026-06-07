@@ -35,16 +35,8 @@ const POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS := STRAIGHT_PUNCH_DEFAULT_POSE_ONLY
 const POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS := STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS
 
 const HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO := 1.6
-const HOOK_DEFAULT_MIN_OUTWARD_DISTANCE := 0.45
-const HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET := 0.40
-const HOOK_DEFAULT_ELBOW_BEND_MIN_DEG := 55.0
-const HOOK_DEFAULT_ELBOW_BEND_MAX_DEG := 145.0
 
 const UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO := 1.2
-const UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET := 0.28
-const UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET := 0.75
-const UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG := 35.0
-const UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG := 125.0
 
 const FLOW_HISTORY_MAX_MS := 560
 const FLOW_SWING_WINDOW_MIN_MS := 120
@@ -621,10 +613,13 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 	var debug := {
 		"phase": String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)),
 		"state": String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)),
+		"previous_state": String(state.get("previous_state", "")),
+		"timestamp_ms": int(state.get("timestamp_ms", 0)),
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
 		"wrist_velocity_window_ms": int(config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)),
 		"wrist_velocity_window_span_ms": int(state.get("last_wrist_velocity_window_span_ms", 0)),
-		"min_punch_velocity": float(config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)),
+		"min_velocity": float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))),
+		"min_punch_velocity": float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))),
 		"triggered_grace_ms": int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)),
 		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
 		"pose_only_rearm_ms": int(config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS)),
@@ -649,18 +644,10 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["outward_distance"] = float(state.get("outward_distance", 0.0))
 		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
 		debug["min_lateral_dominance_ratio"] = float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))
-		debug["min_outward_distance"] = float(config.get("min_outward_distance", HOOK_DEFAULT_MIN_OUTWARD_DISTANCE))
-		debug["max_wrist_elbow_vertical_offset"] = float(config.get("max_wrist_elbow_vertical_offset", HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET))
-		debug["elbow_bend_min_deg"] = float(config.get("elbow_bend_min_deg", HOOK_DEFAULT_ELBOW_BEND_MIN_DEG))
-		debug["elbow_bend_max_deg"] = float(config.get("elbow_bend_max_deg", HOOK_DEFAULT_ELBOW_BEND_MAX_DEG))
 	else:
 		debug["upward_velocity"] = float(state.get("upward_velocity", 0.0))
 		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
 		debug["min_vertical_dominance_ratio"] = float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))
-		debug["max_wrist_elbow_horizontal_offset"] = float(config.get("max_wrist_elbow_horizontal_offset", UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET))
-		debug["max_wrist_above_elbow_offset"] = float(config.get("max_wrist_above_elbow_offset", UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET))
-		debug["elbow_bend_min_deg"] = float(config.get("elbow_bend_min_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG))
-		debug["elbow_bend_max_deg"] = float(config.get("elbow_bend_max_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG))
 	return debug
 
 func _build_flow_debug_state(metrics: Dictionary = {}) -> Dictionary:
@@ -1076,6 +1063,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["last_sample_fresh"] = fresh_sample
 	state["pose_tracking_valid"] = pose_tracking_valid
 	state["tracking_state"] = "pose_tracked" if pose_tracking_valid else "pose_missing"
+	state["current_timestamp_ms"] = timestamp_ms
 	state["elbow_bend_deg"] = elbow_bend_deg
 	state["outward_velocity"] = outward_velocity
 	state["upward_velocity"] = upward_velocity
@@ -1128,22 +1116,13 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		return
 	if phase == POSE_STRIKE_STATE_READY:
 		var ready_to_trigger := false
-		var recent_peak_wrist_velocity := maxf(float(state.get("recent_peak_wrist_velocity", speed)), speed)
-		var min_punch_velocity := maxf(float(config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)), 0.0)
+		var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
 		if family == "hook":
 			var min_lateral_dominance_ratio := maxf(float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO)), 0.0)
-			var min_outward_distance := maxf(float(config.get("min_outward_distance", HOOK_DEFAULT_MIN_OUTWARD_DISTANCE)), 0.0)
-			var max_wrist_elbow_vertical_offset := maxf(float(config.get("max_wrist_elbow_vertical_offset", HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET)), 0.0)
-			var elbow_bend_min_deg := float(config.get("elbow_bend_min_deg", HOOK_DEFAULT_ELBOW_BEND_MIN_DEG))
-			var elbow_bend_max_deg := float(config.get("elbow_bend_max_deg", HOOK_DEFAULT_ELBOW_BEND_MAX_DEG))
-			ready_to_trigger = recent_peak_wrist_velocity >= min_punch_velocity and elbow_bend_deg >= elbow_bend_min_deg and elbow_bend_deg <= elbow_bend_max_deg and outward_velocity >= min_punch_velocity and state.get("dominance_ratio", 0.0) >= min_lateral_dominance_ratio and outward_distance >= shoulder_width * min_outward_distance and wrist_elbow_vertical_offset <= shoulder_width * max_wrist_elbow_vertical_offset
+			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_lateral_dominance_ratio
 		else:
 			var min_vertical_dominance_ratio := maxf(float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO)), 0.0)
-			var max_wrist_elbow_horizontal_offset := maxf(float(config.get("max_wrist_elbow_horizontal_offset", UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET)), 0.0)
-			var max_wrist_above_elbow_offset := maxf(float(config.get("max_wrist_above_elbow_offset", UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET)), 0.0)
-			var uppercut_elbow_bend_min_deg := float(config.get("elbow_bend_min_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG))
-			var uppercut_elbow_bend_max_deg := float(config.get("elbow_bend_max_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG))
-			ready_to_trigger = recent_peak_wrist_velocity >= min_punch_velocity and elbow_bend_deg >= uppercut_elbow_bend_min_deg and elbow_bend_deg <= uppercut_elbow_bend_max_deg and upward_velocity >= min_punch_velocity and state.get("dominance_ratio", 0.0) >= min_vertical_dominance_ratio and wrist_elbow_horizontal_offset <= shoulder_width * max_wrist_elbow_horizontal_offset and wrist_above_elbow_offset <= shoulder_width * max_wrist_above_elbow_offset
+			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_vertical_dominance_ratio
 		if ready_to_trigger:
 			var triggered_grace_ms := max(0, int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)))
 			state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
@@ -1614,12 +1593,8 @@ func _get_hook_config() -> Dictionary:
 	var config := {
 		"enabled": true,
 		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
-		"min_punch_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
+		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"min_lateral_dominance_ratio": HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO,
-		"min_outward_distance": HOOK_DEFAULT_MIN_OUTWARD_DISTANCE,
-		"max_wrist_elbow_vertical_offset": HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET,
-		"elbow_bend_min_deg": HOOK_DEFAULT_ELBOW_BEND_MIN_DEG,
-		"elbow_bend_max_deg": HOOK_DEFAULT_ELBOW_BEND_MAX_DEG,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -1637,12 +1612,8 @@ func _get_hook_config() -> Dictionary:
 	var state_machine: Dictionary = hook.get("state_machine", {}) if hook.get("state_machine", {}) is Dictionary else {}
 	config["enabled"] = bool(hook.get("enabled", config.get("enabled", true)))
 	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
-	config["min_punch_velocity"] = maxf(0.0, float(thresholds.get("min_punch_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))))
+	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_lateral_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_lateral_dominance_ratio", config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))))
-	config["min_outward_distance"] = maxf(0.0, float(thresholds.get("min_outward_distance", config.get("min_outward_distance", HOOK_DEFAULT_MIN_OUTWARD_DISTANCE))))
-	config["max_wrist_elbow_vertical_offset"] = maxf(0.0, float(thresholds.get("max_wrist_elbow_vertical_offset", config.get("max_wrist_elbow_vertical_offset", HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET))))
-	config["elbow_bend_min_deg"] = float(thresholds.get("elbow_bend_min_deg", config.get("elbow_bend_min_deg", HOOK_DEFAULT_ELBOW_BEND_MIN_DEG)))
-	config["elbow_bend_max_deg"] = float(thresholds.get("elbow_bend_max_deg", config.get("elbow_bend_max_deg", HOOK_DEFAULT_ELBOW_BEND_MAX_DEG)))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -1652,12 +1623,8 @@ func _get_uppercut_config() -> Dictionary:
 	var config := {
 		"enabled": true,
 		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
-		"min_punch_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
+		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"min_vertical_dominance_ratio": UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO,
-		"max_wrist_elbow_horizontal_offset": UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET,
-		"max_wrist_above_elbow_offset": UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET,
-		"elbow_bend_min_deg": UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG,
-		"elbow_bend_max_deg": UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -1675,12 +1642,8 @@ func _get_uppercut_config() -> Dictionary:
 	var state_machine: Dictionary = uppercut.get("state_machine", {}) if uppercut.get("state_machine", {}) is Dictionary else {}
 	config["enabled"] = bool(uppercut.get("enabled", config.get("enabled", true)))
 	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
-	config["min_punch_velocity"] = maxf(0.0, float(thresholds.get("min_punch_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))))
+	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_vertical_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_vertical_dominance_ratio", config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))))
-	config["max_wrist_elbow_horizontal_offset"] = maxf(0.0, float(thresholds.get("max_wrist_elbow_horizontal_offset", config.get("max_wrist_elbow_horizontal_offset", UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET))))
-	config["max_wrist_above_elbow_offset"] = maxf(0.0, float(thresholds.get("max_wrist_above_elbow_offset", config.get("max_wrist_above_elbow_offset", UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET))))
-	config["elbow_bend_min_deg"] = float(thresholds.get("elbow_bend_min_deg", config.get("elbow_bend_min_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG)))
-	config["elbow_bend_max_deg"] = float(thresholds.get("elbow_bend_max_deg", config.get("elbow_bend_max_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG)))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -1837,7 +1800,7 @@ func _compute_straight_punch_power(wrist_velocity: float, bbox_area: float, stat
 	return clampf(0.35 + velocity_power * 0.35 + growth_power * 0.20 + area_power * 0.10, 0.0, 1.0)
 
 func _compute_pose_strike_power(family: String, wrist_velocity: float, outward_velocity: float, upward_velocity: float, config: Dictionary) -> float:
-	var velocity_floor := maxf(float(config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)), 0.000001)
+	var velocity_floor := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.000001)
 	var dominant_velocity := maxf(outward_velocity if family == "hook" else upward_velocity, 0.0)
 	var velocity_power := wrist_velocity / (velocity_floor * 3.0)
 	var dominant_power := dominant_velocity / (velocity_floor * 2.0)
@@ -1871,6 +1834,8 @@ func _transition_pose_strike_state(events: Array, family: String, side: String, 
 	if previous_phase == next_phase:
 		return
 	state["phase"] = next_phase
+	state["previous_state"] = previous_phase
+	state["timestamp_ms"] = int(state.get("current_timestamp_ms", _last_processed_timestamp_ms))
 	events.append({
 		"name": StringName("%s_state_changed" % family),
 		"family": family,

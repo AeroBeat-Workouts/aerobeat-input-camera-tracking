@@ -205,6 +205,61 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"row_kind": "info",
 	},
 ]
+const POSE_STRIKE_REQUIREMENT_ROWS := [
+	{
+		"id": "state_section",
+		"label": "Live state",
+		"row_kind": "section",
+	},
+	{
+		"id": "current_state",
+		"label": "Current state",
+		"row_kind": "info",
+	},
+	{
+		"id": "tracking_status",
+		"label": "Pose tracking",
+		"row_kind": "info",
+	},
+	{
+		"id": "trigger_section",
+		"label": "Trigger inputs",
+		"row_kind": "section",
+	},
+	{
+		"id": "velocity_window",
+		"label": "Velocity window",
+		"row_kind": "info",
+	},
+	{
+		"id": "averaged_velocity",
+		"label": "Averaged velocity >= {threshold}",
+	},
+	{
+		"id": "dominance_ratio",
+		"label": "Dominance ratio >= {threshold}",
+	},
+	{
+		"id": "rearm_section",
+		"label": "Hold / rearm",
+		"row_kind": "section",
+	},
+	{
+		"id": "grace_timer",
+		"label": "Grace timer",
+		"row_kind": "info",
+	},
+	{
+		"id": "rearm_status",
+		"label": "Pose-only rearm",
+		"row_kind": "info",
+	},
+	{
+		"id": "reacquire_progress",
+		"label": "Reacquire progress",
+		"row_kind": "info",
+	},
+]
 const HOVER_REQUIREMENT_SPECS := {
 	"punch_left": {
 		"title": "Straight Punch L",
@@ -213,6 +268,26 @@ const HOVER_REQUIREMENT_SPECS := {
 	"punch_right": {
 		"title": "Straight Punch R",
 		"rows": PUNCH_REQUIREMENT_ROWS,
+	},
+	"hook_left": {
+		"title": "Hook L",
+		"rows": POSE_STRIKE_REQUIREMENT_ROWS,
+		"family": "hook",
+	},
+	"hook_right": {
+		"title": "Hook R",
+		"rows": POSE_STRIKE_REQUIREMENT_ROWS,
+		"family": "hook",
+	},
+	"uppercut_left": {
+		"title": "Uppercut L",
+		"rows": POSE_STRIKE_REQUIREMENT_ROWS,
+		"family": "uppercut",
+	},
+	"uppercut_right": {
+		"title": "Uppercut R",
+		"rows": POSE_STRIKE_REQUIREMENT_ROWS,
+		"family": "uppercut",
 	},
 }
 
@@ -782,6 +857,14 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 			return _build_punch_hover_card_model(spec, "left")
 		"punch_right":
 			return _build_punch_hover_card_model(spec, "right")
+		"hook_left":
+			return _build_pose_strike_hover_card_model(spec, "hook", "left")
+		"hook_right":
+			return _build_pose_strike_hover_card_model(spec, "hook", "right")
+		"uppercut_left":
+			return _build_pose_strike_hover_card_model(spec, "uppercut", "left")
+		"uppercut_right":
+			return _build_pose_strike_hover_card_model(spec, "uppercut", "right")
 		_:
 			return spec.duplicate(true)
 
@@ -810,6 +893,21 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 		"title": spec.get("title", _display_name_for_card_key("punch_%s" % side)),
 		"rows": rows,
 		"footer": spec.get("footer", "Live values come from the straight-punch state machine."),
+	}
+
+func _build_pose_strike_hover_card_model(spec: Dictionary, family: String, side: String) -> Dictionary:
+	var latest_state := _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var family_debug: Dictionary = (gesture_debug.get(family, {}) as Dictionary)
+	var side_debug: Dictionary = ((family_debug.get(side, {}) as Dictionary)).duplicate(true)
+	var rows: Array[Dictionary] = []
+	for row_spec_variant: Variant in spec.get("rows", []):
+		var row_spec: Dictionary = row_spec_variant
+		rows.append(_build_pose_strike_requirement_row(row_spec, side_debug, family, side))
+	return {
+		"title": spec.get("title", _display_name_for_card_key("%s_%s" % [family, side])),
+		"rows": rows,
+		"footer": spec.get("footer", "Live values come from the pose-primary %s state machine." % family),
 	}
 
 func _boxing_reference_time_ms() -> int:
@@ -985,6 +1083,82 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			else:
 				current_text = "%s pose stable for straight-punch gating" % ["tracked" if pose_tracking_valid else "waiting"]
 				passed = pose_tracking_valid
+		_:
+			current_text = "pending"
+			passed = false
+	row["label"] = label
+	row["passed"] = passed
+	row["threshold_text"] = threshold_text
+	row["current_text"] = current_text
+	return row
+
+func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictionary, family: String, _side: String) -> Dictionary:
+	var row := row_spec.duplicate(true)
+	var row_id := String(row_spec.get("id", ""))
+	var label := String(row_spec.get("label", ""))
+	var passed := false
+	var current_text := ""
+	var threshold_text := ""
+	var state_name := String(side_debug.get("state", side_debug.get("phase", "tracking_lost")))
+	var tracking_state := String(side_debug.get("tracking_state", "pose_missing"))
+	var pose_tracking_valid := bool(side_debug.get("pose_tracking_valid", false))
+	var sample_source := String(side_debug.get("sample_source", "pose"))
+	var wrist_velocity_window_ms := int(side_debug.get("wrist_velocity_window_ms", 0))
+	var wrist_velocity_window_span_ms := int(side_debug.get("wrist_velocity_window_span_ms", 0))
+	var averaged_velocity := float(side_debug.get("wrist_velocity", 0.0))
+	var min_velocity := float(side_debug.get("min_velocity", side_debug.get("min_punch_velocity", 0.0)))
+	var dominance_ratio := float(side_debug.get("dominance_ratio", 0.0))
+	var required_dominance := float(side_debug.get("min_lateral_dominance_ratio", side_debug.get("min_vertical_dominance_ratio", 0.0)))
+	var grace_ms_remaining := int(side_debug.get("grace_ms_remaining", 0))
+	var triggered_grace_ms := int(side_debug.get("triggered_grace_ms", 0))
+	var pose_only_rearm_ms := int(side_debug.get("pose_only_rearm_ms", 0))
+	var reacquire_stable_ms_required := int(side_debug.get("reacquire_stable_ms_required", 0))
+	var reference_time_ms: int = _boxing_reference_time_ms()
+	var state_timestamp_ms := int(side_debug.get("timestamp_ms", 0))
+	var transition_age_ms: int = max(0, reference_time_ms - state_timestamp_ms) if state_timestamp_ms > 0 else 0
+	match row_id:
+		"state_section", "trigger_section", "rearm_section":
+			current_text = ""
+			passed = false
+		"current_state":
+			current_text = state_name
+			passed = state_name != "tracking_lost"
+		"tracking_status":
+			current_text = "pose_valid=%s, tracking=%s, source=%s" % [_fmt_bool(pose_tracking_valid), tracking_state, sample_source]
+			passed = pose_tracking_valid
+		"velocity_window":
+			current_text = "%dms configured, %dms averaged span" % [wrist_velocity_window_ms, wrist_velocity_window_span_ms]
+			passed = wrist_velocity_window_ms > 0
+		"averaged_velocity":
+			threshold_text = _fmt_float(min_velocity)
+			current_text = _fmt_float(averaged_velocity)
+			passed = averaged_velocity >= min_velocity
+		"dominance_ratio":
+			threshold_text = _fmt_float(required_dominance)
+			current_text = _fmt_float(dominance_ratio)
+			passed = dominance_ratio >= required_dominance
+		"grace_timer":
+			current_text = "%d/%dms remaining" % [grace_ms_remaining, triggered_grace_ms]
+			if state_name == "triggered":
+				current_text += " (active)"
+			elif grace_ms_remaining > 0:
+				current_text += " (counting down)"
+			else:
+				current_text += " (idle)"
+			passed = state_name != "triggered" or grace_ms_remaining > 0
+		"rearm_status":
+			if state_name == "not_ready":
+				current_text = "%d/%dms elapsed (pose-only timer)" % [transition_age_ms, pose_only_rearm_ms]
+				passed = transition_age_ms >= pose_only_rearm_ms
+			elif state_name == "ready":
+				current_text = "pose-only timer satisfied -> ready"
+				passed = true
+			else:
+				current_text = "waiting for pose-only rearm timer"
+				passed = state_name == "tracking_lost" or state_name == "triggered"
+		"reacquire_progress":
+			current_text = "%s / %dms required" % ["tracked" if pose_tracking_valid else "waiting", reacquire_stable_ms_required]
+			passed = pose_tracking_valid
 		_:
 			current_text = "pending"
 			passed = false
@@ -1327,10 +1501,8 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("-----------")
 	lines.append("Enabled: %s" % _fmt_bool(bool(hook_config.get("enabled", false))))
 	lines.append("Velocity window: %dms" % int(hook_eval.get("wrist_velocity_window_ms", 0)))
-	lines.append("Min punch velocity: %s" % _fmt_float(hook_thresholds.get("min_punch_velocity", 0.0)))
+	lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Min lateral dominance: %s" % _fmt_float(hook_thresholds.get("min_lateral_dominance_ratio", 0.0)))
-	lines.append("Min outward distance: %s" % _fmt_float(hook_thresholds.get("min_outward_distance", 0.0)))
-	lines.append("Max wrist/elbow vertical offset: %s" % _fmt_float(hook_thresholds.get("max_wrist_elbow_vertical_offset", 0.0)))
 	lines.append("Hook grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(hook_timing.get("triggered_grace_ms", 0)),
 		int(hook_rearm.get("pose_only_rearm_ms", 0)),
@@ -1342,10 +1514,8 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("---------------")
 	lines.append("Enabled: %s" % _fmt_bool(bool(uppercut_config.get("enabled", false))))
 	lines.append("Velocity window: %dms" % int(uppercut_eval.get("wrist_velocity_window_ms", 0)))
-	lines.append("Min punch velocity: %s" % _fmt_float(uppercut_thresholds.get("min_punch_velocity", 0.0)))
+	lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Min vertical dominance: %s" % _fmt_float(uppercut_thresholds.get("min_vertical_dominance_ratio", 0.0)))
-	lines.append("Max wrist/elbow horizontal offset: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_elbow_horizontal_offset", 0.0)))
-	lines.append("Max wrist above elbow offset: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_above_elbow_offset", 0.0)))
 	lines.append("Uppercut grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(uppercut_timing.get("triggered_grace_ms", 0)),
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),

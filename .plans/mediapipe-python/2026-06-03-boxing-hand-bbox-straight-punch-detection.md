@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-07 16:24 EDT
+**Last Updated:** 2026-06-07 18:06 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -3618,9 +3618,30 @@ Net design decision: for minimum-spec hardware, hooks and uppercuts should be sh
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 - optional nondurable QA notes/artifacts if needed
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending. Bead created from the Task 10BV design so QA can verify the new pose-primary strike families independently after coder delivery.
+**Results:** QA evidence was corrected on 2026-06-07: the earlier caveat that this repo had no dedicated hook/uppercut golden replay fixtures was stale and wrong. The repo already contains family-specific fixture folders plus authored timing sidecars under `.testbed/assets/fixtures/boxing/{hook_left,hook_right,uppercut_left,uppercut_right}/`, so I reran this slice against those real family fixtures instead of relying only on unit coverage plus straight-punch false-positive probes.
+
+Focused repo-local validation still passes for the detector/config/debug implementation itself: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`56/56` passed, `543` asserts; same pre-existing orphan/RID leak shutdown noise only). That keeps the implementation-wiring truth from the earlier QA pass intact, including the phase/timer assertions in `.testbed/tests/unit/test_pose_detector_substrate.gd` and the public proving-harness debug/tuning surfaces.
+
+The actual family-fixture proving commands used for this evidence-hardening rerun were:
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/hook_left" "$PWD/.testbed/test-results/task10bx-family-fixture-hardening/20260607-172212/hook_left" 7000`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/hook_right" "$PWD/.testbed/test-results/task10bx-family-fixture-hardening/20260607-172212/hook_right" 7000`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/uppercut_left" "$PWD/.testbed/test-results/task10bx-family-fixture-hardening/20260607-172212/uppercut_left" 7000`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/uppercut_right" "$PWD/.testbed/test-results/task10bx-family-fixture-hardening/20260607-172212/uppercut_right" 7000`
+
+Artifacts were written under `.testbed/test-results/task10bx-family-fixture-hardening/20260607-172212/`, with per-fixture `report.{json,md}` plus roll-up summaries in `family_fixture_summary.{json,md}`. Headless screenshot capture still hit the known dummy-renderer seam (`Parameter "t" is null`), but the proving reports and event timelines were written truthfully for all four fixtures.
+
+Deterministic family-fixture findings versus the authored YAML timing windows:
+- `hook_left`: required `hook_left` windows hit `0/4`. `provider_started=975ms`, so the first `1000-1600ms` window was observable, but no `hook_left` event fired anywhere in the capture. Incidental co-fires recorded as tuning evidence only: `uppercut_left` at `3271ms` and `4681ms`; `punch_left` at `4634ms` and `6301ms`; `punch_right` at `1716ms`, `3337ms`, `4738ms`, `5559ms`, and `6351ms`; plus `weave_left_*` state events.
+- `hook_right`: required `hook_right` windows hit `0/4`. `provider_started=946ms`, so most of the first `900-1400ms` window was still observable, but no `hook_right` event fired anywhere in the capture. Incidental co-fires recorded: `punch_right` at `1448ms`, `4815ms`, and `6381ms`; `punch_left` at `1618ms`, `2962ms`, `3827ms`, `4655ms`, `5468ms`, `6317ms`, and `7183ms`; plus `weave_right_*` state events.
+- `uppercut_left`: required `uppercut_left` windows hit `0/4`. One `uppercut_left` event did fire, but only once at `7227ms`, which is late and outside the last authored `6000-7000ms` window. Incidental co-fires recorded: repeated `punch_left` / `punch_right` pairs through the clip and a late `squat_start`/`squat_end` around the out-of-window uppercut emission (`7025ms` / `7259ms`).
+- `uppercut_right`: required `uppercut_right` windows hit `0/4`. `provider_started=921ms`; despite overlap with the first `900-1150ms` window, no `uppercut_right` event fired anywhere in the capture. Incidental co-fires recorded: repeated `punch_left` / `punch_right`, `weave_left_*`, and `squat_*` events.
+- Combined required-gesture truth across the dedicated family fixtures: `0/16` authored windows hit in-window. Unlike the older straight-punch first-window startup blocker, startup alone does not explain this result: all four captures anchored to `first_tracking_pose`, provider start happened around `921-975ms`, and every fixture also missed all later windows.
+
+Product-rule application from Derrick’s 2026-06-07 clarification: incidental co-fires are recorded here as tuning evidence, not automatic blockers by themselves. But that rule only helps when the required family gesture is present inside its authored window. In this rerun, the required gesture was absent in-window for all four dedicated fixtures, so this is a real QA failure, not a pass with tolerated noise.
+
+Verdict: this slice is **not ready for gameplay-timing acceptance**. The implementation/debug/config surfaces still work and the focused unit/proving tests still pass, but the actual family-fixture replay evidence now shows the shipped hook/uppercut tuning/detection misses every authored required-gesture window. The next owner-correct seam is no longer “add dedicated fixtures”; it is detector/tuning repair against the already-existing family fixtures and their YAML timing sidecars.
 
 Scoring truth clarified by Derrick on 2026-06-07: for gameplay acceptance, the required gesture firing within the beat timing window matters more than suppressing every incidental co-fired gesture during golden-truth playback. QA should still record unintended co-fires as tuning evidence, but they are no longer an automatic blocker when the required gesture is present in-window.
 
@@ -3642,9 +3663,17 @@ Scoring truth clarified by Derrick on 2026-06-07: for gameplay acceptance, the r
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 - optional nondurable audit notes/artifacts if needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending. Bead created from the Task 10BV design so the implementation can still go through the normal coder -> QA -> auditor truth loop.
+**Results:** Independent audit **passes** for the implemented Task 10BV slice as a detector/config/debug implementation audit, but the older QA caveat it carried forward was stale: the repo does already contain dedicated hook/uppercut replay fixtures, and the later 2026-06-07 evidence-hardening rerun against those fixtures failed `0/16` required windows in-window. Current repo truth still satisfies the narrower design/implementation audit bar. In `src/detectors/pose_detector_substrate.gd`, both `_process_hook()` and `_process_uppercut()` route into the shared `_process_pose_strike()` path, which derives the velocity signal from `_resolve_straight_punch_velocity_signal_position()` and therefore uses the same shared elbow+wrist centroid when elbow visibility is present (`velocity_signal_source = "elbow_plus_wrist"`), falling back to wrist-only only when the elbow landmark is actually unavailable. The trigger predicates are pose-primary and family-specific: hooks gate on outward velocity, lateral-vs-vertical dominance, outward shoulder distance, elbow bend, and wrist/elbow vertical alignment; uppercuts gate on upward velocity, vertical-vs-lateral dominance, elbow bend, and wrist/elbow horizontal/vertical offsets. No hook/uppercut trigger path reads hand bbox area, bbox growth, positive bbox samples, or hand sample freshness.
+
+The state/rearm semantics also match Task 10BV instead of smuggling hand-bbox dependence back in. Hook/uppercut states reuse the documented `tracking_lost -> ready -> triggered -> not_ready` phase model, the shipped `triggered_grace_ms` timer, the pose-only `pose_only_rearm_ms` timer, and the `lost_tracking_reacquire_stable_ms` reacquire gate from the public YAML, all inside `_process_pose_strike()` / `_transition_pose_strike_state()`. Unlike straight punches, the hook/uppercut state dictionaries never store or consult `trigger_bbox_area`, `bbox_area_growth`, or retract thresholds to rearm.
+
+Public config/debug surfaces are truthful to the design. `assets/boxing.gesture_detection.yaml` exposes separate `hook` and `uppercut` sections with the expected evaluation/thresholds/timing/rearm/state_machine knobs; `_build_gesture_debug_state()` now emits `hook` and `uppercut` branches; `_build_pose_strike_side_debug()` exposes the shipped timing fields plus `sample_source = "pose"`, `velocity_signal_source`, dominance ratio, elbow bend, and the family-specific outward/upward metrics; and `.testbed/scripts/boxing_proving_harness.gd` surfaces both the tuning sections and the compact live debug readouts (`hook=<state>/<outward_velocity>`, `uppercut=<state>/<upward_velocity>`). The saved QA proving artifacts at `.testbed/test-results/task10bx-hook-uppercut-qa/20260607-164611-left-fixture/` and `.../20260607-164646-right-fixture/` confirm those public surfaces are actually present in the running harness.
+
+Fresh independent validation from this audit also passed: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`56/56` passed, `543` asserts; only pre-existing orphan/RID leak shutdown noise). Those tests directly back the implementation claims: `test_hook_uses_pose_primary_state_machine_and_debug_surfaces()` and `test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth()` prove the pose-primary trigger/state transitions and debug truth; the proving-harness profile/debug tests verify the new public tuning/debug surfaces; and the stored QA replay captures show no hook/uppercut emissions on the bundled straight-punch fixtures, which is useful false-positive evidence. Per Derrick’s stated product truth, I am treating the absence of incidental co-fires on those replay clips as supportive tuning evidence rather than the whole acceptance bar. Final audit verdict: **pass this slice and close bead `aerobeat-input-camera-tracking-eoi` now**. Remaining follow-up is future product validation work, not a failure of the landed detector/config/debug implementation.
+
+2026-06-07 evidence-hardening addendum: the earlier QA caveat about missing dedicated hook/uppercut fixtures is obsolete. The repo already has family-specific replay fixtures and their timing sidecars under `.testbed/assets/fixtures/boxing/`, and the focused rerun recorded `0/16` required hook/uppercut windows hit in-window (`.testbed/test-results/task10bx-family-fixture-hardening/20260607-172212/family_fixture_summary.md`). That does **not** invalidate this narrower implementation-structure audit, but it does mean the slice should no longer be treated as gameplay-timing accepted or “landed” from a product-truth perspective until detector/tuning work is repaired against those real fixtures.
 
 
 ## Final Results
@@ -3653,7 +3682,7 @@ Scoring truth clarified by Derrick on 2026-06-07: for gameplay acceptance, the r
 
 **What We Built:** This plan successfully turned the camera-tracking stack into a more truthful and tunable boxing proving lane across `REF-01` / `REF-02` / `REF-03`. The landed state now includes: public preview feed knobs for live/replay; public tracking/state cadence knobs; owner-correct replay pacing repaired to follow decoded source timestamps; Chip QA proving that the old recurring `33/66 ms` replay skip pattern is gone; and a clearer product truth that low-end hardware can support pose-only straight punches much better than always-on hand tracking. We also preserved the earlier atomic preview-write / memory-churn fixes while tightening preview-state synchronization and reducing transport confusion during replay debugging.
 
-**Reference Check:** `REF-01` / `REF-02` / `REF-03` now audit cleanly for the replay pacing and preview/cadence configuration slices. The Chip QA artifact bundle at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/artifacts/task10az-chip-replay-pacing-qa/20260607-132939/summary.json` shows source-time publication at ~`33.372 ms` with `unique_source_deltas_ms = [33, 34]` and no steady-state `>40 ms` replay-source gaps in the representative pose-only replay checks. Task 10BV also now pins the next minimum-spec boxing direction more concretely: **straight punches, hooks, and uppercuts on low-end devices should all be designed around pose-primary shared elbow+wrist velocity, while hand tracking remains an optional higher-end tier for straights/debug rather than a requirement for all families**.
+**Reference Check:** `REF-01` / `REF-02` / `REF-03` now audit cleanly for the replay pacing, preview/cadence, and new hook/uppercut detector slices. The Chip QA artifact bundle at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/artifacts/task10az-chip-replay-pacing-qa/20260607-132939/summary.json` shows source-time publication at ~`33.372 ms` with `unique_source_deltas_ms = [33, 34]` and no steady-state `>40 ms` replay-source gaps in the representative pose-only replay checks. For the 2026-06-07 hook/uppercut repair follow-through, the repo now truthfully uses Derrick’s simpler trigger contract in `REF-01`: **pose state ready + averaged shared elbow/wrist velocity over `wrist_velocity_window_ms` + directional dominance threshold**. Elbow-bend, shoulder-distance, and wrist/elbow offset metrics remain debug-only observability, not required trigger gates. The focused family-fixture rerun at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10bz-hook-uppercut-simplified-contract/20260607-181636/family_fixture_summary.json` materially improved the primary acceptance bar from `0/16` required in-window hits to `5/16` (`hook_right 3/4`, `uppercut_left 1/4`, `uppercut_right 1/4`, `hook_left 0/4`). That is a truthful improvement on Derrick’s primary scoring rule, but it does **not** yet close the family slice because `hook_left` still misses all authored windows and incidental co-fires remain loud.
 
 **Commits:**
 - `ee07371` (`REF-01`) - Expose public preview feed profile knobs
@@ -3667,7 +3696,32 @@ Scoring truth clarified by Derrick on 2026-06-07: for gameplay acceptance, the r
 
 **Lessons Learned:** The biggest remaining performance truth is no longer hidden in the preview path: on Chip-class hardware, always-on hand inference is the dominant cost seam, while preview/feed settings and replay pacing are secondary but still important for perceived quality. Public YAML knobs matter because they let Derrick test the real product tradeoffs instead of inheriting silent vendor defaults. Replay smoothness also needed source-time-faithful pacing rather than wall-clock sleeps. Going forward, the product should treat hardware tiers explicitly instead of pretending one gesture-detection mode fits every device.
 
-**Next Slice:** Derrick will continue using the current left/right straight-punch velocity settings as the minimum-spec baseline, with human validation of the replay pacing fix still pending. The hook/uppercut planning seam is no longer vague: the next executable bead is coder task `aerobeat-input-camera-tracking-uqr`, followed by QA `aerobeat-input-camera-tracking-y6n` and auditor `aerobeat-input-camera-tracking-eoi`. Those follow-ups should implement and verify stateful pose-primary hook/uppercut families built on shared elbow+wrist velocity plus the existing pose-only rearm concept, without adding hand-bbox growth dependence.
+**Current Repair Slice (2026-06-07 18:06-18:17 EDT):** Implement Derrick’s simplified hook/uppercut trigger contract from `REF-01`, keep the removed geometry metrics as debug-only observability, simplify the YAML/profile surface to match the real contract, and expose the same live hook/uppercut gating truth in the boxing click inspector that punch already surfaces.
+
+**Files Changed:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+**Commands Run:**
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+- `godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn .testbed/assets/fixtures/boxing/<family> .testbed/test-results/task10bz-hook-uppercut-simplified-contract/20260607-181636/<family> 7000`
+- `python3` summary pass writing `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10bz-hook-uppercut-simplified-contract/20260607-181636/family_fixture_summary.{md,json}`
+
+**Artifacts:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10bz-hook-uppercut-simplified-contract/20260607-181636/family_fixture_summary.json`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10bz-hook-uppercut-simplified-contract/20260607-181636/family_fixture_summary.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10bz-hook-uppercut-simplified-contract/20260607-181636/{hook_left,hook_right,uppercut_left,uppercut_right}/report.{json,md}`
+
+**Validation:**
+- Focused unit + proving-harness coverage now passes (`57/57` tests).
+- Family-fixture required in-window hits improved materially from `0/16` to `5/16`.
+- Improvement breakdown: `hook_right 3/4`, `uppercut_left 1/4`, `uppercut_right 1/4`, `hook_left 0/4`.
+- Incidental co-fires increased under the simplified contract and remain secondary evidence rather than the main blocker.
+
+**Next Slice:** Keep the simplified trigger contract, but continue owner-correct repair against the dedicated family fixtures in `.testbed/assets/fixtures/boxing/{hook_left,hook_right,uppercut_left,uppercut_right}/` until left-hook timing lands in-window and the remaining uppercut windows improve without the current incidental co-fire volume. The family slice is materially better now, but not yet product-complete.
 
 ---
 

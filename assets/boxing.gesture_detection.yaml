@@ -36,21 +36,13 @@ hook:
   # Turn hook detection on or off. input.
   enabled: true
   evaluation:
-    # Measure shared elbow+wrist punch velocity across this much recent time. input.
-    wrist_velocity_window_ms: 160
+    # Measure shared elbow+wrist averaged velocity across this much recent time. input.
+    wrist_velocity_window_ms: 120
   thresholds:
-    # Shared elbow+wrist punch speed must reach at least this value to count as a hook. input.
-    min_punch_velocity: 0.18
-    # Hook motion must stay this much more lateral than vertical. input.
-    min_lateral_dominance_ratio: 1.6
-    # Wrist must already be this far outward from the same-side shoulder, in shoulder widths. input.
-    min_outward_distance: 0.45
-    # Wrist and elbow vertical separation must stay under this many shoulder widths at trigger time. input.
-    max_wrist_elbow_vertical_offset: 0.40
-    # Hook elbow bend window lower bound. input.
-    elbow_bend_min_deg: 55.0
-    # Hook elbow bend window upper bound. input.
-    elbow_bend_max_deg: 145.0
+    # Shared elbow+wrist averaged velocity must reach at least this value to count as a hook. input.
+    min_velocity: 0.08
+    # Hook motion must stay at least this much more lateral than vertical. input.
+    min_lateral_dominance_ratio: 0.5
   timing:
     # Keep the hook in its triggered state for this long after it fires. input.
     triggered_grace_ms: 240
@@ -64,21 +56,13 @@ uppercut:
   # Turn uppercut detection on or off. input.
   enabled: true
   evaluation:
-    # Measure shared elbow+wrist punch velocity across this much recent time. input.
-    wrist_velocity_window_ms: 160
+    # Measure shared elbow+wrist averaged velocity across this much recent time. input.
+    wrist_velocity_window_ms: 120
   thresholds:
-    # Shared elbow+wrist punch speed must reach at least this value to count as an uppercut. input.
-    min_punch_velocity: 0.18
-    # Uppercut motion must stay this much more vertical than lateral. input.
-    min_vertical_dominance_ratio: 1.2
-    # Wrist and elbow horizontal separation must stay under this many shoulder widths at trigger time. input.
-    max_wrist_elbow_horizontal_offset: 0.28
-    # Wrist must not already be wildly above the elbow at trigger time, in shoulder widths. input.
-    max_wrist_above_elbow_offset: 0.75
-    # Uppercut elbow bend window lower bound. input.
-    elbow_bend_min_deg: 35.0
-    # Uppercut elbow bend window upper bound. input.
-    elbow_bend_max_deg: 125.0
+    # Shared elbow+wrist averaged velocity must reach at least this value to count as an uppercut. input.
+    min_velocity: 0.08
+    # Uppercut motion must stay at least this much more vertical than lateral. input.
+    min_vertical_dominance_ratio: 0.4
   timing:
     # Keep the uppercut in its triggered state for this long after it fires. input.
     triggered_grace_ms: 240
