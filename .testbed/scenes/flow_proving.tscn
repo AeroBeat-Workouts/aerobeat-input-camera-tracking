@@ -76,7 +76,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_harness")
 harness_mode = 1
-prerecorded_video_source = "res://assets/fixtures/flow/swings/left-and-right-hands/same-direction/lr1->lr7/flow_swing_lr1->lr7_repeat_04_take_01.mp4"
+prerecorded_video_source = "res://assets/fixtures/flow/swings/left-and-right-hands/same-direction/lr12->lr6/flow_swing_lr12->lr6_repeat_04_take_01.mp4"
 scene_title = "FLOW GESTURE DETECTION"
 
 [node name="Background" type="TextureRect" parent="." unique_id=1697466739]

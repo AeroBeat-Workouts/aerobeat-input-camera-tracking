@@ -11,7 +11,7 @@ tracking:
     smoothing_style: lite_filtered
   hands:
     # Turn hand tracking on or off for this profile. tool -> vendor.
-    enabled: true
+    enabled: false
     # [lite, full] Pick the hand landmark detail level. vendor.
     landmark_mode: lite
     # Run hand inference every N source frames. vendor.
@@ -26,7 +26,7 @@ tracking:
       nearest_wrist_fallback: true
     validity:
       # Drop a hand after this many ms without a real sample. tool -> vendor.
-      max_stale_ms: 80
+      max_stale_ms: 1000
       # Require this much stable time before a lost hand is trusted again. tool -> vendor.
       reacquire_stable_ms: 40
     grace:
