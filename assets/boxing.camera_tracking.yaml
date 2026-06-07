@@ -3,7 +3,7 @@ version: 1
 profile: boxing
 preview:
   surface_mode: attach
-  flip_horizontal: true
+  flip_horizontal: false
   live:
     # Emit a live preview feed only when this profile wants one. input -> tool -> vendor.
     enabled: true
@@ -17,7 +17,7 @@ preview:
     # Emit a replay preview feed only when this profile wants one. input -> tool -> vendor.
     enabled: true
     # Throttle replay preview updates without inventing replay decode controls the vendor does not support. tool -> vendor.
-    max_fps: 10
+    max_fps: 30
     width: 960
     height: 540
     quality: 75
@@ -32,7 +32,7 @@ source:
     requested_width: 960
     requested_height: 540
     # Request this live capture cadence from the real camera path. tool -> vendor.
-    requested_fps: 15
+    requested_fps: 30
 tracking:
   pose:
     # Turn pose tracking on or off. Passed through tool -> vendor.
