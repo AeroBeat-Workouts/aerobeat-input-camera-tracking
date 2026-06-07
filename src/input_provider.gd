@@ -30,6 +30,8 @@ signal weave_left_end()
 signal weave_right_start()
 signal weave_right_end()
 signal straight_punch_state_changed(side: String, state: String, detail: Dictionary)
+signal hook_state_changed(side: String, state: String, detail: Dictionary)
+signal uppercut_state_changed(side: String, state: String, detail: Dictionary)
 
 var _provider = null
 var _config = null
@@ -419,6 +421,8 @@ func _connect_provider_signals() -> void:
 	_connect_provider_signal("punch_left", _on_provider_punch_left)
 	_connect_provider_signal("punch_right", _on_provider_punch_right)
 	_connect_provider_signal("straight_punch_state_changed", _on_provider_straight_punch_state_changed)
+	_connect_provider_signal("hook_state_changed", _on_provider_hook_state_changed)
+	_connect_provider_signal("uppercut_state_changed", _on_provider_uppercut_state_changed)
 	_connect_provider_signal("uppercut_left", _on_provider_uppercut_left)
 	_connect_provider_signal("uppercut_right", _on_provider_uppercut_right)
 	_connect_provider_signal("hook_left", _on_provider_hook_left)
@@ -588,6 +592,12 @@ func _on_provider_punch_right(power: float) -> void:
 
 func _on_provider_straight_punch_state_changed(side: String, state: String, detail: Dictionary) -> void:
 	straight_punch_state_changed.emit(side, state, detail.duplicate(true))
+
+func _on_provider_hook_state_changed(side: String, state: String, detail: Dictionary) -> void:
+	hook_state_changed.emit(side, state, detail.duplicate(true))
+
+func _on_provider_uppercut_state_changed(side: String, state: String, detail: Dictionary) -> void:
+	uppercut_state_changed.emit(side, state, detail.duplicate(true))
 
 func _on_provider_uppercut_left(power: float) -> void:
 	uppercut_left.emit(power)

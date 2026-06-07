@@ -25,10 +25,26 @@ const STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS := 250
 const STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_FRAMES := 2
 const PUNCH_OWN_HALF_MARGIN_RATIO := 0.12
 
-const HOOK_ELBOW_MIN_DEG := 55.0
-const HOOK_ELBOW_MAX_DEG := 145.0
-const UPPERCUT_ELBOW_MIN_DEG := 35.0
-const UPPERCUT_ELBOW_MAX_DEG := 125.0
+const POSE_STRIKE_STATE_READY := STRAIGHT_PUNCH_STATE_READY
+const POSE_STRIKE_STATE_TRIGGERED := STRAIGHT_PUNCH_STATE_TRIGGERED
+const POSE_STRIKE_STATE_NOT_READY := STRAIGHT_PUNCH_STATE_NOT_READY
+const POSE_STRIKE_STATE_TRACKING_LOST := STRAIGHT_PUNCH_STATE_TRACKING_LOST
+const POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY := STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY
+const POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS := STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS
+const POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS := STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS
+const POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS := STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS
+
+const HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO := 1.6
+const HOOK_DEFAULT_MIN_OUTWARD_DISTANCE := 0.45
+const HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET := 0.40
+const HOOK_DEFAULT_ELBOW_BEND_MIN_DEG := 55.0
+const HOOK_DEFAULT_ELBOW_BEND_MAX_DEG := 145.0
+
+const UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO := 1.2
+const UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET := 0.28
+const UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET := 0.75
+const UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG := 35.0
+const UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG := 125.0
 
 const FLOW_HISTORY_MAX_MS := 560
 const FLOW_SWING_WINDOW_MIN_MS := 120
@@ -526,6 +542,8 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	return {
 		"ready": _gesture_state.get("ready", {}).duplicate(true),
 		"straight_punch": _build_straight_punch_debug_state(metrics),
+		"hook": _build_pose_strike_debug_state("hook", metrics),
+		"uppercut": _build_pose_strike_debug_state("uppercut", metrics),
 		"flow": _build_flow_debug_state(metrics),
 	}
 
@@ -586,6 +604,64 @@ func _build_straight_punch_side_debug(side: String, measurements: Dictionary, ha
 		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
 		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
 	}
+
+func _build_pose_strike_debug_state(family: String, metrics: Dictionary = {}) -> Dictionary:
+	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+	return {
+		"left": _build_pose_strike_side_debug(family, "left", measurements),
+		"right": _build_pose_strike_side_debug(family, "right", measurements),
+	}
+
+func _build_pose_strike_side_debug(family: String, side: String, measurements: Dictionary) -> Dictionary:
+	var state := _get_pose_strike_state(family, side)
+	var config := _get_pose_strike_config(family)
+	var velocity_vector: Vector3 = state.get("last_wrist_velocity_vector", Vector3.ZERO)
+	var lateral_speed := absf(float(velocity_vector.x))
+	var vertical_speed := absf(float(velocity_vector.y))
+	var debug := {
+		"phase": String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)),
+		"state": String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)),
+		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
+		"wrist_velocity_window_ms": int(config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)),
+		"wrist_velocity_window_span_ms": int(state.get("last_wrist_velocity_window_span_ms", 0)),
+		"min_punch_velocity": float(config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)),
+		"triggered_grace_ms": int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)),
+		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
+		"pose_only_rearm_ms": int(config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS)),
+		"reacquire_stable_ms_required": int(config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS)),
+		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
+		"tracking_valid": bool(state.get("pose_tracking_valid", false)),
+		"tracking_state": String(state.get("tracking_state", "pose_missing")),
+		"fresh_sample": bool(state.get("last_sample_fresh", false)),
+		"sample_source": "pose",
+		"velocity_signal_source": String(state.get("velocity_signal_source", "wrist_only")),
+		"elbow_bend_deg": float(state.get("elbow_bend_deg", 0.0)),
+		"lateral_velocity": lateral_speed,
+		"vertical_velocity": vertical_speed,
+		"wrist_elbow_vertical_offset": float(state.get("wrist_elbow_vertical_offset", 0.0)),
+		"wrist_elbow_horizontal_offset": float(state.get("wrist_elbow_horizontal_offset", 0.0)),
+		"wrist_above_elbow_offset": float(state.get("wrist_above_elbow_offset", 0.0)),
+		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
+		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
+	}
+	if family == "hook":
+		debug["outward_velocity"] = float(state.get("outward_velocity", 0.0))
+		debug["outward_distance"] = float(state.get("outward_distance", 0.0))
+		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
+		debug["min_lateral_dominance_ratio"] = float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))
+		debug["min_outward_distance"] = float(config.get("min_outward_distance", HOOK_DEFAULT_MIN_OUTWARD_DISTANCE))
+		debug["max_wrist_elbow_vertical_offset"] = float(config.get("max_wrist_elbow_vertical_offset", HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET))
+		debug["elbow_bend_min_deg"] = float(config.get("elbow_bend_min_deg", HOOK_DEFAULT_ELBOW_BEND_MIN_DEG))
+		debug["elbow_bend_max_deg"] = float(config.get("elbow_bend_max_deg", HOOK_DEFAULT_ELBOW_BEND_MAX_DEG))
+	else:
+		debug["upward_velocity"] = float(state.get("upward_velocity", 0.0))
+		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
+		debug["min_vertical_dominance_ratio"] = float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))
+		debug["max_wrist_elbow_horizontal_offset"] = float(config.get("max_wrist_elbow_horizontal_offset", UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET))
+		debug["max_wrist_above_elbow_offset"] = float(config.get("max_wrist_above_elbow_offset", UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET))
+		debug["elbow_bend_min_deg"] = float(config.get("elbow_bend_min_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG))
+		debug["elbow_bend_max_deg"] = float(config.get("elbow_bend_max_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG))
+	return debug
 
 func _build_flow_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
@@ -683,6 +759,14 @@ func _reset_gesture_state() -> void:
 			"left": _build_straight_punch_state(STRAIGHT_PUNCH_STATE_TRACKING_LOST),
 			"right": _build_straight_punch_state(STRAIGHT_PUNCH_STATE_TRACKING_LOST),
 		},
+		"hook": {
+			"left": _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST),
+			"right": _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST),
+		},
+		"uppercut": {
+			"left": _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST),
+			"right": _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST),
+		},
 		"flow": {
 			"left_hand": [],
 			"right_hand": [],
@@ -748,10 +832,10 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 	_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 	if not _get_state("guard"):
-		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), left_hand_velocity, shoulder_width)
-		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), right_hand_velocity, shoulder_width)
-		_process_uppercut(events, "left", left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), left_hand_velocity, shoulder_width)
-		_process_uppercut(events, "right", right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), right_hand_velocity, shoulder_width)
+		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
 	if not _has_any_event(events, ["punch_left", "hook_left", "uppercut_left"]):
 		_process_flow_trail(events, "left", left_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
 		_process_flow_swing(events, "left", left_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
@@ -960,49 +1044,140 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
 	_set_straight_punch_state(side, state)
 
-func _process_hook(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, hand_velocity: Vector3, shoulder_width: float) -> void:
-	var event_name := "hook_%s" % side
-	if absf(hand_velocity.x) <= shoulder_width * 1.10:
-		_set_ready(event_name, true)
-	if not _is_ready(event_name):
-		return
-	if shoulder.is_empty() or elbow.is_empty() or wrist.is_empty():
-		return
-	var outward_velocity := hand_velocity.x if side == "right" else -hand_velocity.x
-	var lateral_speed := absf(hand_velocity.x)
-	var vertical_speed := absf(hand_velocity.y)
-	if elbow_bend_deg < HOOK_ELBOW_MIN_DEG or elbow_bend_deg > HOOK_ELBOW_MAX_DEG:
-		return
-	if absf(float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0))) > shoulder_width * 0.40:
-		return
-	if outward_velocity <= shoulder_width * 1.50:
-		return
-	if lateral_speed <= vertical_speed * 1.6:
-		return
-	var outward_distance: float = float(shoulder.get("x", 0.0) - wrist.get("x", 0.0) if side == "left" else wrist.get("x", 0.0) - shoulder.get("x", 0.0))
-	if float(outward_distance) <= shoulder_width * 0.45:
-		return
-	_emit_power_event(events, event_name, clampf(0.45 + outward_velocity / maxf(shoulder_width * 5.5, 0.000001), 0.0, 1.0))
-	_set_ready(event_name, false)
+func _process_hook(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int) -> void:
+	var config := _get_hook_config()
+	_process_pose_strike(events, "hook", side, "hook_%s" % side, config, shoulder, elbow, wrist, elbow_bend_deg, shoulder_width, timestamp_ms)
 
-func _process_uppercut(events: Array, side: String, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, hand_velocity: Vector3, shoulder_width: float) -> void:
-	var event_name := "uppercut_%s" % side
-	if absf(hand_velocity.y) <= shoulder_width * 1.10:
-		_set_ready(event_name, true)
-	if not _is_ready(event_name):
+func _process_uppercut(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int) -> void:
+	var config := _get_uppercut_config()
+	_process_pose_strike(events, "uppercut", side, "uppercut_%s" % side, config, shoulder, elbow, wrist, elbow_bend_deg, shoulder_width, timestamp_ms)
+
+func _process_pose_strike(events: Array, family: String, side: String, event_name: String, config: Dictionary, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int) -> void:
+	if not bool(config.get("enabled", true)):
+		_set_pose_strike_state(family, side, _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST))
 		return
-	if elbow.is_empty() or wrist.is_empty():
+	var state := _get_pose_strike_state(family, side)
+	var pose_tracking_valid := _is_pose_valid_for_pose_strike(shoulder, elbow, wrist, shoulder_width)
+	var fresh_sample := pose_tracking_valid
+	var wrist_position := PoseMetrics.to_vector3(wrist)
+	var velocity_signal_position := _resolve_straight_punch_velocity_signal_position(state, elbow, wrist_position)
+	var velocity_vector := _resolve_straight_punch_wrist_velocity(state, velocity_signal_position, timestamp_ms, fresh_sample, config)
+	var speed := maxf(velocity_vector.length(), 0.0)
+	var lateral_speed := absf(float(velocity_vector.x))
+	var vertical_speed := absf(float(velocity_vector.y))
+	var outward_velocity := float(velocity_vector.x) if side == "right" else -float(velocity_vector.x)
+	var upward_velocity := maxf(float(velocity_vector.y), 0.0)
+	var outward_distance := float(shoulder.get("x", 0.0) - wrist.get("x", 0.0) if side == "left" else wrist.get("x", 0.0) - shoulder.get("x", 0.0))
+	var wrist_elbow_vertical_offset := absf(float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0)))
+	var wrist_elbow_horizontal_offset := absf(float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0)))
+	var wrist_above_elbow_offset := float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0))
+	state["last_wrist_velocity"] = speed
+	state["last_wrist_velocity_vector"] = velocity_vector
+	state["last_sample_fresh"] = fresh_sample
+	state["pose_tracking_valid"] = pose_tracking_valid
+	state["tracking_state"] = "pose_tracked" if pose_tracking_valid else "pose_missing"
+	state["elbow_bend_deg"] = elbow_bend_deg
+	state["outward_velocity"] = outward_velocity
+	state["upward_velocity"] = upward_velocity
+	state["outward_distance"] = outward_distance
+	state["wrist_elbow_vertical_offset"] = wrist_elbow_vertical_offset
+	state["wrist_elbow_horizontal_offset"] = wrist_elbow_horizontal_offset
+	state["wrist_above_elbow_offset"] = wrist_above_elbow_offset
+	state["dominance_ratio"] = 0.0
+	if family == "hook":
+		state["dominance_ratio"] = outward_velocity / maxf(vertical_speed, 0.000001) if outward_velocity > 0.0 else 0.0
+	else:
+		state["dominance_ratio"] = upward_velocity / maxf(lateral_speed, 0.000001) if upward_velocity > 0.0 else 0.0
+	if not pose_tracking_valid:
+		state["wrist_velocity_history"] = []
+		state["wrist_position_history"] = []
+		state["recent_peak_wrist_velocity"] = 0.0
+		state["last_wrist_velocity_vector"] = Vector3.ZERO
+		state["last_wrist_velocity_window_span_ms"] = 0
+		state["grace_ms_remaining"] = 0
+		state["grace_deadline_timestamp_ms"] = 0
+		state["reacquire_started_timestamp_ms"] = -1
+		state["not_ready_started_timestamp_ms"] = -1
+		_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRACKING_LOST)
+		_set_pose_strike_state(family, side, state)
 		return
-	if elbow_bend_deg < UPPERCUT_ELBOW_MIN_DEG or elbow_bend_deg > UPPERCUT_ELBOW_MAX_DEG:
+	var phase := String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST))
+	var sample_window_size := 4
+	var wrist_velocity_history: Array = (state.get("wrist_velocity_history", []) as Array).duplicate(true)
+	if fresh_sample:
+		wrist_velocity_history.append(speed)
+		while wrist_velocity_history.size() > sample_window_size:
+			wrist_velocity_history.remove_at(0)
+		state["wrist_velocity_history"] = wrist_velocity_history
+		state["recent_peak_wrist_velocity"] = _window_peak_float(wrist_velocity_history)
+		state["reacquire_started_timestamp_ms"] = timestamp_ms if phase == POSE_STRIKE_STATE_TRACKING_LOST and int(state.get("reacquire_started_timestamp_ms", -1)) < 0 else int(state.get("reacquire_started_timestamp_ms", -1))
+	else:
+		state["wrist_velocity_history"] = wrist_velocity_history
+	if phase == POSE_STRIKE_STATE_TRACKING_LOST:
+		var reacquire_stable_ms := max(0, int(config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS)))
+		if timestamp_ms - int(state.get("reacquire_started_timestamp_ms", timestamp_ms)) >= reacquire_stable_ms:
+			state["wrist_velocity_history"] = [speed]
+			state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": velocity_signal_position}]
+			state["recent_peak_wrist_velocity"] = speed
+			state["last_wrist_velocity_vector"] = Vector3.ZERO
+			state["last_wrist_velocity_window_span_ms"] = 0
+			state["not_ready_started_timestamp_ms"] = -1
+			state["reacquire_started_timestamp_ms"] = -1
+			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
+		_set_pose_strike_state(family, side, state)
 		return
-	if absf(float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0))) > shoulder_width * 0.28:
+	if phase == POSE_STRIKE_STATE_READY:
+		var ready_to_trigger := false
+		var recent_peak_wrist_velocity := maxf(float(state.get("recent_peak_wrist_velocity", speed)), speed)
+		var min_punch_velocity := maxf(float(config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)), 0.0)
+		if family == "hook":
+			var min_lateral_dominance_ratio := maxf(float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO)), 0.0)
+			var min_outward_distance := maxf(float(config.get("min_outward_distance", HOOK_DEFAULT_MIN_OUTWARD_DISTANCE)), 0.0)
+			var max_wrist_elbow_vertical_offset := maxf(float(config.get("max_wrist_elbow_vertical_offset", HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET)), 0.0)
+			var elbow_bend_min_deg := float(config.get("elbow_bend_min_deg", HOOK_DEFAULT_ELBOW_BEND_MIN_DEG))
+			var elbow_bend_max_deg := float(config.get("elbow_bend_max_deg", HOOK_DEFAULT_ELBOW_BEND_MAX_DEG))
+			ready_to_trigger = recent_peak_wrist_velocity >= min_punch_velocity and elbow_bend_deg >= elbow_bend_min_deg and elbow_bend_deg <= elbow_bend_max_deg and outward_velocity >= min_punch_velocity and state.get("dominance_ratio", 0.0) >= min_lateral_dominance_ratio and outward_distance >= shoulder_width * min_outward_distance and wrist_elbow_vertical_offset <= shoulder_width * max_wrist_elbow_vertical_offset
+		else:
+			var min_vertical_dominance_ratio := maxf(float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO)), 0.0)
+			var max_wrist_elbow_horizontal_offset := maxf(float(config.get("max_wrist_elbow_horizontal_offset", UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET)), 0.0)
+			var max_wrist_above_elbow_offset := maxf(float(config.get("max_wrist_above_elbow_offset", UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET)), 0.0)
+			var uppercut_elbow_bend_min_deg := float(config.get("elbow_bend_min_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG))
+			var uppercut_elbow_bend_max_deg := float(config.get("elbow_bend_max_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG))
+			ready_to_trigger = recent_peak_wrist_velocity >= min_punch_velocity and elbow_bend_deg >= uppercut_elbow_bend_min_deg and elbow_bend_deg <= uppercut_elbow_bend_max_deg and upward_velocity >= min_punch_velocity and state.get("dominance_ratio", 0.0) >= min_vertical_dominance_ratio and wrist_elbow_horizontal_offset <= shoulder_width * max_wrist_elbow_horizontal_offset and wrist_above_elbow_offset <= shoulder_width * max_wrist_above_elbow_offset
+		if ready_to_trigger:
+			var triggered_grace_ms := max(0, int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)))
+			state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
+			state["grace_ms_remaining"] = triggered_grace_ms
+			state["not_ready_started_timestamp_ms"] = -1
+			_emit_power_event(events, event_name, _compute_pose_strike_power(family, speed, outward_velocity, upward_velocity, config))
+			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRIGGERED)
+		_set_pose_strike_state(family, side, state)
 		return
-	if hand_velocity.y <= shoulder_width * 1.40:
+	if phase == POSE_STRIKE_STATE_TRIGGERED:
+		var grace_deadline_timestamp_ms := int(state.get("grace_deadline_timestamp_ms", 0))
+		var grace_ms_remaining := max(0, grace_deadline_timestamp_ms - timestamp_ms)
+		state["grace_ms_remaining"] = grace_ms_remaining
+		if timestamp_ms >= grace_deadline_timestamp_ms:
+			state["not_ready_started_timestamp_ms"] = timestamp_ms
+			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_NOT_READY)
+		_set_pose_strike_state(family, side, state)
 		return
-	if absf(hand_velocity.y) <= absf(hand_velocity.x) * 1.2:
+	if phase == POSE_STRIKE_STATE_NOT_READY:
+		var pose_only_rearm_ms := max(0, int(config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS)))
+		var not_ready_started_timestamp_ms := int(state.get("not_ready_started_timestamp_ms", timestamp_ms))
+		if timestamp_ms - not_ready_started_timestamp_ms >= pose_only_rearm_ms:
+			state["grace_ms_remaining"] = 0
+			state["grace_deadline_timestamp_ms"] = 0
+			state["wrist_velocity_history"] = [speed]
+			state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": velocity_signal_position}]
+			state["recent_peak_wrist_velocity"] = speed
+			state["last_wrist_velocity_vector"] = Vector3.ZERO
+			state["last_wrist_velocity_window_span_ms"] = 0
+			state["not_ready_started_timestamp_ms"] = -1
+			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
+		_set_pose_strike_state(family, side, state)
 		return
-	_emit_power_event(events, event_name, clampf(0.45 + hand_velocity.y / maxf(shoulder_width * 5.0, 0.000001), 0.0, 1.0))
-	_set_ready(event_name, false)
+	_set_pose_strike_state(family, side, state)
 
 func _process_flow_swing(events: Array, side: String, hand_velocity: Vector3, shoulder_width: float, shoulder_center: Vector2, timestamp_ms: int) -> void:
 	var event_name := "swing_%s" % side
@@ -1395,6 +1570,122 @@ func _get_straight_punch_config() -> Dictionary:
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS))))
 	return config
 
+func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -> Dictionary:
+	return {
+		"phase": phase,
+		"wrist_velocity_history": [],
+		"wrist_position_history": [],
+		"recent_peak_wrist_velocity": 0.0,
+		"grace_ms_remaining": 0,
+		"grace_deadline_timestamp_ms": 0,
+		"last_wrist_velocity": 0.0,
+		"last_wrist_velocity_vector": Vector3.ZERO,
+		"last_wrist_velocity_window_span_ms": 0,
+		"last_sample_fresh": false,
+		"velocity_signal_source": "wrist_only",
+		"pose_tracking_valid": false,
+		"tracking_state": "pose_missing",
+		"reacquire_started_timestamp_ms": -1,
+		"not_ready_started_timestamp_ms": -1,
+		"elbow_bend_deg": 0.0,
+		"outward_velocity": 0.0,
+		"upward_velocity": 0.0,
+		"outward_distance": 0.0,
+		"wrist_elbow_vertical_offset": 0.0,
+		"wrist_elbow_horizontal_offset": 0.0,
+		"wrist_above_elbow_offset": 0.0,
+		"dominance_ratio": 0.0,
+	}
+
+func _get_pose_strike_state(family: String, side: String) -> Dictionary:
+	var families: Dictionary = _gesture_state.get(family, {})
+	return (families.get(side, _build_pose_strike_state()) as Dictionary).duplicate(true)
+
+func _set_pose_strike_state(family: String, side: String, state: Dictionary) -> void:
+	var families: Dictionary = _gesture_state.get(family, {})
+	families[side] = state.duplicate(true)
+	_gesture_state[family] = families
+	_set_ready("%s_%s" % [family, side], String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)) == POSE_STRIKE_STATE_READY)
+
+func _get_pose_strike_config(family: String) -> Dictionary:
+	return _get_hook_config() if family == "hook" else _get_uppercut_config()
+
+func _get_hook_config() -> Dictionary:
+	var config := {
+		"enabled": true,
+		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
+		"min_punch_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
+		"min_lateral_dominance_ratio": HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO,
+		"min_outward_distance": HOOK_DEFAULT_MIN_OUTWARD_DISTANCE,
+		"max_wrist_elbow_vertical_offset": HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET,
+		"elbow_bend_min_deg": HOOK_DEFAULT_ELBOW_BEND_MIN_DEG,
+		"elbow_bend_max_deg": HOOK_DEFAULT_ELBOW_BEND_MAX_DEG,
+		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
+		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
+		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
+	}
+	if _config == null:
+		return config
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return config
+	var hook: Dictionary = gesture_profile_document.get("hook", {}) if gesture_profile_document.get("hook", {}) is Dictionary else {}
+	var evaluation: Dictionary = hook.get("evaluation", {}) if hook.get("evaluation", {}) is Dictionary else {}
+	var thresholds: Dictionary = hook.get("thresholds", {}) if hook.get("thresholds", {}) is Dictionary else {}
+	var timing: Dictionary = hook.get("timing", {}) if hook.get("timing", {}) is Dictionary else {}
+	var rearm: Dictionary = hook.get("rearm", {}) if hook.get("rearm", {}) is Dictionary else {}
+	var state_machine: Dictionary = hook.get("state_machine", {}) if hook.get("state_machine", {}) is Dictionary else {}
+	config["enabled"] = bool(hook.get("enabled", config.get("enabled", true)))
+	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
+	config["min_punch_velocity"] = maxf(0.0, float(thresholds.get("min_punch_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))))
+	config["min_lateral_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_lateral_dominance_ratio", config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))))
+	config["min_outward_distance"] = maxf(0.0, float(thresholds.get("min_outward_distance", config.get("min_outward_distance", HOOK_DEFAULT_MIN_OUTWARD_DISTANCE))))
+	config["max_wrist_elbow_vertical_offset"] = maxf(0.0, float(thresholds.get("max_wrist_elbow_vertical_offset", config.get("max_wrist_elbow_vertical_offset", HOOK_DEFAULT_MAX_WRIST_ELBOW_VERTICAL_OFFSET))))
+	config["elbow_bend_min_deg"] = float(thresholds.get("elbow_bend_min_deg", config.get("elbow_bend_min_deg", HOOK_DEFAULT_ELBOW_BEND_MIN_DEG)))
+	config["elbow_bend_max_deg"] = float(thresholds.get("elbow_bend_max_deg", config.get("elbow_bend_max_deg", HOOK_DEFAULT_ELBOW_BEND_MAX_DEG)))
+	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
+	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
+	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
+	return config
+
+func _get_uppercut_config() -> Dictionary:
+	var config := {
+		"enabled": true,
+		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
+		"min_punch_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
+		"min_vertical_dominance_ratio": UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO,
+		"max_wrist_elbow_horizontal_offset": UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET,
+		"max_wrist_above_elbow_offset": UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET,
+		"elbow_bend_min_deg": UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG,
+		"elbow_bend_max_deg": UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG,
+		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
+		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
+		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
+	}
+	if _config == null:
+		return config
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return config
+	var uppercut: Dictionary = gesture_profile_document.get("uppercut", {}) if gesture_profile_document.get("uppercut", {}) is Dictionary else {}
+	var evaluation: Dictionary = uppercut.get("evaluation", {}) if uppercut.get("evaluation", {}) is Dictionary else {}
+	var thresholds: Dictionary = uppercut.get("thresholds", {}) if uppercut.get("thresholds", {}) is Dictionary else {}
+	var timing: Dictionary = uppercut.get("timing", {}) if uppercut.get("timing", {}) is Dictionary else {}
+	var rearm: Dictionary = uppercut.get("rearm", {}) if uppercut.get("rearm", {}) is Dictionary else {}
+	var state_machine: Dictionary = uppercut.get("state_machine", {}) if uppercut.get("state_machine", {}) is Dictionary else {}
+	config["enabled"] = bool(uppercut.get("enabled", config.get("enabled", true)))
+	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
+	config["min_punch_velocity"] = maxf(0.0, float(thresholds.get("min_punch_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))))
+	config["min_vertical_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_vertical_dominance_ratio", config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))))
+	config["max_wrist_elbow_horizontal_offset"] = maxf(0.0, float(thresholds.get("max_wrist_elbow_horizontal_offset", config.get("max_wrist_elbow_horizontal_offset", UPPERCUT_DEFAULT_MAX_WRIST_ELBOW_HORIZONTAL_OFFSET))))
+	config["max_wrist_above_elbow_offset"] = maxf(0.0, float(thresholds.get("max_wrist_above_elbow_offset", config.get("max_wrist_above_elbow_offset", UPPERCUT_DEFAULT_MAX_WRIST_ABOVE_ELBOW_OFFSET))))
+	config["elbow_bend_min_deg"] = float(thresholds.get("elbow_bend_min_deg", config.get("elbow_bend_min_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MIN_DEG)))
+	config["elbow_bend_max_deg"] = float(thresholds.get("elbow_bend_max_deg", config.get("elbow_bend_max_deg", UPPERCUT_DEFAULT_ELBOW_BEND_MAX_DEG)))
+	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
+	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
+	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
+	return config
+
 func _get_tracking_hand_payload(tracking_frame: Dictionary, side: String) -> Dictionary:
 	var hands: Dictionary = tracking_frame.get("hands", {}) if tracking_frame.get("hands", {}) is Dictionary else {}
 	return hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
@@ -1414,6 +1705,12 @@ func _is_pose_valid_for_straight_punch(shoulder: Dictionary, wrist: Dictionary, 
 		return false
 	var min_visibility := _get_min_visibility()
 	return float(shoulder.get("v", 0.0)) >= min_visibility and float(wrist.get("v", 0.0)) >= min_visibility
+
+func _is_pose_valid_for_pose_strike(shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float) -> bool:
+	if shoulder.is_empty() or elbow.is_empty() or wrist.is_empty() or shoulder_width <= 0.0:
+		return false
+	var min_visibility := _get_min_visibility()
+	return float(shoulder.get("v", 0.0)) >= min_visibility and float(elbow.get("v", 0.0)) >= min_visibility and float(wrist.get("v", 0.0)) >= min_visibility
 
 func _resolve_straight_punch_velocity_signal_position(state: Dictionary, elbow: Dictionary, wrist_position: Vector3) -> Vector3:
 	if elbow.is_empty() or float(elbow.get("v", 0.0)) < _get_min_visibility():
@@ -1539,6 +1836,13 @@ func _compute_straight_punch_power(wrist_velocity: float, bbox_area: float, stat
 	var area_power := bbox_area / maxf(float(state.get("trigger_bbox_area", bbox_area)), 0.000001)
 	return clampf(0.35 + velocity_power * 0.35 + growth_power * 0.20 + area_power * 0.10, 0.0, 1.0)
 
+func _compute_pose_strike_power(family: String, wrist_velocity: float, outward_velocity: float, upward_velocity: float, config: Dictionary) -> float:
+	var velocity_floor := maxf(float(config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)), 0.000001)
+	var dominant_velocity := maxf(outward_velocity if family == "hook" else upward_velocity, 0.0)
+	var velocity_power := wrist_velocity / (velocity_floor * 3.0)
+	var dominant_power := dominant_velocity / (velocity_floor * 2.0)
+	return clampf(0.35 + velocity_power * 0.35 + dominant_power * 0.30, 0.0, 1.0)
+
 func _transition_straight_punch_state(events: Array, side: String, state: Dictionary, next_phase: String) -> void:
 	var previous_phase := String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST))
 	if previous_phase == next_phase:
@@ -1560,6 +1864,28 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"sample_source": String(state.get("hand_sample_source", "none")),
 		"tracking_state": String(state.get("hand_tracking_state", "idle")),
 		"tracking_valid": bool(state.get("hand_tracking_valid", false)),
+	})
+
+func _transition_pose_strike_state(events: Array, family: String, side: String, state: Dictionary, next_phase: String) -> void:
+	var previous_phase := String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST))
+	if previous_phase == next_phase:
+		return
+	state["phase"] = next_phase
+	events.append({
+		"name": StringName("%s_state_changed" % family),
+		"family": family,
+		"side": side,
+		"state": next_phase,
+		"previous_state": previous_phase,
+		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
+		"outward_velocity": float(state.get("outward_velocity", 0.0)),
+		"upward_velocity": float(state.get("upward_velocity", 0.0)),
+		"dominance_ratio": float(state.get("dominance_ratio", 0.0)),
+		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
+		"tracking_state": String(state.get("tracking_state", "pose_missing")),
+		"fresh_sample": bool(state.get("last_sample_fresh", false)),
+		"sample_source": "pose",
+		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
 	})
 
 func _emit_power_event(events: Array, event_name: String, power: float) -> void:

@@ -403,6 +403,18 @@ func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 					"bbox_area_growth": 0.0,
 					"grace_ms_remaining": 160,
 				}
+			},
+			"hook": {
+				"left": {
+					"state": "ready",
+					"outward_velocity": 0.31,
+				}
+			},
+			"uppercut": {
+				"left": {
+					"state": "tracking_lost",
+					"upward_velocity": 0.00,
+				}
 			}
 		}
 	})
@@ -413,6 +425,17 @@ func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 	assert_string_contains(line, "valid=true")
 	assert_string_contains(line, "source=pose")
 	assert_string_contains(line, "bbox_area=0.000")
+	assert_string_contains(line, "hook=ready/0.310")
+	assert_string_contains(line, "uppercut=tracking_lost/0.000")
+
+
+func test_boxing_event_feed_text_lists_hook_and_uppercut_tuning_sections() -> void:
+	var harness = _new_harness()
+	var text_body := String(harness._build_boxing_event_feed_text())
+	assert_string_contains(text_body, "Hook tuning")
+	assert_string_contains(text_body, "Min lateral dominance")
+	assert_string_contains(text_body, "Uppercut tuning")
+	assert_string_contains(text_body, "Min vertical dominance")
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:
 	var harness = _new_harness()

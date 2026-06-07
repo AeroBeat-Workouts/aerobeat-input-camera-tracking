@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-07 15:30 EDT
-**Blocked Reason:** Waiting on Derrick's in-person validation of the replay pacing repair and next-session planning for hook/uppercut gesture detection.
+**Last Updated:** 2026-06-07 16:24 EDT
+**Blocked Reason:** None
 **Agent:** `pico`
 
 ---
@@ -3454,13 +3454,206 @@ Targeted audit validation rerun from repo root: `godot --headless --path .testbe
 ---
 
 
+### Task 10BV: Define low-end pose-primary hook and uppercut gesture design
+
+**Bead ID:** `aerobeat-input-camera-tracking-ck5`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Starting from the current minimum-spec product truth in this plan, define the next two boxing gesture families for low-end pose-primary hardware: left/right hooks and uppercuts. Keep the design scope narrow and implementation-oriented. Hooks should use shared wrist+elbow motion with predominantly sideways movement; uppercuts should use shared wrist+elbow motion with predominantly vertical movement. Both should reuse the current straight-punch rearm concept where it still fits, and neither should assume hand bbox growth/shrink is available on minimum-spec hardware. Claim bead `aerobeat-input-camera-tracking-ck5` on start. Audit the current detector/debug/config surfaces in `REF-01`, identify the smallest truthful detector/config additions needed for these two gesture families, propose public YAML knobs and debug fields, call out likely false-positive seams on low-end webcams, and leave a concrete implementation-ready design plus suggested bead split for coder/QA/auditor follow-up. Do not implement the new gestures yet; this is a design/planning slice only.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- optional nondurable design notes/artifacts if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable design notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Research/design complete. Claimed the bead with `bd update aerobeat-input-camera-tracking-ck5 --status in_progress --json`, audited the current owner-repo surfaces, and defined the smallest truthful next-step design for low-end pose-primary **hooks** and **uppercuts**.
+
+Current truth from `REF-01`:
+- `src/detectors/pose_detector_substrate.gd` already has `_process_hook()` / `_process_uppercut()` event emitters, but they are still the old one-frame heuristics: they read raw per-frame `hand_velocity` from the wrist only, use only the legacy ready boolean, expose no family-specific state machine, have no YAML-backed public thresholds, and publish no family-specific `gesture_debug` payload beyond the generic `ready` map.
+- The only public boxing gesture config currently exposed in `assets/boxing.gesture_detection.yaml` is `straight_punch.*`. Hooks/uppercuts therefore have no repo-owned tuning contract yet.
+- The proving/debug surfaces are also straight-punch-centric today. `_build_gesture_debug_state()` only returns `ready`, `straight_punch`, and `flow`; `.testbed/scripts/boxing_proving_harness.gd` has requirement rows / inspector wiring for straights but no equivalent per-side live debug body for hook/uppercut state.
+
+Implementation-ready detector design:
+- Treat both families as **pose-primary strike detectors** that reuse the existing shared elbow+wrist velocity source and the straight-punch phase model where it still fits: `tracking_lost -> ready -> triggered -> not_ready -> ready`.
+- Do **not** add hand-bbox growth/shrink as a requirement for either family on the minimum-spec path. These families should always behave like the current pose-only straight-punch branch for arming/rearming, even when hand tracking happens to be enabled on higher-end hardware.
+- Add a small generalized per-family/per-side state bucket under `_gesture_state`, parallel to `straight_punch`, with the same timing/reacquire bookkeeping fields that matter for pose-only strikes: phase, `recent_peak_velocity`, `last_velocity`, `last_velocity_vector`, `last_velocity_window_span_ms`, `last_sample_fresh`, `pose_tracking_valid`, `reacquire_started_timestamp_ms`, `not_ready_started_timestamp_ms`, and family-specific last measurements (dominant velocity, cross-axis velocity, elbow bend, alignment/extension metrics).
+- Reuse the existing shared velocity helper shape rather than inventing a new sensor path: keep the same elbow+wrist midpoint when the elbow is valid, otherwise wrist-only fallback, and use the same averaged-in-window velocity computation already landed for straight punches. For hooks/uppercuts, compute family decisions from the returned vector components rather than from bbox growth.
+
+Family trigger rules:
+- **Hook (left/right):** trigger from the same-side shared elbow+wrist velocity when the **lateral/outward** component is dominant. Required gates:
+  - pose valid for same-side shoulder + elbow + wrist
+  - elbow bend inside a hook window
+  - outward velocity above threshold (`right` uses `+x`, `left` uses `-x`)
+  - lateral dominance ratio over both vertical motion and forward/back noise
+  - wrist roughly shoulder-height / elbow-height (`abs(wrist.y - elbow.y)` gate)
+  - wrist already extended outward from same-side shoulder by a minimum ratio so guard jitter near the face does not count
+- **Uppercut (left/right):** trigger from the same-side shared elbow+wrist velocity when the **upward** component is dominant. Required gates:
+  - pose valid for same-side shoulder + elbow + wrist
+  - elbow bend inside an uppercut window
+  - upward velocity above threshold (`+y` in the current gameplay-space pose path)
+  - vertical dominance ratio over lateral motion
+  - wrist stays in the same vertical lane as the elbow (`abs(wrist.x - elbow.x)` gate)
+  - optional conservative height gate based on elbow relation rather than face proximity: keep the wrist from already being wildly above the elbow at trigger time so high guard chatter does not read as an uppercut
+
+Rearm / loss / reacquire design:
+- Reuse the straight-punch **grace hold**, **tracking_lost**, and **reacquire stable ms** semantics directly.
+- Reuse the current **pose-only rearm timer** as the minimum truthful rearm rule for both families. After `triggered_grace_ms` expires, transition to `not_ready`; transition back to `ready` only after `pose_only_rearm_ms` elapses with valid pose samples. This is the straight-punch rearm concept that still fits without bbox shrink.
+- Do **not** add extra family-specific retreat/retract geometry in the first implementation slice unless QA proves the timer-only rearm is insufficient. That keeps the minimum-spec design small and honest.
+
+Smallest public YAML additions proposed for `assets/boxing.gesture_detection.yaml`:
+- Add `hook.*` and `uppercut.*` sections alongside `straight_punch.*` using the same top-level shape so the config surface stays predictable:
+  - `enabled`
+  - `evaluation.wrist_velocity_window_ms`
+  - `thresholds.min_lateral_velocity` / `thresholds.min_vertical_velocity`
+  - `thresholds.min_lateral_dominance_ratio` / `thresholds.min_vertical_dominance_ratio`
+  - `thresholds.min_outward_distance` (hook)
+  - `thresholds.max_wrist_elbow_vertical_offset` (hook)
+  - `thresholds.max_wrist_elbow_horizontal_offset` (uppercut)
+  - `thresholds.max_wrist_above_elbow_offset` (uppercut, conservative anti-guard-jitter gate)
+  - `thresholds.min_elbow_bend_deg`
+  - `thresholds.max_elbow_bend_deg`
+  - `timing.triggered_grace_ms`
+  - `rearm.pose_only_rearm_ms`
+  - `state_machine.lost_tracking_reacquire_stable_ms`
+- Keep names explicit and family-local instead of trying to over-generalize the YAML schema in the first pass.
+
+Smallest detector/code additions proposed:
+- Add `_build_pose_strike_state()`-style helpers (or family-specific equivalents) plus `_get_hook_config()` / `_get_uppercut_config()`.
+- Factor a tiny shared pose-strike velocity/update helper out of straight-punch logic rather than duplicating window/timer bookkeeping three times.
+- Replace the current one-frame `_process_hook()` / `_process_uppercut()` bodies with phase-based versions that emit both the final power event (`hook_left`, `hook_right`, `uppercut_left`, `uppercut_right`) and family-specific state-change events (`hook_state_changed`, `uppercut_state_changed`) mirroring the straight-punch debug/event pattern.
+- Extend `_build_gesture_debug_state()` with `hook` and `uppercut` dictionaries keyed by side so the proving scene can inspect the live trigger inputs instead of only seeing terminal events.
+
+Proposed `gesture_debug` fields per family/side:
+- `phase` / `state`
+- `velocity_signal_source`
+- `wrist_velocity` (shared strike velocity magnitude)
+- `velocity_vector`
+- `dominant_velocity`
+- `cross_axis_velocity`
+- `outward_velocity` (hook only)
+- `upward_velocity` (uppercut only)
+- `dominance_ratio`
+- `elbow_bend_deg`
+- `outward_distance` (hook)
+- `wrist_elbow_vertical_offset` (hook)
+- `wrist_elbow_horizontal_offset` (uppercut)
+- `wrist_above_elbow_offset` (uppercut)
+- `grace_ms_remaining`
+- `triggered_grace_ms`
+- `pose_only_rearm_ms`
+- `reacquire_stable_ms_required`
+- `pose_tracking_valid`
+- `fresh_sample`
+- `last_velocity_window_span_ms`
+- `calibration_ready`
+
+Low-end webcam false-positive seams to watch explicitly in QA:
+- guard chatter near the face creating small sideways spikes that look like shallow hooks
+- shoulder-roll / torso-turn lateral drift inflating outward hook velocity without a real arm swing
+- upward guard resets or camera bob reading as uppercuts when the wrist is already tucked near the face
+- occlusion-driven elbow visibility loss causing wrist-only fallback spikes; this is acceptable as a fallback signal source, but QA should watch for it specifically
+- mirrored webcam noise or low-FPS cadence causing repeated trigger/rearm loops if `pose_only_rearm_ms` is too short
+- flow/swing overlap: broad lateral trail/swing gestures could masquerade as hooks unless the boxing family wins event precedence the same way straights currently suppress flow events on the same side
+
+Suggested follow-up bead split created from this design:
+- `aerobeat-input-camera-tracking-uqr` — coder: implement pose-primary hook/uppercut detector + config/debug surfaces
+- `aerobeat-input-camera-tracking-y6n` — QA: verify hook/uppercut trigger, rearm, tracking-loss, and false-positive seams
+- `aerobeat-input-camera-tracking-eoi` — auditor: independently truth-check implementation against this plan
+
+Net design decision: for minimum-spec hardware, hooks and uppercuts should be shipped as **stateful pose-only strike families** built on the already-proven shared elbow+wrist velocity path and the existing pose-only straight-punch rearm concept, not as bbox-dependent detectors.
+
+---
+
+### Task 10BW: Implement pose-primary hook and uppercut detectors
+
+**Bead ID:** `aerobeat-input-camera-tracking-uqr`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Implement the minimum-spec hook/uppercut detector design from Task 10BV in `REF-01` without adding hand-bbox growth dependence. Scope: detector state/config/debug + focused unit/proving-harness coverage only. Hooks should use shared elbow+wrist motion with outward/lateral dominance; uppercuts should use shared elbow+wrist motion with upward/vertical dominance. Reuse the straight-punch phase model and pose-only rearm concept where documented in the plan. Claim bead `aerobeat-input-camera-tracking-uqr` on start and close it only if the detector/config/debug slice is truthfully landed.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `assets/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `src/providers/camera_tracking_provider.gd`
+- `src/AeroCameraTracking.gd`
+- `src/input_provider.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the minimum-spec Task 10BV slice as a pose-primary hook/uppercut state machine in `src/detectors/pose_detector_substrate.gd`, reusing the straight-punch ready → triggered → not_ready → tracking_lost phase model plus pose-only timed rearm instead of any bbox-growth dependence. Added public boxing YAML knobs for hook/uppercut timing + thresholds in `assets/boxing.gesture_detection.yaml`, extended detector debug state with per-side hook/uppercut telemetry (dominance ratios, outward/upward velocity, elbow windows, tracking truth), and relayed the new family state-change signals through `CameraTrackingProvider` / `AeroCameraTracking` / `input_provider`. Added proving-harness visibility via the boxing event-feed tuning sections plus compact per-side hook/uppercut live debug in `.testbed/scripts/boxing_proving_harness.gd`. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`56/56` passing; existing test-run noise still reports known orphan/RID leak warnings on exit). Follow-up seam for QA/audit: confirm the chosen dominance/offset defaults fire inside the beat window on deterministic replay fixtures and treat any incidental co-fires as tuning evidence per Derrick’s updated acceptance truth.
+
+---
+
+### Task 10BX: QA pose-primary hook and uppercut behavior
+
+**Bead ID:** `aerobeat-input-camera-tracking-y6n`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`
+**Prompt:** QA the implemented hook/uppercut detector against proving-harness/unit coverage and at least one deterministic or tightly documented manual validation path. Confirm trigger windows, grace/rearm timing, tracking-lost/reacquire behavior, and the new hook/uppercut debug visibility. Focus especially on low-end webcam false-positive seams called out in Task 10BV. Claim bead `aerobeat-input-camera-tracking-y6n` on start and close it only if the QA pass is truthful.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending. Bead created from the Task 10BV design so QA can verify the new pose-primary strike families independently after coder delivery.
+
+Scoring truth clarified by Derrick on 2026-06-07: for gameplay acceptance, the required gesture firing within the beat timing window matters more than suppressing every incidental co-fired gesture during golden-truth playback. QA should still record unintended co-fires as tuning evidence, but they are no longer an automatic blocker when the required gesture is present in-window.
+
+---
+
+### Task 10BY: Audit pose-primary hook and uppercut implementation truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-eoi`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Independently audit the hook/uppercut implementation against Task 10BV. Confirm the landed detector actually uses pose-primary shared elbow+wrist motion, that it reuses the documented state/rearm semantics instead of secretly depending on hand bbox growth, that the public YAML/debug surfaces match the plan, and that QA evidence supports the claimed behavior. Claim bead `aerobeat-input-camera-tracking-eoi` on start and close it only if the slice passes independent audit.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending. Bead created from the Task 10BV design so the implementation can still go through the normal coder -> QA -> auditor truth loop.
+
+
 ## Final Results
 
 **Status:** ⚠️ Partial / Active Handoff
 
 **What We Built:** This plan successfully turned the camera-tracking stack into a more truthful and tunable boxing proving lane across `REF-01` / `REF-02` / `REF-03`. The landed state now includes: public preview feed knobs for live/replay; public tracking/state cadence knobs; owner-correct replay pacing repaired to follow decoded source timestamps; Chip QA proving that the old recurring `33/66 ms` replay skip pattern is gone; and a clearer product truth that low-end hardware can support pose-only straight punches much better than always-on hand tracking. We also preserved the earlier atomic preview-write / memory-churn fixes while tightening preview-state synchronization and reducing transport confusion during replay debugging.
 
-**Reference Check:** `REF-01` / `REF-02` / `REF-03` now audit cleanly for the replay pacing and preview/cadence configuration slices. The Chip QA artifact bundle at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/artifacts/task10az-chip-replay-pacing-qa/20260607-132939/summary.json` shows source-time publication at ~`33.372 ms` with `unique_source_deltas_ms = [33, 34]` and no steady-state `>40 ms` replay-source gaps in the representative pose-only replay checks. For minimum-spec product direction, the current truthful assumption is now: **straight punches on low-end devices should be designed around pose-only wrist+elbow velocity, while hand tracking remains an optional higher-end tier**.
+**Reference Check:** `REF-01` / `REF-02` / `REF-03` now audit cleanly for the replay pacing and preview/cadence configuration slices. The Chip QA artifact bundle at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/artifacts/task10az-chip-replay-pacing-qa/20260607-132939/summary.json` shows source-time publication at ~`33.372 ms` with `unique_source_deltas_ms = [33, 34]` and no steady-state `>40 ms` replay-source gaps in the representative pose-only replay checks. Task 10BV also now pins the next minimum-spec boxing direction more concretely: **straight punches, hooks, and uppercuts on low-end devices should all be designed around pose-primary shared elbow+wrist velocity, while hand tracking remains an optional higher-end tier for straights/debug rather than a requirement for all families**.
 
 **Commits:**
 - `ee07371` (`REF-01`) - Expose public preview feed profile knobs
@@ -3474,7 +3667,7 @@ Targeted audit validation rerun from repo root: `godot --headless --path .testbe
 
 **Lessons Learned:** The biggest remaining performance truth is no longer hidden in the preview path: on Chip-class hardware, always-on hand inference is the dominant cost seam, while preview/feed settings and replay pacing are secondary but still important for perceived quality. Public YAML knobs matter because they let Derrick test the real product tradeoffs instead of inheriting silent vendor defaults. Replay smoothness also needed source-time-faithful pacing rather than wall-clock sleeps. Going forward, the product should treat hardware tiers explicitly instead of pretending one gesture-detection mode fits every device.
 
-**Next Slice:** Derrick will continue using the current left/right straight punch velocity settings as the minimum-spec baseline, with human validation of the replay pacing fix still pending. Next session should plan the next gesture family in the input system: left/right **hooks** (wrist+elbow velocity with predominantly sideways movement plus the same rearm concept) and **uppercuts** (wrist+elbow velocity with predominantly vertical movement plus the same rearm concept). Neither of those next gesture families is expected to benefit materially from hand bbox growth/shrink detection on minimum-spec hardware.
+**Next Slice:** Derrick will continue using the current left/right straight-punch velocity settings as the minimum-spec baseline, with human validation of the replay pacing fix still pending. The hook/uppercut planning seam is no longer vague: the next executable bead is coder task `aerobeat-input-camera-tracking-uqr`, followed by QA `aerobeat-input-camera-tracking-y6n` and auditor `aerobeat-input-camera-tracking-eoi`. Those follow-ups should implement and verify stateful pose-primary hook/uppercut families built on shared elbow+wrist velocity plus the existing pose-only rearm concept, without adding hand-bbox growth dependence.
 
 ---
 

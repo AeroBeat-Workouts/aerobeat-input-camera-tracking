@@ -665,21 +665,72 @@ func test_straight_punch_pose_only_mode_rearms_on_elapsed_timer() -> void:
 	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
 
-func test_detects_hook_and_uppercut_events_truthfully() -> void:
+func test_hook_uses_pose_primary_state_machine_and_debug_surfaces() -> void:
 	_calibrate_stance()
-	substrate.process_landmarks(_make_pose_frame(), 1620)
-	var hook_state := substrate.process_landmarks(_make_pose_frame({
+	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "tracking_lost")
+
+	state = substrate.process_landmarks(_make_pose_frame(), 1160)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["ready"])
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.68, "y": 0.62},
 		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.84, "y": 0.60},
-	}), 1720)
-	assert_eq(_event_names(hook_state.get("events", [])), ["hook_right"])
+	}), 1320)
+	assert_true(_event_names(state.get("events", [])).has("hook_right"))
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["triggered"])
+	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
+	assert_eq(String(right_debug.get("state", "")), "triggered")
+	assert_true(float(right_debug.get("outward_velocity", 0.0)) >= float(right_debug.get("min_punch_velocity", 1.0)))
+	assert_true(float(right_debug.get("dominance_ratio", 0.0)) >= float(right_debug.get("min_lateral_dominance_ratio", 99.0)))
+	assert_true(float(right_debug.get("outward_distance", 0.0)) >= 0.0)
+	assert_eq(String(right_debug.get("sample_source", "")), "pose")
+	assert_eq(String(right_debug.get("tracking_state", "")), "pose_tracked")
 
-	substrate.process_landmarks(_make_pose_frame(), 1820)
-	var uppercut_state := substrate.process_landmarks(_make_pose_frame({
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.68, "y": 0.62},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.84, "y": 0.60},
+	}), 1568)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["not_ready"])
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "not_ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.65, "y": 0.60},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.76, "y": 0.58},
+	}), 1828)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["ready"])
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
+
+func test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 2000)
+	assert_true(["tracking_lost", "ready"].has(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", ""))))
+
+	state = substrate.process_landmarks(_make_pose_frame(), 2160)
+	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.62},
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.33, "y": 0.76},
-	}), 1920)
-	assert_eq(_event_names(uppercut_state.get("events", [])), ["uppercut_left"])
+	}), 2320)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["triggered"])
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+	assert_true(float(left_debug.get("upward_velocity", 0.0)) >= float(left_debug.get("min_punch_velocity", 1.0)))
+	assert_true(float(left_debug.get("dominance_ratio", 0.0)) >= float(left_debug.get("min_vertical_dominance_ratio", 99.0)))
+	assert_eq(String(left_debug.get("velocity_signal_source", "")), "elbow_plus_wrist")
+	assert_eq(String(left_debug.get("sample_source", "")), "pose")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"v": 0.2},
+		PoseLandmarkIds.LEFT_WRIST: {"v": 0.2},
+	}), 2400)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["tracking_lost"])
+	left_debug = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
+	assert_eq(String(left_debug.get("tracking_state", "")), "pose_missing")
 
 func test_quantizes_flow_direction_to_twelve_chart_slots() -> void:
 	assert_eq(substrate._flow_ring_index_from_vector(Vector2(1.0, 0.0)), 2)
@@ -773,7 +824,7 @@ func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 	}), 1200)
 	assert_eq(_event_names(guard_start_state.get("events", [])), ["guard_start"])
 	var guard_end_state := substrate.process_landmarks(_make_pose_frame(), 1300)
-	assert_eq(_event_names(guard_end_state.get("events", [])), ["guard_end"])
+	assert_true(_event_names(guard_end_state.get("events", [])).has("guard_end"))
 
 	var squat_start_state := substrate.process_landmarks(_make_pose_frame({}, 0.50, 0.78), 1400)
 	assert_eq(_event_names(squat_start_state.get("events", [])), ["squat_start"])
@@ -798,7 +849,7 @@ func test_detects_knee_and_leg_lift_events_with_reset_behavior() -> void:
 		PoseLandmarkIds.LEFT_KNEE: {"x": 0.44, "y": 0.34},
 		PoseLandmarkIds.LEFT_ANKLE: {"x": 0.46, "y": 0.18},
 	}), 1200)
-	assert_eq(_event_names(knee_state.get("events", [])), ["knee_left"])
+	assert_true(_event_names(knee_state.get("events", [])).has("knee_left"))
 	var no_refire_state := substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_KNEE: {"x": 0.44, "y": 0.35},
 		PoseLandmarkIds.LEFT_ANKLE: {"x": 0.46, "y": 0.19},
@@ -854,6 +905,19 @@ func _straight_punch_state_names(events: Array, side: String) -> Array:
 			continue
 		var event_data: Dictionary = event_variant
 		if String(event_data.get("name", "")) != "straight_punch_state_changed":
+			continue
+		if String(event_data.get("side", "")) != side:
+			continue
+		states.append(String(event_data.get("state", "")))
+	return states
+
+func _pose_strike_state_names(events: Array, family: String, side: String) -> Array:
+	var states: Array = []
+	for event_variant: Variant in events:
+		if not event_variant is Dictionary:
+			continue
+		var event_data: Dictionary = event_variant
+		if String(event_data.get("name", "")) != "%s_state_changed" % family:
 			continue
 		if String(event_data.get("side", "")) != side:
 			continue

@@ -1277,6 +1277,18 @@ func _build_boxing_event_feed_text() -> String:
 	var straight_timing: Dictionary = straight_config.get("timing", {}) if straight_config.get("timing", {}) is Dictionary else {}
 	var straight_rearm: Dictionary = straight_config.get("rearm", {}) if straight_config.get("rearm", {}) is Dictionary else {}
 	var straight_state_machine: Dictionary = straight_config.get("state_machine", {}) if straight_config.get("state_machine", {}) is Dictionary else {}
+	var hook_config: Dictionary = gesture_document.get("hook", {}) if gesture_document.get("hook", {}) is Dictionary else {}
+	var hook_eval: Dictionary = hook_config.get("evaluation", {}) if hook_config.get("evaluation", {}) is Dictionary else {}
+	var hook_thresholds: Dictionary = hook_config.get("thresholds", {}) if hook_config.get("thresholds", {}) is Dictionary else {}
+	var hook_timing: Dictionary = hook_config.get("timing", {}) if hook_config.get("timing", {}) is Dictionary else {}
+	var hook_rearm: Dictionary = hook_config.get("rearm", {}) if hook_config.get("rearm", {}) is Dictionary else {}
+	var hook_state_machine: Dictionary = hook_config.get("state_machine", {}) if hook_config.get("state_machine", {}) is Dictionary else {}
+	var uppercut_config: Dictionary = gesture_document.get("uppercut", {}) if gesture_document.get("uppercut", {}) is Dictionary else {}
+	var uppercut_eval: Dictionary = uppercut_config.get("evaluation", {}) if uppercut_config.get("evaluation", {}) is Dictionary else {}
+	var uppercut_thresholds: Dictionary = uppercut_config.get("thresholds", {}) if uppercut_config.get("thresholds", {}) is Dictionary else {}
+	var uppercut_timing: Dictionary = uppercut_config.get("timing", {}) if uppercut_config.get("timing", {}) is Dictionary else {}
+	var uppercut_rearm: Dictionary = uppercut_config.get("rearm", {}) if uppercut_config.get("rearm", {}) is Dictionary else {}
+	var uppercut_state_machine: Dictionary = uppercut_config.get("state_machine", {}) if uppercut_config.get("state_machine", {}) is Dictionary else {}
 
 	lines.append("")
 	lines.append("Profile bundle")
@@ -1309,6 +1321,36 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
 	lines.append("Pose-only rearm timer: %dms" % int(straight_rearm.get("pose_only_rearm_ms", 0)))
 	lines.append("Straight-punch lost reacquire stable window: %dms" % int(straight_state_machine.get("lost_tracking_reacquire_stable_ms", 0)))
+
+	lines.append("")
+	lines.append("Hook tuning")
+	lines.append("-----------")
+	lines.append("Enabled: %s" % _fmt_bool(bool(hook_config.get("enabled", false))))
+	lines.append("Velocity window: %dms" % int(hook_eval.get("wrist_velocity_window_ms", 0)))
+	lines.append("Min punch velocity: %s" % _fmt_float(hook_thresholds.get("min_punch_velocity", 0.0)))
+	lines.append("Min lateral dominance: %s" % _fmt_float(hook_thresholds.get("min_lateral_dominance_ratio", 0.0)))
+	lines.append("Min outward distance: %s" % _fmt_float(hook_thresholds.get("min_outward_distance", 0.0)))
+	lines.append("Max wrist/elbow vertical offset: %s" % _fmt_float(hook_thresholds.get("max_wrist_elbow_vertical_offset", 0.0)))
+	lines.append("Hook grace / rearm / reacquire: %dms / %dms / %dms" % [
+		int(hook_timing.get("triggered_grace_ms", 0)),
+		int(hook_rearm.get("pose_only_rearm_ms", 0)),
+		int(hook_state_machine.get("lost_tracking_reacquire_stable_ms", 0)),
+	])
+
+	lines.append("")
+	lines.append("Uppercut tuning")
+	lines.append("---------------")
+	lines.append("Enabled: %s" % _fmt_bool(bool(uppercut_config.get("enabled", false))))
+	lines.append("Velocity window: %dms" % int(uppercut_eval.get("wrist_velocity_window_ms", 0)))
+	lines.append("Min punch velocity: %s" % _fmt_float(uppercut_thresholds.get("min_punch_velocity", 0.0)))
+	lines.append("Min vertical dominance: %s" % _fmt_float(uppercut_thresholds.get("min_vertical_dominance_ratio", 0.0)))
+	lines.append("Max wrist/elbow horizontal offset: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_elbow_horizontal_offset", 0.0)))
+	lines.append("Max wrist above elbow offset: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_above_elbow_offset", 0.0)))
+	lines.append("Uppercut grace / rearm / reacquire: %dms / %dms / %dms" % [
+		int(uppercut_timing.get("triggered_grace_ms", 0)),
+		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),
+		int(uppercut_state_machine.get("lost_tracking_reacquire_stable_ms", 0)),
+	])
 
 	lines.append("")
 	lines.append("Tracker hand truth")
@@ -1368,7 +1410,11 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 	var hand: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
 	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
+	var hook_debug: Dictionary = (gesture_debug.get("hook", {}) as Dictionary)
+	var uppercut_debug: Dictionary = (gesture_debug.get("uppercut", {}) as Dictionary)
 	var side_debug: Dictionary = (straight_punch_debug.get(side, {}) as Dictionary)
+	var hook_side_debug: Dictionary = (hook_debug.get(side, {}) as Dictionary)
+	var uppercut_side_debug: Dictionary = (uppercut_debug.get(side, {}) as Dictionary)
 	var hand_tracking_enabled := bool(side_debug.get("hand_tracking_enabled", true))
 	var state_name := String(side_debug.get("state", side_debug.get("phase", hand.get("tracking_state", "tracking_lost"))))
 	var bbox: Dictionary = hand.get("bbox", {}) if hand.get("bbox", {}) is Dictionary else {}
@@ -1386,7 +1432,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		hand_grace_ms = 0
 		hand_stable_ms = 0
 		stale_ms = 0
-	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms hand_grace=%dms hand_stable=%dms stale=%dms" % [
+	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms hook=%s/%s uppercut=%s/%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
 		"L" if side == "left" else "R",
 		state_name,
 		tracking_state,
@@ -1397,6 +1443,10 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		_fmt_float(bbox.get("area", side_debug.get("bbox_area", 0.0))),
 		_fmt_float(side_debug.get("bbox_area_growth", 0.0)),
 		int(side_debug.get("grace_ms_remaining", 0)),
+		String(hook_side_debug.get("state", "tracking_lost")),
+		_fmt_float(hook_side_debug.get("outward_velocity", 0.0)),
+		String(uppercut_side_debug.get("state", "tracking_lost")),
+		_fmt_float(uppercut_side_debug.get("upward_velocity", 0.0)),
 		hand_grace_ms,
 		hand_stable_ms,
 		stale_ms,

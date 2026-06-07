@@ -20,6 +20,8 @@ signal tracking_restored()
 signal punch_left(power: float)
 signal punch_right(power: float)
 signal straight_punch_state_changed(side: String, state: String, detail: Dictionary)
+signal hook_state_changed(side: String, state: String, detail: Dictionary)
+signal uppercut_state_changed(side: String, state: String, detail: Dictionary)
 signal uppercut_left(power: float)
 signal uppercut_right(power: float)
 signal hook_left(power: float)
@@ -500,6 +502,14 @@ func _emit_detector_events(events: Array) -> void:
 				var detail := event_data.duplicate(true)
 				detail.erase("name")
 				straight_punch_state_changed.emit(String(event_data.get("side", "")), String(event_data.get("state", "")), detail)
+			"hook_state_changed":
+				var hook_detail := event_data.duplicate(true)
+				hook_detail.erase("name")
+				hook_state_changed.emit(String(event_data.get("side", "")), String(event_data.get("state", "")), hook_detail)
+			"uppercut_state_changed":
+				var uppercut_detail := event_data.duplicate(true)
+				uppercut_detail.erase("name")
+				uppercut_state_changed.emit(String(event_data.get("side", "")), String(event_data.get("state", "")), uppercut_detail)
 			"uppercut_left":
 				uppercut_left.emit(float(event_data.get("power", 0.0)))
 			"uppercut_right":
