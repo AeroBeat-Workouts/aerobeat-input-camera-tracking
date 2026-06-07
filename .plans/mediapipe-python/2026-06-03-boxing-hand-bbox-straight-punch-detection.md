@@ -1863,46 +1863,54 @@ Narrowest truthful next fix:
 - `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 - optional nondurable profiling probes / reports
 
-**Status:** ❌ Blocked (target Chip runtime not reachable from this session; partial replay-runtime evidence captured)
+**Status:** ✅ Complete (live-camera path unavailable on current Chip session; target-hardware replay-runtime sweep still isolated the bottleneck truthfully)
 
-**Results:** 2026-06-07 coder diagnosis pass completed as far as this session could truthfully take it.
+**Results:** 2026-06-07 direct Chip profiling pass completed with fresh measured evidence on the real `chip` alias hardware. Live-camera capture could **not** be profiled truthfully in this session because `ssh chip` showed **no V4L2 camera devices at all** (`python3 - <<'PY' ... glob.glob("/dev/video*") ... PY` -> `VIDEO_DEVICES []`; `v4l2-ctl` was installed but there was no `/dev/video*` node to open). Rather than guess, I ran the existing vendor-owned replay runtime path directly on Chip and used that target-hardware pass to separate the main cost seams.
 
-- **Chip access blocker:**
-  - `ssh chip 'hostname && pwd && ...'` failed behind an interactive Tailscale SSH authorization step on this host, so I could not run fresh live-camera measurements on the real low-end target from this session.
-  - `nodes status` also did not expose a paired Chip node path I could use as a substitute.
-- **Exact evidence source used instead:** I audited the existing vendor-owned replay/runtime sweep artifacts already present in `REF-03` under:
-  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.temp-churn-diagnosis/vendor-preview-compare-20260606-224641/`
-  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.temp-churn-diagnosis/vendor-runtime-knob-sweep-20260606-2306/`
-  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.temp-churn-diagnosis/vendor-runtime-fps-sweep-20260606-2319/`
-- **Replay fixture used by those sweeps:** `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4`
-- **Commands run for evidence extraction:**
-  - `find .temp-churn-diagnosis -maxdepth 3 -type f | sort`
-  - `sed -n '1,80p' .../stdout.log`
-  - `sed -n '1,12p' .../ps-samples.csv`
-  - `jq '{runtime:.runtime, preview:.preview, tracking:.tracking}' .../request.json`
-  - `python3 - <<'PY' ... csv/json summary over ps-samples.csv/request.json ... PY`
-- **Measured replay-runtime CPU evidence (avg `%CPU` across 15/30/45/60 s samples; same boxing replay clip):**
-  - `preview-on` @ `tracking/state/preview=30/30/30`, hands interval `1`: **212.2% CPU**, **531.8 MB RSS**
-  - `preview-off` @ `30/30/30`, hands interval `1`: **203.5% CPU**, **531.5 MB RSS**
-  - `state_5_preview_5` @ `tracking/state/preview=30/5/5`, hands interval `1`: **203.8% CPU**, **534.2 MB RSS**
-  - `tracking_20_state_20_preview_10`: **209.8% CPU**, **532.6 MB RSS**
-  - `tracking_15_state_15_preview_10`: **186.8% CPU**, **531.5 MB RSS**
-  - `tracking_15_hands_2_state_15_preview_10`: **187.5% CPU**, **532.3 MB RSS**
-  - `tracking_10_state_10_preview_5`: **125.8% CPU**, **531.0 MB RSS**
-  - `hands_interval_2/3/5` while staying at `30/30/30`: **215.8% / 213.2% / 212.2% CPU**
-  - `pose_interval_2` while staying at `30/30/30`: **215.0% CPU**
-- **What this evidence says:**
-  - Disabling full preview at the vendor runtime only bought about **8.7 percentage points of CPU** (`212.2 -> 203.5`), so preview/video-feed write cost is **real but not the dominant replay-runtime cost** in this lane.
-  - Dropping only state/preview cadence while leaving tracking at `30 fps` bought roughly the same improvement (`212.2 -> 203.8`), which suggests polling/state-write/preview churn is **secondary overhead**, not the main cliff.
-  - The biggest improvement in the available evidence came from lowering **tracking cadence itself**: `30/30/30` to `15/15/10` reduced CPU from **212.2% to 186.8%**, and `10/10/5` reduced it further to **125.8%**.
-  - On this replay/runtime lane, increasing `hand_inference_interval_frames` from `1` to `2/3/5` at a still-`30 fps` runtime barely moved CPU, so the current low-end cliff is **not explained by preview alone and is not obviously fixed by sparse hand cadence alone**.
-- **Narrowest truthful conclusion from this pass:**
-  - The strongest evidence currently points to the **continuous hand-enabled tracking loop cadence** as the main low-end pressure seam, with **preview/state/update overhead contributing but not dominating** in the measured vendor replay runtime.
-  - I do **not** yet have target-hardware evidence that cleanly separates live-camera capture/display cost from vendor inference cost on Chip itself, so I cannot truthfully close the diagnosis bead yet.
-  - The next owner-correct step is to rerun the same representative sweep on actual Chip hardware (or through a non-interactive paired-node path) so we can compare: pose-only baseline, pose+hands preview-off, pose+hands preview-on, lower `tracking_max_fps`, and lower `preview/state` caps on the real box before deciding whether to redesign the boxing path or expose low-end runtime presets.
+- **Fresh Chip artifact roots (created in `REF-03`):**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.temp-churn-diagnosis/vendor-chip-runtime-matrix-20260607-101503/`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.temp-churn-diagnosis/vendor-chip-runtime-playback-20260607-102303/`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.temp-churn-diagnosis/vendor-chip-bbox-off-20260607-102755/`
+- **Replay fixture and nominal source rate used for every Chip run:**
+  - Clip: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4`
+  - Verified with `ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames,r_frame_rate,avg_frame_rate,duration -of json ...` -> **180 frames**, **30 FPS**, **6.0 s**
+- **Exact command shape used for the fresh Chip runs:**
+  - Camera availability check: `ssh chip 'python3 - <<'"'"'PY'"'"'
+import glob
+print("VIDEO_DEVICES", glob.glob("/dev/video*"))
+PY'`
+  - Main 60 s matrix: `cat /home/derrick/.openclaw/workspace/.temp/chip_runtime_matrix.py | ssh chip 'bash -lc '''set -euo pipefail; cd ~/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python; ts=$(date +%Y%m%d-%H%M%S); art=.temp-churn-diagnosis/vendor-chip-runtime-matrix-$ts; mkdir -p "$art"; cat > "$art/run_matrix.py"; ART_DIR="$art" python3 "$art/run_matrix.py"''''`
+  - 30 s playback-throughput follow-up: `cat /home/derrick/.openclaw/workspace/.temp/chip_runtime_matrix_playback.py | ssh chip 'bash -lc '''... vendor-chip-runtime-playback-$ts ...''''`
+  - 60 s bbox-off isolate: `cat /home/derrick/.openclaw/workspace/.temp/chip_bbox_off_probe.py | ssh chip 'bash -lc '''... vendor-chip-bbox-off-$ts ...''''`
+- **Representative modes measured on Chip (same vendor runtime path, same replay clip):**
+  - `pose_only_preview_off` = pose enabled, hands disabled, preview disabled, `tracking_max_fps=30`, `state_update_max_fps=30`
+  - `pose_hands_preview_off` = pose enabled, hands lite + bbox enabled, preview disabled, `30/30`
+  - `pose_hands_preview_on` = same as above with preview enabled at `30 FPS`, `960x540`, quality `75`
+  - `pose_hands_tracking_15_state_15_preview_10` = hands lite + bbox enabled, preview `10 FPS` `960x540` `q75`, `tracking/state=15/15`
+  - `pose_hands_preview_low_5fps_640x360_q50` = hands lite + bbox enabled, preview `5 FPS` `640x360` `q50`, `tracking/state=30/30`
+  - `pose_hands_bbox_off_preview_off` = hands lite enabled but `tracking.hands.bbox.enabled=false`, preview disabled, `30/30`
+- **Fresh Chip measurements:**
+  - `pose_only_preview_off`: **140.33% CPU avg**, **392.2 MB max RSS**, **~29.04 source FPS equivalent**
+  - `pose_hands_preview_off`: **134.67% CPU avg**, **472.6 MB max RSS**, **~16.54 source FPS equivalent**
+  - `pose_hands_preview_on`: **140.33% CPU avg**, **471.8 MB max RSS**, **~15.97 source FPS equivalent**
+  - `pose_hands_tracking_15_state_15_preview_10`: **123.67% CPU avg**, **467.6 MB max RSS**, **~14.57 source FPS equivalent**
+  - `pose_hands_preview_low_5fps_640x360_q50`: **135.33% CPU avg**, **468.0 MB max RSS**, **~16.51 source FPS equivalent**
+  - `pose_hands_bbox_off_preview_off`: **135.00% CPU avg**, **471.2 MB max RSS**, **~16.80 source FPS equivalent**
+- **What the Chip evidence now says:**
+  - The big cliff is **hands on vs hands off**, not preview. On the real Chip alias hardware, enabling hands drops replay throughput from about **29 FPS** to about **16 FPS** while adding roughly **+80 MB RSS** (`392.2 -> ~472 MB`).
+  - **Preview/feed overhead is secondary.** With hands already enabled, preview off vs full preview on changed throughput only **~16.54 -> ~15.97 FPS** and CPU only **~134.67 -> ~140.33%**.
+  - **Reduced preview size/quality/fps is also secondary.** Cutting preview to `5 FPS` at `640x360 q50` recovered almost nothing versus hands+preview-off (`~16.51 FPS` vs `~16.54 FPS`; RSS stayed ~`468-472 MB`).
+  - **BBox derivation/update is not the dominant seam.** Turning `tracking.hands.bbox.enabled` off while keeping hand tracking on barely moved the result (`~16.54 -> ~16.80 FPS`, `472.6 -> 471.2 MB RSS`, CPU essentially unchanged).
+  - **Lower tracking cadence is a valid throttle but not a root-cause fix.** Capping the runtime at `tracking/state/preview=15/15/10` lowered CPU to **123.67%**, but throughput simply settled near the lower cap (**~14.57 FPS**) instead of recovering pose-only responsiveness.
+- **Narrowest truthful diagnosis / owner-correct lever:**
+  - The dominant low-end bottleneck on Chip is the **always-on MediaPipe hand inference path itself** (the hands-enabled tracking lane), **not** the downstream bbox math and **not** the preview/feed path.
+  - That means the next owner-correct performance lever should be a **profile/hardware-tier decision about hand tracking itself**: for lower-end devices, either disable continuous hands for boxing straight-punch mode, or move to a truthful fallback where pose stays primary and any hand confirmation is conditional/sparser rather than always-on. Chasing preview tuning or bbox-disable alone will not restore acceptable low-end performance on this hardware.
+- **Important boundary / remaining truth:**
+  - I still do **not** have direct live-camera capture-cost numbers from Chip because the current `chip` session exposed no camera device (`/dev/video*` absent), so this task does not claim any measured webcam sensor/driver overhead.
+  - But the target-hardware replay-runtime sweep was enough to separate the main cost seams and isolate the dominant bottleneck without guessing, so this diagnosis task is now complete.
 - **Files touched in this task:**
   - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
-  - No source-code changes landed in `REF-01`, `REF-02`, or `REF-03` during this pass.
+  - Fresh nondurable Chip profiling artifacts under `REF-03` `.temp-churn-diagnosis/` only; no source-code changes landed in `REF-01`, `REF-02`, or `REF-03` during this profiling pass.
 
 ---
 
