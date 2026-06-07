@@ -1467,9 +1467,23 @@ func _resolve_straight_punch_wrist_velocity(state: Dictionary, wrist_position: V
 	var newest: Dictionary = history[history.size() - 1]
 	var dt_ms := maxi(int(newest.get("timestamp_ms", timestamp_ms)) - int(oldest.get("timestamp_ms", timestamp_ms)), 1)
 	state["last_wrist_velocity_window_span_ms"] = dt_ms
-	var oldest_position: Vector3 = oldest.get("position", wrist_position)
-	var newest_position: Vector3 = newest.get("position", wrist_position)
-	return (newest_position - oldest_position) / (float(dt_ms) / 1000.0)
+	var velocity_sum := Vector3.ZERO
+	var velocity_sample_count := 0
+	for index in range(1, history.size()):
+		var previous_entry: Dictionary = history[index - 1] as Dictionary
+		var current_entry: Dictionary = history[index] as Dictionary
+		var previous_timestamp_ms := int(previous_entry.get("timestamp_ms", timestamp_ms))
+		var current_timestamp_ms := int(current_entry.get("timestamp_ms", timestamp_ms))
+		var segment_dt_ms := current_timestamp_ms - previous_timestamp_ms
+		if segment_dt_ms <= 0:
+			continue
+		var previous_position: Vector3 = previous_entry.get("position", wrist_position)
+		var current_position: Vector3 = current_entry.get("position", wrist_position)
+		velocity_sum += (current_position - previous_position) / (float(segment_dt_ms) / 1000.0)
+		velocity_sample_count += 1
+	if velocity_sample_count <= 0:
+		return Vector3.ZERO
+	return velocity_sum / float(velocity_sample_count)
 
 func _resolve_straight_punch_bbox_area_growth(state: Dictionary, bbox_area: float, timestamp_ms: int, straight_punch_config: Dictionary) -> float:
 	var history: Array = (state.get("bbox_area_window_history", []) as Array).duplicate(true)

@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-06 20:25 EDT
+**Last Updated:** 2026-06-06 20:41 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -2854,6 +2854,75 @@ Compatibility aliasing was kept narrowly for safe transition: the loader still a
 **Role:** `auditor`
 **References:** `REF-01`
 **Prompt:** Independently audit the `min_punch_velocity` rename. Confirm the new name is the truthful public surface for the shared elbow+wrist velocity signal, confirm the old name no longer misleads users (or is compatibility-aliased in a clearly documented way if intentionally kept), and confirm validation still passes. Update this plan with exact audit findings/evidence and close this bead only if the slice passes independent audit.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- audit artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable audit notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+
+### Task 10BS: Average straight-punch velocity across samples in the ms window
+
+**Bead ID:** `aerobeat-input-camera-tracking-rvl`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Implement the next straight-punch velocity experiment Derrick requested. Keep the shared elbow+wrist velocity signal, but change the velocity calculation so it becomes an average across all samples taken inside the configured millisecond velocity window instead of a simple oldest-to-newest displacement over that window. This should affect the straight-punch velocity signal for both hands-enabled and hands-disabled paths because they share that signal, while keeping the hand-enabled extra bbox/fresh-sample gates intact. Keep the slice narrow, add focused tests/proof for the new averaging behavior, update this plan with exact files changed/validation/commits, and stop at a clean coder handoff for QA.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the requested shared velocity-math change narrowly in `src/detectors/pose_detector_substrate.gd`: the straight-punch velocity signal still uses the shared elbow+wrist position source when available, but the configured `wrist_velocity_window_ms` now produces the **average of each consecutive per-sample velocity segment inside the window** instead of a single oldest-to-newest net displacement over the whole window. Because both hands-enabled and hands-disabled straight-punch paths call the same helper, the averaging applies to both modes automatically while leaving the hands-enabled extra gates intact (`fresh_sample`, bbox growth/count thresholds, retract rearm) and leaving the hands-disabled pose-only lost/rearm behavior unchanged. Focused proof landed in `.testbed/tests/unit/test_pose_detector_substrate.gd` by converting the windowed-velocity regression into an uneven-cadence sample case that distinguishes segment averaging from oldest/newest displacement and asserts the averaged value (`2.0208333333333335`) over the same `160ms` window. Targeted validation run from repo root: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ (`35/35` passed, `376` asserts). Commit: `e334005` (`Average straight-punch velocity across window samples`).
+
+---
+
+### Task 10BT: QA averaged straight-punch velocity across samples in the ms window
+
+**Bead ID:** `aerobeat-input-camera-tracking-0dy`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the straight-punch velocity averaging change. Verify the shared elbow+wrist signal now reflects an average across all samples inside the configured ms window, verify the hands-enabled bbox/fresh-sample gates still remain intact, and verify the new behavior is more stable in the replay/manual-testing scenario Derrick described. Record exact QA evidence and close this bead only if the averaging behavior is truthful.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- QA artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable QA notes/artifacts if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 10BU: Audit averaged straight-punch velocity across samples in the ms window
+
+**Bead ID:** `aerobeat-input-camera-tracking-7xj`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the straight-punch velocity averaging change. Confirm the shared elbow+wrist velocity signal now averages across the samples inside the configured ms window rather than using only oldest/newest displacement, confirm the hands-enabled extra gates still sit on top of that signal, and confirm the implementation matches Derrick's request truthfully. Update this plan with exact audit findings/evidence and close this bead only if the slice passes independent audit.
 
 **Folders Created/Deleted/Modified:**
 - `.plans/mediapipe-python/`

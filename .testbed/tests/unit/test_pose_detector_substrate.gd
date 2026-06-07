@@ -253,7 +253,7 @@ func test_straight_punch_uses_xyz_wrist_velocity_magnitude_for_trigger_gate() ->
 	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) > float(state.get("metrics", {}).get("measurements", {}).get("left_forward_velocity", 0.0)))
 
 
-func test_straight_punch_wrist_velocity_uses_configured_time_window_instead_of_last_step_only() -> void:
+func test_straight_punch_wrist_velocity_averages_all_samples_inside_configured_time_window() -> void:
 	config.gesture_profile_document = {
 		"straight_punch": {
 			"evaluation": {
@@ -277,7 +277,7 @@ func test_straight_punch_wrist_velocity_uses_configured_time_window_instead_of_l
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"z": -0.20},
 		PoseLandmarkIds.LEFT_WRIST: {"z": -0.20},
-	}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.0240), _tracked_hand_payload("right", 0.020)))
+	}), 1220, _make_tracking_frame(_tracked_hand_payload("left", 0.0240), _tracked_hand_payload("right", 0.020)))
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"z": -0.205},
 		PoseLandmarkIds.LEFT_WRIST: {"z": -0.205},
@@ -285,7 +285,7 @@ func test_straight_punch_wrist_velocity_uses_configured_time_window_instead_of_l
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_eq(int(left_debug.get("wrist_velocity_window_ms", 0)), 160)
 	assert_eq(int(left_debug.get("wrist_velocity_window_span_ms", 0)), 160)
-	assert_true(float(left_debug.get("wrist_velocity", 0.0)) > 0.9)
+	assert_true(is_equal_approx(float(left_debug.get("wrist_velocity", 0.0)), 2.0208333333333335))
 	assert_true(is_equal_approx(float(left_debug.get("wrist_velocity", 0.0)), float(left_debug.get("wrist_forward_velocity", 0.0))))
 
 func test_straight_punch_bbox_area_growth_uses_configured_time_window_instead_of_sample_count_only() -> void:
