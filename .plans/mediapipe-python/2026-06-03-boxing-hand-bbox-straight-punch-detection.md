@@ -2143,6 +2143,115 @@ Commits pushed for this task:
 
 ---
 
+### Task 10AX: Debug Chip replay preview stutter beyond cadence caps
+
+**Bead ID:** `aerobeat-input-camera-tracking-tgo`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick reports that after raising the public cadence knobs on Chip (`30/30/30`, `60/60/30`, `60/60/60`), replay still shows visible stutters that are not present in the raw footage. Debug the next likely seam on the real Chip machine over SSH. Determine whether the remaining stutter is caused by preview-frame write/read transport jitter, disk I/O, preview presenter image/texture churn, replay loop pacing jitter, state/preview synchronization mismatches, or another owner seam. Compare the raw replay source timing against the emitted preview descriptor/image_revision cadence and the Godot-side presentation behavior. Focus on diagnosis first and keep fixes minimal/owner-correct if one becomes obvious. Update this plan task with exact commands, evidence, files touched, and the narrowest truthful conclusion. Commit/push only if durable repo changes are needed; otherwise document findings and close the bead when diagnosed.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- nondurable debug artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Diagnosed the remaining Chip replay-preview stutter directly on Chip over SSH without landing durable code changes. The evidence points primarily to **replay-loop pacing jitter / source-time mismatch**, with **preview presenter reload churn** still present as a likely secondary cost, and **preview write/read transport + disk I/O** *not* looking like the dominant seam.
+
+Exact commands run on Chip (`ssh chip 'bash -lc ...'`):
+- Verified source timing and runtime prerequisites:
+  - `~/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/.venv/bin/python - <<'PY' ... cv2.VideoCapture(".../boxing.mp4") ... CAP_PROP_FPS/CAP_PROP_POS_MSEC ... PY`
+  - `find ~/.openclaw/workspace/projects/aerobeat -type f -name '*.task'`
+- Probed the **real vendor replay loop** for the exact knob combinations Derrick reported (`30/30/30`, `60/60/30`, `60/60/60`) using the real `runtime/mediapipe_runtime_probe.py`, the real boxed replay video (`.testbed/assets/videos/boxing.mp4`), and the real pose model (`models/pose_landmarker_lite.task`), then polled `runtime_snapshot.json` + `preview_frame.jpg` mtimes for ~5s per run:
+  - `/tmp/oc_preview_cadence_probe.py`
+  - `/tmp/oc_preview_cadence_probe2.py`
+  - `/tmp/oc_preview_cadence_probe3.py`
+  - output artifacts under Chip `/tmp/aerobeat-preview-diagnosis/`, `/tmp/aerobeat-preview-diagnosis-2/`, `/tmp/aerobeat-preview-diagnosis-3/`
+- Timed the Godot-side preview reload path with the same emitted JPEG using headless Godot on Chip:
+  - `~/.local/bin/godot --headless --script /tmp/godot_preview_bench.gd -- /tmp/aerobeat-preview-diagnosis-2/t60_s60_p60/preview_frame.jpg 120`
+
+Key evidence:
+- **Raw replay source is steady.** The real replay file reports `fps = 29.97002997002997`, `frame_count = 941`, and the first sampled source position deltas are a perfectly steady `33.367 ms` (`/tmp/aerobeat-preview-diagnosis/summary.json`).
+- **Runtime replay emission is not source-paced.** The replay loop in `REF-03` (`aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py`) sleeps against `tracking_max_fps`, not against decoded frame PTS / source cadence. On Chip, that means actual emission cadence follows processing cost rather than the source video timeline.
+- **Observed replay preview/state cadence on Chip (real runtime, real video, real model):**
+  - `30/30/30` (`/tmp/aerobeat-preview-diagnosis-3/t30_s30_p30/analysis.json`):
+    - preview wall deltas avg `52.528 ms`, p50 `63.546 ms`, p95 `67.667 ms`, max `78.311 ms`
+    - preview playback deltas avg `52.491 ms`, but they quantize to `33.366 ms` and `66.734 ms`
+    - loop only reached `loop_iteration = 129` in ~4.3s of source progress; preview is effectively ~19 fps with frequent skipped source frames
+  - `60/60/30` (`/tmp/aerobeat-preview-diagnosis-3/t60_s60_p30/analysis.json`):
+    - snapshot wall deltas avg `27.743 ms` but preview updates only every `54.802 ms` avg
+    - preview playback deltas avg `68.872 ms`, p50 `66.733 ms`, p95 `100.1 ms`
+    - repeated state snapshots reuse the same `image_revision`, so state cadence can advance while preview holds the prior frame
+  - `60/60/60` (`/tmp/aerobeat-preview-diagnosis-3/t60_s60_p60/analysis.json`):
+    - preview wall deltas avg `28.645 ms`, min `17.044 ms`, p95 `31.888 ms`, max `46.636 ms`
+    - preview playback deltas avg `34.913 ms`, but still quantize to `33.366 ms` with frequent `66.734 ms` jumps when source frames are skipped
+    - the loop reached only `loop_iteration = 158` over ~5.27s of replay time, so the effective loop is nowhere near a truthful smooth 60 Hz presentation path
+- **Transport/disk are not the main culprit.** For active preview updates, `preview_frame.jpg` mtime and emitted `image_revision` stay tightly aligned (sampled delta roughly `-0.46 ms .. +0.73 ms` depending on run), and when preview actually changes the snapshot file typically follows within about `~1–2 ms` on the 30/30/30 and 60/60/60 runs (`/tmp/aerobeat-preview-diagnosis-2/summary.json`). That is far smaller than the 17–78 ms cadence jitter above.
+- **Godot-side reload churn exists but does not need to be the root cause.** `CameraTrackingPreviewPresenter.gd` still does `Image.load(image_path)` plus `ImageTexture.create_from_image(image)` every new `image_revision`. On Chip, a headless micro-benchmark against the real emitted JPEG measured about `2.70 ms` average image load plus `0.005 ms` average texture creation (`combined_avg_ms = 2.705775`) from `/tmp/godot_preview_bench.gd`. That cost is real and still owner-owned, but the more important finding is that the preview cadence is already irregular *before* the presenter sees the frame.
+
+Narrowest truthful conclusion:
+1. The remaining visible replay-preview stutter is **not primarily raw footage quality** and **not primarily preview file transport / disk atomic-write jitter**.
+2. The dominant owner seam is the **vendor replay loop pacing against requested tracking/state caps instead of the replay source timeline**, so Chip emits preview/state updates at a jittery processing-driven cadence and frequently skips `33.367 ms` source frames into `66.734 ms` jumps.
+3. There is also a **state/preview synchronization mismatch seam** in `60/60/30`: state snapshots continue at the faster wall cadence while preview frames intentionally update more slowly, so Godot can redraw multiple times against the same `image_revision`.
+4. The presenter’s per-revision JPEG reload / texture recreate path is still worth future cleanup, but it is a **secondary seam** here because the replay cadence is already visibly non-uniform before Godot presentation.
+5. The smallest owner-correct follow-up, if Derrick wants a fix pass, is to pace replay preview/state publication from **decoded replay timestamps / source cadence** rather than from `tracking_max_fps` wall-clock sleeps alone; only after that does it make sense to optimize presenter churn further.
+
+Files touched:
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+No repo code changes were needed for this diagnosis slice, so there are no commits for Task 10AX.
+
+---
+
+### Task 10AY: Repair vendor replay pacing jitter and source-time mismatch on Chip
+
+**Bead ID:** `aerobeat-input-camera-tracking-iy9`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick approved the next slice: repair the remaining replay preview stutter by fixing the vendor replay pacing seam. Work owner-correctly in REF-03=/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python, with any necessary contract/test updates in REF-02=/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking and REF-01=/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking only if they are truly needed. Starting truth from Task 10AX: raw replay source is steady 29.97 fps with 33.367 ms spacing; preview transport/write lag is secondary; dominant issue is replay publication paced off wall-clock sleeps tied to tracking caps rather than decoded source timestamps, producing irregular preview emission and frequent 33.366/66.734 ms source-time jumps on Chip. Goal: make replay publication follow replay/source timestamps more faithfully, reduce pacing jitter, and tighten preview/state synchronization without regressing the earlier memory/churn fixes. Diagnose minimally, implement the narrowest owner-correct repair, gather focused proof on Chip if possible plus repo-local validation, update this plan task with exact files/commands/evidence/commits, and commit/push by default. Close the bead only if the repair slice is truly complete.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/tests/`
+- related owner-correct docs/tests in `REF-02` / `REF-01` only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/tests/test_mediapipe_runtime_probe.py`
+
+**Status:** ✅ Complete
+
+**Results:** Narrow owner-correct vendor repair landed in `REF-03` only; no `REF-02` or `REF-01` contract/code changes were needed for this slice. Root cause matched the Task 10AX diagnosis: OpenCV replay publication was still driven by wall-clock cadence (`tracking_max_fps`, `state_update_max_fps`, `preview_max_fps`) instead of decoded replay/source timestamps, and the emitted `raw_tracking_frame.timestamp_ms` for replay frames was stamped with `_now_ms()` rather than replay time. That let decode/inference jitter on Chip turn a steady ~33.367 ms source stream into irregular state/preview publication with frequent 33/66 ms source-time jumps.
+
+Implemented the smallest truthful seam repair in `runtime/mediapipe_runtime_probe.py`:
+- replay `video_file` frames now stamp `raw_tracking_frame.timestamp_ms` from decoded capture time (`CAP_PROP_POS_MSEC`), with an fps/start-time fallback only if OpenCV does not provide a timestamp;
+- replay publication now sleeps against a replay-source anchor (`source timestamp -> monotonic deadline`) instead of a fixed tracking-fps wall-clock loop;
+- replay state/preview write gating now advances off replay/source timestamp deltas rather than elapsed wall-clock time, so a late decode does not silently skip a whole 33 ms source step and surface a 66 ms jump in the preview/state stream;
+- the old fixed `tracking_interval` sleep remains only as a fallback when the replay path has no reliable source fps/timestamps.
+
+Focused proof / validation:
+- Local vendor regression suite: `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe` → `Ran 40 tests ... OK`.
+- Added replay-path coverage proving the new behavior:
+  - `test_run_continuous_video_file_session_uses_capture_source_timestamp_for_raw_replay_frame` asserts replay frames now emit decoded source time (`500ms` at `2fps`) and stay aligned with `playback_status.current_time_sec=0.5`.
+  - `test_run_continuous_video_file_session_uses_replay_source_time_for_state_write_cadence` holds `time.monotonic()` constant to falsify wall-clock-based gating; the replay path still emits loop iterations `[0, 1, 2]`, proving state cadence is now keyed off replay/source time instead of monotonic elapsed time.
+- Attempted focused remote proof on Chip via SSH, but the target workspace did not yet contain these new test names, so the remote invocation only proved the alias was reachable; I did not claim Chip runtime validation beyond the local vendor regression evidence in this coder slice.
+
+Commands run:
+- `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe`
+- `ssh -o BatchMode=yes -o ConnectTimeout=10 chip 'hostname && cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python && python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_uses_capture_source_timestamp_for_raw_replay_frame runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_uses_replay_source_time_for_state_write_cadence'`
+
+Commit: pending in `REF-03` at coder handoff time.
+
+---
+
 ### Task 10AS: Design a truthful low-end straight-punch mode if full hand tracking stays too expensive
 
 **Bead ID:** `aerobeat-input-camera-tracking-yoj`
