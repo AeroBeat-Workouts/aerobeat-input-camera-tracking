@@ -2043,6 +2043,106 @@ Remaining seams after this coder slice: no vendor repo changes were required bec
 
 ---
 
+### Task 10AV: Debug slower-than-yesterday pose-only replay feel on Chip after preview knob wiring
+
+**Bead ID:** `aerobeat-input-camera-tracking-wvn`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick reports that on Chip, after setting the replay preview feed to 30 fps and running pose-only, the replay still feels slower than yesterday. Debug this on the real Chip machine over SSH against the latest synced repos. Determine whether the slowdown is a real runtime regression, a truthful preview cap/config mismatch, a changed default tracking/state cadence, stale runtime/workspace state, replay transport pacing, or another seam. Verify the actual effective config reaching input -> tool -> vendor, inspect the real runtime outputs/logs/artifacts on Chip, compare current behavior against the known recent preview/runtime changes, and identify the narrowest truthful fix or explanation. Update this plan task with exact evidence, commands, files touched, and conclusion. Commit/push only if durable repo changes are needed; otherwise document the findings and close the bead when the diagnosis is complete.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- nondurable debug artifacts only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Diagnosed on Chip as a **real runtime cadence regression**, not a stale workspace or preview knob mismatch.
+
+Evidence chain (exact commands run from `/home/derrick/.openclaw/workspace` unless noted):
+- `ssh chip 'cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python && git show --stat --summary 0c8dfe6 && git show --unified=40 0c8dfe6 -- src/MediaPipePythonConfig.gd runtime/mediapipe_runtime_probe.py | sed -n "1,260p"'`
+  - Verified `0c8dfe6` (`Reduce default MediaPipe runtime cadence`) changed vendor defaults from `tracking/state/preview = 30/30/30` to `15/15/10` in both `src/MediaPipePythonConfig.gd` and `runtime/mediapipe_runtime_probe.py`.
+- `ssh chip 'cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && sed -n "1,80p" assets/boxing.camera_tracking.yaml'`
+  - Verified the public boxing profile now truthfully sets `preview.replay.max_fps: 30` and live-camera request `requested_fps: 30`, but does **not** set public `tracking.max_fps` or any runtime `state_update_max_fps` override.
+- Temporary headless config probe on Chip (`/tmp/print_tracking_config.gd`, nondurable) run via `~/.local/bin/godot --headless --script /tmp/print_tracking_config.gd` from `.testbed`.
+  - `BUILT=` from the input provider showed replay preview `30` and pose-only replay source wiring reaching the tool.
+  - `VENDOR_RUNTIME=` showed the actual effective vendor runtime config for that same request was still `preview_max_fps: 30`, **but** `tracking_max_fps: 15` and `state_update_max_fps: 15`.
+- Inspected real Chip runtime artifacts from the proving harness sessions:
+  - `~/.local/share/godot/app_userdata/AeroBeat Camera Tracking Testbed/mediapipe_python_runtime_bridge/sessions/session-1780846560.24177-1034496/request.json`
+  - `~/.local/share/godot/app_userdata/AeroBeat Camera Tracking Testbed/mediapipe_python_runtime_bridge/sessions/session-1780846560.24177-1034496/runtime_snapshot.json`
+  - That actual 2026-06-07 11:36 EDT pose-only replay session proved the live request entering the vendor was:
+    - `source.kind = video_file`
+    - `tracking.hands.enabled = false`
+    - `preview.max_fps = 30`
+    - `runtime.preview_max_fps = 30`
+    - `runtime.tracking_max_fps = 15`
+    - `runtime.state_update_max_fps = 15`
+- Compared against yesterday’s real Chip session artifacts with:
+  - `ssh chip 'python3 - <<"PY" ... print(time, tracking_max_fps, state_update_max_fps, preview_max_fps, kind, hands, preview_enabled, request_path) ... PY'`
+  - Recent 2026-06-06 pose-only replay requests (for example `session-1780800289.79454-981801/request.json` at 22:44:49 EDT) showed `tracking_max_fps = 30`, `state_update_max_fps = 30`, `preview_max_fps = 30`.
+  - Today’s 2026-06-07 requests show `tracking_max_fps = 15`, `state_update_max_fps = 15`, `preview_max_fps = 30`.
+- Verified the pacing seam in vendor code by reading `runtime/mediapipe_runtime_probe.py`:
+  - `_run_video_file_session()` computes `tracking_interval` from `runtime.tracking_max_fps` and `state_interval` from `runtime.state_update_max_fps`.
+  - Preview writes are gated by `should_write_state`, so replay preview cannot exceed the state-update cadence even when `preview_max_fps` is set higher.
+  - The replay loop also sleeps on `tracking_interval`, so pose-only replay genuinely runs at the lowered 15 fps cadence unless explicitly overridden.
+
+Conclusion:
+- The “slower than yesterday” feel on Chip is **real** and comes from the new vendor default cadence reduction, not from the preview knob failing to propagate.
+- The replay preview 30 fps setting is reaching the vendor truthfully, but it cannot make replay feel like yesterday because runtime tracking/state cadence is now 15/15.
+- This is not a replay transport exactness issue, and the latest synced repos on Chip are behaving consistently with the new defaults rather than from stale state.
+- Narrowest truthful follow-up (not implemented in this diagnosis slice): expose/restore owner-controlled replay/live tracking cadence defaults or explicitly override vendor runtime `tracking_max_fps` and `state_update_max_fps` back to `30` for the boxing profile/testbed path when that is the intended feel.
+
+---
+
+### Task 10AW: Expose public tracking and state cadence knobs for replay/live camera tracking
+
+**Bead ID:** `aerobeat-input-camera-tracking-onw`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick wants the underlying runtime cadence knobs made public, not just preview. Expose owner-correct public profile controls for tracking cadence and state-update cadence so replay/live feel can be tuned from the owning YAMLs alongside preview settings. Use the real current seams across REF-01=/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking, REF-02=/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking, and REF-03=/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python. Keep scope narrow and truthful: wire only the cadence controls the vendor/runtime actually supports today (e.g. tracking_max_fps, state_update_max_fps), document what they really affect, and add focused proof/tests. Do not promise that arbitrary values like 60 will be achieved on low-end hardware; make the knobs truthful caps/requests. Update the plan with exact files changed, validation, and commits. Commit/push by default and close the bead only if the implementation slice is complete.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `assets/`
+- `src/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/`
+- related tests/docs in touched owner repos
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `assets/boxing.camera_tracking.yaml`
+- `assets/flow.camera_tracking.yaml`
+- `src/providers/camera_tracking_provider.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_camera_tracking_provider.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingConfig.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/docs/tracker-config-schema.md`
+- `docs/cross-repo-config-contract.md`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the narrow owner-correct cadence-control slice across `REF-01` and `REF-02` without widening the vendor runtime surface. In `REF-02`, `src/CameraTrackingConfig.gd` now treats `tracking.max_fps` and `tracking.state_update_max_fps` as public tracker-schema fields, normalizes them as non-negative requested caps, and maps them into the already-supported vendor runtime keys `runtime.tracking_max_fps` and `runtime.state_update_max_fps`. `REF-02` docs (`docs/tracker-config-schema.md`) now explain that both knobs are truthful upper-bound requests, not guarantees, and explicitly call out that preview writes still cannot outrun `state_update_max_fps`. Focused proof landed in `REF-02` `.testbed/tests/test_CameraTracking.gd`, which now asserts both public tracking fields survive normalization and reach the runtime bridge.
+
+In `REF-01`, both owner YAMLs now publish the cadence knobs next to the other tracker controls: `assets/boxing.camera_tracking.yaml` and `assets/flow.camera_tracking.yaml` set `tracking.max_fps: 30` and `tracking.state_update_max_fps: 30` with comments that label them as requested caps. The input seam that had still been dropping those top-level tracking fields is now repaired in `src/providers/camera_tracking_provider.gd`: it still forwards `tracking.pose` / `tracking.hands`, and now also forwards `tracking.max_fps` plus `tracking.state_update_max_fps` into the real tracking-session config. Focused owner proof was updated in `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` and `.testbed/tests/unit/test_camera_tracking_provider.gd` so the selected profile bundle and both live/replay provider-start paths fail if those YAML-owned cadence knobs stop propagating.
+
+Truthful scope note relative to `REF-03`: no vendor code changes were needed for this slice because the runtime already supports `tracking_max_fps` and `state_update_max_fps`; this task only exposed the existing knobs through the public input -> tool path. That keeps the semantics honest: these values request upper bounds for tracker cadence and state publication cadence, but actual delivered FPS still depends on source cadence and hardware throughput.
+
+Validation reruns for this coder slice:
+- `REF-02` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` ✅ (`38/38` passed, `371` asserts)
+- `REF-01` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`15/15` passed, `159` asserts)
+
+Commits pushed for this task:
+- `PENDING-REF-02` (`REF-02`) - <fill after commit>
+- `PENDING-REF-01` (`REF-01`) - <fill after commit>
+
+---
+
 ### Task 10AS: Design a truthful low-end straight-punch mode if full hand tracking stays too expensive
 
 **Bead ID:** `aerobeat-input-camera-tracking-yoj`

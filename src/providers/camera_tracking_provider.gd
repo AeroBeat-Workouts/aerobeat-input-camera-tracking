@@ -337,6 +337,10 @@ func _build_tracking_config() -> Dictionary:
 						source_payload["live_camera"] = (live_camera_source as Dictionary).duplicate(true)
 				var tracker_tracking: Variant = (tracker_profile as Dictionary).get("tracking", {})
 				if tracker_tracking is Dictionary:
+					if (tracker_tracking as Dictionary).has("max_fps"):
+						tracking_fields["max_fps"] = int((tracker_tracking as Dictionary).get("max_fps", 0))
+					if (tracker_tracking as Dictionary).has("state_update_max_fps"):
+						tracking_fields["state_update_max_fps"] = int((tracker_tracking as Dictionary).get("state_update_max_fps", 0))
 					var pose_config: Variant = (tracker_tracking as Dictionary).get("pose", {})
 					if pose_config is Dictionary and not pose_config.is_empty():
 						tracking_fields["pose"] = (pose_config as Dictionary).duplicate(true)

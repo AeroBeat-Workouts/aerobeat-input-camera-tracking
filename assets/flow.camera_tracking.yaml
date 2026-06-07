@@ -34,6 +34,10 @@ source:
     # Request this live capture cadence from the real camera path. tool -> vendor.
     requested_fps: 15
 tracking:
+  # Cap tracker sampling work. This is a requested upper bound, not a promise of achieved FPS on all hardware. input -> tool -> vendor.
+  max_fps: 30
+  # Cap how often runtime state/preview updates publish. This is a requested upper bound, not a guaranteed delivered FPS. input -> tool -> vendor.
+  state_update_max_fps: 30
   pose:
     # Turn pose tracking on or off. Passed through tool -> vendor.
     enabled: true

@@ -73,6 +73,8 @@ preview:
     pose_skeleton_visible: true
     hand_bbox_visible: true|false
 tracking:
+  max_fps: 30
+  state_update_max_fps: 30
   pose:
     enabled: true
     inference_interval_frames: 1
@@ -107,6 +109,8 @@ tracking:
 
 #### Boxing tracker defaults
 
+- `tracking.max_fps: 30`
+- `tracking.state_update_max_fps: 30`
 - `tracking.pose.enabled: true`
 - `tracking.pose.inference_interval_frames: 1`
 - `tracking.pose.smoothing_style: lite_filtered`
@@ -130,6 +134,8 @@ tracking:
 
 #### Flow tracker defaults
 
+- `tracking.max_fps: 30`
+- `tracking.state_update_max_fps: 30`
 - `tracking.pose.enabled: true`
 - `tracking.pose.inference_interval_frames: 1`
 - `tracking.pose.smoothing_style: lite_filtered`
