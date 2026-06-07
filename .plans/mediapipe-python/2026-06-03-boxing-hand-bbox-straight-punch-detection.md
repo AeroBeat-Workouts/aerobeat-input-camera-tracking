@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-06 20:41 EDT
+**Last Updated:** 2026-06-07 09:36 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -1843,6 +1843,137 @@ Audit conclusion:
 
 Narrowest truthful next fix:
 1. Fix the owner seam so real runtime hand validity metadata is millisecond-shaped end to end. The cleanest owner-correct repair is to update `REF-03` to normalize/emit `hand_max_stale_ms` and `hand_reacquire_stable_ms` (plus `vendor_hand_tracking.max_stale_ms` / `reacquire_stable_ms`) instead of only frame fields, keeping any legacy frame keys as compatibility aliases only if strictly needed.
+
+---
+
+### Task 10AR: Profile hand-tracking + bbox cost on Chip-class hardware and isolate the real low-end bottleneck
+
+**Bead ID:** `aerobeat-input-camera-tracking-rgf`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick's latest live finding is that pose-driven straight-punch velocity using wrist + elbow is workable, but enabling hand tracking / bbox work drops performance on Chip below acceptable levels. Audit the real low-end cost seam truthfully across input/tool/vendor: determine whether the dominant cost is MediaPipe hand inference itself, bbox derivation/update cadence, preview/debug overhead, multi-stream/session polling overhead, or some combination. Produce measured before/after evidence for representative modes (pose-only, pose + hands lite, pose + hands full if relevant, slower hand cadence, reduced bbox recompute cadence, debug-light scene) and identify the narrowest owner-correct lever that can restore acceptable low-end performance without guessing. Keep the slice diagnosis-first and leave the active boxing manual-tuning workflow intact.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- profiling / nondurable artifact folders as needed
+- owner-correct source/test folders in `REF-01` / `REF-02` / `REF-03` only if tiny instrumentation is required
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional nondurable profiling probes / reports
+
+**Status:** ⏳ Pending
+
+**Results:** Added from Derrick's 2026-06-07 live testing feedback. Current hypothesis is that the low-end problem may be intrinsic hand-inference cost, bbox cadence cost, or an avoidable surrounding overhead seam; do not assume hand tracking must be dropped until measured evidence isolates the bottleneck on Chip-class hardware.
+
+---
+
+### Task 10AT: Design truthful public preview/feed knobs across input -> tool -> vendor
+
+**Bead ID:** `aerobeat-input-camera-tracking-a7b`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick wants the live/replay preview performance knobs to be publicly tunable from the owning YAMLs and truthfully utilized downstream. Audit the current preview/feed ownership and propose the narrowest owner-correct public config contract that covers: (1) enable/disable live and replay video feeds, (2) preview quality/size/fps tuning, and (3) independent control of pose skeleton and hand bbox overlays apart from the full video feed. Use the real current seams in input -> tool -> vendor, call out what already exists downstream, identify what is currently hardcoded or bypassed, and recommend exact YAML names plus which repo should own each field. Keep this as a truthful design/contract task first, not a broad implementation dump.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- docs / config-contract notes only if needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional design notes if needed
+
+**Status:** ✅ Complete
+
+**Results:** Design audit complete across `REF-01` input, `REF-02` tool, and `REF-03` vendor. Truthful contract recommendation:
+
+- **Current real support today**
+  - `REF-03` already has a working **source-agnostic preview-output knob set**: `preview.enabled`, `preview.max_fps`, `preview.width`, `preview.height`, `preview.quality` normalize into runtime `preview_enabled`, `preview_max_fps`, `preview_width`, `preview_height`, `preview_quality`, and both the live-camera loop and replay/video-file loop already honor those values when deciding whether/how often to write JPEG preview frames.
+  - `REF-03` also already has **live-capture-only cost knobs** at runtime: `live_camera_width`, `live_camera_height`, `live_camera_fps`. Those affect live camera acquisition/inference cost, not replay decode, and there is **no equivalent replay-source decode-size/fps knob today**.
+  - `REF-02` public tracker config is only partially truthful right now: `CameraTrackingConfig` normalizes `preview.enabled`, `surface_mode`, and `flip_horizontal`, but its generic public schema does **not** own/normalize `preview.max_fps`, `width`, `height`, or `quality`. Those knobs exist today only because the MediaPipe vendor layer reintroduces them in `REF-03`.
+  - `REF-01` currently **bypasses the public preview contract**: `src/providers/camera_tracking_provider.gd::_build_tracking_config()` hardcodes `preview.enabled=true` / `surface_mode=attach` and never loads a YAML `preview:` block from `assets/*.camera_tracking.yaml`. So Derrick cannot truthfully tune preview/feed behavior from the owning YAMLs yet.
+  - Overlay visibility is split today: proving-scene `show_landmarks` / `show_hand_bbox_overlay` live in `assets/*.testbed_debug.yaml` and are input-debug-only. `REF-02` preview presenter has just one `overlay_visible` switch for its built-in pose+hand overlay path, while boxing proving also mounts a separate input-owned `HandBBoxDrawer`. That means pose skeleton visibility and hand bbox visibility are **not** a single clean public contract today.
+
+- **Recommended public YAML contract (owner-correct, minimal, truthful)**
+  - Put the user-facing knobs in `REF-01` `assets/{boxing,flow}.camera_tracking.yaml` under the existing tracker-owned `preview:` section:
+
+```yaml
+preview:
+  surface_mode: attach
+  flip_horizontal: true
+  live:
+    enabled: true
+    max_fps: 10
+    width: 960
+    height: 540
+    quality: 75
+  replay:
+    enabled: true
+    max_fps: 10
+    width: 960
+    height: 540
+    quality: 75
+  overlays:
+    pose_skeleton_visible: true
+    hand_bbox_visible: true
+source:
+  live_camera:
+    requested_width: 960
+    requested_height: 540
+    requested_fps: 15
+```
+
+- **Resolved ownership / pass-through contract**
+  - `REF-01` **owns authoring** of all of the above YAML because Derrick edits config here.
+  - `REF-02` should **own the tracker-layer public schema + normalization** for `preview.live.*`, `preview.replay.*`, `preview.overlays.*`, and `source.live_camera.requested_*`, because this repo is the public cross-backend tracker contract.
+  - `REF-03` should **consume only the vendor-relevant subset**:
+    - active live session: `preview.live.*` -> runtime `preview_*`; `source.live_camera.requested_*` -> runtime `live_camera_*`
+    - active replay session: `preview.replay.*` -> runtime `preview_*`
+    - vendor should **ignore `preview.overlays.*`** because overlay drawing is not vendor-owned.
+  - `REF-01` should continue to **consume `preview.overlays.*` in proving/testbed UI** until/unless `REF-02` grows per-overlay presenter controls. That is the truthful current owner for independent hand-bbox visibility.
+
+- **Why these names / why this split**
+  - Separate `preview.live.*` vs `preview.replay.*` gives Derrick the requested live/replay feed toggles without pretending one shared `preview.enabled` is source-specific.
+  - Keep `source.live_camera.requested_*` separate from `preview.*` because live capture size/fps changes camera/inference cost, while preview width/fps/quality only change the emitted preview feed cost. Replay currently has only preview-output knobs, so we should not invent fake replay decode knobs.
+  - `preview.overlays.pose_skeleton_visible` and `preview.overlays.hand_bbox_visible` are truthful public names for the user intent, but their consumers differ today: pose skeleton is closest to the tool presenter path; hand bbox is still partly input-owned/debug-mounted.
+
+- **What is hardcoded / bypassed and must change in implementation follow-up**
+  - `REF-01` must stop hardcoding `preview.enabled=true` and must pass the YAML-owned preview block through `_build_tracking_config()`.
+  - `REF-02` must become the truthful public normalizer for preview feed knobs instead of relying on `REF-03` vendor-specific defaults to add them back.
+  - `REF-02` preview presentation needs a split contract if we want true independent tool-owned overlay controls; today `overlay_visible` is all-or-nothing for the presenter's pose+hand overlay.
+  - `REF-01` boxing proving should avoid dual-source ambiguity between tool-drawn hand overlay and input `HandBBoxDrawer`; until that is unified, `hand_bbox_visible` should be documented as input-owned presentation truth, not a vendor/runtime cost knob.
+
+- **Bottom-line design call**
+  - Public YAML surface should live in `REF-01` `*.camera_tracking.yaml`.
+  - Public schema/normalization should move into `REF-02`.
+  - Actual preview frame generation + live camera acquisition cost knobs remain consumed by `REF-03`.
+  - Overlay visibility must stay explicitly presentation-scoped and should **not** be sold as a vendor performance knob until the tool/input overlay split is cleaned up.
+
+This is diagnosis/design only; no broader implementation was started in this research slice.
+
+---
+
+### Task 10AS: Design a truthful low-end straight-punch mode if full hand tracking stays too expensive
+
+**Bead ID:** `Pending`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** If Task 10AR proves that always-on hand tracking / bbox work is too expensive for Chip-class target hardware, design the narrowest truthful fallback mode for boxing straight-punch detection. Start from Derrick's latest manual finding that wrist + elbow pose velocity is "not terrible" for straight punches. Compare candidate low-end modes such as pose-only wrist+elbow velocity, pose-primary with sparse hand confirmation, or profile-driven hardware tiers where hands/bbox run at reduced cadence or are disabled entirely. Recommend the owner-correct config/API shape so lower-end devices can stay responsive without pretending to have full hand-truth when they do not.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- docs / config-contract notes only if needed during design
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional design notes if needed
+
+**Status:** ⏳ Pending
+
+**Results:** Added from Derrick's 2026-06-07 product-direction clarification. AeroBeat targets lower-end/no-dedicated-GPU devices, so exactness should yield to playability when necessary; any fallback must still be truthful about whether a punch came from pose-only or hand-confirmed detection.
 2. As a protective guard in `REF-02`, stop treating legacy `vendor_hand_tracking.max_stale_frames` / `reacquire_stable_frames` as raw millisecond overrides. If those legacy keys must remain temporarily, they should not silently clobber the YAML ms config in the live path.
 3. Add one focused cross-repo proof that uses the **actual vendor-shaped metadata path** so future tests fail if frame keys start secretly winning again.
 
