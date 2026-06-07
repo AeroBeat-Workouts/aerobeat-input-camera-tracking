@@ -2037,7 +2037,7 @@ Validation reruns for this slice:
 
 Commits pushed for this task:
 - `7f5ab5f` (`REF-02`) - Wire public preview feed config contract
-- `PENDING` (`REF-01`) - pending input-owner commit after plan update
+- `ee07371` (`REF-01`) - Expose public preview feed profile knobs
 
 Remaining seams after this coder slice: no vendor repo changes were required because the truthful downstream knobs already existed; the next loop should be QA/manual profiling against live/replay sessions rather than more schema widening in this slice.
 
