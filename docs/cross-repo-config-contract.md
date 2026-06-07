@@ -49,6 +49,29 @@ The input repo owns boxing/flow gameplay meaning, boxing straight-punch tuning, 
 schema: aerobeat/camera_tracking_config
 version: 1
 profile: boxing|flow
+source:
+  live_camera:
+    requested_width: 960
+    requested_height: 540
+    requested_fps: 15
+preview:
+  surface_mode: attach
+  flip_horizontal: true
+  live:
+    enabled: true
+    max_fps: 10
+    width: 960
+    height: 540
+    quality: 75
+  replay:
+    enabled: true
+    max_fps: 10
+    width: 960
+    height: 540
+    quality: 75
+  overlays:
+    pose_skeleton_visible: true
+    hand_bbox_visible: true|false
 tracking:
   pose:
     enabled: true
@@ -70,6 +93,11 @@ tracking:
 
 ### Locked tracker field ownership
 
+- `source.live_camera.*` = live camera request knobs owned by `aerobeat-tool-camera-tracking`
+- `preview.live.*` = live preview feed knobs owned by `aerobeat-tool-camera-tracking`
+- `preview.replay.*` = replay preview feed knobs owned by `aerobeat-tool-camera-tracking`
+- `preview.overlays.pose_skeleton_visible` = public presentation intent consumed by the input proving surfaces
+- `preview.overlays.hand_bbox_visible` = public presentation intent consumed by the input proving surfaces
 - `tracking.pose.*` = tracker/runtime behavior owned by `aerobeat-tool-camera-tracking`
 - `tracking.hands.*` = tracker/runtime behavior owned by `aerobeat-tool-camera-tracking`
 - `tracking.hands.association.*` = hand-to-side binding behavior owned by `aerobeat-tool-camera-tracking`
@@ -82,14 +110,23 @@ tracking:
 - `tracking.pose.enabled: true`
 - `tracking.pose.inference_interval_frames: 1`
 - `tracking.pose.smoothing_style: lite_filtered`
-- `tracking.hands.enabled: true`
+- `tracking.hands.enabled: false`
 - `tracking.hands.landmark_mode: lite`
 - `tracking.hands.inference_interval_frames: 1`
 - `tracking.hands.bbox.enabled: true`
 - `tracking.hands.association.prefer_existing_pose_side_binding: true`
 - `tracking.hands.association.nearest_wrist_fallback: true`
-- `tracking.hands.validity.max_stale_ms: 80`
+- `tracking.hands.validity.max_stale_ms: 1000`
 - `tracking.hands.validity.reacquire_stable_ms: 40`
+- `source.live_camera.requested_width: 960`
+- `source.live_camera.requested_height: 540`
+- `source.live_camera.requested_fps: 15`
+- `preview.live.enabled: true`
+- `preview.live.max_fps: 10`
+- `preview.replay.enabled: true`
+- `preview.replay.max_fps: 10`
+- `preview.overlays.pose_skeleton_visible: true`
+- `preview.overlays.hand_bbox_visible: true`
 
 #### Flow tracker defaults
 
@@ -104,6 +141,15 @@ tracking:
 - `tracking.hands.association.nearest_wrist_fallback: true`
 - `tracking.hands.validity.max_stale_ms: 80`
 - `tracking.hands.validity.reacquire_stable_ms: 40`
+- `source.live_camera.requested_width: 960`
+- `source.live_camera.requested_height: 540`
+- `source.live_camera.requested_fps: 15`
+- `preview.live.enabled: true`
+- `preview.live.max_fps: 10`
+- `preview.replay.enabled: true`
+- `preview.replay.max_fps: 10`
+- `preview.overlays.pose_skeleton_visible: true`
+- `preview.overlays.hand_bbox_visible: false`
 
 ## Locked v1 gesture schema
 

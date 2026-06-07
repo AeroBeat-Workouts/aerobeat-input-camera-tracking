@@ -1,6 +1,38 @@
 schema: aerobeat/camera_tracking_config
 version: 1
 profile: boxing
+preview:
+  surface_mode: attach
+  flip_horizontal: true
+  live:
+    # Emit a live preview feed only when this profile wants one. input -> tool -> vendor.
+    enabled: true
+    # Throttle live preview updates without changing live tracking cadence. tool -> vendor.
+    max_fps: 10
+    # Resize emitted live preview frames without pretending to change live decode/inference. tool -> vendor.
+    width: 960
+    height: 540
+    quality: 75
+  replay:
+    # Emit a replay preview feed only when this profile wants one. input -> tool -> vendor.
+    enabled: true
+    # Throttle replay preview updates without inventing replay decode controls the vendor does not support. tool -> vendor.
+    max_fps: 10
+    width: 960
+    height: 540
+    quality: 75
+  overlays:
+    # Show the pose/skeleton overlay in the preview presenter independently from full video feed visibility. input presentation.
+    pose_skeleton_visible: true
+    # Show the boxing hand bbox overlay independently from full video feed visibility. input presentation.
+    hand_bbox_visible: true
+source:
+  live_camera:
+    # Request this live capture size from the real camera path. tool -> vendor.
+    requested_width: 960
+    requested_height: 540
+    # Request this live capture cadence from the real camera path. tool -> vendor.
+    requested_fps: 15
 tracking:
   pose:
     # Turn pose tracking on or off. Passed through tool -> vendor.

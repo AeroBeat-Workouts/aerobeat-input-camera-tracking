@@ -183,6 +183,38 @@ func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
 	assert_false(hand_bbox_drawer.visible)
 
+func test_boxing_proving_profile_visual_config_uses_camera_tracking_preview_overlays_independently_from_debug_visuals() -> void:
+	var harness: Variant = _new_harness()
+	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
+	var trail_drawer: Control = add_child_autoqfree(Control.new())
+	var hand_bbox_drawer: Control = add_child_autoqfree(Control.new())
+	harness.set("landmark_drawer", landmark_drawer)
+	harness.set("trail_drawer", trail_drawer)
+	harness.set("hand_bbox_drawer", hand_bbox_drawer)
+
+	harness._sync_profile_visual_config({
+		"ok": true,
+		"camera_tracking": {
+			"preview": {
+				"overlays": {
+					"pose_skeleton_visible": false,
+					"hand_bbox_visible": true,
+				}
+			}
+		},
+		"testbed_debug": {
+			"visuals": {
+				"show_landmarks": true,
+				"show_trails": false,
+				"show_hand_bbox_overlay": false,
+			}
+		}
+	})
+
+	assert_false(bool(harness.get("show_landmarks")))
+	assert_true(hand_bbox_drawer.visible)
+	assert_false(bool(trail_drawer.visible))
+
 func test_boxing_proving_bbox_overlay_reparents_into_preview_overlay_layer_and_receives_snapshot() -> void:
 	var harness: Variant = _new_harness()
 	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new())

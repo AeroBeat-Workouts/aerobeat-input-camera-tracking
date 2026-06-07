@@ -306,7 +306,7 @@ func _build_tracking_config() -> Dictionary:
 	var active_config = _ensure_config()
 	var source_id := String(active_config.get_camera_source()).strip_edges() if active_config != null and active_config.has_method("get_camera_source") else ""
 	var source_kind := "live_camera"
-	var source_payload := {
+	var source_payload: Dictionary = {
 		"kind": source_kind,
 		"camera_id": source_id,
 	}
@@ -321,11 +321,20 @@ func _build_tracking_config() -> Dictionary:
 		"gesture_eval_interval_frames": int(active_config.gesture_eval_interval_frames) if active_config != null else 1,
 		"min_visibility": float(active_config.min_visibility) if active_config != null else 0.35,
 	}
+	var preview_fields: Dictionary = {
+		"surface_mode": "attach",
+		"flip_horizontal": bool(active_config.flip_horizontal) if active_config != null else true,
+	}
 	if active_config != null and active_config.has_method("get_selected_profile_bundle"):
 		var profile_bundle: Variant = active_config.get_selected_profile_bundle()
 		if profile_bundle is Dictionary and bool(profile_bundle.get("ok", false)):
 			var tracker_profile: Variant = profile_bundle.get("camera_tracking", {})
 			if tracker_profile is Dictionary:
+				var tracker_source: Variant = (tracker_profile as Dictionary).get("source", {})
+				if tracker_source is Dictionary:
+					var live_camera_source: Variant = (tracker_source as Dictionary).get("live_camera", {})
+					if live_camera_source is Dictionary and not live_camera_source.is_empty():
+						source_payload["live_camera"] = (live_camera_source as Dictionary).duplicate(true)
 				var tracker_tracking: Variant = (tracker_profile as Dictionary).get("tracking", {})
 				if tracker_tracking is Dictionary:
 					var pose_config: Variant = (tracker_tracking as Dictionary).get("pose", {})
@@ -334,15 +343,18 @@ func _build_tracking_config() -> Dictionary:
 					var hands_config: Variant = (tracker_tracking as Dictionary).get("hands", {})
 					if hands_config is Dictionary and not hands_config.is_empty():
 						tracking_fields["hands"] = (hands_config as Dictionary).duplicate(true)
+				var tracker_preview: Variant = (tracker_profile as Dictionary).get("preview", {})
+				if tracker_preview is Dictionary and not tracker_preview.is_empty():
+					preview_fields = (tracker_preview as Dictionary).duplicate(true)
+					if not preview_fields.has("surface_mode"):
+						preview_fields["surface_mode"] = "attach"
+					if not preview_fields.has("flip_horizontal"):
+						preview_fields["flip_horizontal"] = bool(active_config.flip_horizontal) if active_config != null else true
 	var tracking_config := {
 		"backend": "camera_tracking_default",
 		"source": source_payload,
 		"tracking": tracking_fields,
-		"preview": {
-			"enabled": true,
-			"surface_mode": "attach",
-			"flip_horizontal": bool(active_config.flip_horizontal) if active_config != null else true,
-		}
+		"preview": preview_fields,
 	}
 	if active_config != null:
 		var runtime_config: Variant = active_config.get("runtime")

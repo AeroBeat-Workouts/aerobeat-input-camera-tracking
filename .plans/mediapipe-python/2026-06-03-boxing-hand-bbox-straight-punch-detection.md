@@ -2000,9 +2000,52 @@ This is diagnosis/design only; no broader implementation was started in this res
 
 ---
 
+### Task 10AU: Implement public preview/feed knobs across input -> tool -> vendor
+
+**Bead ID:** `aerobeat-input-camera-tracking-nkw`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Implement the owner-correct public preview/feed knobs already designed in Task 10AT. Expose the YAML-driven preview/feed contract from `REF-01` camera-tracking profile YAMLs through the real input -> tool -> vendor path so Derrick can truthfully tune live/replay video feed enablement and preview quality/size/fps from the owning configs. Keep scope narrow and honest: wire the supported live/replay preview feed knobs that already exist downstream today, stop hardcoding preview enabled in the input provider, and separate presentation-layer overlay visibility enough that full video feed visibility is no longer conflated with every overlay. Do not invent fake replay decode controls the vendor does not actually support. Add focused tests/proof in the touched owner repos, rerun enough validation for Derrick's manual profiling/tuning loop, and update this plan with exact files, validation, commits, and any remaining seams.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `assets/`
+- `src/`
+- `.testbed/` if proving/debug surfaces need owner-correct wiring updates
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/.testbed/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/src/` only if tiny compatibility changes are truly needed
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `assets/boxing.camera_tracking.yaml`
+- `assets/flow.camera_tracking.yaml`
+- `src/providers/camera_tracking_provider.gd`
+- related config/preview presenter/tests/docs in `REF-02` as needed
+- only minimal owner-correct downstream files in `REF-03` if required
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the public preview/feed config seam across the input-owner YAMLs and the tool-owned normalization/runtime bridge without inventing new vendor capabilities. In `REF-01`, `assets/boxing.camera_tracking.yaml` and `assets/flow.camera_tracking.yaml` now carry the public `preview.live.*`, `preview.replay.*`, `preview.overlays.*`, and `source.live_camera.requested_*` knobs. `src/providers/camera_tracking_provider.gd` now forwards those owner-correct profile fields into the real tracking config instead of hardcoding `preview.enabled = true`, and `.testbed/scripts/boxing_proving_harness.gd` now consumes `preview.overlays.pose_skeleton_visible` and `preview.overlays.hand_bbox_visible` so full video feed visibility is no longer conflated with every overlay. Focused `REF-01` proof was updated in `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`, `.testbed/tests/unit/test_camera_tracking_provider.gd`, and `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`.
+
+In `REF-02`, `src/CameraTrackingConfig.gd` now owns the public preview/feed contract by normalizing `source.live_camera.requested_width|requested_height|requested_fps`, `preview.live.*`, `preview.replay.*`, and `preview.overlays.*`, then resolving the active live-vs-replay preview block back into the existing runtime/vendor-facing `preview_enabled|max_fps|width|height|quality` and `live_camera_width|height|fps` keys that already exist downstream today. That kept the scope narrow and truthful: the vendor path needed no code changes because the supported knobs were already there once the tool layer stopped dropping them. Focused `REF-02` proof was added in `.testbed/tests/test_CameraTracking.gd`. Docs were updated in `REF-01` `docs/cross-repo-config-contract.md` and `REF-02` `docs/tracker-config-schema.md` to lock the new public contract and record the current boxing/flow profile defaults.
+
+Validation reruns for this slice:
+- `REF-02` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/test_CameraTracking.gd -gexit` ✅ (`38/38` passed, `367` asserts)
+- `REF-01` `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking` `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`34/34` passed, `282` asserts; existing Gut orphan warnings still print from longstanding proving-harness tests)
+
+Commits pushed for this task:
+- `7f5ab5f` (`REF-02`) - Wire public preview feed config contract
+- `PENDING` (`REF-01`) - pending input-owner commit after plan update
+
+Remaining seams after this coder slice: no vendor repo changes were required because the truthful downstream knobs already existed; the next loop should be QA/manual profiling against live/replay sessions rather than more schema widening in this slice.
+
+---
+
 ### Task 10AS: Design a truthful low-end straight-punch mode if full hand tracking stays too expensive
 
-**Bead ID:** `Pending`
+**Bead ID:** `aerobeat-input-camera-tracking-yoj`
 **SubAgent:** `primary`
 **Role:** `research`
 **References:** `REF-01`, `REF-02`, `REF-03`

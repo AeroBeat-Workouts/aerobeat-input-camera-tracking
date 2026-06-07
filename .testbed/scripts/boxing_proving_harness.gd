@@ -425,11 +425,12 @@ func _refresh_profile_controls() -> void:
 func _sync_profile_visual_config(bundle: Dictionary = {}) -> void:
 	var resolved_bundle := bundle if not bundle.is_empty() else _current_profile_bundle()
 	_apply_testbed_debug_profile_bundle(resolved_bundle)
+	var camera_tracking: Dictionary = resolved_bundle.get("camera_tracking", {}) if resolved_bundle.get("camera_tracking", {}) is Dictionary else {}
+	var preview: Dictionary = camera_tracking.get("preview", {}) if camera_tracking.get("preview", {}) is Dictionary else {}
+	var preview_overlays: Dictionary = preview.get("overlays", {}) if preview.get("overlays", {}) is Dictionary else {}
 	var testbed_debug: Dictionary = resolved_bundle.get("testbed_debug", {}) if resolved_bundle.get("testbed_debug", {}) is Dictionary else {}
 	var visuals: Dictionary = testbed_debug.get("visuals", {}) if testbed_debug.get("visuals", {}) is Dictionary else {}
-	if visuals.is_empty():
-		return
-	show_landmarks = bool(visuals.get("show_landmarks", show_landmarks))
+	show_landmarks = bool(preview_overlays.get("pose_skeleton_visible", visuals.get("show_landmarks", show_landmarks)))
 	show_trails = bool(visuals.get("show_trails", show_trails))
 	if landmark_drawer != null:
 		landmark_drawer.set("show_debug_hit_targets", bool(visuals.get("show_landmark_hit_targets", landmark_drawer.get("show_debug_hit_targets"))))
@@ -440,7 +441,7 @@ func _sync_profile_visual_config(bundle: Dictionary = {}) -> void:
 		trail_drawer.visible = show_trails
 		trail_drawer.queue_redraw()
 	if hand_bbox_drawer != null:
-		var show_hand_bbox_overlay := bool(visuals.get("show_hand_bbox_overlay", hand_bbox_drawer.visible))
+		var show_hand_bbox_overlay := bool(preview_overlays.get("hand_bbox_visible", visuals.get("show_hand_bbox_overlay", hand_bbox_drawer.visible)))
 		hand_bbox_drawer.visible = show_hand_bbox_overlay
 		if not show_hand_bbox_overlay and hand_bbox_drawer.has_method("clear_snapshot"):
 			hand_bbox_drawer.clear_snapshot()
