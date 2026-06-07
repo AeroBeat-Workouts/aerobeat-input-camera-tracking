@@ -43,6 +43,10 @@ const LANDMARK_DRAWER_Z_INDEX := 20
 const TRAIL_DRAWER_Z_INDEX := 19
 const DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS := 120
 const DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_MS := 160
+const DEFAULT_FIXTURE_POSE_STATE_TIMELINE_LIMIT := 240
+const FIXTURE_STATE_TIMELINE_MODE_BOUNDED := "bounded"
+const FIXTURE_STATE_TIMELINE_MODE_FULL := "full"
+const FIXTURE_STATE_TIMELINE_MODE_EVENTS_ONLY := "events_only"
 const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
 const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
@@ -179,6 +183,8 @@ var tracking_smoothing_style: TrackingSmoothingStyle = TrackingSmoothingStyle.LI
 var gesture_eval_interval_frames := 1
 var debug_panel_refresh_interval_ms := DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_MS
 var inspector_live_refresh_interval_ms := DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS
+var fixture_state_timeline_mode := FIXTURE_STATE_TIMELINE_MODE_BOUNDED
+var fixture_pose_state_timeline_limit := DEFAULT_FIXTURE_POSE_STATE_TIMELINE_LIMIT
 var show_landmarks := true
 var show_trails := true
 
@@ -228,6 +234,9 @@ var _fixture_time_origin_locked := false
 var _fixture_event_timeline: Array[Dictionary] = []
 var _fixture_state_timeline: Array[Dictionary] = []
 var _fixture_state_sequence := 0
+var _fixture_pose_state_snapshots_seen := 0
+var _fixture_pose_state_snapshots_retained := 0
+var _fixture_pose_state_snapshots_dropped := 0
 var _preview_only_invalid_reason := ""
 var _preview_only_invalid_logged := false
 var _camera_devices: Array = []
@@ -290,6 +299,7 @@ func _ready() -> void:
 	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
 	_apply_current_testbed_debug_profile()
+	_apply_fixture_state_timeline_runtime_settings()
 	_left_trail_debug = _make_trail_debug_state("left")
 	_right_trail_debug = _make_trail_debug_state("right")
 	_reset_last_flow_events()
@@ -1078,6 +1088,26 @@ func _apply_testbed_debug_profile_bundle(bundle: Dictionary) -> void:
 	debug_panel_refresh_interval_ms = maxi(1, int(refresh.get("debug_panel_refresh_interval_ms", DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_MS)))
 	inspector_live_refresh_interval_ms = maxi(1, int(refresh.get("inspector_live_refresh_interval_ms", DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS)))
 	_debug_panel_refresh_due_ms = 0
+
+func _apply_fixture_state_timeline_runtime_settings() -> void:
+	var mode_override := OS.get_environment("AEROBEAT_FIXTURE_STATE_TIMELINE_MODE").strip_edges().to_lower()
+	if not mode_override.is_empty():
+		match mode_override:
+			FIXTURE_STATE_TIMELINE_MODE_FULL:
+				fixture_state_timeline_mode = FIXTURE_STATE_TIMELINE_MODE_FULL
+			FIXTURE_STATE_TIMELINE_MODE_EVENTS_ONLY:
+				fixture_state_timeline_mode = FIXTURE_STATE_TIMELINE_MODE_EVENTS_ONLY
+			_:
+				fixture_state_timeline_mode = FIXTURE_STATE_TIMELINE_MODE_BOUNDED
+	var limit_override := OS.get_environment("AEROBEAT_FIXTURE_POSE_STATE_TIMELINE_LIMIT").strip_edges()
+	if limit_override.is_valid_int():
+		fixture_pose_state_timeline_limit = max(int(limit_override), 0)
+	if fixture_state_timeline_mode == FIXTURE_STATE_TIMELINE_MODE_FULL:
+		fixture_pose_state_timeline_limit = -1
+	elif fixture_state_timeline_mode == FIXTURE_STATE_TIMELINE_MODE_EVENTS_ONLY:
+		fixture_pose_state_timeline_limit = 0
+	else:
+		fixture_pose_state_timeline_limit = max(fixture_pose_state_timeline_limit, 0)
 
 func _build_runtime_config() -> Variant:
 	var config := CameraTrackingConfigScript.new()
@@ -2457,6 +2487,9 @@ func _reset_event_tracking() -> void:
 	_fixture_event_timeline = []
 	_fixture_state_timeline = []
 	_fixture_state_sequence = 0
+	_fixture_pose_state_snapshots_seen = 0
+	_fixture_pose_state_snapshots_retained = 0
+	_fixture_pose_state_snapshots_dropped = 0
 	for event_name: String in BOXING_EVENT_ORDER + FLOW_EVENT_ORDER + ["provider_started", "tracking_lost", "tracking_restored", "camera_stream_failed", "server_failed", "preview_only_provider_disabled", "preview_only_invalid"]:
 		_event_counts[event_name] = 0
 
@@ -2484,6 +2517,29 @@ func _fixture_relative_ms(timestamp_ms: int = -1) -> int:
 	if _fixture_time_origin_ms <= 0:
 		return 0
 	return max(effective_timestamp - _fixture_time_origin_ms, 0)
+
+func _should_capture_fixture_pose_state_snapshots() -> bool:
+	return fixture_state_timeline_mode != FIXTURE_STATE_TIMELINE_MODE_EVENTS_ONLY and fixture_pose_state_timeline_limit != 0
+
+func _should_retain_full_fixture_state_timeline() -> bool:
+	return fixture_state_timeline_mode == FIXTURE_STATE_TIMELINE_MODE_FULL or fixture_pose_state_timeline_limit < 0
+
+func _prune_fixture_pose_state_timeline_if_needed() -> void:
+	if _should_retain_full_fixture_state_timeline():
+		return
+	var pose_limit: int = max(fixture_pose_state_timeline_limit, 0)
+	while _fixture_pose_state_snapshots_retained > pose_limit:
+		var removed := false
+		for index: int in range(_fixture_state_timeline.size()):
+			if String(_fixture_state_timeline[index].get("reason", "")) != "pose_updated":
+				continue
+			_fixture_state_timeline.remove_at(index)
+			_fixture_pose_state_snapshots_retained = max(_fixture_pose_state_snapshots_retained - 1, 0)
+			_fixture_pose_state_snapshots_dropped += 1
+			removed = true
+			break
+		if not removed:
+			break
 
 func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 	var state: Dictionary = _latest_state
@@ -2569,6 +2625,12 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 	}
 
 func _record_fixture_state_snapshot(reason: String) -> void:
+	var is_pose_snapshot := reason == "pose_updated"
+	if is_pose_snapshot:
+		_fixture_pose_state_snapshots_seen += 1
+		if not _should_capture_fixture_pose_state_snapshots():
+			_fixture_pose_state_snapshots_dropped += 1
+			return
 	_fixture_state_sequence += 1
 	_fixture_state_timeline.append({
 		"sequence": _fixture_state_sequence,
@@ -2581,6 +2643,9 @@ func _record_fixture_state_snapshot(reason: String) -> void:
 		"boxing_debug": _build_fixture_boxing_debug_snapshot(),
 		"latest_event": _latest_event_name(),
 	})
+	if is_pose_snapshot:
+		_fixture_pose_state_snapshots_retained += 1
+		_prune_fixture_pose_state_timeline_if_needed()
 
 func get_fixture_capture_report() -> Dictionary:
 	return {
@@ -2590,6 +2655,13 @@ func get_fixture_capture_report() -> Dictionary:
 		"harness_mode": _mode_name().to_lower(),
 		"startup_mode": _get_startup_mode_label(),
 		"camera_source": _get_effective_camera_source(),
+		"state_timeline_capture": {
+			"mode": fixture_state_timeline_mode,
+			"pose_snapshot_limit": fixture_pose_state_timeline_limit,
+			"pose_snapshots_seen": _fixture_pose_state_snapshots_seen,
+			"pose_snapshots_retained": _fixture_pose_state_snapshots_retained,
+			"pose_snapshots_dropped": _fixture_pose_state_snapshots_dropped,
+		},
 		"event_timeline": _fixture_event_timeline.duplicate(true),
 		"state_timeline": _fixture_state_timeline.duplicate(true),
 		"latest_state": _latest_state.duplicate(true),
