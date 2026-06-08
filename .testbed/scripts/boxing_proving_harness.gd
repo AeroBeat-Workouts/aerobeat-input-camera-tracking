@@ -302,6 +302,66 @@ const GUARD_REQUIREMENT_ROWS := [
 		"label": "Right wrist above right elbow",
 	},
 ]
+const SQUAT_REQUIREMENT_ROWS := [
+	{
+		"id": "state_section",
+		"label": "Live state",
+		"row_kind": "section",
+	},
+	{
+		"id": "current_state",
+		"label": "Current state",
+		"row_kind": "info",
+	},
+	{
+		"id": "calibration_ready",
+		"label": "Calibration ready",
+		"row_kind": "info",
+	},
+	{
+		"id": "calibration_sample_frames",
+		"label": "Calibration sample frames",
+		"row_kind": "info",
+	},
+	{
+		"id": "threshold_section",
+		"label": "Calibrated torso-height thresholds",
+		"row_kind": "section",
+	},
+	{
+		"id": "enter_height_ratio_max",
+		"label": "Squat enter height ratio <= {threshold}",
+	},
+	{
+		"id": "exit_height_ratio_min",
+		"label": "Squat exit height ratio >= {threshold}",
+	},
+	{
+		"id": "live_section",
+		"label": "Live measurements",
+		"row_kind": "section",
+	},
+	{
+		"id": "height_ratio",
+		"label": "Live torso / calibrated torso",
+		"row_kind": "info",
+	},
+	{
+		"id": "squat_depth",
+		"label": "Squat depth",
+		"row_kind": "info",
+	},
+	{
+		"id": "height_state",
+		"label": "Height state",
+		"row_kind": "info",
+	},
+	{
+		"id": "torso_height_pair",
+		"label": "Torso height (live / baseline)",
+		"row_kind": "info",
+	},
+]
 
 const HOVER_REQUIREMENT_SPECS := {
 	"punch_left": {
@@ -335,6 +395,10 @@ const HOVER_REQUIREMENT_SPECS := {
 	"guard": {
 		"title": "Guard",
 		"rows": GUARD_REQUIREMENT_ROWS,
+	},
+	"squat": {
+		"title": "Squat",
+		"rows": SQUAT_REQUIREMENT_ROWS,
 	},
 }
 
@@ -914,6 +978,8 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "right")
 		"guard":
 			return _build_guard_hover_card_model(spec)
+		"squat":
+			return _build_squat_hover_card_model(spec)
 		_:
 			return spec.duplicate(true)
 
@@ -973,8 +1039,70 @@ func _build_guard_hover_card_model(spec: Dictionary) -> Dictionary:
 		"footer": spec.get("footer", "Live values come from the pose-only guard detector."),
 	}
 
+func _build_squat_hover_card_model(spec: Dictionary) -> Dictionary:
+	var latest_state := _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var squat_debug: Dictionary = ((gesture_debug.get("squat", {}) as Dictionary)).duplicate(true)
+	var rows: Array[Dictionary] = []
+	for row_spec_variant: Variant in spec.get("rows", []):
+		var row_spec: Dictionary = row_spec_variant
+		rows.append(_build_squat_requirement_row(row_spec, squat_debug))
+	return {
+		"title": spec.get("title", "Squat"),
+		"rows": rows,
+		"footer": spec.get("footer", "Live values come from the calibrated torso-height squat detector."),
+	}
+
 func _boxing_reference_time_ms() -> int:
 	return _paused_boxing_snapshot_time_ms if _paused_boxing_state_active else Time.get_ticks_msec()
+
+func _build_squat_requirement_row(row_spec: Dictionary, squat_debug: Dictionary) -> Dictionary:
+	var row := row_spec.duplicate(true)
+	var row_id := String(row_spec.get("id", ""))
+	var passed := false
+	var current_text := ""
+	var threshold_text := ""
+	var state_active := bool(squat_debug.get("state", false))
+	var height_ratio := float(squat_debug.get("height_ratio", 1.0))
+	match row_id:
+		"state_section", "threshold_section", "live_section":
+			current_text = ""
+			passed = false
+		"current_state":
+			current_text = "active" if state_active else "inactive"
+			passed = state_active
+		"calibration_ready":
+			current_text = _fmt_bool(bool(squat_debug.get("calibration_ready", false)))
+			passed = bool(squat_debug.get("calibration_ready", false))
+		"calibration_sample_frames":
+			current_text = str(int(squat_debug.get("calibration_sample_frames", 0)))
+			passed = int(squat_debug.get("calibration_sample_frames", 0)) > 0
+		"enter_height_ratio_max":
+			threshold_text = _fmt_float(squat_debug.get("enter_height_ratio_max", 0.0))
+			current_text = _fmt_float(height_ratio)
+			passed = height_ratio <= float(squat_debug.get("enter_height_ratio_max", 0.0))
+		"exit_height_ratio_min":
+			threshold_text = _fmt_float(squat_debug.get("exit_height_ratio_min", 0.0))
+			current_text = _fmt_float(height_ratio)
+			passed = height_ratio >= float(squat_debug.get("exit_height_ratio_min", 0.0))
+		"height_ratio":
+			current_text = _fmt_float(height_ratio)
+			passed = state_active
+		"squat_depth":
+			current_text = _fmt_float(squat_debug.get("squat_depth", 0.0))
+			passed = float(squat_debug.get("squat_depth", 0.0)) > 0.0
+		"height_state":
+			current_text = String(squat_debug.get("height_state", "unknown"))
+			passed = current_text == "lowered"
+		"torso_height_pair":
+			current_text = "%s / %s" % [_fmt_float(squat_debug.get("torso_height", 0.0)), _fmt_float(squat_debug.get("baseline_torso_height", 0.0))]
+			passed = float(squat_debug.get("baseline_torso_height", 0.0)) > 0.0
+		_:
+			current_text = String(squat_debug.get(row_id, ""))
+	row["threshold_text"] = threshold_text
+	row["current_text"] = current_text
+	row["passed"] = passed
+	return row
 
 func _build_guard_requirement_row(row_spec: Dictionary, guard_debug: Dictionary) -> Dictionary:
 	var row := row_spec.duplicate(true)
@@ -1655,6 +1783,21 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Guard candidate: %s" % _fmt_bool(bool(guard_debug.get("candidate", false))))
 	lines.append("Live wrist separation: x=%s y=%s" % [_fmt_float(guard_debug.get("wrist_separation_x", 0.0)), _fmt_float(guard_debug.get("wrist_separation_y", 0.0))])
 	lines.append("Wrists above elbows: L=%s R=%s" % [_fmt_bool(bool(guard_debug.get("left_wrist_above_elbow", false))), _fmt_bool(bool(guard_debug.get("right_wrist_above_elbow", false)))])
+
+	var squat_config: Dictionary = gesture_document.get("squat", {}) if gesture_document.get("squat", {}) is Dictionary else {}
+	var squat_thresholds: Dictionary = squat_config.get("thresholds", {}) if squat_config.get("thresholds", {}) is Dictionary else {}
+	var squat_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("squat", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("squat", {}) is Dictionary) else {}
+	lines.append("")
+	lines.append("Squat tuning")
+	lines.append("------------")
+	lines.append("Enabled: %s" % _fmt_bool(bool(squat_config.get("enabled", true))))
+	lines.append("Enter height ratio <= %s" % _fmt_float(squat_thresholds.get("enter_height_ratio_max", 0.0)))
+	lines.append("Exit height ratio >= %s" % _fmt_float(squat_thresholds.get("exit_height_ratio_min", 0.0)))
+	lines.append("Current state: %s" % ("active" if bool(squat_debug.get("state", false)) else "inactive"))
+	lines.append("Calibration ready / frames: %s / %d" % [_fmt_bool(bool(squat_debug.get("calibration_ready", false))), int(squat_debug.get("calibration_sample_frames", 0))])
+	lines.append("Live height ratio: %s (%s)" % [_fmt_float(squat_debug.get("height_ratio", 1.0)), String(squat_debug.get("height_state", "unknown"))])
+	lines.append("Squat depth: %s" % _fmt_float(squat_debug.get("squat_depth", 0.0)))
+	lines.append("Torso height live / baseline: %s / %s" % [_fmt_float(squat_debug.get("torso_height", 0.0)), _fmt_float(squat_debug.get("baseline_torso_height", 0.0))])
 
 	lines.append("")
 	lines.append("Tracker hand truth")

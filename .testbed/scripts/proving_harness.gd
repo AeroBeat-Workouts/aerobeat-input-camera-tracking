@@ -51,6 +51,9 @@ const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
 const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
 const INSPECTOR_FOOTER_TEXT := "Click away to close"
+const RECALIBRATE_BUTTON_TEXT := "Recalibrate Athlete"
+const RECALIBRATE_BUTTON_RIGHT_MARGIN := 24.0
+const RECALIBRATE_BUTTON_TOP_MARGIN := 20.0
 const LANDMARK_NAMES := [
 	"Nose",
 	"Left Eye Inner",
@@ -274,6 +277,7 @@ var _playback_visibility_active := false
 var _playback_autoplay_pending := false
 var _playback_autoplay_base_url := ""
 var _playback_pause_hold := false
+var _athlete_recalibrate_button: Button = null
 
 func _enter_tree() -> void:
 	if startup_mode != StartupMode.GODOT_ONLY_DEBUG:
@@ -295,6 +299,7 @@ func _ready() -> void:
 		live_status_label.scroll_active = false
 	_ensure_shared_inspector_ui()
 	_ensure_playback_controls()
+	_ensure_athlete_recalibrate_button()
 	_ensure_overlay_drawers_ready()
 	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
@@ -320,6 +325,40 @@ func _ready() -> void:
 	else:
 		_setup_auto_start()
 	_refresh_debug_panels()
+
+func _ensure_athlete_recalibrate_button() -> void:
+	if _athlete_recalibrate_button != null:
+		return
+	_athlete_recalibrate_button = Button.new()
+	_athlete_recalibrate_button.name = "AthleteRecalibrateButton"
+	_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
+	_athlete_recalibrate_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	_athlete_recalibrate_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_athlete_recalibrate_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_athlete_recalibrate_button.offset_left = -208.0
+	_athlete_recalibrate_button.offset_top = RECALIBRATE_BUTTON_TOP_MARGIN
+	_athlete_recalibrate_button.offset_right = -RECALIBRATE_BUTTON_RIGHT_MARGIN
+	_athlete_recalibrate_button.offset_bottom = RECALIBRATE_BUTTON_TOP_MARGIN + 34.0
+	_athlete_recalibrate_button.tooltip_text = "Clear the current athlete baseline and gather a fresh neutral-stance calibration without restarting the proving scene."
+	_athlete_recalibrate_button.pressed.connect(_on_athlete_recalibrate_pressed)
+	add_child(_athlete_recalibrate_button)
+
+func _on_athlete_recalibrate_pressed() -> void:
+	var recalibrated := false
+	if provider != null and provider.has_method("request_athlete_recalibration"):
+		recalibrated = bool(provider.request_athlete_recalibration())
+	elif _resolve_camera_tracking_singleton() != null:
+		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if tracking_singleton != null and tracking_singleton.has_method("request_athlete_recalibration"):
+			recalibrated = bool(tracking_singleton.request_athlete_recalibration())
+	if recalibrated and provider != null and provider.has_method("get_detector_state"):
+		_latest_state = provider.get_detector_state()
+		_refresh_debug_panels()
+		_update_status("Athlete baseline recalibration requested", Color(0.72, 0.94, 1.0, 1.0))
+		_record_event("athlete_recalibration_requested", {"mode": _mode_name()})
+		_record_fixture_state_snapshot("athlete_recalibration_requested")
+		return
+	_update_status("Athlete baseline recalibration unavailable", Color(1.0, 0.75, 0.44, 1.0))
 
 func _ensure_shared_inspector_ui() -> void:
 	if _shared_inspector_panel != null:
@@ -912,7 +951,7 @@ func _process(_delta: float) -> void:
 
 	var now_ms := Time.get_ticks_msec()
 	if _debug_panel_refresh_due_ms <= 0 or now_ms >= _debug_panel_refresh_due_ms:
-		if provider != null:
+		if provider != null and provider.has_method("get_detector_state"):
 			_latest_state = provider.get_detector_state()
 		_refresh_debug_panels()
 		_debug_panel_refresh_due_ms = now_ms + maxi(1, debug_panel_refresh_interval_ms)

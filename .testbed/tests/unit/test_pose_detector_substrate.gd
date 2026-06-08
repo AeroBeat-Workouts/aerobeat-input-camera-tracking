@@ -1069,6 +1069,54 @@ func test_detects_flow_trail_as_continuation_motion() -> void:
 	assert_eq(emitted_events[0]["direction"], 11)
 	assert_eq(emitted_events[emitted_events.size() - 1]["name"], "trail_right")
 
+func test_squat_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
+	config.gesture_profile_document = {
+		"squat": {
+			"enabled": true,
+			"thresholds": {
+				"enter_height_ratio_max": 0.85,
+				"exit_height_ratio_min": 0.95,
+			}
+		}
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+
+	var squat_start_state := substrate.process_landmarks(_make_pose_frame({}, 0.50, 0.84), 1200)
+	assert_true(_event_names(squat_start_state.get("events", [])).has("squat_start"))
+	var squat_debug: Dictionary = squat_start_state.get("gesture_debug", {}).get("squat", {})
+	assert_true(bool(squat_debug.get("state", false)))
+	assert_true(is_equal_approx(float(squat_debug.get("enter_height_ratio_max", 0.0)), 0.85))
+	assert_true(is_equal_approx(float(squat_debug.get("exit_height_ratio_min", 0.0)), 0.95))
+	assert_true(is_equal_approx(float(squat_debug.get("height_ratio", 0.0)), 0.84))
+	assert_true(is_equal_approx(float(squat_debug.get("squat_depth", 0.0)), 0.16))
+	assert_eq(String(squat_debug.get("height_state", "")), "transition")
+	assert_true(bool(squat_debug.get("calibration_ready", false)))
+	assert_eq(int(squat_debug.get("calibration_sample_frames", 0)), 5)
+
+	var still_active_state := substrate.process_landmarks(_make_pose_frame({}, 0.50, 0.90), 1300)
+	assert_eq(_event_names(still_active_state.get("events", [])), [])
+	assert_true(bool(still_active_state.get("gesture_states", {}).get("squat", false)))
+
+	var squat_end_state := substrate.process_landmarks(_make_pose_frame({}, 0.50, 0.96), 1400)
+	assert_eq(_event_names(squat_end_state.get("events", [])), ["squat_end"])
+
+func test_request_athlete_recalibration_clears_baseline_and_squat_truth_until_recalibrated() -> void:
+	_calibrate_stance()
+	var squat_start_state := substrate.process_landmarks(_make_pose_frame({}, 0.50, 0.78), 1200)
+	assert_true(_event_names(squat_start_state.get("events", [])).has("squat_start"))
+	substrate.request_athlete_recalibration()
+	var recalibrated_state := substrate.get_latest_state()
+	var baseline: Dictionary = recalibrated_state.get("baseline", {})
+	var squat_debug: Dictionary = recalibrated_state.get("gesture_debug", {}).get("squat", {})
+	assert_false(bool(baseline.get("is_calibrated", false)))
+	assert_eq(int(baseline.get("sample_frames", -1)), 0)
+	assert_false(bool(recalibrated_state.get("gesture_states", {}).get("squat", true)))
+	assert_false(bool(squat_debug.get("calibration_ready", true)))
+	assert_eq(int(squat_debug.get("calibration_sample_frames", -1)), 0)
+	assert_eq(String(squat_debug.get("height_state", "")), "unknown")
+	assert_true(is_equal_approx(float(squat_debug.get("squat_depth", -1.0)), 0.0))
+
 func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 	_calibrate_stance()
 	var guard_start_state := substrate.process_landmarks(_make_pose_frame({

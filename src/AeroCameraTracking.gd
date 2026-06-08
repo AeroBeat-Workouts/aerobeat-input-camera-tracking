@@ -231,6 +231,12 @@ func reset_runtime_state() -> void:
 	if provider != null and provider.has_method("reset_runtime_state"):
 		provider.reset_runtime_state()
 
+func request_athlete_recalibration() -> bool:
+	var provider := _ensure_provider()
+	if provider == null or not provider.has_method("request_athlete_recalibration"):
+		return false
+	return bool(provider.request_athlete_recalibration())
+
 func ensure_replay_playback_loaded(source_path: String) -> bool:
 	var normalized_source := source_path.strip_edges()
 	if normalized_source.is_empty():

@@ -3964,6 +3964,8 @@ Conclusion:
 
 **Fresh guard-direction requirement from Derrick (2026-06-08 18:11 EDT):** keep guard pose-only, but simplify its activation logic substantially. Desired new guard candidate: left/right wrists close to each other in camera-space X/Y, plus both wrists above their respective elbows. No hand-tracking dependency needed. Expose the guard knobs in YAML and the boxing inspector.
 
+**Fresh squat/proving requirement from Derrick (2026-06-08 19:06 EDT):** keep the existing squat detector model (calibrated-height/torso-height based) but expose its thresholds in repo-owned YAML and in the boxing testbed inspector so Derrick can tune them live. Also add a manual athlete recalibrate button to the top-right of both the boxing and flow proving scenes so baseline refresh is available during testing without scene restart.
+
 ### Task 10CH: Window hook and uppercut threshold gates over shared motion window
 
 **Bead ID:** `aerobeat-input-camera-tracking-ufb`
@@ -4182,3 +4184,20 @@ Commit: `310bc3f` - `Preserve straight-punch continuity across reacquiring hand 
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
 
 **Result:** Focused guard/config/testbed proof passed (`74/74` tests). Code commit: `2cd03c3` (`Simplify boxing guard pose detection`).
+
+### Task 10CP: Expose squat thresholds in YAML/inspector and add proving-scene recalibrate button
+
+**Bead ID:** `aerobeat-input-camera-tracking-umx`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Keep the current calibrated-height/torso-height squat detector model in `REF-01`, but expose its thresholds in repo-owned YAML and surface the live squat/debug truth in the boxing testbed inspector so Derrick can tune it. Also add a manual athlete recalibrate button to the top-right of both the boxing and flow proving scenes so baseline refresh is available during testing without scene restart. Keep the slice narrow to squat detector/config/debug/testbed truth plus the proving-scene recalibration control, add focused proof/tests, and close the bead only if both the YAML/inspector exposure and the recalibrate button land truthfully.
+
+**Status:** ✅ Complete
+
+**Results:**
+- **Files:** `assets/boxing.gesture_detection.yaml`, `assets/flow.gesture_detection.yaml`, `src/detectors/pose_detector_substrate.gd`, `src/providers/camera_tracking_provider.gd`, `src/AeroCameraTracking.gd`, `.testbed/scripts/proving_harness.gd`, `.testbed/scripts/boxing_proving_harness.gd`, `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- **Implementation:** kept the existing `REF-01` calibrated torso-height squat detector model, moved the enter/exit squat ratios into repo-owned YAML for both boxing and flow profiles, surfaced live squat/debug truth in the boxing hover-card/inspector + event feed, and added a top-right `Recalibrate Athlete` control in both proving scenes that routes to a new runtime recalibration seam instead of requiring a restart.
+- **Commands / evidence:** `bd update aerobeat-input-camera-tracking-umx --status in_progress --json`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → `74/74` passing for the touched squat/inspector/recalibrate coverage.
+- **Result:** Derrick can now tune squat enter/exit thresholds in YAML, see the live calibrated torso-height squat truth in the boxing inspector/testbed, and manually refresh athlete calibration from both boxing + flow proving scenes without restarting.
+- **Commit:** `HEAD` — `Expose squat tuning and proving recalibration`

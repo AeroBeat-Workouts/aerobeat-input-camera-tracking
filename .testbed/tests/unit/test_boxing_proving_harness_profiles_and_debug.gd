@@ -4,6 +4,7 @@ const LandmarkDrawerScript = preload("res://scripts/landmark_drawer.gd")
 const HandBBoxDrawerScript = preload("res://scripts/hand_bbox_state_drawer.gd")
 const ProvingHarnessScript = preload("res://scripts/proving_harness.gd")
 const BoxingProvingScene = preload("res://scenes/boxing_proving.tscn")
+const FlowProvingScene = preload("res://scenes/flow_proving.tscn")
 
 class FakePreviewPresenter:
 	extends Control
@@ -49,6 +50,26 @@ class PlaybackStateHarness:
 
 	func _is_prerecorded_source_active() -> bool:
 		return true
+
+class FakeAthleteRecalibrateProvider:
+	extends Node
+
+	var request_count := 0
+
+	func request_athlete_recalibration() -> bool:
+		request_count += 1
+		return true
+
+	func get_detector_state() -> Dictionary:
+		return {
+			"gesture_debug": {
+				"squat": {
+					"state": false,
+					"calibration_ready": false,
+					"calibration_sample_frames": 0,
+				}
+			}
+		}
 
 func _new_harness() -> Object:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
@@ -623,6 +644,64 @@ func test_guard_hover_card_reports_pose_only_thresholds_and_live_truth() -> void
 	assert_string_contains(body, "Wrist separation Y <= 0.120 - 0.020")
 	assert_string_contains(body, "Left wrist above left elbow - true")
 	assert_string_contains(body, "Right wrist above right elbow - true")
+
+func test_boxing_squat_hover_card_reports_yaml_thresholds_and_live_truth() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"squat": {
+				"state": true,
+				"enabled": true,
+				"enter_height_ratio_max": 0.82,
+				"exit_height_ratio_min": 0.92,
+				"height_ratio": 0.78,
+				"height_state": "lowered",
+				"squat_depth": 0.22,
+				"torso_height": 0.234,
+				"baseline_torso_height": 0.300,
+				"calibration_ready": true,
+				"calibration_sample_frames": 5,
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("squat")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(model.get("title", "")), "Squat")
+	assert_eq(String(rows[1].get("current_text", "")), "active")
+	assert_eq(String(rows[2].get("current_text", "")), "true")
+	assert_eq(String(rows[5].get("threshold_text", "")), "0.820")
+	assert_eq(String(rows[5].get("current_text", "")), "0.780")
+	assert_eq(String(rows[6].get("threshold_text", "")), "0.920")
+	assert_eq(String(rows[8].get("current_text", "")), "0.780")
+	assert_eq(String(rows[9].get("current_text", "")), "0.220")
+	assert_eq(String(rows[10].get("current_text", "")), "lowered")
+	assert_eq(String(rows[11].get("current_text", "")), "0.234 / 0.300")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "squat")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Current state - active")
+	assert_string_contains(body, "Calibration ready - true")
+	assert_string_contains(body, "Squat enter height ratio <= 0.820 - 0.780")
+	assert_string_contains(body, "Squat exit height ratio >= 0.920 - 0.780")
+	assert_string_contains(body, "Live torso / calibrated torso - 0.780")
+	assert_string_contains(body, "Torso height (live / baseline) - 0.234 / 0.300")
+
+func test_proving_scenes_surface_recalibrate_button_and_route_press_to_provider() -> void:
+	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
+		var packed_scene := packed_scene_variant as PackedScene
+		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
+		assert_not_null(scene_root)
+		var button := scene_root.find_child("AthleteRecalibrateButton", true, false) as Button
+		assert_not_null(button)
+		assert_eq(button.text, "Recalibrate Athlete")
+		var provider := FakeAthleteRecalibrateProvider.new()
+		harness_set_provider(scene_root, provider)
+		button.emit_signal("pressed")
+		assert_eq(provider.request_count, 1)
+
+func harness_set_provider(scene_root: Control, provider: Node) -> void:
+	scene_root.set("provider", provider)
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

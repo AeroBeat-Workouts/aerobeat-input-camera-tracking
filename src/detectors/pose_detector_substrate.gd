@@ -42,6 +42,8 @@ const UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO := 0.55
 
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_X := 0.20
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y := 0.12
+const SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX := 0.82
+const SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN := 0.92
 
 const FLOW_HISTORY_MAX_MS := 560
 const FLOW_SWING_WINDOW_MIN_MS := 120
@@ -117,6 +119,31 @@ func reset() -> void:
 	_reacquire_frames_remaining = 0
 	_last_processed_timestamp_ms = 0
 	_frame_index = 0
+	_reset_baseline_calibration()
+	_reset_gesture_state()
+	_latest_state = _build_empty_state()
+
+func request_athlete_recalibration() -> void:
+	_reset_baseline_calibration()
+	_clear_transient_gesture_state()
+	if _latest_state.is_empty():
+		_latest_state = _build_empty_state()
+		return
+
+	var metrics: Dictionary = _latest_state.get("metrics", {})
+	metrics["baseline"] = _baseline.duplicate(true)
+	var measurements: Dictionary = metrics.get("measurements", {})
+	measurements["height_ratio"] = 1.0
+	measurements["height_state"] = StringName("unknown")
+	measurements["squat_depth"] = 0.0
+	metrics["measurements"] = measurements
+	_latest_state["baseline"] = _baseline.duplicate(true)
+	_latest_state["metrics"] = metrics
+	_latest_state["events"] = []
+	_latest_state["gesture_states"] = _build_public_gesture_states()
+	_latest_state["gesture_debug"] = _build_gesture_debug_state(metrics)
+
+func _reset_baseline_calibration() -> void:
 	_baseline_accumulator = {
 		"frames": 0,
 		"shoulder_width": 0.0,
@@ -144,8 +171,6 @@ func reset() -> void:
 		"left_ankle_y": 0.0,
 		"right_ankle_y": 0.0,
 	}
-	_reset_gesture_state()
-	_latest_state = _build_empty_state()
 
 func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: Dictionary = {}) -> Dictionary:
 	if timestamp_ms <= 0:
@@ -541,6 +566,7 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	return {
 		"ready": _gesture_state.get("ready", {}).duplicate(true),
 		"guard": _build_guard_debug_state(),
+		"squat": _build_squat_debug_state(metrics),
 		"straight_punch": _build_straight_punch_debug_state(metrics),
 		"hook": _build_pose_strike_debug_state("hook", metrics),
 		"uppercut": _build_pose_strike_debug_state("uppercut", metrics),
@@ -555,6 +581,23 @@ func _build_guard_debug_state() -> Dictionary:
 	guard_debug["max_wrist_separation_x"] = float(guard_config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))
 	guard_debug["max_wrist_separation_y"] = float(guard_config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))
 	return guard_debug
+
+func _build_squat_debug_state(metrics: Dictionary = {}) -> Dictionary:
+	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+	var squat_config := _get_squat_config()
+	return {
+		"state": bool(_get_state("squat")),
+		"enabled": bool(squat_config.get("enabled", true)),
+		"enter_height_ratio_max": float(squat_config.get("enter_height_ratio_max", SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX)),
+		"exit_height_ratio_min": float(squat_config.get("exit_height_ratio_min", SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN)),
+		"height_ratio": float(measurements.get("height_ratio", 1.0)),
+		"height_state": String(measurements.get("height_state", "unknown")),
+		"squat_depth": float(measurements.get("squat_depth", 0.0)),
+		"torso_height": float(measurements.get("torso_height", 0.0)),
+		"baseline_torso_height": float(_baseline.get("torso_height", 0.0)),
+		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
+		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
+	}
 
 func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
@@ -1481,10 +1524,16 @@ func _process_guard(events: Array, left_shoulder: Dictionary, right_shoulder: Di
 	_set_state_toggle(events, "guard", candidate)
 
 func _process_squat(events: Array, height_ratio: float) -> void:
+	var squat_config := _get_squat_config()
+	if not bool(squat_config.get("enabled", true)):
+		_set_state_toggle(events, "squat", false)
+		return
 	var active: bool = _get_state("squat")
-	if not active and height_ratio <= 0.82:
+	var enter_height_ratio_max := float(squat_config.get("enter_height_ratio_max", SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX))
+	var exit_height_ratio_min := float(squat_config.get("exit_height_ratio_min", SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN))
+	if not active and height_ratio <= enter_height_ratio_max:
 		_set_state_toggle(events, "squat", true)
-	elif active and height_ratio >= 0.92:
+	elif active and height_ratio >= exit_height_ratio_min:
 		_set_state_toggle(events, "squat", false)
 
 func _process_weave(events: Array, head_offset: float, hip_offset: float, head_drop_ratio: float) -> void:
@@ -1617,6 +1666,26 @@ func _get_guard_config() -> Dictionary:
 	config["enabled"] = bool(guard.get("enabled", config.get("enabled", true)))
 	config["max_wrist_separation_x"] = maxf(0.0, float(thresholds.get("max_wrist_separation_x", config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))))
 	config["max_wrist_separation_y"] = maxf(0.0, float(thresholds.get("max_wrist_separation_y", config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))))
+	return config
+
+func _get_squat_config() -> Dictionary:
+	var config := {
+		"enabled": true,
+		"enter_height_ratio_max": SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX,
+		"exit_height_ratio_min": SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN,
+	}
+	if _config == null:
+		return config
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return config
+	var squat: Dictionary = gesture_profile_document.get("squat", {}) if gesture_profile_document.get("squat", {}) is Dictionary else {}
+	var thresholds: Dictionary = squat.get("thresholds", {}) if squat.get("thresholds", {}) is Dictionary else {}
+	config["enabled"] = bool(squat.get("enabled", config.get("enabled", true)))
+	config["enter_height_ratio_max"] = clampf(float(thresholds.get("enter_height_ratio_max", config.get("enter_height_ratio_max", SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX))), 0.0, 1.0)
+	config["exit_height_ratio_min"] = clampf(float(thresholds.get("exit_height_ratio_min", config.get("exit_height_ratio_min", SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN))), 0.0, 1.0)
+	if float(config["exit_height_ratio_min"]) < float(config["enter_height_ratio_max"]):
+		config["exit_height_ratio_min"] = float(config["enter_height_ratio_max"])
 	return config
 
 func _get_straight_punch_config() -> Dictionary:

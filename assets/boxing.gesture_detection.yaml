@@ -10,6 +10,15 @@ guard:
     # Left/right wrists must be at least this close together in camera-space Y. input.
     max_wrist_separation_y: 0.12
 
+squat:
+  # Turn calibrated torso-height squat detection on or off. input.
+  enabled: true
+  thresholds:
+    # Squat enters when live torso height / calibrated torso height drops to or below this ratio. input.
+    enter_height_ratio_max: 0.82
+    # Squat exits when live torso height / calibrated torso height rises back to or above this ratio. input.
+    exit_height_ratio_min: 0.92
+
 straight_punch:
   # Turn straight-punch detection on or off. input.
   enabled: true

@@ -119,6 +119,12 @@ func reset_runtime_state() -> void:
 	if _detector_substrate != null:
 		_detector_substrate.reset()
 
+func request_athlete_recalibration() -> bool:
+	if _detector_substrate == null:
+		return false
+	_detector_substrate.request_athlete_recalibration()
+	return true
+
 func get_num_poses() -> int:
 	return _all_poses.size()
 
