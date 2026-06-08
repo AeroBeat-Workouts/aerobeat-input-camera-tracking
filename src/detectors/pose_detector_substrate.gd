@@ -1727,7 +1727,10 @@ func _resolve_straight_punch_velocity_signal_position(state: Dictionary, elbow: 
 	return (elbow_position + wrist_position) * 0.5
 
 func _is_valid_tracking_hand_sample(hand_payload: Dictionary) -> bool:
-	return bool(hand_payload.get("tracking_valid", false))
+	if bool(hand_payload.get("tracking_valid", false)):
+		return true
+	var tracking_state := String(hand_payload.get("tracking_state", "")).strip_edges().to_lower()
+	return tracking_state == "reacquiring"
 
 func _is_fresh_tracking_hand_sample(hand_payload: Dictionary, state: Dictionary) -> bool:
 	if hand_payload.has("fresh_sample"):

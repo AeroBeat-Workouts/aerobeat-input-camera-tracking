@@ -3960,6 +3960,8 @@ Conclusion:
 
 **Fresh requirement from Derrick (2026-06-08 17:08 EDT):** change straight-punch bbox growth from endpoint comparison to a summed-adjacent-deltas model over the `window_ms` history. Desired semantics: compute each consecutive bbox-area delta in the retained window, sum those signed deltas for net `bbox_area_growth`, and count only strictly positive deltas as `positive_growth_samples`. Example supplied by Derrick: `[0.004, 0.004, 0.007, 0.007, 0.006, 0.010, 0.010, 0.007, 0.007]` should yield net `+0.003` growth and `2` positive-growth samples.
 
+**Fresh live finding from Derrick (2026-06-08 17:36 EDT):** straight-punch hand tracking still breaks across short tracking gaps even with `tracking.hands.validity.max_stale_ms = 2000`. In the provided screenshot, the hand overlay shows `L reacquiring`, while the straight-punch inspector still reports `Current state - tracking_lost`, `hand tracking = reacquiring, valid=false, source=fresh_inference, stale=0ms`, and empty growth-window inputs (`Growth window bbox areas - []`). Derrick's report is that these loss windows are clearly under 2 seconds but the gesture gates lose usable data anyway. Treat this as a narrow audit of grace/reacquire data availability for straight-punch gating rather than more threshold tuning.
+
 ### Task 10CH: Window hook and uppercut threshold gates over shared motion window
 
 **Bead ID:** `aerobeat-input-camera-tracking-ufb`
@@ -4126,3 +4128,31 @@ Files touched:
 - `.testbed/tests/unit/test_pose_detector_substrate.gd`
 
 Commit(s): `f5cf7cc` - `Adjust straight-punch bbox growth window semantics`
+
+### Task 10CN: Audit straight-punch hand grace/reacquire data loss during sub-2s tracking gaps
+
+**Bead ID:** `aerobeat-input-camera-tracking-frg`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Audit Derrick's latest live straight-punch seam with hand tracking enabled. Even with `tracking.hands.validity.max_stale_ms = 2000`, short tracking gaps during the straight-left replay are still breaking gesture gating because while the hand overlay shows `reacquiring`, the straight-punch inspector shows `tracking_lost`, `hand tracking ... valid=false`, and empty growth-window inputs. Investigate whether usable hand data is being withheld/dropped during tool-owned grace/reacquire, whether the straight-punch state machine is rejecting reacquiring samples too aggressively, or whether the inspector is misrepresenting the payload. Keep this narrow to grace/reacquire data availability for straight-punch gating across the tool-owned hand payload and input-owned straight-punch consumer, land the smallest proven fix, and update the plan with exact evidence.
+
+**Status:** ✅ Complete
+
+**Results:** Diagnosed this as an input-consumer rejection seam, not an inspector lie. `src/detectors/pose_detector_substrate.gd` was discarding tool-owned `reacquiring` hand payloads because `_is_valid_tracking_hand_sample()` only accepted `tracking_valid=true`, even when the tool was surfacing fresh bbox data with `tracking_state=reacquiring`, `sample_source=fresh_inference`, `stale_ms=0`, and a real bbox. That consumer-side rejection immediately reset straight-punch state to `tracking_lost` and cleared `bbox_area_window_history` / `bbox_area_growth_history`, which matches Derrick's empty growth-window screenshot. Existing inspector coverage (`.testbed/tests/unit/test_pose_detector_substrate.gd::test_straight_punch_debug_uses_live_metrics_hand_truth`) already proved the inspector was mirroring live payload truth instead of fabricating it.
+
+Smallest proven fix landed in `src/detectors/pose_detector_substrate.gd`: `_is_valid_tracking_hand_sample()` now treats `tracking_state=reacquiring` as a usable hand sample for straight-punch processing even while `tracking_valid=false`, so fresh reacquire frames no longer force an immediate consumer-side `tracking_lost` reset. The straight-punch debug surface still reports `tracking_valid=false` plus the live `stable_ms`, so the reacquire phase remains visible while gating continuity survives sub-2s gaps.
+
+Focused proof landed in `.testbed/tests/unit/test_pose_detector_substrate.gd`:
+- updated `test_detects_straight_punch_from_bbox_growth_and_emits_state_changes` to show triggered grace survives a fresh `reacquiring` hand sample without collapsing to `tracking_lost`
+- updated `test_straight_punch_grace_rearm_and_reacquire_transitions` to show a `reacquiring` fresh-inference sample preserves/feeds the growth window, stays `ready`, and allows the next stable tracked sample to re-trigger instead of wiping the window
+
+Commands / evidence:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` → **PASS** (`46/46 passed`)
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit` → **known pre-existing unrelated failures** in `test_camera_tracking_config_profiles.gd`, `test_camera_tracking_provider.gd`, and `test_proving_harness_trails.gd`; this slice did not widen into those seams
+
+Files modified:
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+
+Commit: `0c32a07` - `Preserve straight-punch continuity across reacquiring hand samples`
