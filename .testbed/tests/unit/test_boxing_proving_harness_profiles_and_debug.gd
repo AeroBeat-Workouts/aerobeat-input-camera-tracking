@@ -463,6 +463,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 					"directionality_ratio": 0.830,
 					"min_horizontal_direction_ratio": 0.550,
 					"required_direction_label": "rightward",
+					"direction_reference_frame": "preview_space_horizontal",
 					"grace_ms_remaining": 0,
 					"triggered_grace_ms": 240,
 					"pose_only_rearm_ms": 250,
@@ -480,7 +481,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_eq(String(rows[5].get("current_text", "")), "0.420")
 	assert_eq(String(rows[6].get("threshold_text", "")), "0.500")
 	assert_eq(String(rows[6].get("current_text", "")), "0.740")
-	assert_eq(String(rows[7].get("label", "")), "Rightward share of total motion >= {threshold}")
+	assert_eq(String(rows[7].get("label", "")), "Preview-space Rightward share of total motion >= {threshold}")
 	assert_eq(String(rows[7].get("threshold_text", "")), "0.550")
 	assert_eq(String(rows[7].get("current_text", "")), "0.830")
 	assert_string_contains(String(rows[10].get("current_text", "")), "elapsed (pose-only timer)")
@@ -490,7 +491,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Averaged velocity >= 0.080 - 0.420")
 	assert_string_contains(body, "Dominance ratio >= 0.500 - 0.740")
-	assert_string_contains(body, "Rightward share of total motion >= 0.550 - 0.830")
+	assert_string_contains(body, "Preview-space Rightward share of total motion >= 0.550 - 0.830")
 	assert_string_contains(body, "Pose-only rearm - ")
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:

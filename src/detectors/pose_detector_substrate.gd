@@ -652,12 +652,14 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["min_lateral_dominance_ratio"] = float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))
 		debug["min_horizontal_direction_ratio"] = float(config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO))
 		debug["required_direction_label"] = "rightward" if side == "left" else "leftward"
+		debug["direction_reference_frame"] = "preview_space_horizontal"
 	else:
 		debug["upward_velocity"] = float(state.get("upward_velocity", 0.0))
 		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
 		debug["min_vertical_dominance_ratio"] = float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))
 		debug["min_upward_direction_ratio"] = float(config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO))
 		debug["required_direction_label"] = "upward"
+		debug["direction_reference_frame"] = "preview_space_vertical"
 	return debug
 
 func _build_flow_debug_state(metrics: Dictionary = {}) -> Dictionary:

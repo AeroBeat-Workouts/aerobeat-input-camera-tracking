@@ -687,6 +687,7 @@ func test_hook_uses_pose_primary_state_machine_and_debug_surfaces() -> void:
 	assert_true(absf(float(right_debug.get("outward_distance", 0.0))) >= 0.0)
 	assert_true(float(right_debug.get("directionality_ratio", 0.0)) >= float(right_debug.get("min_horizontal_direction_ratio", 99.0)))
 	assert_eq(String(right_debug.get("required_direction_label", "")), "leftward")
+	assert_eq(String(right_debug.get("direction_reference_frame", "")), "preview_space_horizontal")
 	assert_eq(String(right_debug.get("sample_source", "")), "pose")
 	assert_eq(String(right_debug.get("tracking_state", "")), "pose_tracked")
 

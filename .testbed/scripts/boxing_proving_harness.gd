@@ -1148,7 +1148,8 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 			current_text = _fmt_float(directionality_ratio)
 			passed = directionality_ratio >= required_directionality
 			if family == "hook":
-				label = "%s share of total motion >= {threshold}" % String(side_debug.get("required_direction_label", "signed direction")).capitalize()
+				var direction_label := String(side_debug.get("required_direction_label", "signed direction")).capitalize()
+				label = "Preview-space %s share of total motion >= {threshold}" % direction_label
 			else:
 				label = "%s share of total motion >= {threshold}" % String(side_debug.get("required_direction_label", "upward")).capitalize()
 		"grace_timer":

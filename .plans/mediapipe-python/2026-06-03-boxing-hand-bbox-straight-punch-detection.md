@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-03
 **Status:** Blocked
-**Last Updated:** 2026-06-07 22:55 EDT
-**Blocked Reason:** Awaiting Derrick's manual testing on the latest synced experimental boxing state (continuous-share directionality preserved, replay-loop vendor fix pushed).
+**Last Updated:** 2026-06-08 10:04 EDT
+**Blocked Reason:** Awaiting Derrick's manual-testing follow-up on the latest synced experimental boxing state after Task 10CG clarified that hook arm ownership remains athlete-side while hook directionality/debug wording should be read in preview space.
 **Agent:** `pico`
 
 ---
@@ -3904,6 +3904,48 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
   - the same headless proving probe now shows truthful loop wraps instead of a stuck `0.0` playback status: local replay rewound from about `5.767s -> 0.267s` at ~`5.85s` elapsed, then again from about `5.833s -> 0.300s` at ~`12.40s`, with `tracking_frame.timestamp_ms` rewinding alongside (`5767 -> 267`, later `5833 -> 300`) rather than freezing or drifting monotonically.
 - Result: current-head proving replay looping is now re-audited against reality and has a narrow owner-correct fix. The older detector rewind reset remains useful, but the user-visible non-looping seam on this synced HEAD was the vendor replay publication path after OpenCV rewind, not a regression in the detector guard itself.
 
+**Fresh manual-testing hypothesis from Derrick (2026-06-08 09:55 EDT):** hook left/right directionality may currently be *semantically* misread rather than mathematically inverted. From the athlete's perspective, a **left hook** uses the left arm and swings left→right, but the proving live/replay feed plus skeleton are mirrored on screen, so that same left-arm hook appears on the **right side of the image** and travels right→left in preview space. Likewise, a **right hook** may appear left→right in preview space. If that reading is correct, `hook.thresholds.min_horizontal_direction_ratio` may already be computing the intended continuous-share horizontal dominance correctly, while the mistaken part is our expectation of which signed preview-space swing corresponds to `hook_left` vs `hook_right`. Before changing the math again, the next investigation should trace the exact ownership of (1) pose-side identity, (2) preview-space mirroring, and (3) signed horizontal direction in the hook detector/debug surfaces so we can confirm whether the bug is label interpretation or detector sign.
+
+### Task 10CG: Audit mirrored preview-space hook left/right direction semantics
+
+**Bead ID:** `aerobeat-input-camera-tracking-4h9`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Audit whether the current hook left/right direction seam is a detector-sign bug or a mirrored-preview interpretation bug. Start from Derrick's current live finding: athlete-perspective left/right arm ownership may be correct while preview-space horizontal swing direction appears reversed because the proving feed/skeleton are mirrored. Trace the exact ownership of pose-side identity, preview/skeleton mirroring, and signed horizontal direction through the hook detector, debug payloads, and proving-scene labels. Keep the slice diagnosis-first. Only land the smallest owner-correct fix if the cause is proven in-scope; otherwise return a sharp diagnosis and recommended narrow repair direction. Claim bead `aerobeat-input-camera-tracking-4h9` on start and update this plan with exact evidence.
+
+**Status:** ✅ Complete
+
+**Results:** Audit complete; the current seam is **primarily a mirrored/preview-space interpretation bug, not a proven detector-sign inversion bug**.
+
+Exact evidence traced through the owner-correct path:
+- Pose-side identity stays athlete/anatomical all the way into hook detection. In `src/detectors/pose_detector_substrate.gd`, hook processing pulls `LEFT_*` / `RIGHT_*` landmarks by stable landmark IDs (`LEFT_SHOULDER`, `LEFT_ELBOW`, `LEFT_WRIST`, etc.) and calls `_process_hook(..., "left", ...)` / `_process_hook(..., "right", ...)` from those IDs. No downstream relabeling seam was found in this repo for hook side ownership.
+- Horizontal mirroring is owned upstream in `REF-02` before this repo sees the frame. `aerobeat-tool-camera-tracking/src/CameraTrackingFrame.gd::normalize()` flips landmark and hand-bbox `x` when `preview.flip_horizontal` is true, while `src/tracking_frame_adapter.gd` in this repo explicitly documents that upstream frames already own horizontal mirroring and therefore must **not** be x-flipped again. `src/providers/camera_tracking_provider.gd::ingest_tracking_frame()` then feeds those already-mirrored `gameplay_landmarks` into `_process_primary_landmarks(...)` while also emitting preview-space landmarks to the proving overlays.
+- The proving preview presenter separately mirrors the displayed image texture from the same preview descriptor in `REF-02` `src/CameraTrackingPreviewPresenter.gd::_apply_surface_flip()`, and overlay mapping uses the already-normalized landmark `x/y` directly via `map_landmark_to_preview_position()`. So the visible skeleton/feed and the detector’s signed `x` motion are aligned to the same preview-space orientation; this is why a left-arm hook can remain athlete-left while its on-screen horizontal travel reads opposite from an unmirrored camera expectation.
+- The hook detector’s sign math itself is internally consistent with that preview-space coordinate system. In `src/detectors/pose_detector_substrate.gd::_process_pose_strike()`, `horizontal_direction_velocity` is `max(+vx, 0)` for `side == "left"` and `max(-vx, 0)` for `side == "right"`, and the debug payload labels those requirements as `rightward` for left hooks and `leftward` for right hooks. Existing unit coverage already encoded that contract (`.testbed/tests/unit/test_pose_detector_substrate.gd`), so there was no new evidence that the detector sign had regressed independently from coordinate-space interpretation.
+- The confusing seam was in how the proving/debug surface described that requirement. Before this task, hover cards and inspectors rendered the hook row simply as `Rightward/Leftward share of total motion`, which made it easy to read that direction as athlete-space instead of preview-space.
+
+Smallest truthful owner-correct fix landed in this repo:
+- `src/detectors/pose_detector_substrate.gd`: added `direction_reference_frame` to pose-strike debug payloads (`preview_space_horizontal` for hooks, `preview_space_vertical` for uppercuts) so the detector now states its coordinate frame explicitly.
+- `.testbed/scripts/boxing_proving_harness.gd`: changed hook hover/inspector copy from ambiguous `Rightward/Leftward share of total motion` to explicit `Preview-space Rightward/Leftward share of total motion`.
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`: extended hook debug coverage to assert `direction_reference_frame == "preview_space_horizontal"`.
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`: updated hover/inspector expectations to the new preview-space wording.
+
+Commands run:
+- `bd update aerobeat-input-camera-tracking-4h9 --status in_progress --json`
+- `rg -n "hook|mirr|mirror|left hook|right hook|horizontal|direction|skeleton|preview" -S .`
+- `rg -n "hook_state|required_direction_label|horizontal_direction_velocity|directionality_ratio|preview|flip_horizontal|mirror|skeleton|left hook|right hook|hook_left|hook_right" .testbed src -S`
+- `rg -n "left_shoulder|left_elbow|left_wrist|right_shoulder|right_elbow|right_wrist|_process_hook\(" src/detectors/pose_detector_substrate.gd`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+
+Validation result:
+- targeted proving/detector regression pass succeeded: `63/63` tests passed, `627` asserts.
+
+Conclusion:
+- No evidence here that `hook_left` / `hook_right` arm ownership is being re-signed incorrectly inside the detector.
+- The proven bug was that the proving/debug copy did not say that hook direction was being expressed in preview-space, which made mirrored live preview behavior look like a detector inversion.
+- If Derrick still sees a wrong-direction seam after this wording/debug fix, the next narrow seam would be fixture-by-fixture verification of whether specific replay videos are already mirrored at the source before `preview.flip_horizontal` policy is applied.
+
 ---
 
-*Drafted on 2026-06-03; handoff updated on 2026-06-07*
+*Drafted on 2026-06-03; handoff updated on 2026-06-08*
