@@ -4181,4 +4181,4 @@ Commit: `310bc3f` - `Preserve straight-punch continuity across reacquiring hand 
 - `bd update aerobeat-input-camera-tracking-w0i --status in_progress --json`
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
 
-**Result:** Focused guard/config/testbed proof passed (`74/74` tests). Commit: `df694b0` (`Simplify boxing guard pose detection`).
+**Result:** Focused guard/config/testbed proof passed (`74/74` tests). Code commit: `2cd03c3` (`Simplify boxing guard pose detection`).
