@@ -3958,6 +3958,8 @@ Conclusion:
 
 **Fresh live finding from Derrick (2026-06-08 15:42 EDT):** hand-tracked straight punch gating still looks internally inconsistent in the paused replay/debug snapshot. In the shown left-straight max-reach frame, the inspector reports `bbox_area_growth = -0.003` even though the displayed growth-window bbox areas suggest a net `+0.003` by Derrick's read (`.004->.007`, `.007->.006`, `.006->.010`, `.010->.007`), and the same sequence appears to contain two positive-growth segments while the inspector reports only `1/4` positive growth samples. Treat this as a narrow audit of straight-punch bbox-growth aggregation/counting truth before more threshold tuning.
 
+**Fresh requirement from Derrick (2026-06-08 17:08 EDT):** change straight-punch bbox growth from endpoint comparison to a summed-adjacent-deltas model over the `window_ms` history. Desired semantics: compute each consecutive bbox-area delta in the retained window, sum those signed deltas for net `bbox_area_growth`, and count only strictly positive deltas as `positive_growth_samples`. Example supplied by Derrick: `[0.004, 0.004, 0.007, 0.007, 0.006, 0.010, 0.010, 0.007, 0.007]` should yield net `+0.003` growth and `2` positive-growth samples.
+
 ### Task 10CH: Window hook and uppercut threshold gates over shared motion window
 
 **Bead ID:** `aerobeat-input-camera-tracking-ufb`
@@ -4097,3 +4099,30 @@ Validation commands and result:
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → `67/67 passed`
 
 Commit(s): `d751c6a` - `Fix straight-punch bbox growth semantics`
+
+### Task 10CM: Switch straight-punch bbox growth to summed adjacent deltas
+
+**Bead ID:** `aerobeat-input-camera-tracking-hjb`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Implement Derrick's requested straight-punch bbox-growth model change in `REF-01`. Instead of endpoint-only bbox growth over `window_ms`, compute each adjacent bbox-area delta across the retained straight-punch window, sum those signed deltas for net `bbox_area_growth`, and count only strictly positive deltas as `positive_growth_samples`. Use Derrick's supplied example (`[0.004, 0.004, 0.007, 0.007, 0.006, 0.010, 0.010, 0.007, 0.007]` => net `+0.003`, positive-growth samples `2`) as the concrete truth target. Keep the slice narrow to straight-punch bbox-growth math/debug/tests, update the proving/debug surfaces if needed, and close the bead only if the landed behavior matches that reasoning.
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the straight-punch bbox-growth model change narrowly in `src/detectors/pose_detector_substrate.gd` by switching `bbox_area_growth` and `positive_growth_samples` to a shared retained-`window_ms` summary over adjacent deltas. Added `_summarize_bbox_area_growth_window(...)` so the net growth is the signed sum of adjacent retained-window steps and the positive sample count only increments on strictly positive steps. Seeded/reset state with `last_positive_bbox_growth_samples` so the live debug surface reads from the same time-window truth as the trigger path.
+
+Updated proving/debug surfacing in `.testbed/scripts/boxing_proving_harness.gd` so the positive-growth denominator reflects the live retained growth window (`growth_window_areas.size() - 1`) instead of the broader sample window when available.
+
+Added focused proof in `.testbed/tests/unit/test_pose_detector_substrate.gd`, including Derrick's exact truth-target sequence `[0.004, 0.004, 0.007, 0.007, 0.006, 0.010, 0.010, 0.007, 0.007]`, which now proves `bbox_area_growth == 0.003`, `positive_growth_samples == 2`, and `bbox_area_growth_window_span_ms == 320`. Adjusted adjacent stale/duplicate-window tests so they still validate the same semantics under the retained-window counting model.
+
+Evidence / commands:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` → `46/46 passed`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → `68/68 passed`
+
+Files touched:
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+
+Commit(s): `f5cf7cc` - `Adjust straight-punch bbox growth window semantics`
