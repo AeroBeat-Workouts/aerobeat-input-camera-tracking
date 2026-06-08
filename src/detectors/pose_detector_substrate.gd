@@ -915,6 +915,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["trigger_bbox_area"] = 0.0
 		state["last_bbox_area_growth_window_span_ms"] = 0
 		state["last_bbox_area_growth"] = 0.0
+		state["last_positive_bbox_growth_samples"] = 0
 		state["reacquire_started_timestamp_ms"] = -1
 		state["not_ready_started_timestamp_ms"] = -1
 		_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRACKING_LOST)
@@ -933,8 +934,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		while history.size() > sample_window_size:
 			history.remove_at(0)
 		state["bbox_area_history"] = history
-		state["positive_growth_samples"] = _count_positive_bbox_growth_samples(history)
 		state["last_bbox_area_growth"] = _resolve_straight_punch_bbox_area_growth(state, bbox_area, timestamp_ms, straight_punch_config)
+		state["positive_growth_samples"] = int(state.get("last_positive_bbox_growth_samples", 0))
 		bbox_area_growth_history.append(float(state.get("last_bbox_area_growth", 0.0)))
 		while bbox_area_growth_history.size() > sample_window_size:
 			bbox_area_growth_history.remove_at(0)
@@ -970,6 +971,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth_window_span_ms"] = 0
 				state["last_bbox_area_growth"] = 0.0
+				state["last_positive_bbox_growth_samples"] = 0
 				state["not_ready_started_timestamp_ms"] = -1
 				state["reacquire_started_timestamp_ms"] = -1
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
@@ -1514,6 +1516,7 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"bbox_area_growth_history": [],
 		"recent_peak_bbox_area_growth": 0.0,
 		"last_bbox_area_growth": 0.0,
+		"last_positive_bbox_growth_samples": 0,
 		"last_bbox_area_growth_window_span_ms": 0,
 		"last_wrist_velocity": 0.0,
 		"last_wrist_velocity_vector": Vector3.ZERO,
@@ -1882,14 +1885,10 @@ func _resolve_straight_punch_bbox_area_growth(state: Dictionary, bbox_area: floa
 	while history.size() > 0 and timestamp_ms - int((history[0] as Dictionary).get("timestamp_ms", timestamp_ms)) > window_ms:
 		history.remove_at(0)
 	state["bbox_area_window_history"] = history
-	if history.size() < 2:
-		state["last_bbox_area_growth_window_span_ms"] = 0
-		return 0.0
-	var oldest: Dictionary = history[0]
-	var newest: Dictionary = history[history.size() - 1]
-	var dt_ms := maxi(int(newest.get("timestamp_ms", timestamp_ms)) - int(oldest.get("timestamp_ms", timestamp_ms)), 1)
-	state["last_bbox_area_growth_window_span_ms"] = dt_ms
-	return float(newest.get("area", bbox_area)) - float(oldest.get("area", bbox_area))
+	var growth_summary := _summarize_bbox_area_growth_window(history, bbox_area, timestamp_ms)
+	state["last_bbox_area_growth_window_span_ms"] = int(growth_summary.get("window_span_ms", 0))
+	state["last_positive_bbox_growth_samples"] = int(growth_summary.get("positive_growth_samples", 0))
+	return float(growth_summary.get("net_growth", 0.0))
 
 func _bbox_area_window_values(history: Array) -> Array:
 	var values: Array = []
@@ -1901,15 +1900,33 @@ func _bbox_area_window_values(history: Array) -> Array:
 			values.append(float(entry.get("area", 0.0)))
 	return values
 
-func _count_positive_bbox_growth_samples(history: Array) -> int:
+func _summarize_bbox_area_growth_window(history: Array, fallback_area: float = 0.0, fallback_timestamp_ms: int = 0) -> Dictionary:
 	if history.size() < 2:
-		return 0
+		return {
+			"net_growth": 0.0,
+			"positive_growth_samples": 0,
+			"window_span_ms": 0,
+		}
+	var net_growth := 0.0
 	var positive_growth_samples := 0
 	for idx in range(1, history.size()):
-		var growth := float(history[idx]) - float(history[idx - 1])
+		var previous_entry: Dictionary = history[idx - 1] as Dictionary
+		var current_entry: Dictionary = history[idx] as Dictionary
+		var previous_area := float(previous_entry.get("area", fallback_area)) if not previous_entry.is_empty() else float(history[idx - 1])
+		var current_area := float(current_entry.get("area", fallback_area)) if not current_entry.is_empty() else float(history[idx])
+		var growth := current_area - previous_area
+		net_growth += growth
 		if growth > 0.000001:
 			positive_growth_samples += 1
-	return positive_growth_samples
+	var oldest: Dictionary = history[0] as Dictionary
+	var newest: Dictionary = history[history.size() - 1] as Dictionary
+	var oldest_timestamp_ms := int(oldest.get("timestamp_ms", fallback_timestamp_ms)) if not oldest.is_empty() else fallback_timestamp_ms
+	var newest_timestamp_ms := int(newest.get("timestamp_ms", fallback_timestamp_ms)) if not newest.is_empty() else fallback_timestamp_ms
+	return {
+		"net_growth": net_growth,
+		"positive_growth_samples": positive_growth_samples,
+		"window_span_ms": maxi(newest_timestamp_ms - oldest_timestamp_ms, 0),
+	}
 
 func _window_peak_float(history: Array) -> float:
 	var peak := 0.0

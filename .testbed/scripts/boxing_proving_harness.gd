@@ -936,7 +936,9 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var min_positive_growth_samples := int(straight_side.get("min_positive_growth_samples", 0))
 	var sample_window_size := int(straight_side.get("sample_window_size", 0))
 	var growth_window_areas: Array = straight_side.get("growth_window_areas", []) as Array
-	var positive_growth_sample_slots := maxi(sample_window_size - 1, 0)
+	var positive_growth_sample_slots := maxi(growth_window_areas.size() - 1, 0)
+	if positive_growth_sample_slots <= 0:
+		positive_growth_sample_slots = maxi(sample_window_size - 1, 0)
 	var fresh_sample := bool(straight_side.get("fresh_sample", false))
 	var tracking_valid := bool(straight_side.get("tracking_valid", false))
 	var tracking_state := String(straight_side.get("tracking_state", "idle"))
