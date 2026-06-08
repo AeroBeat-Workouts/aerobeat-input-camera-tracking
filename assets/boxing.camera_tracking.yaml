@@ -62,7 +62,7 @@ tracking:
       nearest_wrist_fallback: true
     validity:
       # Drop a hand after this many ms without a real sample. tool -> vendor.
-      max_stale_ms: 1000
+      max_stale_ms: 2000
       # Require this much stable time before a lost hand is trusted again. tool -> vendor.
       reacquire_stable_ms: 40
     grace:
