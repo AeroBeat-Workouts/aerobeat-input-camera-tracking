@@ -40,19 +40,19 @@ hook:
     wrist_velocity_window_ms: 250
   thresholds:
     # Shared elbow+wrist averaged velocity must reach at least this value to count as a hook. input.
-    min_velocity: 0.5
+    min_velocity: 0.4
     # Hook motion must stay at least this much more lateral than vertical. input.
     #- `0` = don’t care about lateral dominance
 	#- `1` = horizontal must be at least as big as vertical
 	#- `2` = horizontal must be twice vertical
 	#- very large = almost purely horizontal
-    min_lateral_dominance_ratio: 0.5
+    min_lateral_dominance_ratio: .5
     # Correct-direction horizontal hook travel must be at least this large relative to total shared elbow+wrist motion magnitude. input.
 	#- `0` = don’t care whether horizontal hook motion is going the correct left/right direction
 	#- `0.5` = at least half of the total motion magnitude must be in the correct horizontal direction
 	#- `1` = all of the measured motion magnitude must be in the correct horizontal direction
 	#- larger values are impossible with the current math
-    min_horizontal_direction_ratio: 0.55
+    min_horizontal_direction_ratio: 0
   timing:
     # Keep the hook in its triggered state for this long after it fires. input.
     triggered_grace_ms: 500
