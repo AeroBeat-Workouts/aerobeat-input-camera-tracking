@@ -3956,6 +3956,8 @@ Conclusion:
 
 **Fresh regression from Derrick (2026-06-08 14:37 EDT):** after syncing the straight-punch refactor, live hand-tracking in the boxing testbed appears to start in `tracking_lost` even while pose + visible hand landmarks are present. Screenshot evidence shows `L tracking_lost` and `R tracking_lost` overlays on top of visible pose/hands during an in-guard/straight-punch setup. Treat this as a new regression slice before more threshold tuning.
 
+**Fresh live finding from Derrick (2026-06-08 15:42 EDT):** hand-tracked straight punch gating still looks internally inconsistent in the paused replay/debug snapshot. In the shown left-straight max-reach frame, the inspector reports `bbox_area_growth = -0.003` even though the displayed growth-window bbox areas suggest a net `+0.003` by Derrick's read (`.004->.007`, `.007->.006`, `.006->.010`, `.010->.007`), and the same sequence appears to contain two positive-growth segments while the inspector reports only `1/4` positive growth samples. Treat this as a narrow audit of straight-punch bbox-growth aggregation/counting truth before more threshold tuning.
+
 ### Task 10CH: Window hook and uppercut threshold gates over shared motion window
 
 **Bead ID:** `aerobeat-input-camera-tracking-ufb`
@@ -4064,3 +4066,34 @@ Files changed:
 Fix: teach the bbox overlay to let tracker-owned states override gesture `tracking_lost` when the hand payload is in `reacquiring`, `tracked`, `stale`, or `grace`, and add matching overlay colors for those tracker states. Focused proof added in `test_hand_bbox_drawer_prefers_active_tracker_state_over_gesture_tracking_lost()`, which locks the exact regression seam. Validation passed with 22/22 tests in `test_boxing_proving_harness_profiles_and_debug.gd`.
 
 Commit: `4d07f02` - `Fix boxing hand bbox startup state labels` (rebased onto upstream `origin/main` `db5ed58` before push).
+
+### Task 10CL: Audit straight-punch bbox-growth aggregation and positive sample counting truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-5hn`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Audit Derrick's latest paused replay/debug finding for straight punch with hand tracking enabled. The current inspector snapshot suggests `bbox_area_growth` sign and `positive_growth_samples` counting may still be inconsistent with the displayed growth-window bbox-area sequence. Use the provided screenshot/debug sequence as the user-facing symptom, inspect the current straight-punch bbox-growth aggregation/counting math, determine whether the bug is in the detector math, the sample-count semantics, or the testbed inspector wording, then land the smallest truthful fix in scope. Keep this narrow to straight-punch bbox-growth aggregation/counting/debug truth and update the plan with exact evidence.
+
+**Status:** ✅ Complete
+
+**Results:** 2026-06-08 coder audit confirmed the paused replay/debug mismatch was real detector-sign drift plus inspector wording drift, not a harmless read issue. Evidence from `src/detectors/pose_detector_substrate.gd` showed `_resolve_straight_punch_bbox_area_growth()` returned `oldest - newest` and `_count_positive_bbox_growth_samples()` counted `previous - current`, so shrinking boxes read as positive growth while growing boxes read negative. The same sign assumption leaked into straight-punch rearm (`bbox_area >= trigger + epsilon`) and the boxing inspector displayed positive-growth counts against `sample_window_size` instead of the actual comparison slots (`sample_window_size - 1`), which is how Derrick could plausibly see a misleading `1/4` style denominator in paused debug.
+
+Touched files:
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+Exact changes landed:
+- flipped net bbox growth to `newest - oldest`
+- flipped per-step positive growth counting to `current - previous`
+- flipped hand-tracked rearm to require bbox retraction back down to `trigger - epsilon`
+- fixed inspector positive-growth denominator to show comparison slots (`sample_window_size - 1`) instead of raw sample count
+- updated the focused straight-punch fixtures/tests to use direct physical bbox areas where the regression semantics matter
+
+Validation commands and result:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` → `45/45 passed`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → `67/67 passed`
+
+Commit(s): `d751c6a` - `Fix straight-punch bbox growth semantics`
