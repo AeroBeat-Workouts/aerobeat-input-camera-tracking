@@ -3971,9 +3971,13 @@ Conclusion:
 - **Commands run:**
   - `bd update aerobeat-input-camera-tracking-ufb --status in_progress --json`
   - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+  - `git commit -m "Window hook and uppercut pose-strike gates"`
+  - `git pull --rebase origin main`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+  - `git push origin main`
 - **Evidence:** `REF-01` now lands the hook/uppercut rename from `wrist_velocity_window_ms` to `window_ms`, computes hook/uppercut dominance + signed-direction gates from the same motion-window segment set as the averaged velocity gate, and surfaces the renamed `window_ms` / `window_span_ms` debug truth through the detector + boxing proving harness.
 - **Proof added:** Focused detector tests now pin the new semantics by showing hook dominance counts vertical motion across the whole window and uppercut direction share counts downward motion across the whole window, plus config/debug tests pin the rename through the profile loader and hover-card/inspector surfaces.
 - **Result:** Focused detector/config/debug/testbed truth landed; targeted GUT suite passed (`69/69`).
-- **Commit:** Pending local commit.
+- **Commit:** `a40badb` (`Window hook and uppercut pose-strike gates`) pushed to `origin/main`.
 
 *Drafted on 2026-06-03; handoff updated on 2026-06-08*
