@@ -1,6 +1,15 @@
 schema: aerobeat/gesture_detection_config
 version: 1
 profile: boxing
+guard:
+  # Turn pose-only guard detection on or off. input.
+  enabled: true
+  thresholds:
+    # Left/right wrists must be at least this close together in camera-space X. input.
+    max_wrist_separation_x: 0.20
+    # Left/right wrists must be at least this close together in camera-space Y. input.
+    max_wrist_separation_y: 0.12
+
 straight_punch:
   # Turn straight-punch detection on or off. input.
   enabled: true

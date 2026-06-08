@@ -2550,31 +2550,9 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 	var ready_map: Dictionary = (gesture_debug.get("ready", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
 	var landmarks: Dictionary = state.get("landmarks_by_id", {})
-	var left_shoulder: Dictionary = landmarks.get(PoseLandmarkIds.LEFT_SHOULDER, {})
-	var right_shoulder: Dictionary = landmarks.get(PoseLandmarkIds.RIGHT_SHOULDER, {})
-	var left_elbow: Dictionary = landmarks.get(PoseLandmarkIds.LEFT_ELBOW, {})
-	var right_elbow: Dictionary = landmarks.get(PoseLandmarkIds.RIGHT_ELBOW, {})
-	var left_wrist: Dictionary = landmarks.get(PoseLandmarkIds.LEFT_WRIST, {})
-	var right_wrist: Dictionary = landmarks.get(PoseLandmarkIds.RIGHT_WRIST, {})
-	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
+	var guard_debug: Dictionary = (gesture_debug.get("guard", {}) as Dictionary).duplicate(true)
 	var left_hand_velocity: Vector3 = velocities.get("left_hand", Vector3.ZERO)
 	var right_hand_velocity: Vector3 = velocities.get("right_hand", Vector3.ZERO)
-	var guard_aligned_left := false
-	var guard_aligned_right := false
-	var guard_raised_left := false
-	var guard_raised_right := false
-	var guard_wrist_near_head_left := false
-	var guard_wrist_near_head_right := false
-	if not left_wrist.is_empty() and not left_elbow.is_empty():
-		guard_aligned_left = absf(float(left_wrist.get("x", 0.0)) - float(left_elbow.get("x", 0.0))) <= shoulder_width * 0.32
-	if not right_wrist.is_empty() and not right_elbow.is_empty():
-		guard_aligned_right = absf(float(right_wrist.get("x", 0.0)) - float(right_elbow.get("x", 0.0))) <= shoulder_width * 0.32
-	if not left_wrist.is_empty() and not left_shoulder.is_empty():
-		guard_raised_left = float(left_wrist.get("y", 0.0)) >= float(left_shoulder.get("y", 0.0)) - shoulder_width * 0.10
-		guard_wrist_near_head_left = absf(float(left_wrist.get("x", 0.0)) - float(left_shoulder.get("x", 0.0))) <= shoulder_width * 0.55
-	if not right_wrist.is_empty() and not right_shoulder.is_empty():
-		guard_raised_right = float(right_wrist.get("y", 0.0)) >= float(right_shoulder.get("y", 0.0)) - shoulder_width * 0.10
-		guard_wrist_near_head_right = absf(float(right_wrist.get("x", 0.0)) - float(right_shoulder.get("x", 0.0))) <= shoulder_width * 0.55
 	return {
 		"left_straight": {
 			"arm_extension": float(measurements.get("left_arm_extension", 0.0)),
@@ -2614,13 +2592,16 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 		},
 		"guard": {
 			"state": bool((state.get("gesture_states", {}) as Dictionary).get("guard", false)),
-			"aligned_left": guard_aligned_left,
-			"aligned_right": guard_aligned_right,
-			"raised_left": guard_raised_left,
-			"raised_right": guard_raised_right,
-			"wrist_near_head_left": guard_wrist_near_head_left,
-			"wrist_near_head_right": guard_wrist_near_head_right,
-			"candidate": guard_aligned_left and guard_aligned_right and guard_raised_left and guard_raised_right and guard_wrist_near_head_left and guard_wrist_near_head_right,
+			"enabled": bool(guard_debug.get("enabled", true)),
+			"max_wrist_separation_x": float(guard_debug.get("max_wrist_separation_x", 0.0)),
+			"max_wrist_separation_y": float(guard_debug.get("max_wrist_separation_y", 0.0)),
+			"wrist_separation_x": float(guard_debug.get("wrist_separation_x", 0.0)),
+			"wrist_separation_y": float(guard_debug.get("wrist_separation_y", 0.0)),
+			"wrists_close_x": bool(guard_debug.get("wrists_close_x", false)),
+			"wrists_close_y": bool(guard_debug.get("wrists_close_y", false)),
+			"left_wrist_above_elbow": bool(guard_debug.get("left_wrist_above_elbow", false)),
+			"right_wrist_above_elbow": bool(guard_debug.get("right_wrist_above_elbow", false)),
+			"candidate": bool(guard_debug.get("candidate", false)),
 		},
 	}
 

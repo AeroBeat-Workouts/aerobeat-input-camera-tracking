@@ -3962,6 +3962,8 @@ Conclusion:
 
 **Fresh live finding from Derrick (2026-06-08 17:36 EDT):** straight-punch hand tracking still breaks across short tracking gaps even with `tracking.hands.validity.max_stale_ms = 2000`. In the provided screenshot, the hand overlay shows `L reacquiring`, while the straight-punch inspector still reports `Current state - tracking_lost`, `hand tracking = reacquiring, valid=false, source=fresh_inference, stale=0ms`, and empty growth-window inputs (`Growth window bbox areas - []`). Derrick's report is that these loss windows are clearly under 2 seconds but the gesture gates lose usable data anyway. Treat this as a narrow audit of grace/reacquire data availability for straight-punch gating rather than more threshold tuning.
 
+**Fresh guard-direction requirement from Derrick (2026-06-08 18:11 EDT):** keep guard pose-only, but simplify its activation logic substantially. Desired new guard candidate: left/right wrists close to each other in camera-space X/Y, plus both wrists above their respective elbows. No hand-tracking dependency needed. Expose the guard knobs in YAML and the boxing inspector.
+
 ### Task 10CH: Window hook and uppercut threshold gates over shared motion window
 
 **Bead ID:** `aerobeat-input-camera-tracking-ufb`
@@ -4156,3 +4158,27 @@ Files modified:
 - `.testbed/tests/unit/test_pose_detector_substrate.gd`
 
 Commit: `310bc3f` - `Preserve straight-punch continuity across reacquiring hand samples`
+
+### Task 10CO: Simplify guard detection to wrist closeness plus wrists-above-elbows
+
+**Bead ID:** `aerobeat-input-camera-tracking-w0i`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Replace the current hardcoded composite guard logic in `REF-01` with Derrick's simpler pose-only rule: guard becomes active when the left/right wrists are close enough to each other in camera-space X and Y, and both wrists are above their respective elbows. Expose the new guard thresholds in repo-owned YAML, and surface the live knob/debug truth in the boxing inspector/testbed so Derrick can tune it. Keep the slice narrow to guard detector/config/debug/testbed truth, add focused proof/tests, and close the bead only if the old elbow/shoulder/head composite rule is truthfully replaced.
+
+**Status:** ✅ Complete
+
+**Results:** Replaced the old elbow/shoulder/head composite guard rule in `src/detectors/pose_detector_substrate.gd` with a pose-only detector that activates only when wrist-to-wrist camera-space X/Y separation is inside YAML-tuned thresholds and both wrists sit above their respective elbows. Added the new boxing profile guard knobs in `assets/boxing.gesture_detection.yaml`, surfaced the live threshold/debug truth through `gesture_debug.guard`, mirrored that truth into the proving snapshot in `.testbed/scripts/proving_harness.gd`, and exposed it in the boxing inspector + debug feed via `.testbed/scripts/boxing_proving_harness.gd`.
+
+**Evidence:**
+- Detector/config changes: `src/detectors/pose_detector_substrate.gd`, `assets/boxing.gesture_detection.yaml`
+- Testbed/inspector/debug surfacing: `.testbed/scripts/proving_harness.gd`, `.testbed/scripts/boxing_proving_harness.gd`
+- Focused proof: `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`, `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- Truth-replacement proof: `test_guard_no_longer_uses_old_elbow_shoulder_head_composite_rule` asserts the old wider-apart wrist pose no longer trips guard even when wrists stay above elbows.
+
+**Commands:**
+- `bd update aerobeat-input-camera-tracking-w0i --status in_progress --json`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+
+**Result:** Focused guard/config/testbed proof passed (`74/74` tests). Commit: `df694b0` (`Simplify boxing guard pose detection`).

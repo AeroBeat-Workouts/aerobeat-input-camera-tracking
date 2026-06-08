@@ -451,8 +451,19 @@ func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 	assert_string_contains(line, "uppercut=tracking_lost/0.000 dir=0.000")
 
 
-func test_boxing_event_feed_text_lists_hook_and_uppercut_tuning_sections() -> void:
+func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections() -> void:
 	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"guard": {
+				"candidate": true,
+				"wrist_separation_x": 0.180,
+				"wrist_separation_y": 0.020,
+				"left_wrist_above_elbow": true,
+				"right_wrist_above_elbow": true,
+			}
+		}
+	})
 	var text_body := String(harness._build_boxing_event_feed_text())
 	assert_string_contains(text_body, "Hook tuning")
 	assert_string_contains(text_body, "Min velocity")
@@ -461,6 +472,11 @@ func test_boxing_event_feed_text_lists_hook_and_uppercut_tuning_sections() -> vo
 	assert_string_contains(text_body, "Uppercut tuning")
 	assert_string_contains(text_body, "Min vertical dominance")
 	assert_string_contains(text_body, "Min upward direction share of total motion")
+	assert_string_contains(text_body, "Guard tuning")
+	assert_string_contains(text_body, "Wrist separation X <= 0.200")
+	assert_string_contains(text_body, "Wrist separation Y <= 0.120")
+	assert_string_contains(text_body, "Guard candidate: true")
+	assert_string_contains(text_body, "Live wrist separation: x=0.180 y=0.020")
 
 func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	var harness = _new_harness()
@@ -567,6 +583,46 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 	assert_string_contains(body, "Positive growth samples >= skipped - pose-only fallback")
 	assert_string_contains(body, "BBox retracted enough to rearm - ")
 	assert_string_contains(body, "pose-only timer")
+
+func test_guard_hover_card_reports_pose_only_thresholds_and_live_truth() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"guard": {
+				"state": true,
+				"candidate": true,
+				"max_wrist_separation_x": 0.20,
+				"max_wrist_separation_y": 0.12,
+				"wrist_separation_x": 0.18,
+				"wrist_separation_y": 0.02,
+				"wrists_close_x": true,
+				"wrists_close_y": true,
+				"left_wrist_above_elbow": true,
+				"right_wrist_above_elbow": true,
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("guard")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(model.get("title", "")), "Guard")
+	assert_eq(String(rows[1].get("current_text", "")), "active")
+	assert_eq(String(rows[2].get("current_text", "")), "true")
+	assert_eq(String(rows[4].get("threshold_text", "")), "0.200")
+	assert_eq(String(rows[4].get("current_text", "")), "0.180")
+	assert_eq(String(rows[5].get("threshold_text", "")), "0.120")
+	assert_eq(String(rows[5].get("current_text", "")), "0.020")
+	assert_eq(String(rows[6].get("current_text", "")), "true")
+	assert_eq(String(rows[7].get("current_text", "")), "true")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "guard")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Current state - active")
+	assert_string_contains(body, "Guard candidate - true")
+	assert_string_contains(body, "Wrist separation X <= 0.200 - 0.180")
+	assert_string_contains(body, "Wrist separation Y <= 0.120 - 0.020")
+	assert_string_contains(body, "Left wrist above left elbow - true")
+	assert_string_contains(body, "Right wrist above right elbow - true")
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

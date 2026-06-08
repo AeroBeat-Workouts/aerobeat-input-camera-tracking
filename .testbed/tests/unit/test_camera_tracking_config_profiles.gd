@@ -25,7 +25,7 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("camera_tracking", {}).get("tracking", {}).get("state_update_max_fps", -1)), 30)
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("enabled", false)))
 	assert_eq(int(bundle.get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("inference_interval_frames", -1)), 1)
-	assert_false(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", true)))
+	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", false)))
 	assert_eq(int(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("inference_interval_frames", -1)), 1)
 	assert_eq(String(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("landmark_mode", "")), "lite")
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("bbox", {}).get("enabled", false)))
@@ -59,7 +59,7 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).get("min_velocity", -1.0)), 0.5))
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).has("min_punch_velocity"))
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).has("min_wrist_velocity"))
-	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("rearm", {}).get("pose_only_rearm_ms", -1)), 250)
+	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("rearm", {}).get("pose_only_rearm_ms", -1)), 50)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("state_machine", {}).get("lost_tracking_reacquire_stable_ms", -1)), 40)
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:

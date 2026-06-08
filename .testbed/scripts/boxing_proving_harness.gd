@@ -264,6 +264,45 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 		"row_kind": "info",
 	},
 ]
+const GUARD_REQUIREMENT_ROWS := [
+	{
+		"id": "state_section",
+		"label": "Live state",
+		"row_kind": "section",
+	},
+	{
+		"id": "current_state",
+		"label": "Current state",
+		"row_kind": "info",
+	},
+	{
+		"id": "candidate",
+		"label": "Guard candidate",
+		"row_kind": "info",
+	},
+	{
+		"id": "threshold_section",
+		"label": "Pose-only thresholds",
+		"row_kind": "section",
+	},
+	{
+		"id": "wrist_separation_x",
+		"label": "Wrist separation X <= {threshold}",
+	},
+	{
+		"id": "wrist_separation_y",
+		"label": "Wrist separation Y <= {threshold}",
+	},
+	{
+		"id": "left_wrist_above_elbow",
+		"label": "Left wrist above left elbow",
+	},
+	{
+		"id": "right_wrist_above_elbow",
+		"label": "Right wrist above right elbow",
+	},
+]
+
 const HOVER_REQUIREMENT_SPECS := {
 	"punch_left": {
 		"title": "Straight Punch L",
@@ -292,6 +331,10 @@ const HOVER_REQUIREMENT_SPECS := {
 		"title": "Uppercut R",
 		"rows": POSE_STRIKE_REQUIREMENT_ROWS,
 		"family": "uppercut",
+	},
+	"guard": {
+		"title": "Guard",
+		"rows": GUARD_REQUIREMENT_ROWS,
 	},
 }
 
@@ -869,6 +912,8 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "left")
 		"uppercut_right":
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "right")
+		"guard":
+			return _build_guard_hover_card_model(spec)
 		_:
 			return spec.duplicate(true)
 
@@ -914,8 +959,64 @@ func _build_pose_strike_hover_card_model(spec: Dictionary, family: String, side:
 		"footer": spec.get("footer", "Live values come from the pose-primary %s state machine." % family),
 	}
 
+func _build_guard_hover_card_model(spec: Dictionary) -> Dictionary:
+	var latest_state := _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var guard_debug: Dictionary = ((gesture_debug.get("guard", {}) as Dictionary)).duplicate(true)
+	var rows: Array[Dictionary] = []
+	for row_spec_variant: Variant in spec.get("rows", []):
+		var row_spec: Dictionary = row_spec_variant
+		rows.append(_build_guard_requirement_row(row_spec, guard_debug))
+	return {
+		"title": spec.get("title", "Guard"),
+		"rows": rows,
+		"footer": spec.get("footer", "Live values come from the pose-only guard detector."),
+	}
+
 func _boxing_reference_time_ms() -> int:
 	return _paused_boxing_snapshot_time_ms if _paused_boxing_state_active else Time.get_ticks_msec()
+
+func _build_guard_requirement_row(row_spec: Dictionary, guard_debug: Dictionary) -> Dictionary:
+	var row := row_spec.duplicate(true)
+	var row_id := String(row_spec.get("id", ""))
+	var label := String(row_spec.get("label", ""))
+	var passed := false
+	var current_text := ""
+	var threshold_text := ""
+	var state_active := bool(guard_debug.get("state", false))
+	var candidate := bool(guard_debug.get("candidate", false))
+	match row_id:
+		"state_section", "threshold_section":
+			current_text = ""
+			passed = false
+		"current_state":
+			current_text = "active" if state_active else "inactive"
+			passed = state_active
+		"candidate":
+			current_text = _fmt_bool(candidate)
+			passed = candidate
+		"wrist_separation_x":
+			threshold_text = _fmt_float(guard_debug.get("max_wrist_separation_x", 0.0))
+			current_text = _fmt_float(guard_debug.get("wrist_separation_x", 0.0))
+			passed = bool(guard_debug.get("wrists_close_x", false))
+		"wrist_separation_y":
+			threshold_text = _fmt_float(guard_debug.get("max_wrist_separation_y", 0.0))
+			current_text = _fmt_float(guard_debug.get("wrist_separation_y", 0.0))
+			passed = bool(guard_debug.get("wrists_close_y", false))
+		"left_wrist_above_elbow":
+			current_text = _fmt_bool(bool(guard_debug.get("left_wrist_above_elbow", false)))
+			passed = bool(guard_debug.get("left_wrist_above_elbow", false))
+		"right_wrist_above_elbow":
+			current_text = _fmt_bool(bool(guard_debug.get("right_wrist_above_elbow", false)))
+			passed = bool(guard_debug.get("right_wrist_above_elbow", false))
+		_:
+			current_text = "pending"
+			passed = false
+	row["label"] = label
+	row["passed"] = passed
+	row["threshold_text"] = threshold_text
+	row["current_text"] = current_text
+	return row
 
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
 	var row := row_spec.duplicate(true)
@@ -1541,6 +1642,19 @@ func _build_boxing_event_feed_text() -> String:
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),
 		int(uppercut_state_machine.get("lost_tracking_reacquire_stable_ms", 0)),
 	])
+
+	var guard_config: Dictionary = gesture_document.get("guard", {}) if gesture_document.get("guard", {}) is Dictionary else {}
+	var guard_thresholds: Dictionary = guard_config.get("thresholds", {}) if guard_config.get("thresholds", {}) is Dictionary else {}
+	var guard_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("guard", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("guard", {}) is Dictionary) else {}
+	lines.append("")
+	lines.append("Guard tuning")
+	lines.append("------------")
+	lines.append("Enabled: %s" % _fmt_bool(bool(guard_config.get("enabled", true))))
+	lines.append("Wrist separation X <= %s" % _fmt_float(guard_thresholds.get("max_wrist_separation_x", 0.0)))
+	lines.append("Wrist separation Y <= %s" % _fmt_float(guard_thresholds.get("max_wrist_separation_y", 0.0)))
+	lines.append("Guard candidate: %s" % _fmt_bool(bool(guard_debug.get("candidate", false))))
+	lines.append("Live wrist separation: x=%s y=%s" % [_fmt_float(guard_debug.get("wrist_separation_x", 0.0)), _fmt_float(guard_debug.get("wrist_separation_y", 0.0))])
+	lines.append("Wrists above elbows: L=%s R=%s" % [_fmt_bool(bool(guard_debug.get("left_wrist_above_elbow", false))), _fmt_bool(bool(guard_debug.get("right_wrist_above_elbow", false)))])
 
 	lines.append("")
 	lines.append("Tracker hand truth")

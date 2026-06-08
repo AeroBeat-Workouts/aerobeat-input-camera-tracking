@@ -1078,6 +1078,14 @@ func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.59, "y": 0.80},
 	}), 1200)
 	assert_eq(_event_names(guard_start_state.get("events", [])), ["guard_start"])
+	var guard_debug: Dictionary = guard_start_state.get("gesture_debug", {}).get("guard", {})
+	assert_true(bool(guard_debug.get("candidate", false)))
+	assert_true(bool(guard_debug.get("wrists_close_x", false)))
+	assert_true(bool(guard_debug.get("wrists_close_y", false)))
+	assert_true(bool(guard_debug.get("left_wrist_above_elbow", false)))
+	assert_true(bool(guard_debug.get("right_wrist_above_elbow", false)))
+	assert_true(is_equal_approx(float(guard_debug.get("max_wrist_separation_x", 0.0)), 0.20))
+	assert_true(is_equal_approx(float(guard_debug.get("max_wrist_separation_y", 0.0)), 0.12))
 	var guard_end_state := substrate.process_landmarks(_make_pose_frame(), 1300)
 	assert_true(_event_names(guard_end_state.get("events", [])).has("guard_end"))
 
@@ -1097,6 +1105,22 @@ func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 	assert_true(_event_names(sidestep_right_state.get("events", [])).has("sidestep_right_start"))
 	var sidestep_end_state := substrate.process_landmarks(_make_pose_frame(), 1900)
 	assert_true(_event_names(sidestep_end_state.get("events", [])).has("sidestep_right_end"))
+
+func test_guard_no_longer_uses_old_elbow_shoulder_head_composite_rule() -> void:
+	_calibrate_stance()
+	var old_rule_like_pose := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.36, "y": 0.69},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.64, "y": 0.69},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.36, "y": 0.80},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.64, "y": 0.80},
+	}), 1200)
+	assert_false(_event_names(old_rule_like_pose.get("events", [])).has("guard_start"))
+	var guard_debug: Dictionary = old_rule_like_pose.get("gesture_debug", {}).get("guard", {})
+	assert_false(bool(old_rule_like_pose.get("gesture_states", {}).get("guard", false)))
+	assert_false(bool(guard_debug.get("candidate", true)))
+	assert_false(bool(guard_debug.get("wrists_close_x", true)))
+	assert_true(bool(guard_debug.get("left_wrist_above_elbow", false)))
+	assert_true(bool(guard_debug.get("right_wrist_above_elbow", false)))
 
 func test_detects_knee_and_leg_lift_events_with_reset_behavior() -> void:
 	_calibrate_stance()

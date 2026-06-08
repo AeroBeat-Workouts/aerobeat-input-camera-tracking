@@ -40,6 +40,9 @@ const HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO := 0.55
 const UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO := 1.2
 const UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO := 0.55
 
+const GUARD_DEFAULT_MAX_WRIST_SEPARATION_X := 0.20
+const GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y := 0.12
+
 const FLOW_HISTORY_MAX_MS := 560
 const FLOW_SWING_WINDOW_MIN_MS := 120
 const FLOW_SWING_WINDOW_MAX_MS := 320
@@ -537,11 +540,21 @@ func _get_metric_dictionary(key: String) -> Dictionary:
 func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	return {
 		"ready": _gesture_state.get("ready", {}).duplicate(true),
+		"guard": _build_guard_debug_state(),
 		"straight_punch": _build_straight_punch_debug_state(metrics),
 		"hook": _build_pose_strike_debug_state("hook", metrics),
 		"uppercut": _build_pose_strike_debug_state("uppercut", metrics),
 		"flow": _build_flow_debug_state(metrics),
 	}
+
+func _build_guard_debug_state() -> Dictionary:
+	var guard_debug: Dictionary = (_gesture_state.get("guard_debug", {}) as Dictionary).duplicate(true)
+	var guard_config := _get_guard_config()
+	guard_debug["state"] = bool(_get_state("guard"))
+	guard_debug["enabled"] = bool(guard_config.get("enabled", true))
+	guard_debug["max_wrist_separation_x"] = float(guard_config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))
+	guard_debug["max_wrist_separation_y"] = float(guard_config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))
+	return guard_debug
 
 func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
@@ -763,6 +776,19 @@ func _reset_gesture_state() -> void:
 		"uppercut": {
 			"left": _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST),
 			"right": _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST),
+		},
+		"guard_debug": {
+			"state": false,
+			"enabled": true,
+			"max_wrist_separation_x": GUARD_DEFAULT_MAX_WRIST_SEPARATION_X,
+			"max_wrist_separation_y": GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y,
+			"wrist_separation_x": 0.0,
+			"wrist_separation_y": 0.0,
+			"wrists_close_x": false,
+			"wrists_close_y": false,
+			"left_wrist_above_elbow": false,
+			"right_wrist_above_elbow": false,
+			"candidate": false,
 		},
 		"flow": {
 			"left_hand": [],
@@ -1413,17 +1439,46 @@ func _set_flow_meta(state_name: String, data: Dictionary) -> void:
 	flow[state_name] = data
 	_gesture_state["flow"] = flow
 
-func _process_guard(events: Array, left_shoulder: Dictionary, right_shoulder: Dictionary, left_elbow: Dictionary, right_elbow: Dictionary, left_wrist: Dictionary, right_wrist: Dictionary, shoulder_width: float) -> void:
-	if left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
+func _process_guard(events: Array, left_shoulder: Dictionary, right_shoulder: Dictionary, left_elbow: Dictionary, right_elbow: Dictionary, left_wrist: Dictionary, right_wrist: Dictionary, _shoulder_width: float) -> void:
+	var guard_config := _get_guard_config()
+	var guard_debug := {
+		"state": bool(_get_state("guard")),
+		"enabled": bool(guard_config.get("enabled", true)),
+		"max_wrist_separation_x": float(guard_config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X)),
+		"max_wrist_separation_y": float(guard_config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y)),
+		"wrist_separation_x": 0.0,
+		"wrist_separation_y": 0.0,
+		"wrists_close_x": false,
+		"wrists_close_y": false,
+		"left_wrist_above_elbow": false,
+		"right_wrist_above_elbow": false,
+		"candidate": false,
+	}
+	if not bool(guard_config.get("enabled", true)):
+		_gesture_state["guard_debug"] = guard_debug
 		_set_state_toggle(events, "guard", false)
 		return
-	var aligned := absf(float(left_wrist.get("x", 0.0)) - float(left_elbow.get("x", 0.0))) <= shoulder_width * 0.32
-	aligned = aligned and absf(float(right_wrist.get("x", 0.0)) - float(right_elbow.get("x", 0.0))) <= shoulder_width * 0.32
-	var raised := float(left_wrist.get("y", 0.0)) >= float(left_shoulder.get("y", 0.0)) - shoulder_width * 0.10
-	raised = raised and float(right_wrist.get("y", 0.0)) >= float(right_shoulder.get("y", 0.0)) - shoulder_width * 0.10
-	var wrist_near_head := absf(float(left_wrist.get("x", 0.0)) - float(left_shoulder.get("x", 0.0))) <= shoulder_width * 0.55
-	wrist_near_head = wrist_near_head and absf(float(right_wrist.get("x", 0.0)) - float(right_shoulder.get("x", 0.0))) <= shoulder_width * 0.55
-	_set_state_toggle(events, "guard", aligned and raised and wrist_near_head)
+	if left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
+		_gesture_state["guard_debug"] = guard_debug
+		_set_state_toggle(events, "guard", false)
+		return
+	var wrist_separation_x := absf(float(left_wrist.get("x", 0.0)) - float(right_wrist.get("x", 0.0)))
+	var wrist_separation_y := absf(float(left_wrist.get("y", 0.0)) - float(right_wrist.get("y", 0.0)))
+	var wrists_close_x := wrist_separation_x <= float(guard_config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))
+	var wrists_close_y := wrist_separation_y <= float(guard_config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))
+	var left_wrist_above_elbow := float(left_wrist.get("y", 0.0)) >= float(left_elbow.get("y", 0.0))
+	var right_wrist_above_elbow := float(right_wrist.get("y", 0.0)) >= float(right_elbow.get("y", 0.0))
+	var candidate := wrists_close_x and wrists_close_y and left_wrist_above_elbow and right_wrist_above_elbow
+	guard_debug["wrist_separation_x"] = wrist_separation_x
+	guard_debug["wrist_separation_y"] = wrist_separation_y
+	guard_debug["wrists_close_x"] = wrists_close_x
+	guard_debug["wrists_close_y"] = wrists_close_y
+	guard_debug["left_wrist_above_elbow"] = left_wrist_above_elbow
+	guard_debug["right_wrist_above_elbow"] = right_wrist_above_elbow
+	guard_debug["candidate"] = candidate
+	guard_debug["state"] = candidate
+	_gesture_state["guard_debug"] = guard_debug
+	_set_state_toggle(events, "guard", candidate)
 
 func _process_squat(events: Array, height_ratio: float) -> void:
 	var active: bool = _get_state("squat")
@@ -1545,6 +1600,24 @@ func _set_straight_punch_state(side: String, state: Dictionary) -> void:
 	straight_punch[side] = state.duplicate(true)
 	_gesture_state["straight_punch"] = straight_punch
 	_set_ready("punch_%s" % side, String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)) == STRAIGHT_PUNCH_STATE_READY)
+
+func _get_guard_config() -> Dictionary:
+	var config := {
+		"enabled": true,
+		"max_wrist_separation_x": GUARD_DEFAULT_MAX_WRIST_SEPARATION_X,
+		"max_wrist_separation_y": GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y,
+	}
+	if _config == null:
+		return config
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return config
+	var guard: Dictionary = gesture_profile_document.get("guard", {}) if gesture_profile_document.get("guard", {}) is Dictionary else {}
+	var thresholds: Dictionary = guard.get("thresholds", {}) if guard.get("thresholds", {}) is Dictionary else {}
+	config["enabled"] = bool(guard.get("enabled", config.get("enabled", true)))
+	config["max_wrist_separation_x"] = maxf(0.0, float(thresholds.get("max_wrist_separation_x", config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))))
+	config["max_wrist_separation_y"] = maxf(0.0, float(thresholds.get("max_wrist_separation_y", config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))))
+	return config
 
 func _get_straight_punch_config() -> Dictionary:
 	var config := {
