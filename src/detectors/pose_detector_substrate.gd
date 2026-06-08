@@ -1651,7 +1651,7 @@ func _get_hook_config() -> Dictionary:
 	var rearm: Dictionary = hook.get("rearm", {}) if hook.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = hook.get("state_machine", {}) if hook.get("state_machine", {}) is Dictionary else {}
 	config["enabled"] = bool(hook.get("enabled", config.get("enabled", true)))
-	config["window_ms"] = max(1, int(evaluation.get("window_ms", evaluation.get("wrist_velocity_window_ms", config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)))))
+	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_lateral_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_lateral_dominance_ratio", config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))))
 	config["min_horizontal_direction_ratio"] = clampf(float(thresholds.get("min_horizontal_direction_ratio", config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO))), 0.0, 1.0)
@@ -1683,7 +1683,7 @@ func _get_uppercut_config() -> Dictionary:
 	var rearm: Dictionary = uppercut.get("rearm", {}) if uppercut.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = uppercut.get("state_machine", {}) if uppercut.get("state_machine", {}) is Dictionary else {}
 	config["enabled"] = bool(uppercut.get("enabled", config.get("enabled", true)))
-	config["window_ms"] = max(1, int(evaluation.get("window_ms", evaluation.get("wrist_velocity_window_ms", config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)))))
+	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_vertical_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_vertical_dominance_ratio", config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))))
 	config["min_upward_direction_ratio"] = clampf(float(thresholds.get("min_upward_direction_ratio", config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO))), 0.0, 1.0)

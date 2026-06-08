@@ -909,6 +909,28 @@ func test_uppercut_windowed_direction_ratio_counts_downward_motion_across_the_wh
 	assert_true(is_equal_approx(float(left_debug.get("directionality_ratio", 0.0)), 0.75))
 	assert_true(float(left_debug.get("directionality_ratio", 0.0)) < float(left_debug.get("min_upward_direction_ratio", 0.0)))
 
+func test_pose_strike_window_ms_no_longer_falls_back_to_legacy_wrist_velocity_window_ms() -> void:
+	config.gesture_profile_document = {
+		"hook": {
+			"enabled": true,
+			"evaluation": {
+				"wrist_velocity_window_ms": 160,
+			},
+		},
+		"uppercut": {
+			"enabled": true,
+			"evaluation": {
+				"wrist_velocity_window_ms": 120,
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+
+	var hook_config := substrate._get_hook_config()
+	var uppercut_config := substrate._get_uppercut_config()
+	assert_eq(int(hook_config.get("window_ms", 0)), 160)
+	assert_eq(int(uppercut_config.get("window_ms", 0)), 160)
+
 func test_quantizes_flow_direction_to_twelve_chart_slots() -> void:
 	assert_eq(substrate._flow_ring_index_from_vector(Vector2(1.0, 0.0)), 2)
 	assert_eq(substrate._flow_ring_index_from_vector(Vector2(0.0, 1.0)), 11)
