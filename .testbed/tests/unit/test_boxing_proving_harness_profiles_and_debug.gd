@@ -303,7 +303,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"fresh_sample": true,
 					"wrist_velocity": 0.420,
 					"wrist_forward_velocity": 0.150,
-					"min_punch_velocity": 0.180,
+					"min_velocity": 0.180,
 					"bbox_area": 0.052,
 					"bbox_area_growth": 0.015,
 					"min_bbox_area_growth": 0.010,
@@ -334,7 +334,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	assert_eq(String(rows[9].get("threshold_text", "")), "0.010")
 	assert_eq(String(rows[10].get("current_text", "")), "3/4")
 	assert_eq(String(rows[14].get("current_text", "")), "0.061")
-	assert_eq(String(rows[15].get("current_text", "")), "0.052 <= 0.058 (trigger 0.061 - eps 0.003)")
+	assert_eq(String(rows[15].get("current_text", "")), "0.052 >= 0.064 (trigger 0.061 + eps 0.003)")
 
 func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	var harness = _new_harness()
@@ -354,7 +354,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"fresh_sample": false,
 					"wrist_velocity": 0.310,
 					"wrist_forward_velocity": 0.120,
-					"min_punch_velocity": 0.180,
+					"min_velocity": 0.180,
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.012,
 					"min_bbox_area_growth": 0.010,
@@ -384,7 +384,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Positive growth samples >= 3/4 - 4/4")
 	assert_string_contains(body, "Grace timer - 160/240ms remaining (active)")
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
-	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
+	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 >= 0.074 (trigger 0.071 + eps 0.003)")
 
 func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 	var harness = _new_harness()
@@ -512,7 +512,7 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 					"fresh_sample": true,
 					"wrist_velocity": 0.420,
 					"wrist_forward_velocity": 0.150,
-					"min_punch_velocity": 0.180,
+					"min_velocity": 0.180,
 					"bbox_area": 0.0,
 					"bbox_area_growth": 0.0,
 					"min_bbox_area_growth": 0.010,
@@ -562,7 +562,7 @@ func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void
 					"tracking_valid": true,
 					"sample_source": "pose",
 					"wrist_velocity": 0.42,
-					"min_punch_velocity": 0.18,
+					"min_velocity": 0.18,
 					"bbox_area": 0.0,
 					"bbox_area_growth": 0.0,
 					"pose_only_rearm_ms": 250,
@@ -605,7 +605,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"fresh_sample": true,
 					"wrist_velocity": 0.310,
 					"wrist_forward_velocity": 0.120,
-					"min_punch_velocity": 0.180,
+					"min_velocity": 0.180,
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.012,
 					"min_bbox_area_growth": 0.010,
@@ -662,7 +662,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"stable_ms": 160,
 					"fresh_sample": false,
 					"wrist_velocity": 0.0,
-					"min_punch_velocity": 0.180,
+					"min_velocity": 0.180,
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.0,
 					"min_bbox_area_growth": 0.010,

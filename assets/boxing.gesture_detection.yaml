@@ -9,16 +9,14 @@ straight_punch:
     fresh_samples_only: true
     # Keep this many recent samples in the punch check history. input.
     sample_window_size: 4
-    # Require this many positive bbox-growth steps inside the sample history. input.
+    # Require this many positive forward-punch bbox-growth steps inside the sample history. input.
     min_positive_growth_samples: 1
-    # Measure wrist velocity across this much recent time. input.
-    wrist_velocity_window_ms: 250
-    # Measure bbox growth across this much recent time. input.
-    bbox_area_growth_window_ms: 250
+    # Measure the shared straight-punch motion window across this much recent time. input.
+    window_ms: 250
   thresholds:
-    # Shared elbow+wrist punch speed must reach at least this value to count as a punch. input.
-    min_punch_velocity: 0.5
-    # Hand bbox growth must reach at least this value to count as a punch. input.
+    # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as a punch. input.
+    min_velocity: 0.5
+    # Windowed forward-punch bbox growth must reach at least this value to count as a punch. input.
     min_bbox_area_growth: 0.003
   timing:
     # Keep the punch in its triggered state for this long after it fires. input.

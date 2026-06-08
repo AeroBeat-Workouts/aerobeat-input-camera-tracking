@@ -3952,6 +3952,8 @@ Conclusion:
 
 **Follow-up requirement from Derrick (2026-06-08 13:30 EDT):** remove the temporary legacy `wrist_velocity_window_ms` compatibility path now that `window_ms` has landed and Derrick is syncing fresh for new manual feedback. The next slice should delete the old fallback/compatibility support rather than preserving both names.
 
+**Fresh live feedback from Derrick (2026-06-08 14:00 EDT):** current live boxing use is good enough to proceed with a deliberately noisy design: straight punch, hook, and uppercut all fire most of the time, and co-firing/noise is acceptable so long as the desired gesture fires inside the beat window. Next refactor target is the straight-punch path: move all threshold gate values onto the same `window_ms` averaged-over-time model used for hook/uppercut, rename `min_punch_velocity` to `min_velocity`, rename straight-punch `wrist_velocity_window_ms` to `window_ms`, and audit/correct the `min_bbox_area_growth` sign semantics because live testing with hand tracking enabled suggests forward straight punches currently produce negative bbox growth.
+
 ### Task 10CH: Window hook and uppercut threshold gates over shared motion window
 
 **Bead ID:** `aerobeat-input-camera-tracking-ufb`
@@ -3998,4 +4000,38 @@ Conclusion:
 - `git diff --stat -- src/detectors/pose_detector_substrate.gd .testbed/scripts/boxing_proving_harness.gd .testbed/tests/unit/test_pose_detector_substrate.gd` → `3 files changed, 26 insertions(+), 4 deletions(-)`.
 Commit: `773b592` — `Drop legacy pose-strike window key fallback`.
 
-*Drafted on 2026-06-03; handoff updated on 2026-06-08*
+### Task 10CJ: Refactor straight-punch gates to shared `window_ms` model and audit bbox-growth sign
+
+**Bead ID:** `aerobeat-input-camera-tracking-90l`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Implement Derrick's latest straight-punch refactor in `REF-01`. Move straight-punch threshold gate values onto the same averaged-over-time `window_ms` model now used for hook/uppercut, rename `min_punch_velocity` to `min_velocity`, rename straight-punch `wrist_velocity_window_ms` to `window_ms`, and audit/correct the `min_bbox_area_growth` sign semantics because live testing with hand tracking enabled suggests forward straight punches currently produce negative bbox growth. Keep the slice narrow to detector/config/debug/testbed truth, keep YAML edits outside Godot, preserve the currently acceptable noisy/co-firing design assumption, and add focused proof/tests before closing the bead.
+
+**Folders Created/Deleted/Modified:**
+- `.plans/mediapipe-python/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `assets/`
+- `docs/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `docs/cross-repo-config-contract.md`
+- `src/detectors/pose_detector_substrate.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-90l` with `bd update aerobeat-input-camera-tracking-90l --status in_progress --json` and kept the slice narrow to the straight-punch detector/config/debug/testbed seam. The straight-punch detector now uses one shared `evaluation.window_ms` model for both the averaged wrist/elbow velocity gate and the averaged bbox-growth gate, with the public config/debug key renamed from `wrist_velocity_window_ms` to `window_ms` and the public threshold renamed from `min_punch_velocity` to `min_velocity`. To preserve the prior bbox-growth trigger feel while unifying the window model, the shared straight-punch default window was set to `240ms` (the old bbox-growth horizon), while hook/uppercut stayed on their existing `160ms` pose-strike default.
+
+BBox-growth sign truth was audited against the reported live behavior and corrected so straight-punch `bbox_area_growth` now treats forward punches as positive when the tracked hand bbox area shrinks across the shared window. The same sign correction now drives `positive_growth_samples`, straight-punch power scoring, and the hand-tracking rearm check (`bbox_area >= trigger_bbox_area + bbox_area_retract_epsilon`) so a triggered punch rearms only after the hand retracts back out. Debug/testbed truth was updated to match: the boxing proving harness now reads `min_velocity`, reports the shared motion window, and explains rearm readiness with the corrected `trigger + epsilon` comparison.
+
+Focused proof was added/updated in `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`, and `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` to cover the rename, shared-window semantics, corrected bbox-growth sign behavior, and proving-harness debug copy. Validation command run from repo root: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`70/70` passed, `742` asserts; pre-existing GUT orphan/RID leak warnings only). Commit: `acaa58f` (`Refactor straight punch shared window tuning`).
+
+*Completed on 2026-06-08*
