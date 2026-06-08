@@ -4063,4 +4063,4 @@ Files changed:
 
 Fix: teach the bbox overlay to let tracker-owned states override gesture `tracking_lost` when the hand payload is in `reacquiring`, `tracked`, `stale`, or `grace`, and add matching overlay colors for those tracker states. Focused proof added in `test_hand_bbox_drawer_prefers_active_tracker_state_over_gesture_tracking_lost()`, which locks the exact regression seam. Validation passed with 22/22 tests in `test_boxing_proving_harness_profiles_and_debug.gd`.
 
-Commit: `PENDING` (replace after commit/push).
+Commit: `4d07f02` - `Fix boxing hand bbox startup state labels` (rebased onto upstream `origin/main` `db5ed58` before push).
