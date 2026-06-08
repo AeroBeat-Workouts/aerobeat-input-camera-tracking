@@ -3950,6 +3950,8 @@ Conclusion:
 
 **Fresh requirement from Derrick (2026-06-08 11:11 EDT):** move the hook/uppercut pose-strike gates onto the same windowed-over-time mental model as velocity. For both hooks and uppercuts, Derrick wants the three threshold gates to evaluate over the shared time span currently called `wrist_velocity_window_ms`, and wants that knob renamed to the broader `window_ms` because it will own more than just wrist-velocity smoothing. Requested gate model: over `window_ms`, treat the strike as passing when the averaged/windowed motion satisfies (1) `min_velocity`, (2) family dominance ratio (`min_lateral_dominance_ratio` or `min_vertical_dominance_ratio`), and (3) family direction ratio (`min_horizontal_direction_ratio` or `min_upward_direction_ratio`) rather than relying on a twitchy current-vector split.
 
+**Follow-up requirement from Derrick (2026-06-08 13:30 EDT):** remove the temporary legacy `wrist_velocity_window_ms` compatibility path now that `window_ms` has landed and Derrick is syncing fresh for new manual feedback. The next slice should delete the old fallback/compatibility support rather than preserving both names.
+
 ### Task 10CH: Window hook and uppercut threshold gates over shared motion window
 
 **Bead ID:** `aerobeat-input-camera-tracking-ufb`
@@ -3979,5 +3981,21 @@ Conclusion:
 - **Proof added:** Focused detector tests now pin the new semantics by showing hook dominance counts vertical motion across the whole window and uppercut direction share counts downward motion across the whole window, plus config/debug tests pin the rename through the profile loader and hover-card/inspector surfaces.
 - **Result:** Focused detector/config/debug/testbed truth landed; targeted GUT suite passed (`69/69`).
 - **Commit:** `a40badb` (`Window hook and uppercut pose-strike gates`) pushed to `origin/main`.
+
+### Task 10CI: Remove legacy `wrist_velocity_window_ms` compatibility after `window_ms` rollout
+
+**Bead ID:** `aerobeat-input-camera-tracking-2m3`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Remove the temporary legacy `wrist_velocity_window_ms` compatibility path now that `window_ms` is the intended public pose-strike knob for hook/uppercut tuning. Keep the slice narrow to `REF-01`: delete fallback support for the old key, update any remaining tests/debug/config expectations that still mention it, validate the narrowed surface, and update this plan with exact files, commands, result, and commit. Claim bead `aerobeat-input-camera-tracking-2m3` on start and close it only if the compatibility path is truthfully removed.
+
+**Status:** ✅ Complete
+
+**Results:** Removed the hook/uppercut-only fallback that still treated `evaluation.wrist_velocity_window_ms` as a public alias for `evaluation.window_ms` in `src/detectors/pose_detector_substrate.gd`, and tightened the boxing proving tuning summary in `.testbed/scripts/boxing_proving_harness.gd` so hook/uppercut now report only `window_ms` instead of silently falling back to the legacy key. Added focused proof in `.testbed/tests/unit/test_pose_detector_substrate.gd::test_pose_strike_window_ms_no_longer_falls_back_to_legacy_wrist_velocity_window_ms`, while keeping the existing config-bundle guard in `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` that boxing hook/uppercut YAML no longer publishes the old key. Focused validation commands/results:
+- `rg -n "wrist_velocity_window_ms" src/detectors/pose_detector_substrate.gd .testbed/scripts/boxing_proving_harness.gd .testbed/tests/unit/test_pose_detector_substrate.gd .testbed/tests/unit/test_camera_tracking_config_profiles.gd assets/boxing.gesture_detection.yaml` → active hits reduced to straight-punch ownership plus the intentional regression proof / config guard; no hook/uppercut runtime fallback remained.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → ✅ `70/70` passing (existing proving-harness orphan / RID / UID warning noise unchanged).
+- `git diff --stat -- src/detectors/pose_detector_substrate.gd .testbed/scripts/boxing_proving_harness.gd .testbed/tests/unit/test_pose_detector_substrate.gd` → `3 files changed, 26 insertions(+), 4 deletions(-)`.
+Commit: `6fb252b` — `Drop legacy pose-strike window key fallback`.
 
 *Drafted on 2026-06-03; handoff updated on 2026-06-08*
