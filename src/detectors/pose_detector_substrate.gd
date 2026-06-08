@@ -35,8 +35,10 @@ const POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS := STRAIGHT_PUNCH_DEFAULT_POSE_ONLY
 const POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS := STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS
 
 const HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO := 1.6
+const HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO := 0.55
 
 const UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO := 1.2
+const UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO := 0.55
 
 const FLOW_HISTORY_MAX_MS := 560
 const FLOW_SWING_WINDOW_MIN_MS := 120
@@ -636,6 +638,8 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"wrist_elbow_vertical_offset": float(state.get("wrist_elbow_vertical_offset", 0.0)),
 		"wrist_elbow_horizontal_offset": float(state.get("wrist_elbow_horizontal_offset", 0.0)),
 		"wrist_above_elbow_offset": float(state.get("wrist_above_elbow_offset", 0.0)),
+		"horizontal_direction_velocity": float(state.get("horizontal_direction_velocity", 0.0)),
+		"directionality_ratio": float(state.get("directionality_ratio", 0.0)),
 		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
 		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
 	}
@@ -644,10 +648,14 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["outward_distance"] = float(state.get("outward_distance", 0.0))
 		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
 		debug["min_lateral_dominance_ratio"] = float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))
+		debug["min_horizontal_direction_ratio"] = float(config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO))
+		debug["required_direction_label"] = "rightward" if side == "left" else "leftward"
 	else:
 		debug["upward_velocity"] = float(state.get("upward_velocity", 0.0))
 		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
 		debug["min_vertical_dominance_ratio"] = float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))
+		debug["min_upward_direction_ratio"] = float(config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO))
+		debug["required_direction_label"] = "upward"
 	return debug
 
 func _build_flow_debug_state(metrics: Dictionary = {}) -> Dictionary:
@@ -1053,7 +1061,13 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var lateral_speed := absf(float(velocity_vector.x))
 	var vertical_speed := absf(float(velocity_vector.y))
 	var outward_velocity := float(velocity_vector.x) if side == "right" else -float(velocity_vector.x)
+	var horizontal_direction_velocity := maxf(float(velocity_vector.x), 0.0) if side == "left" else maxf(-float(velocity_vector.x), 0.0)
 	var upward_velocity := maxf(float(velocity_vector.y), 0.0)
+	var directionality_ratio := 0.0
+	if family == "hook":
+		directionality_ratio = horizontal_direction_velocity / maxf(lateral_speed, 0.000001) if horizontal_direction_velocity > 0.0 else 0.0
+	else:
+		directionality_ratio = upward_velocity / maxf(vertical_speed, 0.000001) if upward_velocity > 0.0 else 0.0
 	var outward_distance := float(shoulder.get("x", 0.0) - wrist.get("x", 0.0) if side == "left" else wrist.get("x", 0.0) - shoulder.get("x", 0.0))
 	var wrist_elbow_vertical_offset := absf(float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0)))
 	var wrist_elbow_horizontal_offset := absf(float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0)))
@@ -1067,15 +1081,17 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["elbow_bend_deg"] = elbow_bend_deg
 	state["outward_velocity"] = outward_velocity
 	state["upward_velocity"] = upward_velocity
+	state["horizontal_direction_velocity"] = horizontal_direction_velocity
+	state["directionality_ratio"] = directionality_ratio
 	state["outward_distance"] = outward_distance
 	state["wrist_elbow_vertical_offset"] = wrist_elbow_vertical_offset
 	state["wrist_elbow_horizontal_offset"] = wrist_elbow_horizontal_offset
 	state["wrist_above_elbow_offset"] = wrist_above_elbow_offset
 	state["dominance_ratio"] = 0.0
 	if family == "hook":
-		state["dominance_ratio"] = outward_velocity / maxf(vertical_speed, 0.000001) if outward_velocity > 0.0 else 0.0
+		state["dominance_ratio"] = lateral_speed / maxf(vertical_speed, 0.000001) if lateral_speed > 0.0 else 0.0
 	else:
-		state["dominance_ratio"] = upward_velocity / maxf(lateral_speed, 0.000001) if upward_velocity > 0.0 else 0.0
+		state["dominance_ratio"] = vertical_speed / maxf(lateral_speed, 0.000001) if vertical_speed > 0.0 else 0.0
 	if not pose_tracking_valid:
 		state["wrist_velocity_history"] = []
 		state["wrist_position_history"] = []
@@ -1119,16 +1135,18 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
 		if family == "hook":
 			var min_lateral_dominance_ratio := maxf(float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO)), 0.0)
-			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_lateral_dominance_ratio
+			var min_horizontal_direction_ratio := clampf(float(config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO)), 0.0, 1.0)
+			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_lateral_dominance_ratio and state.get("directionality_ratio", 0.0) >= min_horizontal_direction_ratio
 		else:
 			var min_vertical_dominance_ratio := maxf(float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO)), 0.0)
-			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_vertical_dominance_ratio
+			var min_upward_direction_ratio := clampf(float(config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO)), 0.0, 1.0)
+			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_vertical_dominance_ratio and state.get("directionality_ratio", 0.0) >= min_upward_direction_ratio
 		if ready_to_trigger:
 			var triggered_grace_ms := max(0, int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)))
 			state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
 			state["grace_ms_remaining"] = triggered_grace_ms
 			state["not_ready_started_timestamp_ms"] = -1
-			_emit_power_event(events, event_name, _compute_pose_strike_power(family, speed, outward_velocity, upward_velocity, config))
+			_emit_power_event(events, event_name, _compute_pose_strike_power(family, speed, horizontal_direction_velocity, upward_velocity, config))
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRIGGERED)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -1569,6 +1587,8 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"elbow_bend_deg": 0.0,
 		"outward_velocity": 0.0,
 		"upward_velocity": 0.0,
+		"horizontal_direction_velocity": 0.0,
+		"directionality_ratio": 0.0,
 		"outward_distance": 0.0,
 		"wrist_elbow_vertical_offset": 0.0,
 		"wrist_elbow_horizontal_offset": 0.0,
@@ -1595,6 +1615,7 @@ func _get_hook_config() -> Dictionary:
 		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"min_lateral_dominance_ratio": HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO,
+		"min_horizontal_direction_ratio": HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -1614,6 +1635,7 @@ func _get_hook_config() -> Dictionary:
 	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_lateral_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_lateral_dominance_ratio", config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))))
+	config["min_horizontal_direction_ratio"] = clampf(float(thresholds.get("min_horizontal_direction_ratio", config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO))), 0.0, 1.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -1625,6 +1647,7 @@ func _get_uppercut_config() -> Dictionary:
 		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"min_vertical_dominance_ratio": UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO,
+		"min_upward_direction_ratio": UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -1644,6 +1667,7 @@ func _get_uppercut_config() -> Dictionary:
 	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_vertical_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_vertical_dominance_ratio", config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))))
+	config["min_upward_direction_ratio"] = clampf(float(thresholds.get("min_upward_direction_ratio", config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO))), 0.0, 1.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -1799,9 +1823,9 @@ func _compute_straight_punch_power(wrist_velocity: float, bbox_area: float, stat
 	var area_power := bbox_area / maxf(float(state.get("trigger_bbox_area", bbox_area)), 0.000001)
 	return clampf(0.35 + velocity_power * 0.35 + growth_power * 0.20 + area_power * 0.10, 0.0, 1.0)
 
-func _compute_pose_strike_power(family: String, wrist_velocity: float, outward_velocity: float, upward_velocity: float, config: Dictionary) -> float:
+func _compute_pose_strike_power(family: String, wrist_velocity: float, direction_velocity: float, upward_velocity: float, config: Dictionary) -> float:
 	var velocity_floor := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.000001)
-	var dominant_velocity := maxf(outward_velocity if family == "hook" else upward_velocity, 0.0)
+	var dominant_velocity := maxf(direction_velocity if family == "hook" else upward_velocity, 0.0)
 	var velocity_power := wrist_velocity / (velocity_floor * 3.0)
 	var dominant_power := dominant_velocity / (velocity_floor * 2.0)
 	return clampf(0.35 + velocity_power * 0.35 + dominant_power * 0.30, 0.0, 1.0)
@@ -1845,6 +1869,8 @@ func _transition_pose_strike_state(events: Array, family: String, side: String, 
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
 		"outward_velocity": float(state.get("outward_velocity", 0.0)),
 		"upward_velocity": float(state.get("upward_velocity", 0.0)),
+		"horizontal_direction_velocity": float(state.get("horizontal_direction_velocity", 0.0)),
+		"directionality_ratio": float(state.get("directionality_ratio", 0.0)),
 		"dominance_ratio": float(state.get("dominance_ratio", 0.0)),
 		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
 		"tracking_state": String(state.get("tracking_state", "pose_missing")),

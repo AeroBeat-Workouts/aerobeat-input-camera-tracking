@@ -240,6 +240,10 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 		"label": "Dominance ratio >= {threshold}",
 	},
 	{
+		"id": "directionality_ratio",
+		"label": "Signed direction ratio >= {threshold}",
+	},
+	{
 		"id": "rearm_section",
 		"label": "Hold / rearm",
 		"row_kind": "section",
@@ -1109,6 +1113,8 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 	var min_velocity := float(side_debug.get("min_velocity", side_debug.get("min_punch_velocity", 0.0)))
 	var dominance_ratio := float(side_debug.get("dominance_ratio", 0.0))
 	var required_dominance := float(side_debug.get("min_lateral_dominance_ratio", side_debug.get("min_vertical_dominance_ratio", 0.0)))
+	var directionality_ratio := float(side_debug.get("directionality_ratio", 0.0))
+	var required_directionality := float(side_debug.get("min_horizontal_direction_ratio", side_debug.get("min_upward_direction_ratio", 0.0)))
 	var grace_ms_remaining := int(side_debug.get("grace_ms_remaining", 0))
 	var triggered_grace_ms := int(side_debug.get("triggered_grace_ms", 0))
 	var pose_only_rearm_ms := int(side_debug.get("pose_only_rearm_ms", 0))
@@ -1137,6 +1143,14 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 			threshold_text = _fmt_float(required_dominance)
 			current_text = _fmt_float(dominance_ratio)
 			passed = dominance_ratio >= required_dominance
+		"directionality_ratio":
+			threshold_text = _fmt_float(required_directionality)
+			current_text = _fmt_float(directionality_ratio)
+			passed = directionality_ratio >= required_directionality
+			if family == "hook":
+				label = "%s horizontal ratio >= {threshold}" % String(side_debug.get("required_direction_label", "signed direction")).capitalize()
+			else:
+				label = "%s ratio >= {threshold}" % String(side_debug.get("required_direction_label", "upward")).capitalize()
 		"grace_timer":
 			current_text = "%d/%dms remaining" % [grace_ms_remaining, triggered_grace_ms]
 			if state_name == "triggered":
@@ -1503,6 +1517,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Velocity window: %dms" % int(hook_eval.get("wrist_velocity_window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Min lateral dominance: %s" % _fmt_float(hook_thresholds.get("min_lateral_dominance_ratio", 0.0)))
+	lines.append("Min horizontal direction ratio: %s" % _fmt_float(hook_thresholds.get("min_horizontal_direction_ratio", 0.0)))
 	lines.append("Hook grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(hook_timing.get("triggered_grace_ms", 0)),
 		int(hook_rearm.get("pose_only_rearm_ms", 0)),
@@ -1516,6 +1531,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Velocity window: %dms" % int(uppercut_eval.get("wrist_velocity_window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Min vertical dominance: %s" % _fmt_float(uppercut_thresholds.get("min_vertical_dominance_ratio", 0.0)))
+	lines.append("Min upward direction ratio: %s" % _fmt_float(uppercut_thresholds.get("min_upward_direction_ratio", 0.0)))
 	lines.append("Uppercut grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(uppercut_timing.get("triggered_grace_ms", 0)),
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),
@@ -1602,7 +1618,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		hand_grace_ms = 0
 		hand_stable_ms = 0
 		stale_ms = 0
-	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms hook=%s/%s uppercut=%s/%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
+	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
 		"L" if side == "left" else "R",
 		state_name,
 		tracking_state,
@@ -1614,9 +1630,11 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		_fmt_float(side_debug.get("bbox_area_growth", 0.0)),
 		int(side_debug.get("grace_ms_remaining", 0)),
 		String(hook_side_debug.get("state", "tracking_lost")),
-		_fmt_float(hook_side_debug.get("outward_velocity", 0.0)),
+		_fmt_float(hook_side_debug.get("horizontal_direction_velocity", hook_side_debug.get("outward_velocity", 0.0))),
+		_fmt_float(hook_side_debug.get("directionality_ratio", 0.0)),
 		String(uppercut_side_debug.get("state", "tracking_lost")),
 		_fmt_float(uppercut_side_debug.get("upward_velocity", 0.0)),
+		_fmt_float(uppercut_side_debug.get("directionality_ratio", 0.0)),
 		hand_grace_ms,
 		hand_stable_ms,
 		stale_ms,

@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-07 18:06 EDT
+**Last Updated:** 2026-06-07 20:21 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -3725,6 +3725,67 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
 - Local orchestrator audit confirmed the landed repo state matches Derrick's simplified contract: `assets/boxing.gesture_detection.yaml` now exposes only `wrist_velocity_window_ms`, `min_velocity`, the family-specific dominance threshold, and the timing/rearm/reacquire knobs for hook/uppercut; `src/detectors/pose_detector_substrate.gd` now fires from `ready` using only averaged velocity + dominance threshold; and `.testbed/scripts/boxing_proving_harness.gd` now provides hook/uppercut inspector rows instead of the old `Live hookup still needed` fallback.
 
 **Next Slice:** Keep the simplified trigger contract, but continue owner-correct repair against the dedicated family fixtures in `.testbed/assets/fixtures/boxing/{hook_left,hook_right,uppercut_left,uppercut_right}/` until left-hook timing lands in-window and the remaining uppercut windows improve without the current incidental co-fire volume. The family slice is materially better now, but not yet product-complete.
+
+**Directionality clarification from Derrick (2026-06-07 20:18 EDT):** Hook dominance should not be treated as unsigned lateral movement alone. The required horizontal direction must match the boxing side: `hook_left` should require the left-side shared elbow+wrist motion to move predominantly **rightward** (left-to-right across the camera frame), while `hook_right` should require the right-side shared elbow+wrist motion to move predominantly **leftward** (right-to-left across the camera frame). `uppercut_left` / `uppercut_right` should likewise require predominantly **upward** motion, not merely large vertical magnitude that could include downward travel. This is now the highest-value next diagnostic/repair hypothesis for the remaining family-fixture misses, especially `hook_left 0/4`.
+
+**Approved execution seam (2026-06-07 20:20 EDT):** Implement signed directionality gating and expose the new directionality knobs in YAML/testbed so Derrick can tune them directly. Working bead: `aerobeat-input-camera-tracking-8d8`. Keep the simplified trigger contract otherwise intact.
+
+**Continuation Attempt (2026-06-07 18:31-18:36 EDT):** I ran two tightly scoped follow-up experiments against the same four dedicated family fixtures, then reverted both because neither improved the required in-window score beyond the truthful `5/16` baseline.
+
+**Experiment A — YAML-only retunes (reverted):**
+- **Temporary files changed (reverted):**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml`
+- **Commands run:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+  - `godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn .testbed/assets/fixtures/boxing/<family> .testbed/test-results/task10ca-hook-uppercut-timing-retune/20260607-183107/<family> 7000`
+  - `python3` summary pass writing `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10ca-hook-uppercut-timing-retune/20260607-183107/family_fixture_summary.{md,json}`
+  - `godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn .testbed/assets/fixtures/boxing/<family> .testbed/test-results/task10cb-hook-uppercut-threshold-retune/20260607-183323/<family> 7000`
+  - `python3` summary pass writing `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cb-hook-uppercut-threshold-retune/20260607-183323/family_fixture_summary.json`
+- **Artifacts:**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10ca-hook-uppercut-timing-retune/20260607-183107/family_fixture_summary.md`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10ca-hook-uppercut-timing-retune/20260607-183107/family_fixture_summary.json`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10ca-hook-uppercut-timing-retune/20260607-183107/unit.log`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cb-hook-uppercut-threshold-retune/20260607-183323/family_fixture_summary.json`
+- **Validation:** The timing-only retune still passed focused unit coverage (`57/57`, `555` asserts), but regressed family timing to `4/16` required in-window hits (`hook_left 0/4`, `hook_right 2/4`, `uppercut_left 1/4`, `uppercut_right 1/4`). A follow-up threshold-only retune (`min_velocity` / dominance lowered while keeping the same simplified contract knobs) also stayed at `4/16` with the same breakdown. Neither YAML-only pass pulled left-hook timing into authored windows, so both were discarded.
+
+**Experiment B — same-sample ready evaluation seam (reverted):**
+- **Temporary files changed (reverted):**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+- **Commands run:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+  - `godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn .testbed/assets/fixtures/boxing/<family> .testbed/test-results/task10cc-hook-uppercut-same-sample-ready/20260607-183548/<family> 7000`
+  - `python3` summary pass writing `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cc-hook-uppercut-same-sample-ready/20260607-183548/family_fixture_summary.{md,json}`
+- **Artifacts:**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cc-hook-uppercut-same-sample-ready/20260607-183548/family_fixture_summary.md`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cc-hook-uppercut-same-sample-ready/20260607-183548/family_fixture_summary.json`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cc-hook-uppercut-same-sample-ready/20260607-183548/unit.log`
+- **Validation:** Focused unit coverage still passed (`57/57`, `555` asserts), but allowing `tracking_lost -> ready` and `not_ready -> ready` to fall through into same-frame trigger evaluation still regressed the family result to `4/16` (`hook_left 0/4`, `hook_right 3/4`, `uppercut_left 0/4`, `uppercut_right 1/4`). The hypothesis was plausible, but the replay truth says it is not the owner-correct repair seam.
+
+**Net Result:** No truthful improvement beyond the existing `5/16` family baseline was landed in this continuation attempt, so both experiments were reverted and there is **no new commit** from this slice. The best current repo truth remains the prior simplified-contract state recorded above at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10bz-hook-uppercut-simplified-contract/20260607-181636/family_fixture_summary.json`.
+
+**Continuation Attempt — signed directionality seam (2026-06-07 20:21-20:40 EDT):** Landed the approved signed-direction repair without widening the simplified trigger contract. The detector still triggers from `ready` using only the shared elbow+wrist averaged velocity window plus the family dominance threshold, but now adds explicit sign-truth gating: `hook_left` requires predominantly rightward horizontal motion, `hook_right` predominantly leftward horizontal motion, and both uppercuts predominantly upward motion. I exposed those new knobs publicly in `assets/boxing.gesture_detection.yaml`, surfaced them in the boxing proving-harness tuning/debug/inspector views, added detector regressions proving wrong-sign motion does not fire, and reran the dedicated family fixtures.
+- **Files changed:**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- **Commands run:**
+  - `bd update aerobeat-input-camera-tracking-8d8 --status in_progress --json`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+  - `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/<family>/<video>.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/<family>" "$PWD/.testbed/test-results/task10cd-hook-uppercut-signed-direction/20260607-203453/<family>" 7000`
+  - `python3 .temp_family_summary.py .testbed/test-results/task10cd-hook-uppercut-signed-direction/20260607-203453` (one-off local summary helper used to write the family summary artifacts, then removed)
+- **Artifacts:**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cd-hook-uppercut-signed-direction/20260607-203453/family_fixture_summary.json`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cd-hook-uppercut-signed-direction/20260607-203453/family_fixture_summary.md`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cd-hook-uppercut-signed-direction/20260607-203453/{hook_left,hook_right,uppercut_left,uppercut_right}/report.{json,md}`
+- **Validation:**
+  - Focused detector + proving-harness coverage passed truthfully: `59/59` tests, `585` asserts.
+  - Family-fixture acceptance improved materially beyond the prior `5/16` baseline to **`9/16` required in-window hits**.
+  - Breakdown: `hook_left 4/4` (fixed from `0/4`), `hook_right 3/4`, `uppercut_left 1/4`, `uppercut_right 1/4`.
+  - Incidental co-fires remain loud (`hook_left 29`, `hook_right 36`, `uppercut_left 33`, `uppercut_right 23` forbidden-family events in the current summary), so the seam is truthful progress but not final cleanup.
+  - Headless proving capture still emitted the pre-existing dummy-renderer screenshot warning (`Parameter "t" is null`) after writing the report artifacts; JSON/Markdown capture evidence was still produced successfully for all four fixtures.
+- **Net Result:** This is the first truthful improvement past the current `5/16` family bar, so this detector/config/testbed slice is worth keeping and handing to QA/audit. The next narrow seam should target incidental co-fires and the remaining `7/16` missed windows without undoing the signed-direction fix.
 
 ---
 

@@ -407,13 +407,15 @@ func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 			"hook": {
 				"left": {
 					"state": "ready",
-					"outward_velocity": 0.31,
+					"horizontal_direction_velocity": 0.31,
+					"directionality_ratio": 0.82,
 				}
 			},
 			"uppercut": {
 				"left": {
 					"state": "tracking_lost",
 					"upward_velocity": 0.00,
+					"directionality_ratio": 0.00,
 				}
 			}
 		}
@@ -425,8 +427,8 @@ func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 	assert_string_contains(line, "valid=true")
 	assert_string_contains(line, "source=pose")
 	assert_string_contains(line, "bbox_area=0.000")
-	assert_string_contains(line, "hook=ready/0.310")
-	assert_string_contains(line, "uppercut=tracking_lost/0.000")
+	assert_string_contains(line, "hook=ready/0.310 dir=0.820")
+	assert_string_contains(line, "uppercut=tracking_lost/0.000 dir=0.000")
 
 
 func test_boxing_event_feed_text_lists_hook_and_uppercut_tuning_sections() -> void:
@@ -435,8 +437,10 @@ func test_boxing_event_feed_text_lists_hook_and_uppercut_tuning_sections() -> vo
 	assert_string_contains(text_body, "Hook tuning")
 	assert_string_contains(text_body, "Min velocity")
 	assert_string_contains(text_body, "Min lateral dominance")
+	assert_string_contains(text_body, "Min horizontal direction ratio")
 	assert_string_contains(text_body, "Uppercut tuning")
 	assert_string_contains(text_body, "Min vertical dominance")
+	assert_string_contains(text_body, "Min upward direction ratio")
 
 func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	var harness = _new_harness()
@@ -456,6 +460,9 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 					"min_velocity": 0.080,
 					"dominance_ratio": 0.740,
 					"min_lateral_dominance_ratio": 0.500,
+					"directionality_ratio": 0.830,
+					"min_horizontal_direction_ratio": 0.550,
+					"required_direction_label": "rightward",
 					"grace_ms_remaining": 0,
 					"triggered_grace_ms": 240,
 					"pose_only_rearm_ms": 250,
@@ -473,13 +480,17 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_eq(String(rows[5].get("current_text", "")), "0.420")
 	assert_eq(String(rows[6].get("threshold_text", "")), "0.500")
 	assert_eq(String(rows[6].get("current_text", "")), "0.740")
-	assert_string_contains(String(rows[9].get("current_text", "")), "elapsed (pose-only timer)")
-	assert_eq(String(rows[10].get("current_text", "")), "tracked / 40ms required")
+	assert_eq(String(rows[7].get("label", "")), "Rightward horizontal ratio >= {threshold}")
+	assert_eq(String(rows[7].get("threshold_text", "")), "0.550")
+	assert_eq(String(rows[7].get("current_text", "")), "0.830")
+	assert_string_contains(String(rows[10].get("current_text", "")), "elapsed (pose-only timer)")
+	assert_eq(String(rows[11].get("current_text", "")), "tracked / 40ms required")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Averaged velocity >= 0.080 - 0.420")
 	assert_string_contains(body, "Dominance ratio >= 0.500 - 0.740")
+	assert_string_contains(body, "Rightward horizontal ratio >= 0.550 - 0.830")
 	assert_string_contains(body, "Pose-only rearm - ")
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:

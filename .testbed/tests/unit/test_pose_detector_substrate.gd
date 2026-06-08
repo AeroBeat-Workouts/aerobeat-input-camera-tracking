@@ -675,22 +675,24 @@ func test_hook_uses_pose_primary_state_machine_and_debug_surfaces() -> void:
 	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
 
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.68, "y": 0.62},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.84, "y": 0.60},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.46, "y": 0.60},
 	}), 1320)
 	assert_true(_event_names(state.get("events", [])).has("hook_right"))
 	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["triggered"])
 	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
 	assert_eq(String(right_debug.get("state", "")), "triggered")
-	assert_true(float(right_debug.get("outward_velocity", 0.0)) >= float(right_debug.get("min_punch_velocity", 1.0)))
+	assert_true(float(right_debug.get("horizontal_direction_velocity", 0.0)) >= float(right_debug.get("min_punch_velocity", 1.0)))
 	assert_true(float(right_debug.get("dominance_ratio", 0.0)) >= float(right_debug.get("min_lateral_dominance_ratio", 99.0)))
-	assert_true(float(right_debug.get("outward_distance", 0.0)) >= 0.0)
+	assert_true(absf(float(right_debug.get("outward_distance", 0.0))) >= 0.0)
+	assert_true(float(right_debug.get("directionality_ratio", 0.0)) >= float(right_debug.get("min_horizontal_direction_ratio", 99.0)))
+	assert_eq(String(right_debug.get("required_direction_label", "")), "leftward")
 	assert_eq(String(right_debug.get("sample_source", "")), "pose")
 	assert_eq(String(right_debug.get("tracking_state", "")), "pose_tracked")
 
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.68, "y": 0.62},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.84, "y": 0.60},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.46, "y": 0.60},
 	}), 1568)
 	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["not_ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "not_ready")
@@ -720,6 +722,8 @@ func test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth() -> 
 	assert_eq(String(left_debug.get("state", "")), "triggered")
 	assert_true(float(left_debug.get("upward_velocity", 0.0)) >= float(left_debug.get("min_punch_velocity", 1.0)))
 	assert_true(float(left_debug.get("dominance_ratio", 0.0)) >= float(left_debug.get("min_vertical_dominance_ratio", 99.0)))
+	assert_true(float(left_debug.get("directionality_ratio", 0.0)) >= float(left_debug.get("min_upward_direction_ratio", 99.0)))
+	assert_eq(String(left_debug.get("required_direction_label", "")), "upward")
 	assert_eq(String(left_debug.get("velocity_signal_source", "")), "elbow_plus_wrist")
 	assert_eq(String(left_debug.get("sample_source", "")), "pose")
 
@@ -731,6 +735,38 @@ func test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth() -> 
 	left_debug = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
 	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
 	assert_eq(String(left_debug.get("tracking_state", "")), "pose_missing")
+
+func test_hook_requires_signed_horizontal_direction_for_side() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
+	state = substrate.process_landmarks(_make_pose_frame(), 1160)
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.20, "y": 0.62},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.08, "y": 0.60},
+	}), 1320)
+	assert_false(_event_names(state.get("events", [])).has("hook_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
+	assert_true(float(left_debug.get("dominance_ratio", 0.0)) >= float(left_debug.get("min_lateral_dominance_ratio", 99.0)))
+	assert_true(float(left_debug.get("directionality_ratio", 1.0)) < float(left_debug.get("min_horizontal_direction_ratio", 0.0)))
+	assert_eq(String(left_debug.get("state", "")), "ready")
+
+func test_uppercut_requires_upward_signed_vertical_direction() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 2000)
+	state = substrate.process_landmarks(_make_pose_frame(), 2160)
+	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.54},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.33, "y": 0.48},
+	}), 2320)
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_true(float(left_debug.get("dominance_ratio", 0.0)) >= float(left_debug.get("min_vertical_dominance_ratio", 99.0)))
+	assert_true(float(left_debug.get("directionality_ratio", 1.0)) < float(left_debug.get("min_upward_direction_ratio", 0.0)))
+	assert_eq(String(left_debug.get("state", "")), "ready")
 
 func test_quantizes_flow_direction_to_twelve_chart_slots() -> void:
 	assert_eq(substrate._flow_ring_index_from_vector(Vector2(1.0, 0.0)), 2)
