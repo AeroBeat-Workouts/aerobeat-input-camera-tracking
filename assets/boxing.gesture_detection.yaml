@@ -3,7 +3,7 @@ version: 1
 profile: boxing
 straight_punch:
   # Turn straight-punch detection on or off. input.
-  enabled: true
+  enabled: false
   evaluation:
     # Only let brand-new hand samples count toward a punch. input.
     fresh_samples_only: true
@@ -37,17 +37,21 @@ hook:
   enabled: true
   evaluation:
     # Measure shared elbow+wrist averaged velocity across this much recent time. input.
-    wrist_velocity_window_ms: 120
+    wrist_velocity_window_ms: 250
   thresholds:
     # Shared elbow+wrist averaged velocity must reach at least this value to count as a hook. input.
-    min_velocity: 0.08
+    min_velocity: 0.5
     # Hook motion must stay at least this much more lateral than vertical. input.
+    #- `0` = don’t care about lateral dominance
+	#- `1` = horizontal must be at least as big as vertical
+	#- `2` = horizontal must be twice vertical
+	#- very large = almost purely horizontal
     min_lateral_dominance_ratio: 0.5
     # Required left/right horizontal travel must make up at least this much of total shared elbow+wrist motion magnitude. input.
     min_horizontal_direction_ratio: 0.55
   timing:
     # Keep the hook in its triggered state for this long after it fires. input.
-    triggered_grace_ms: 240
+    triggered_grace_ms: 500
   rearm:
     # After a hook, wait this long before the pose-primary detector can rearm. input.
     pose_only_rearm_ms: 250
@@ -56,20 +60,24 @@ hook:
     lost_tracking_reacquire_stable_ms: 40
 uppercut:
   # Turn uppercut detection on or off. input.
-  enabled: true
+  enabled: false
   evaluation:
     # Measure shared elbow+wrist averaged velocity across this much recent time. input.
-    wrist_velocity_window_ms: 120
+    wrist_velocity_window_ms: 250
   thresholds:
     # Shared elbow+wrist averaged velocity must reach at least this value to count as an uppercut. input.
-    min_velocity: 0.08
+    min_velocity: 0.5
     # Uppercut motion must stay at least this much more vertical than lateral. input.
+    # `0` = ignore vertical-vs-lateral balance
+	# `1` = vertical must be at least as large as lateral
+	# `2` = vertical must be twice lateral
+	# larger values = more purely vertical motion
     min_vertical_dominance_ratio: 0.4
     # Upward travel must make up at least this much of total shared elbow+wrist motion magnitude. input.
     min_upward_direction_ratio: 0.55
   timing:
     # Keep the uppercut in its triggered state for this long after it fires. input.
-    triggered_grace_ms: 240
+    triggered_grace_ms: 500
   rearm:
     # After an uppercut, wait this long before the pose-primary detector can rearm. input.
     pose_only_rearm_ms: 250
