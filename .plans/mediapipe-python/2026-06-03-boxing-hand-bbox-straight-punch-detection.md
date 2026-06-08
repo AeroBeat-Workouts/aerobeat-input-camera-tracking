@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-07 21:42 EDT
+**Last Updated:** 2026-06-07 21:57 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -3736,6 +3736,10 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
 
 **User-directed restore override (2026-06-07 21:41 EDT):** although the continuous-share experiment regressed the family fixtures (`9/16` -> `3/16`) and was reverted as the best default, Derrick wants that experimental directionality math restored in-repo temporarily so he can tune and inspect it manually on-device. Restore the exact continuous-share variant plus its YAML/comment/testbed inspector truth as a manual-testing state, and record clearly in the plan that this restore is user-directed exploratory state rather than the current best fixture-truth baseline. Working bead: `aerobeat-input-camera-tracking-e01`.
 
+**Fresh Chip report on current synced HEAD (2026-06-07 21:57 EDT):** Derrick synced the restored continuous-share state and still sees two user-facing issues in live use even with straight punch + uppercut disabled for the test: (1) replay video still does not loop in his run, so the earlier rewind fix must be re-audited against the current HEAD and actual proving path rather than assumed solved; (2) framerate is very low even in this reduced-gesture configuration, making current testbed usability the top practical blocker. Re-open both seams against the exact current branch state. Working beads: `aerobeat-input-camera-tracking-d9h` (loop re-audit) and `aerobeat-input-camera-tracking-blv` (current-state framerate profile).
+
+**User instruction lock (2026-06-07 22:00 EDT):** Do **not** revert away from the current experimental continuous-share directionality state unless Derrick explicitly says to. Treat current golden-truth fixture results as provisional until Derrick personally checks them; with the current replay-loop / framerate regressions active, automated fixture outcomes are not yet sufficient to justify rolling back the experimental math on their own.
+
 **Continuation Attempt (2026-06-07 18:31-18:36 EDT):** I ran two tightly scoped follow-up experiments against the same four dedicated family fixtures, then reverted both because neither improved the required in-window score beyond the truthful `5/16` baseline.
 
 **Experiment A — YAML-only retunes (reverted):**
@@ -3876,6 +3880,29 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
 
 **Commit:**
 - `114f3dd` — replay-loop timestamp rewind fix landed in `REF-01`
+
+**Current-head re-audit after Derrick’s 2026-06-07 21:57 EDT report (bead `aerobeat-input-camera-tracking-d9h`):**
+- I re-ran the proving replay seam against the exact current repo state (including the restored continuous-share experiment) instead of assuming `114f3dd` still fully covered it. The old detector rewind fix is still real, but it was **not** the remaining current-head loop blocker.
+- Fresh local repro used a one-off headless proving probe (`.temp-replay-loop-audit.gd`, not committed) against `res://scenes/boxing_proving.tscn` with `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4"` for `18s`, sampling replay status every `500ms` into `.temp-replay-loop-audit.json`.
+- Repro evidence before the fix: the first pass advanced normally to about `5.97s`, then replay status rewound to `0.0` at ~`5.78s` elapsed and stayed there for the rest of the run even though the proving session remained alive and `tracking_frame.timestamp_ms` continued to update. That matched Derrick’s “replay still does not loop” report from the user-facing proving scene.
+- Exact current-head cause: the remaining seam was in the **vendor replay publication path**, not in `src/detectors/pose_detector_substrate.gd`. In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py`, the OpenCV replay loop still treated playback position / fallback timestamps / state-write cadence as effectively monotonic across rewinds. On this real local boxing fixture, `capture.get(CAP_PROP_POS_MSEC)` fell back to `0.0` after EOF rewind, so playback status stayed pinned at `0.0` unless the runtime derived loop-relative timing itself. The runtime also kept the prior cadence anchors across loop restarts, so replay-publication truth around the seam was brittle even though the process stayed `running`.
+- Small truthful fix landed in the vendor owner source (mounted into this repo via `.testbed/addons/aerobeat-vendor-mediapipe-python` symlink):
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/mediapipe_runtime_probe.py`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/tests/test_mediapipe_runtime_probe.py`
+- What changed in the fix:
+  - replay fallback timestamps now use a **loop-local replay origin + per-loop frame index** instead of the global lifetime sample index,
+  - replay `playback_status.current_time_sec` now follows the same replay-source timestamp truth used for the emitted frame,
+  - replay cadence gates treat a timestamp rewind as a valid new write boundary instead of silently assuming time can only move forward,
+  - successful loop rewinds reset the replay-local pacing/cadence anchors so the next loop publishes immediately and truthfully.
+- Exact commands run for the re-audit/fix:
+  - `bd update aerobeat-input-camera-tracking-d9h --status in_progress --json`
+  - `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script ../.temp-replay-loop-audit.gd -- res://scenes/boxing_proving.tscn "$PWD/.temp-replay-loop-audit.json" 18000 500`
+  - `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_resume_start_rewinds_to_original_loop_origin runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_resume_start_uses_loop_origin_when_capture_pos_resets_to_zero_after_rewind`
+  - `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script ../.temp-replay-loop-audit.gd -- res://scenes/boxing_proving.tscn "$PWD/.temp-replay-loop-audit.json" 18000 500`
+- Validation after the fix:
+  - focused vendor replay-loop regression tests passed (`2/2`), including a new coverage path that simulates the observed bad case where replay `CAP_PROP_POS_MSEC` collapses to `0.0` after rewind while looping should still restart from the configured loop origin,
+  - the same headless proving probe now shows truthful loop wraps instead of a stuck `0.0` playback status: local replay rewound from about `5.767s -> 0.267s` at ~`5.85s` elapsed, then again from about `5.833s -> 0.300s` at ~`12.40s`, with `tracking_frame.timestamp_ms` rewinding alongside (`5767 -> 267`, later `5833 -> 300`) rather than freezing or drifting monotonically.
+- Result: current-head proving replay looping is now re-audited against reality and has a narrow owner-correct fix. The older detector rewind reset remains useful, but the user-visible non-looping seam on this synced HEAD was the vendor replay publication path after OpenCV rewind, not a regression in the detector guard itself.
 
 ---
 
