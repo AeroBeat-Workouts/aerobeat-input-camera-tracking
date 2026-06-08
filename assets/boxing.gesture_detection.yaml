@@ -52,7 +52,7 @@ hook:
 	#- `0.5` = at least half of the total motion magnitude must be in the correct horizontal direction
 	#- `1` = all of the measured motion magnitude must be in the correct horizontal direction
 	#- larger values are impossible with the current math
-    min_horizontal_direction_ratio: 0
+    min_horizontal_direction_ratio: .25
   timing:
     # Keep the hook in its triggered state for this long after it fires. input.
     triggered_grace_ms: 500
