@@ -454,8 +454,8 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 					"pose_tracking_valid": true,
 					"tracking_state": "pose_tracked",
 					"sample_source": "pose",
-					"wrist_velocity_window_ms": 120,
-					"wrist_velocity_window_span_ms": 118,
+					"window_ms": 120,
+					"window_span_ms": 118,
 					"wrist_velocity": 0.420,
 					"min_velocity": 0.080,
 					"dominance_ratio": 0.740,
@@ -489,6 +489,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
 	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Motion window - 120ms configured, 118ms averaged span")
 	assert_string_contains(body, "Averaged velocity >= 0.080 - 0.420")
 	assert_string_contains(body, "Dominance ratio >= 0.500 - 0.740")
 	assert_string_contains(body, "Preview-space Rightward share of total motion >= 0.550 - 0.830")

@@ -611,17 +611,16 @@ func _build_pose_strike_debug_state(family: String, metrics: Dictionary = {}) ->
 func _build_pose_strike_side_debug(family: String, side: String, measurements: Dictionary) -> Dictionary:
 	var state := _get_pose_strike_state(family, side)
 	var config := _get_pose_strike_config(family)
-	var velocity_vector: Vector3 = state.get("last_wrist_velocity_vector", Vector3.ZERO)
-	var lateral_speed := absf(float(velocity_vector.x))
-	var vertical_speed := absf(float(velocity_vector.y))
+	var lateral_speed := float(state.get("last_lateral_velocity", 0.0))
+	var vertical_speed := float(state.get("last_vertical_velocity", 0.0))
 	var debug := {
 		"phase": String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)),
 		"state": String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)),
 		"previous_state": String(state.get("previous_state", "")),
 		"timestamp_ms": int(state.get("timestamp_ms", 0)),
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
-		"wrist_velocity_window_ms": int(config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)),
-		"wrist_velocity_window_span_ms": int(state.get("last_wrist_velocity_window_span_ms", 0)),
+		"window_ms": int(config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)),
+		"window_span_ms": int(state.get("last_wrist_velocity_window_span_ms", 0)),
 		"min_velocity": float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))),
 		"min_punch_velocity": float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))),
 		"triggered_grace_ms": int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)),
@@ -905,6 +904,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["wrist_position_history"] = []
 		state["recent_peak_wrist_velocity"] = 0.0
 		state["last_wrist_velocity_vector"] = Vector3.ZERO
+		state["last_lateral_velocity"] = 0.0
+		state["last_vertical_velocity"] = 0.0
 		state["last_wrist_velocity_window_span_ms"] = 0
 		state["bbox_area_window_history"] = []
 		state["bbox_area_growth_history"] = []
@@ -1070,23 +1071,22 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var wrist_position := PoseMetrics.to_vector3(wrist)
 	var velocity_signal_position := _resolve_straight_punch_velocity_signal_position(state, elbow, wrist_position)
 	var velocity_vector := _resolve_straight_punch_wrist_velocity(state, velocity_signal_position, timestamp_ms, fresh_sample, config)
-	var speed := maxf(velocity_vector.length(), 0.0)
-	var lateral_speed := absf(float(velocity_vector.x))
-	var vertical_speed := absf(float(velocity_vector.y))
-	var outward_velocity := float(velocity_vector.x) if side == "right" else -float(velocity_vector.x)
-	var horizontal_direction_velocity := maxf(float(velocity_vector.x), 0.0) if side == "left" else maxf(-float(velocity_vector.x), 0.0)
-	var upward_velocity := maxf(float(velocity_vector.y), 0.0)
-	var directionality_ratio := 0.0
-	if family == "hook":
-		directionality_ratio = horizontal_direction_velocity / maxf(speed, 0.000001) if horizontal_direction_velocity > 0.0 else 0.0
-	else:
-		directionality_ratio = upward_velocity / maxf(speed, 0.000001) if upward_velocity > 0.0 else 0.0
+	var motion_window := _resolve_pose_strike_motion_window(state, side, velocity_vector, timestamp_ms)
+	var speed := float(motion_window.get("wrist_velocity", 0.0))
+	var lateral_speed := float(motion_window.get("lateral_velocity", 0.0))
+	var vertical_speed := float(motion_window.get("vertical_velocity", 0.0))
+	var outward_velocity := float(motion_window.get("outward_velocity", 0.0))
+	var horizontal_direction_velocity := float(motion_window.get("horizontal_direction_velocity", 0.0))
+	var upward_velocity := float(motion_window.get("upward_velocity", 0.0))
+	var directionality_ratio := float(motion_window.get("directionality_ratio", 0.0))
 	var outward_distance := float(shoulder.get("x", 0.0) - wrist.get("x", 0.0) if side == "left" else wrist.get("x", 0.0) - shoulder.get("x", 0.0))
 	var wrist_elbow_vertical_offset := absf(float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0)))
 	var wrist_elbow_horizontal_offset := absf(float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0)))
 	var wrist_above_elbow_offset := float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0))
 	state["last_wrist_velocity"] = speed
-	state["last_wrist_velocity_vector"] = velocity_vector
+	state["last_wrist_velocity_vector"] = motion_window.get("averaged_velocity_vector", velocity_vector)
+	state["last_lateral_velocity"] = lateral_speed
+	state["last_vertical_velocity"] = vertical_speed
 	state["last_sample_fresh"] = fresh_sample
 	state["pose_tracking_valid"] = pose_tracking_valid
 	state["tracking_state"] = "pose_tracked" if pose_tracking_valid else "pose_missing"
@@ -1100,16 +1100,14 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["wrist_elbow_vertical_offset"] = wrist_elbow_vertical_offset
 	state["wrist_elbow_horizontal_offset"] = wrist_elbow_horizontal_offset
 	state["wrist_above_elbow_offset"] = wrist_above_elbow_offset
-	state["dominance_ratio"] = 0.0
-	if family == "hook":
-		state["dominance_ratio"] = lateral_speed / maxf(vertical_speed, 0.000001) if lateral_speed > 0.0 else 0.0
-	else:
-		state["dominance_ratio"] = vertical_speed / maxf(lateral_speed, 0.000001) if vertical_speed > 0.0 else 0.0
+	state["dominance_ratio"] = float(motion_window.get("hook_dominance_ratio", 0.0)) if family == "hook" else float(motion_window.get("uppercut_dominance_ratio", 0.0))
 	if not pose_tracking_valid:
 		state["wrist_velocity_history"] = []
 		state["wrist_position_history"] = []
 		state["recent_peak_wrist_velocity"] = 0.0
 		state["last_wrist_velocity_vector"] = Vector3.ZERO
+		state["last_lateral_velocity"] = 0.0
+		state["last_vertical_velocity"] = 0.0
 		state["last_wrist_velocity_window_span_ms"] = 0
 		state["grace_ms_remaining"] = 0
 		state["grace_deadline_timestamp_ms"] = 0
@@ -1137,6 +1135,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": velocity_signal_position}]
 			state["recent_peak_wrist_velocity"] = speed
 			state["last_wrist_velocity_vector"] = Vector3.ZERO
+			state["last_lateral_velocity"] = 0.0
+			state["last_vertical_velocity"] = 0.0
 			state["last_wrist_velocity_window_span_ms"] = 0
 			state["not_ready_started_timestamp_ms"] = -1
 			state["reacquire_started_timestamp_ms"] = -1
@@ -1182,6 +1182,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["wrist_position_history"] = [{"timestamp_ms": timestamp_ms, "position": velocity_signal_position}]
 			state["recent_peak_wrist_velocity"] = speed
 			state["last_wrist_velocity_vector"] = Vector3.ZERO
+			state["last_lateral_velocity"] = 0.0
+			state["last_vertical_velocity"] = 0.0
 			state["last_wrist_velocity_window_span_ms"] = 0
 			state["not_ready_started_timestamp_ms"] = -1
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
@@ -1516,6 +1518,8 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"last_bbox_area_growth_window_span_ms": 0,
 		"last_wrist_velocity": 0.0,
 		"last_wrist_velocity_vector": Vector3.ZERO,
+		"last_lateral_velocity": 0.0,
+		"last_vertical_velocity": 0.0,
 		"last_wrist_velocity_window_span_ms": 0,
 		"last_wrist_forward_velocity": 0.0,
 		"last_sample_fresh": false,
@@ -1590,6 +1594,8 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"grace_deadline_timestamp_ms": 0,
 		"last_wrist_velocity": 0.0,
 		"last_wrist_velocity_vector": Vector3.ZERO,
+		"last_lateral_velocity": 0.0,
+		"last_vertical_velocity": 0.0,
 		"last_wrist_velocity_window_span_ms": 0,
 		"last_sample_fresh": false,
 		"velocity_signal_source": "wrist_only",
@@ -1625,7 +1631,7 @@ func _get_pose_strike_config(family: String) -> Dictionary:
 func _get_hook_config() -> Dictionary:
 	var config := {
 		"enabled": true,
-		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
+		"window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"min_lateral_dominance_ratio": HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO,
 		"min_horizontal_direction_ratio": HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO,
@@ -1645,7 +1651,7 @@ func _get_hook_config() -> Dictionary:
 	var rearm: Dictionary = hook.get("rearm", {}) if hook.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = hook.get("state_machine", {}) if hook.get("state_machine", {}) is Dictionary else {}
 	config["enabled"] = bool(hook.get("enabled", config.get("enabled", true)))
-	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
+	config["window_ms"] = max(1, int(evaluation.get("window_ms", evaluation.get("wrist_velocity_window_ms", config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_lateral_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_lateral_dominance_ratio", config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))))
 	config["min_horizontal_direction_ratio"] = clampf(float(thresholds.get("min_horizontal_direction_ratio", config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO))), 0.0, 1.0)
@@ -1657,7 +1663,7 @@ func _get_hook_config() -> Dictionary:
 func _get_uppercut_config() -> Dictionary:
 	var config := {
 		"enabled": true,
-		"wrist_velocity_window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
+		"window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"min_vertical_dominance_ratio": UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO,
 		"min_upward_direction_ratio": UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO,
@@ -1677,7 +1683,7 @@ func _get_uppercut_config() -> Dictionary:
 	var rearm: Dictionary = uppercut.get("rearm", {}) if uppercut.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = uppercut.get("state_machine", {}) if uppercut.get("state_machine", {}) is Dictionary else {}
 	config["enabled"] = bool(uppercut.get("enabled", config.get("enabled", true)))
-	config["wrist_velocity_window_ms"] = max(1, int(evaluation.get("wrist_velocity_window_ms", config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
+	config["window_ms"] = max(1, int(evaluation.get("window_ms", evaluation.get("wrist_velocity_window_ms", config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_vertical_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_vertical_dominance_ratio", config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))))
 	config["min_upward_direction_ratio"] = clampf(float(thresholds.get("min_upward_direction_ratio", config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO))), 0.0, 1.0)
@@ -1745,7 +1751,7 @@ func _is_fresh_tracking_hand_sample(hand_payload: Dictionary, state: Dictionary)
 
 func _resolve_straight_punch_wrist_velocity(state: Dictionary, wrist_position: Vector3, timestamp_ms: int, fresh_sample: bool, straight_punch_config: Dictionary) -> Vector3:
 	var history: Array = (state.get("wrist_position_history", []) as Array).duplicate(true)
-	var window_ms := max(1, int(straight_punch_config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)))
+	var window_ms := max(1, int(straight_punch_config.get("window_ms", straight_punch_config.get("wrist_velocity_window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
 	if fresh_sample:
 		history.append({
 			"timestamp_ms": timestamp_ms,
@@ -1781,6 +1787,93 @@ func _resolve_straight_punch_wrist_velocity(state: Dictionary, wrist_position: V
 	if velocity_sample_count <= 0:
 		return Vector3.ZERO
 	return velocity_sum / float(velocity_sample_count)
+
+func _resolve_pose_strike_motion_window(state: Dictionary, side: String, fallback_velocity_vector: Vector3, timestamp_ms: int) -> Dictionary:
+	var history: Array = (state.get("wrist_position_history", []) as Array).duplicate(true)
+	if history.size() < 2:
+		state["last_wrist_velocity_window_span_ms"] = 0
+		return {
+			"averaged_velocity_vector": fallback_velocity_vector,
+			"wrist_velocity": 0.0,
+			"total_motion_velocity": 0.0,
+			"lateral_velocity": 0.0,
+			"vertical_velocity": 0.0,
+			"outward_velocity": 0.0,
+			"horizontal_direction_velocity": 0.0,
+			"upward_velocity": 0.0,
+			"directionality_ratio": 0.0,
+			"hook_dominance_ratio": 0.0,
+			"uppercut_dominance_ratio": 0.0,
+		}
+	var oldest: Dictionary = history[0]
+	var newest: Dictionary = history[history.size() - 1]
+	var dt_ms := maxi(int(newest.get("timestamp_ms", timestamp_ms)) - int(oldest.get("timestamp_ms", timestamp_ms)), 1)
+	state["last_wrist_velocity_window_span_ms"] = dt_ms
+	var velocity_sum := Vector3.ZERO
+	var average_total_motion := 0.0
+	var average_lateral_velocity := 0.0
+	var average_vertical_velocity := 0.0
+	var average_outward_velocity := 0.0
+	var average_horizontal_direction_velocity := 0.0
+	var average_upward_velocity := 0.0
+	var velocity_sample_count := 0
+	for index in range(1, history.size()):
+		var previous_entry: Dictionary = history[index - 1] as Dictionary
+		var current_entry: Dictionary = history[index] as Dictionary
+		var previous_timestamp_ms := int(previous_entry.get("timestamp_ms", timestamp_ms))
+		var current_timestamp_ms := int(current_entry.get("timestamp_ms", timestamp_ms))
+		var segment_dt_ms := current_timestamp_ms - previous_timestamp_ms
+		if segment_dt_ms <= 0:
+			continue
+		var previous_position: Vector3 = previous_entry.get("position", Vector3.ZERO)
+		var current_position: Vector3 = current_entry.get("position", Vector3.ZERO)
+		var segment_velocity := (current_position - previous_position) / (float(segment_dt_ms) / 1000.0)
+		velocity_sum += segment_velocity
+		average_total_motion += segment_velocity.length()
+		average_lateral_velocity += absf(float(segment_velocity.x))
+		average_vertical_velocity += absf(float(segment_velocity.y))
+		average_outward_velocity += maxf(float(segment_velocity.x), 0.0) if side == "right" else maxf(-float(segment_velocity.x), 0.0)
+		average_horizontal_direction_velocity += maxf(float(segment_velocity.x), 0.0) if side == "left" else maxf(-float(segment_velocity.x), 0.0)
+		average_upward_velocity += maxf(float(segment_velocity.y), 0.0)
+		velocity_sample_count += 1
+	if velocity_sample_count <= 0:
+		return {
+			"averaged_velocity_vector": fallback_velocity_vector,
+			"wrist_velocity": 0.0,
+			"total_motion_velocity": 0.0,
+			"lateral_velocity": 0.0,
+			"vertical_velocity": 0.0,
+			"outward_velocity": 0.0,
+			"horizontal_direction_velocity": 0.0,
+			"upward_velocity": 0.0,
+			"directionality_ratio": 0.0,
+			"hook_dominance_ratio": 0.0,
+			"uppercut_dominance_ratio": 0.0,
+		}
+	var sample_count := float(velocity_sample_count)
+	var averaged_velocity_vector := velocity_sum / sample_count
+	var total_motion_velocity := average_total_motion / sample_count
+	var lateral_velocity := average_lateral_velocity / sample_count
+	var vertical_velocity := average_vertical_velocity / sample_count
+	var outward_velocity := average_outward_velocity / sample_count
+	var horizontal_direction_velocity := average_horizontal_direction_velocity / sample_count
+	var upward_velocity := average_upward_velocity / sample_count
+	var directionality_ratio := 0.0
+	if horizontal_direction_velocity > 0.0 or upward_velocity > 0.0:
+		directionality_ratio = maxf(horizontal_direction_velocity, upward_velocity) / maxf(total_motion_velocity, 0.000001)
+	return {
+		"averaged_velocity_vector": averaged_velocity_vector,
+		"wrist_velocity": averaged_velocity_vector.length(),
+		"total_motion_velocity": total_motion_velocity,
+		"lateral_velocity": lateral_velocity,
+		"vertical_velocity": vertical_velocity,
+		"outward_velocity": outward_velocity,
+		"horizontal_direction_velocity": horizontal_direction_velocity,
+		"upward_velocity": upward_velocity,
+		"directionality_ratio": directionality_ratio,
+		"hook_dominance_ratio": lateral_velocity / maxf(vertical_velocity, 0.000001) if lateral_velocity > 0.0 else 0.0,
+		"uppercut_dominance_ratio": vertical_velocity / maxf(lateral_velocity, 0.000001) if vertical_velocity > 0.0 else 0.0,
+	}
 
 func _resolve_straight_punch_bbox_area_growth(state: Dictionary, bbox_area: float, timestamp_ms: int, straight_punch_config: Dictionary) -> float:
 	var history: Array = (state.get("bbox_area_window_history", []) as Array).duplicate(true)

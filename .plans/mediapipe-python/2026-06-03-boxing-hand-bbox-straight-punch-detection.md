@@ -3948,4 +3948,32 @@ Conclusion:
 
 ---
 
+**Fresh requirement from Derrick (2026-06-08 11:11 EDT):** move the hook/uppercut pose-strike gates onto the same windowed-over-time mental model as velocity. For both hooks and uppercuts, Derrick wants the three threshold gates to evaluate over the shared time span currently called `wrist_velocity_window_ms`, and wants that knob renamed to the broader `window_ms` because it will own more than just wrist-velocity smoothing. Requested gate model: over `window_ms`, treat the strike as passing when the averaged/windowed motion satisfies (1) `min_velocity`, (2) family dominance ratio (`min_lateral_dominance_ratio` or `min_vertical_dominance_ratio`), and (3) family direction ratio (`min_horizontal_direction_ratio` or `min_upward_direction_ratio`) rather than relying on a twitchy current-vector split.
+
+### Task 10CH: Window hook and uppercut threshold gates over shared motion window
+
+**Bead ID:** `aerobeat-input-camera-tracking-ufb`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Implement Derrick's latest hook/uppercut tuning model in `REF-01`. Rename the current pose-strike config knob `wrist_velocity_window_ms` to the broader `window_ms`, then make the three threshold gates for each family use that same averaged-over-time/windowed motion model. For hooks, the gates are `min_velocity`, `min_lateral_dominance_ratio`, and `min_horizontal_direction_ratio`; for uppercuts, the gates are `min_velocity`, `min_vertical_dominance_ratio`, and `min_upward_direction_ratio`. Keep the slice narrow to detector/config/debug/testbed truth, keep YAML edits outside Godot, and update the proving/debug surfaces so Derrick can reason about the new windowed values live. Claim bead `aerobeat-input-camera-tracking-ufb` on start and close it only if the slice is truthfully landed with focused proof.
+
+**Status:** ✅ Complete
+
+**Results:**
+- **Files touched:**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- **Commands run:**
+  - `bd update aerobeat-input-camera-tracking-ufb --status in_progress --json`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+- **Evidence:** `REF-01` now lands the hook/uppercut rename from `wrist_velocity_window_ms` to `window_ms`, computes hook/uppercut dominance + signed-direction gates from the same motion-window segment set as the averaged velocity gate, and surfaces the renamed `window_ms` / `window_span_ms` debug truth through the detector + boxing proving harness.
+- **Proof added:** Focused detector tests now pin the new semantics by showing hook dominance counts vertical motion across the whole window and uppercut direction share counts downward motion across the whole window, plus config/debug tests pin the rename through the profile loader and hover-card/inspector surfaces.
+- **Result:** Focused detector/config/debug/testbed truth landed; targeted GUT suite passed (`69/69`).
+- **Commit:** Pending local commit.
+
 *Drafted on 2026-06-03; handoff updated on 2026-06-08*

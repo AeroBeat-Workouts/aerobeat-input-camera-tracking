@@ -228,7 +228,7 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "velocity_window",
-		"label": "Velocity window",
+		"label": "Motion window",
 		"row_kind": "info",
 	},
 	{
@@ -1107,8 +1107,8 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 	var tracking_state := String(side_debug.get("tracking_state", "pose_missing"))
 	var pose_tracking_valid := bool(side_debug.get("pose_tracking_valid", false))
 	var sample_source := String(side_debug.get("sample_source", "pose"))
-	var wrist_velocity_window_ms := int(side_debug.get("wrist_velocity_window_ms", 0))
-	var wrist_velocity_window_span_ms := int(side_debug.get("wrist_velocity_window_span_ms", 0))
+	var window_ms := int(side_debug.get("window_ms", 0))
+	var window_span_ms := int(side_debug.get("window_span_ms", 0))
 	var averaged_velocity := float(side_debug.get("wrist_velocity", 0.0))
 	var min_velocity := float(side_debug.get("min_velocity", side_debug.get("min_punch_velocity", 0.0)))
 	var dominance_ratio := float(side_debug.get("dominance_ratio", 0.0))
@@ -1133,8 +1133,8 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 			current_text = "pose_valid=%s, tracking=%s, source=%s" % [_fmt_bool(pose_tracking_valid), tracking_state, sample_source]
 			passed = pose_tracking_valid
 		"velocity_window":
-			current_text = "%dms configured, %dms averaged span" % [wrist_velocity_window_ms, wrist_velocity_window_span_ms]
-			passed = wrist_velocity_window_ms > 0
+			current_text = "%dms configured, %dms averaged span" % [window_ms, window_span_ms]
+			passed = window_ms > 0
 		"averaged_velocity":
 			threshold_text = _fmt_float(min_velocity)
 			current_text = _fmt_float(averaged_velocity)
@@ -1515,7 +1515,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Hook tuning")
 	lines.append("-----------")
 	lines.append("Enabled: %s" % _fmt_bool(bool(hook_config.get("enabled", false))))
-	lines.append("Velocity window: %dms" % int(hook_eval.get("wrist_velocity_window_ms", 0)))
+	lines.append("Motion window: %dms" % int(hook_eval.get("window_ms", hook_eval.get("wrist_velocity_window_ms", 0))))
 	lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Min lateral dominance: %s" % _fmt_float(hook_thresholds.get("min_lateral_dominance_ratio", 0.0)))
 	lines.append("Min horizontal direction share of total motion: %s" % _fmt_float(hook_thresholds.get("min_horizontal_direction_ratio", 0.0)))
@@ -1529,7 +1529,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Uppercut tuning")
 	lines.append("---------------")
 	lines.append("Enabled: %s" % _fmt_bool(bool(uppercut_config.get("enabled", false))))
-	lines.append("Velocity window: %dms" % int(uppercut_eval.get("wrist_velocity_window_ms", 0)))
+	lines.append("Motion window: %dms" % int(uppercut_eval.get("window_ms", uppercut_eval.get("wrist_velocity_window_ms", 0))))
 	lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Min vertical dominance: %s" % _fmt_float(uppercut_thresholds.get("min_vertical_dominance_ratio", 0.0)))
 	lines.append("Min upward direction share of total motion: %s" % _fmt_float(uppercut_thresholds.get("min_upward_direction_ratio", 0.0)))
