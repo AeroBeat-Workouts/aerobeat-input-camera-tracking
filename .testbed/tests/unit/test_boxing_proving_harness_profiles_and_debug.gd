@@ -78,6 +78,26 @@ func test_hand_bbox_drawer_prefers_grace_tracking_state_over_gesture_state() -> 
 	assert_eq(String(state_name), "grace")
 	assert_eq(drawer.STATE_COLORS["grace"], Color8(0xff, 0x4f, 0xd8, 0xff))
 
+func test_hand_bbox_drawer_prefers_active_tracker_state_over_gesture_tracking_lost() -> void:
+	var drawer = add_child_autoqfree(HandBBoxDrawerScript.new())
+	drawer.update_snapshot({}, {
+		"left": {
+			"state": "tracking_lost",
+		}
+	})
+	assert_eq(String(drawer._resolve_side_state("left", {
+		"tracking_valid": false,
+		"tracking_state": "reacquiring",
+	})), "reacquiring")
+	assert_eq(String(drawer._resolve_side_state("left", {
+		"tracking_valid": true,
+		"tracking_state": "tracked",
+	})), "tracked")
+	assert_eq(String(drawer._resolve_side_state("left", {
+		"tracking_valid": true,
+		"tracking_state": "stale",
+	})), "stale")
+
 func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)

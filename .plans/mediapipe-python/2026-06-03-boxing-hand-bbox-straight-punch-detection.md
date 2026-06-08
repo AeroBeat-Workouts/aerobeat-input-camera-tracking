@@ -3954,6 +3954,8 @@ Conclusion:
 
 **Fresh live feedback from Derrick (2026-06-08 14:00 EDT):** current live boxing use is good enough to proceed with a deliberately noisy design: straight punch, hook, and uppercut all fire most of the time, and co-firing/noise is acceptable so long as the desired gesture fires inside the beat window. Next refactor target is the straight-punch path: move all threshold gate values onto the same `window_ms` averaged-over-time model used for hook/uppercut, rename `min_punch_velocity` to `min_velocity`, rename straight-punch `wrist_velocity_window_ms` to `window_ms`, and audit/correct the `min_bbox_area_growth` sign semantics because live testing with hand tracking enabled suggests forward straight punches currently produce negative bbox growth.
 
+**Fresh regression from Derrick (2026-06-08 14:37 EDT):** after syncing the straight-punch refactor, live hand-tracking in the boxing testbed appears to start in `tracking_lost` even while pose + visible hand landmarks are present. Screenshot evidence shows `L tracking_lost` and `R tracking_lost` overlays on top of visible pose/hands during an in-guard/straight-punch setup. Treat this as a new regression slice before more threshold tuning.
+
 ### Task 10CH: Window hook and uppercut threshold gates over shared motion window
 
 **Bead ID:** `aerobeat-input-camera-tracking-ufb`
@@ -4035,3 +4037,30 @@ BBox-growth sign truth was audited against the reported live behavior and correc
 Focused proof was added/updated in `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`, and `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` to cover the rename, shared-window semantics, corrected bbox-growth sign behavior, and proving-harness debug copy. Validation command run from repo root: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`70/70` passed, `742` asserts; pre-existing GUT orphan/RID leak warnings only). Commit: `df404ba` (`Refactor straight punch shared window tuning`).
 
 *Completed on 2026-06-08*
+
+### Task 10CK: Investigate boxing scene starting in `tracking_lost` with visible pose/hands
+
+**Bead ID:** `aerobeat-input-camera-tracking-bva`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`
+**Prompt:** Investigate Derrick's new live regression after syncing the straight-punch refactor: the boxing testbed appears to start both hands in `tracking_lost` even while pose + visible hand landmarks are on screen. Treat the screenshot as evidence that the proving overlay/debug state and the actual tracker payload may now disagree, or that a hand-state transition/regression was introduced in the straight-punch/shared-window slice. Keep the investigation narrow to live hand-state startup truth across the input testbed and tool-owned hand payload path. Claim bead `aerobeat-input-camera-tracking-bva` on start, diagnose the exact seam, land the smallest proven fix if it is in scope, and update this plan with exact evidence.
+
+**Status:** ✅ Complete
+
+**Results:** Diagnosis landed as an input-testbed overlay truth fix, not a tracker-payload or straight-punch state-machine regression. The exact seam was `.testbed/scripts/hand_bbox_state_drawer.gd::_resolve_side_state()`: the overlay drew tracker-owned bbox geometry from the tool-owned `get_hand_debug_snapshot()` payload, but for labels/colors it preferred boxing `gesture_debug.straight_punch.<side>.state` whenever that gesture state was recognized. On startup that gesture state legitimately begins at `tracking_lost` until the straight-punch slice clears its own `lost_tracking_reacquire_stable_ms` gate, even while the tracker-owned hand payload already reports visible bbox/landmarks in transitional or active states like `reacquiring`, `tracked`, or `stale`. That made the screenshot truthful as a **UI disagreement**: visible pose/hands were real, but the bbox label was reading the wrong state source.
+
+Evidence / commands:
+- `rg -n "_get_tracking_hand_payload|stable_ms|tracking_state|tracking_valid" src/detectors/pose_detector_substrate.gd src/providers/camera_tracking_provider.gd src/tracking_frame_adapter.gd`
+- `sed -n '1,180p' .testbed/scripts/hand_bbox_state_drawer.gd`
+- `sed -n '1577,1626p' .testbed/scripts/boxing_proving_harness.gd`
+- `sed -n '150,230p' /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking/src/CameraTrackingPreviewPresenter.gd`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+
+Files changed:
+- `.testbed/scripts/hand_bbox_state_drawer.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+Fix: teach the bbox overlay to let tracker-owned states override gesture `tracking_lost` when the hand payload is in `reacquiring`, `tracked`, `stale`, or `grace`, and add matching overlay colors for those tracker states. Focused proof added in `test_hand_bbox_drawer_prefers_active_tracker_state_over_gesture_tracking_lost()`, which locks the exact regression seam. Validation passed with 22/22 tests in `test_boxing_proving_harness_profiles_and_debug.gd`.
+
+Commit: `PENDING` (replace after commit/push).

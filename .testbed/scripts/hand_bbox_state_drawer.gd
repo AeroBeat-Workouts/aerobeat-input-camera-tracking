@@ -5,7 +5,10 @@ const STATE_COLORS := {
 	"ready": Color8(0xff, 0xd6, 0x00, 0xff),
 	"triggered": Color8(0x32, 0xd7, 0x4b, 0xff),
 	"not_ready": Color8(0xff, 0x45, 0x45, 0xff),
+	"tracked": Color8(0x33, 0xc7, 0x73, 0xff),
+	"reacquiring": Color8(0x33, 0xf2, 0xc7, 0xff),
 	"grace": Color8(0xff, 0x4f, 0xd8, 0xff),
+	"stale": Color8(0xff, 0xdb, 0x33, 0xff),
 	"tracking_lost": Color8(0x7f, 0x10, 0x10, 0xff),
 }
 const FALLBACK_COLOR := Color8(0xc0, 0xc7, 0xd1, 0xff)
@@ -51,10 +54,10 @@ func _draw() -> void:
 
 func _resolve_side_state(side: String, hand: Dictionary) -> String:
 	var tracking_state := String(hand.get("tracking_state", "tracking_lost")).strip_edges().to_lower()
-	if tracking_state == "grace":
-		return "grace"
 	var side_debug: Dictionary = _straight_punch_debug.get(side, {}) if _straight_punch_debug.get(side, {}) is Dictionary else {}
 	var state_name := String(side_debug.get("state", side_debug.get("phase", ""))).strip_edges().to_lower()
+	if _tracker_state_should_override_gesture_state(tracking_state, state_name):
+		return tracking_state
 	if state_name.is_empty():
 		state_name = tracking_state
 	if STATE_COLORS.has(state_name):
@@ -64,6 +67,13 @@ func _resolve_side_state(side: String, hand: Dictionary) -> String:
 	if not bool(hand.get("tracking_valid", false)):
 		return "tracking_lost"
 	return "not_ready"
+
+func _tracker_state_should_override_gesture_state(tracking_state: String, gesture_state: String) -> bool:
+	if tracking_state == "grace":
+		return true
+	if gesture_state == "tracking_lost" and ["tracked", "reacquiring", "stale"].has(tracking_state):
+		return true
+	return false
 
 func _color_for_state(state_name: String) -> Color:
 	return STATE_COLORS.get(state_name, FALLBACK_COLOR)
