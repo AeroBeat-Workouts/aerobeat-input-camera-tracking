@@ -4155,4 +4155,4 @@ Files modified:
 - `src/detectors/pose_detector_substrate.gd`
 - `.testbed/tests/unit/test_pose_detector_substrate.gd`
 
-Commit: `0c32a07` - `Preserve straight-punch continuity across reacquiring hand samples`
+Commit: `310bc3f` - `Preserve straight-punch continuity across reacquiring hand samples`
