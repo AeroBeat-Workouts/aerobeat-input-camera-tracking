@@ -147,6 +147,8 @@ func reset() -> void:
 func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: Dictionary = {}) -> Dictionary:
 	if timestamp_ms <= 0:
 		timestamp_ms = Time.get_ticks_msec()
+	if _last_processed_timestamp_ms > 0 and timestamp_ms < _last_processed_timestamp_ms:
+		_reset_temporal_runtime_state_for_timestamp_rewind()
 	_frame_index += 1
 	var smoothed_landmarks: Dictionary = _smoother.push_landmarks(landmarks)
 	var metrics: Dictionary = _build_metrics(smoothed_landmarks, timestamp_ms)
@@ -780,6 +782,15 @@ func _should_evaluate_gestures_this_frame() -> bool:
 
 func _clear_transient_gesture_state() -> void:
 	_reset_gesture_state()
+
+func _reset_temporal_runtime_state_for_timestamp_rewind() -> void:
+	_smoother = LandmarkSmoother.new(_get_smoothing_window_size())
+	_previous_positions.clear()
+	_consecutive_valid_frames = 0
+	_consecutive_invalid_frames = 0
+	_reacquire_frames_remaining = 0
+	_last_processed_timestamp_ms = 0
+	_clear_transient_gesture_state()
 
 func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_ms: int, tracking_frame: Dictionary = {}) -> Array:
 	var events: Array = []

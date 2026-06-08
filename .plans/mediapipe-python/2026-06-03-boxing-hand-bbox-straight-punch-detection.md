@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-07 20:21 EDT
+**Last Updated:** 2026-06-07 21:08 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -3730,6 +3730,8 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
 
 **Approved execution seam (2026-06-07 20:20 EDT):** Implement signed directionality gating and expose the new directionality knobs in YAML/testbed so Derrick can tune them directly. Working bead: `aerobeat-input-camera-tracking-8d8`. Keep the simplified trigger contract otherwise intact.
 
+**New live-testing findings from Derrick on Chip (2026-06-07 21:07 EDT):** after syncing the latest state and running the straight-punch proving path, two new seams appeared. (1) Replay video no longer loops — this is a regression and is the first-priority fix. Working bead: `aerobeat-input-camera-tracking-4o4`. (2) Replay/tracking framerate dips substantially when the three punch gesture families are enabled together, while single-gesture testing is noticeably smoother. Queue a focused local profile/audit seam for that after the loop repair lands. Working bead: `aerobeat-input-camera-tracking-7ap`.
+
 **Continuation Attempt (2026-06-07 18:31-18:36 EDT):** I ran two tightly scoped follow-up experiments against the same four dedicated family fixtures, then reverted both because neither improved the required in-window score beyond the truthful `5/16` baseline.
 
 **Experiment A — YAML-only retunes (reverted):**
@@ -3786,6 +3788,45 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
   - Incidental co-fires remain loud (`hook_left 29`, `hook_right 36`, `uppercut_left 33`, `uppercut_right 23` forbidden-family events in the current summary), so the seam is truthful progress but not final cleanup.
   - Headless proving capture still emitted the pre-existing dummy-renderer screenshot warning (`Parameter "t" is null`) after writing the report artifacts; JSON/Markdown capture evidence was still produced successfully for all four fixtures.
 - **Net Result:** This is the first truthful improvement past the current `5/16` family bar, so this detector/config/testbed slice is worth keeping and handing to QA/audit. The next narrow seam should target incidental co-fires and the remaining `7/16` missed windows without undoing the signed-direction fix.
+
+### Task 10CE: Repair replay-loop timestamp rewind regression in the boxing proving path
+
+**Bead ID:** `aerobeat-input-camera-tracking-4o4`
+**SubAgent:** `primary`
+**Role:** `coder`
+**Status:** ✅ Complete
+
+**Prompt/Scope:** Derrick reported a fresh Chip regression after syncing latest: the boxing proving replay no longer appeared to loop. Keep this slice tightly focused on the replay-loop regression in the proving/testbed path, reproduce locally if possible, identify the owner-correct cause in this repo, land the smallest truthful fix, rerun enough validation to prove looping works again, and update this active plan with exact files/commands/validation/commit before returning to the queued framerate seam.
+
+**Files changed:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+
+**Local reproduction / diagnosis:**
+- I reproduced the replay-wrap seam locally with a one-off headless proving probe (`.temp-replay-loop-probe.gd`, not committed) against `res://scenes/boxing_proving.tscn` and the shipped boxing replay fixture `boxing_guard->punch_left_repeat_04_take_01.mp4` for `18s`.
+- Probe result: replay wrapped at about `5.85s` (`current_time_sec` dropped from `5.933...` to `0.0`) and the proving session stayed alive through later timestamps/events, which pointed away from a simple scene autoplay stop and toward a **timestamp-wrap bug inside the input-owner detector state**.
+- Owner-correct cause in this repo: after the recent replay/source-time work, replay `timestamp_ms` now legitimately rewinds to the start on each loop. `src/detectors/pose_detector_substrate.gd` still assumed timestamps only moved forward, so its temporal caches (`_previous_positions`, straight-punch wrist/bbox window histories, pose-strike velocity windows, flow histories, grace/reacquire timers) could carry future timestamps across a replay wrap. That makes time-window math and trigger state increasingly untruthful after loop rewind and is a credible root seam for the new proving-loop regression plus the newly queued multi-family framerate dip.
+
+**Fix landed:**
+- Added a narrow replay-rewind guard at detector ingress in `src/detectors/pose_detector_substrate.gd`: when a new frame arrives with `timestamp_ms < _last_processed_timestamp_ms`, the substrate now resets only the **temporal runtime state that depends on monotonic time** (landmark smoother, previous-velocity cache, reacquire counters, and transient gesture state) before processing the new frame.
+- Kept the fix deliberately small: no transport contract changes, no proving-scene autoplay rewiring, no vendor edits, and no broad detector retune.
+
+**Focused proof/tests added:**
+- `.testbed/tests/unit/test_pose_detector_substrate.gd::test_replay_timestamp_rewind_resets_straight_punch_temporal_windows()` proves a replay-style timestamp rewind clears straight-punch timing windows instead of leaking pre-loop future timestamps into the next loop.
+- `.testbed/tests/unit/test_pose_detector_substrate.gd::test_replay_timestamp_rewind_resets_pose_strike_temporal_windows()` proves the same rewind reset covers the newer hook/uppercut pose-strike family state as well.
+
+**Commands run:**
+- `bd update aerobeat-input-camera-tracking-4o4 --status in_progress --json`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_aero_camera_tracking.gd -gexit`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script ../.temp-replay-loop-probe.gd -- res://scenes/boxing_proving.tscn ../.temp-replay-loop/probe-after.json 18000`
+
+**Validation:**
+- Focused repo-local regression coverage passed: `55/55` tests, `555` asserts.
+- The headless proving probe still reproduced a real replay wrap and the proving session stayed alive through the full `18s` runtime after the detector reset landed, with no new crash/error seam introduced by the fix.
+- I did **not** claim a full framerate resolution here; that remains the separate queued bead `aerobeat-input-camera-tracking-7ap`.
+
+**Commit:**
+- `d8882e3` — replay-loop timestamp rewind fix landed in `REF-01`
 
 ---
 

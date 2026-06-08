@@ -736,6 +736,39 @@ func test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth() -> 
 	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
 	assert_eq(String(left_debug.get("tracking_state", "")), "pose_missing")
 
+func test_replay_timestamp_rewind_resets_straight_punch_temporal_windows() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 10, 1.10, null, "", 0), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload("left", 0.021, "tracked", true, 0, 11, 1.18, null, "", 80), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.12}}), 1260, _make_tracking_frame(_tracked_hand_payload("left", 0.023, "tracked", true, 0, 12, 1.26), _tracked_hand_payload("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.20}}), 1340, _make_tracking_frame(_tracked_hand_payload("left", 0.0272, "tracked", true, 0, 13, 1.34), _tracked_hand_payload("right", 0.020)))
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+
+	state = substrate.process_landmarks(_make_pose_frame(), 40, _make_tracking_frame(_tracked_hand_payload("left", 0.020, "tracked", true, 0, 1, 0.04, null, "", 0), _tracked_hand_payload("right", 0.020)))
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
+	assert_eq(int(left_debug.get("wrist_velocity_window_span_ms", -1)), 0)
+	assert_eq(int(left_debug.get("bbox_area_growth_window_span_ms", -1)), 0)
+	assert_eq(left_debug.get("growth_window_areas", []), [0.02])
+
+func test_replay_timestamp_rewind_resets_pose_strike_temporal_windows() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
+	state = substrate.process_landmarks(_make_pose_frame(), 1160)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.46, "y": 0.60},
+	}), 1320)
+	assert_true(_event_names(state.get("events", [])).has("hook_right"))
+
+	state = substrate.process_landmarks(_make_pose_frame(), 40)
+	assert_false(_event_names(state.get("events", [])).has("hook_right"))
+	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
+	assert_eq(String(right_debug.get("state", "")), "tracking_lost")
+	assert_eq(int(right_debug.get("wrist_velocity_window_span_ms", -1)), 0)
+	assert_true(is_equal_approx(float(right_debug.get("wrist_velocity", -1.0)), 0.0))
+
 func test_hook_requires_signed_horizontal_direction_for_side() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
