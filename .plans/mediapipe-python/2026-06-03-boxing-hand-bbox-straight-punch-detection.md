@@ -3826,7 +3826,7 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
 - I did **not** claim a full framerate resolution here; that remains the separate queued bead `aerobeat-input-camera-tracking-7ap`.
 
 **Commit:**
-- `d8882e3` — replay-loop timestamp rewind fix landed in `REF-01`
+- `114f3dd` — replay-loop timestamp rewind fix landed in `REF-01`
 
 ---
 
