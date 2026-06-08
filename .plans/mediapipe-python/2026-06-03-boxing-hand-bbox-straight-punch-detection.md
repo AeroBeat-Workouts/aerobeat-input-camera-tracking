@@ -3996,6 +3996,6 @@ Conclusion:
 - `rg -n "wrist_velocity_window_ms" src/detectors/pose_detector_substrate.gd .testbed/scripts/boxing_proving_harness.gd .testbed/tests/unit/test_pose_detector_substrate.gd .testbed/tests/unit/test_camera_tracking_config_profiles.gd assets/boxing.gesture_detection.yaml` → active hits reduced to straight-punch ownership plus the intentional regression proof / config guard; no hook/uppercut runtime fallback remained.
 - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → ✅ `70/70` passing (existing proving-harness orphan / RID / UID warning noise unchanged).
 - `git diff --stat -- src/detectors/pose_detector_substrate.gd .testbed/scripts/boxing_proving_harness.gd .testbed/tests/unit/test_pose_detector_substrate.gd` → `3 files changed, 26 insertions(+), 4 deletions(-)`.
-Commit: `6fb252b` — `Drop legacy pose-strike window key fallback`.
+Commit: `773b592` — `Drop legacy pose-strike window key fallback`.
 
 *Drafted on 2026-06-03; handoff updated on 2026-06-08*
