@@ -801,6 +801,38 @@ func test_uppercut_requires_upward_signed_vertical_direction() -> void:
 	assert_true(float(left_debug.get("directionality_ratio", 1.0)) < float(left_debug.get("min_upward_direction_ratio", 0.0)))
 	assert_eq(String(left_debug.get("state", "")), "ready")
 
+func test_hook_directionality_ratio_uses_total_motion_share() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 3000)
+	state = substrate.process_landmarks(_make_pose_frame(), 3160)
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.43, "y": 0.70},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.39, "y": 0.64},
+	}), 3320)
+	assert_true(_event_names(state.get("events", [])).has("hook_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
+	assert_true(float(left_debug.get("directionality_ratio", 0.0)) >= float(left_debug.get("min_horizontal_direction_ratio", 99.0)))
+	assert_true(float(left_debug.get("directionality_ratio", 0.0)) < 0.99)
+	assert_true(float(left_debug.get("dominance_ratio", 0.0)) >= float(left_debug.get("min_lateral_dominance_ratio", 99.0)))
+
+func test_uppercut_directionality_ratio_uses_total_motion_share() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 4000)
+	state = substrate.process_landmarks(_make_pose_frame(), 4160)
+	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.38, "y": 0.74},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 4320)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_true(float(left_debug.get("directionality_ratio", 0.0)) >= float(left_debug.get("min_upward_direction_ratio", 99.0)))
+	assert_true(float(left_debug.get("directionality_ratio", 0.0)) < 0.99)
+	assert_true(float(left_debug.get("dominance_ratio", 0.0)) >= float(left_debug.get("min_vertical_dominance_ratio", 99.0)))
+
 func test_quantizes_flow_direction_to_twelve_chart_slots() -> void:
 	assert_eq(substrate._flow_ring_index_from_vector(Vector2(1.0, 0.0)), 2)
 	assert_eq(substrate._flow_ring_index_from_vector(Vector2(0.0, 1.0)), 11)

@@ -1076,9 +1076,9 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var upward_velocity := maxf(float(velocity_vector.y), 0.0)
 	var directionality_ratio := 0.0
 	if family == "hook":
-		directionality_ratio = horizontal_direction_velocity / maxf(lateral_speed, 0.000001) if horizontal_direction_velocity > 0.0 else 0.0
+		directionality_ratio = horizontal_direction_velocity / maxf(speed, 0.000001) if horizontal_direction_velocity > 0.0 else 0.0
 	else:
-		directionality_ratio = upward_velocity / maxf(vertical_speed, 0.000001) if upward_velocity > 0.0 else 0.0
+		directionality_ratio = upward_velocity / maxf(speed, 0.000001) if upward_velocity > 0.0 else 0.0
 	var outward_distance := float(shoulder.get("x", 0.0) - wrist.get("x", 0.0) if side == "left" else wrist.get("x", 0.0) - shoulder.get("x", 0.0))
 	var wrist_elbow_vertical_offset := absf(float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0)))
 	var wrist_elbow_horizontal_offset := absf(float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0)))

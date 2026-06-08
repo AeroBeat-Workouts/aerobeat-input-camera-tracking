@@ -241,7 +241,7 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "directionality_ratio",
-		"label": "Signed direction ratio >= {threshold}",
+		"label": "Signed direction share >= {threshold}",
 	},
 	{
 		"id": "rearm_section",
@@ -1148,9 +1148,9 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 			current_text = _fmt_float(directionality_ratio)
 			passed = directionality_ratio >= required_directionality
 			if family == "hook":
-				label = "%s horizontal ratio >= {threshold}" % String(side_debug.get("required_direction_label", "signed direction")).capitalize()
+				label = "%s share of total motion >= {threshold}" % String(side_debug.get("required_direction_label", "signed direction")).capitalize()
 			else:
-				label = "%s ratio >= {threshold}" % String(side_debug.get("required_direction_label", "upward")).capitalize()
+				label = "%s share of total motion >= {threshold}" % String(side_debug.get("required_direction_label", "upward")).capitalize()
 		"grace_timer":
 			current_text = "%d/%dms remaining" % [grace_ms_remaining, triggered_grace_ms]
 			if state_name == "triggered":
@@ -1517,7 +1517,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Velocity window: %dms" % int(hook_eval.get("wrist_velocity_window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Min lateral dominance: %s" % _fmt_float(hook_thresholds.get("min_lateral_dominance_ratio", 0.0)))
-	lines.append("Min horizontal direction ratio: %s" % _fmt_float(hook_thresholds.get("min_horizontal_direction_ratio", 0.0)))
+	lines.append("Min horizontal direction share of total motion: %s" % _fmt_float(hook_thresholds.get("min_horizontal_direction_ratio", 0.0)))
 	lines.append("Hook grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(hook_timing.get("triggered_grace_ms", 0)),
 		int(hook_rearm.get("pose_only_rearm_ms", 0)),
@@ -1531,7 +1531,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Velocity window: %dms" % int(uppercut_eval.get("wrist_velocity_window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Min vertical dominance: %s" % _fmt_float(uppercut_thresholds.get("min_vertical_dominance_ratio", 0.0)))
-	lines.append("Min upward direction ratio: %s" % _fmt_float(uppercut_thresholds.get("min_upward_direction_ratio", 0.0)))
+	lines.append("Min upward direction share of total motion: %s" % _fmt_float(uppercut_thresholds.get("min_upward_direction_ratio", 0.0)))
 	lines.append("Uppercut grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(uppercut_timing.get("triggered_grace_ms", 0)),
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),

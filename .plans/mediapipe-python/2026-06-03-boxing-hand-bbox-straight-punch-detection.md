@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-07 21:08 EDT
+**Last Updated:** 2026-06-07 21:42 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -3732,6 +3732,10 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
 
 **New live-testing findings from Derrick on Chip (2026-06-07 21:07 EDT):** after syncing the latest state and running the straight-punch proving path, two new seams appeared. (1) Replay video no longer loops — this is a regression and is the first-priority fix. Working bead: `aerobeat-input-camera-tracking-4o4`. (2) Replay/tracking framerate dips substantially when the three punch gesture families are enabled together, while single-gesture testing is noticeably smoother. Queue a focused local profile/audit seam for that after the loop repair lands. Working bead: `aerobeat-input-camera-tracking-7ap`.
 
+**Directionality ratio refinement approved (2026-06-07 21:29 EDT):** keep the new directionality knobs, but change the underlying math so `min_horizontal_direction_ratio` / `min_upward_direction_ratio` become truthful continuous `0..1`-style “mostly correct direction” controls rather than effective booleans. Preferred interpretation: desired signed-direction component as a share of total motion magnitude (or another equivalent continuous formulation), while keeping the existing simplified trigger contract and public knobs. Working bead: `aerobeat-input-camera-tracking-79r`.
+
+**User-directed restore override (2026-06-07 21:41 EDT):** although the continuous-share experiment regressed the family fixtures (`9/16` -> `3/16`) and was reverted as the best default, Derrick wants that experimental directionality math restored in-repo temporarily so he can tune and inspect it manually on-device. Restore the exact continuous-share variant plus its YAML/comment/testbed inspector truth as a manual-testing state, and record clearly in the plan that this restore is user-directed exploratory state rather than the current best fixture-truth baseline. Working bead: `aerobeat-input-camera-tracking-e01`.
+
 **Continuation Attempt (2026-06-07 18:31-18:36 EDT):** I ran two tightly scoped follow-up experiments against the same four dedicated family fixtures, then reverted both because neither improved the required in-window score beyond the truthful `5/16` baseline.
 
 **Experiment A — YAML-only retunes (reverted):**
@@ -3788,6 +3792,51 @@ Fresh independent validation from this audit also passed: `godot --headless --pa
   - Incidental co-fires remain loud (`hook_left 29`, `hook_right 36`, `uppercut_left 33`, `uppercut_right 23` forbidden-family events in the current summary), so the seam is truthful progress but not final cleanup.
   - Headless proving capture still emitted the pre-existing dummy-renderer screenshot warning (`Parameter "t" is null`) after writing the report artifacts; JSON/Markdown capture evidence was still produced successfully for all four fixtures.
 - **Net Result:** This is the first truthful improvement past the current `5/16` family bar, so this detector/config/testbed slice is worth keeping and handing to QA/audit. The next narrow seam should target incidental co-fires and the remaining `7/16` missed windows without undoing the signed-direction fix.
+
+**Continuation Attempt — continuous directionality share seam (2026-06-07 21:31-21:41 EDT):** Tested the approved follow-up idea of turning `min_horizontal_direction_ratio` / `min_upward_direction_ratio` into a truthful continuous control by measuring the desired signed-direction component as a share of total shared elbow+wrist motion magnitude instead of dividing by the axis-only speed. The detector math change itself was truthful and focused: hook directionality became `horizontal_direction_velocity / wrist_velocity`, uppercut directionality became `upward_velocity / wrist_velocity`, YAML comments were corrected to match that public meaning, and focused detector regressions proved the knobs now gate intermediate values instead of collapsing to near-boolean sign checks. However, the real family fixtures showed that this stricter interpretation materially reduced authored replay recall compared with the currently-landed signed-direction baseline, so the experiment was **not** kept.
+- **Files changed during the attempt (reverted after validation):**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- **Commands run:**
+  - `bd update aerobeat-input-camera-tracking-79r --status in_progress --json`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+  - `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/<family>/<video>.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/<family>" "$PWD/.testbed/test-results/task10ce-directionality-continuous-share/20260607-213711/<family>" 7000`
+  - `python3` one-off local summary pass writing `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10ce-directionality-continuous-share/20260607-213711/family_fixture_summary.{json,md}`
+- **Artifacts:**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10ce-directionality-continuous-share/20260607-213711/family_fixture_summary.json`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10ce-directionality-continuous-share/20260607-213711/family_fixture_summary.md`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10ce-directionality-continuous-share/20260607-213711/{hook_left,hook_right,uppercut_left,uppercut_right}/report.{json,md}`
+- **Validation:**
+  - Focused unit + proving-harness coverage still passed truthfully: `63/63` tests, `642` asserts.
+  - The synthetic detector regressions confirmed the knob semantics changed as intended: mixed-direction motions now reported intermediate `directionality_ratio` values (`~0.914` hook sample, `~0.832` uppercut sample) and respected tunable thresholds.
+  - Real fixture truth regressed sharply versus the currently-landed signed-direction baseline: **`3/16` required in-window hits** instead of `9/16`.
+  - Breakdown: `hook_left 1/4`, `hook_right 0/4`, `uppercut_left 1/4`, `uppercut_right 1/4`.
+  - Headless proving capture still emitted the pre-existing dummy-renderer screenshot warning after writing the report artifacts; JSON/Markdown evidence was still produced successfully for all four fixtures.
+- **Net Result:** The continuous-share interpretation makes the public ratio knobs truthful, but it does **not** currently land truthfully in this repo because it drops family replay acceptance from `9/16` to `3/16`. The experiment was reverted, there is **no new commit**, and the best current repo truth remains the prior signed-direction baseline at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cd-hook-uppercut-signed-direction/20260607-203453/family_fixture_summary.json`.
+
+**Continuation Attempt — user-directed continuous-share restore override (2026-06-07 21:42-21:49 EDT):** Restored the reverted task10ce continuous-share directionality math back into the repo on purpose so Derrick can tune and inspect it manually on-device, even though it is **not** the current best fixture-truth baseline. This restore keeps the same public knobs, but switches their meaning back to the exploratory task10ce interpretation: `hook.directionality_ratio = desired signed horizontal component / total shared elbow+wrist motion magnitude`, `uppercut.directionality_ratio = desired upward component / total shared elbow+wrist motion magnitude`. I also updated the proving-harness labels/comments so the inspector/debug surfaces describe that restored math truthfully instead of implying an axis-only denominator.
+- **Files changed:**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- **Commands run:**
+  - `bd update aerobeat-input-camera-tracking-e01 --status in_progress --json`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+  - `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/<family>/<video>.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/<family>" "$PWD/.testbed/test-results/task10cf-directionality-continuous-share-restore/20260607-214828/<family>" 7000`
+  - `python3` one-off local summary pass writing `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cf-directionality-continuous-share-restore/20260607-214828/family_fixture_summary.{json,md}`
+- **Artifacts:**
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cf-directionality-continuous-share-restore/20260607-214828/family_fixture_summary.json`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cf-directionality-continuous-share-restore/20260607-214828/family_fixture_summary.md`
+  - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cf-directionality-continuous-share-restore/20260607-214828/{hook_left,hook_right,uppercut_left,uppercut_right}/report.json`
+- **Validation:**
+  - Focused detector + proving-harness coverage passed: `63/63` tests, `626` asserts.
+  - New focused detector coverage now explicitly proves the restored directionality ratios can be **intermediate** (`> threshold` but `< 1.0`) for mixed-direction hook/uppercut motions, which is the intended task10ce continuous-share behavior.
+  - On the current repo head (which now also includes later replay/timestamp work), rerunning the dedicated four-family fixture capture with the restored exploratory math produced **`1/16` required in-window hits** (`hook_left 0/4`, `hook_right 0/4`, `uppercut_left 1/4`, `uppercut_right 0/4`) with the JSON/Markdown evidence linked above.
+  - Headless proving capture still emitted the pre-existing dummy-renderer screenshot warning in the per-fixture `capture.log` files after writing the report artifacts.
+- **Net Result:** The repo is now intentionally back on the **user-directed exploratory continuous-share state** for Derrick’s manual tuning, not the best truth baseline. Keep the distinction explicit: the stronger fixture-truth reference is still the prior signed-direction baseline at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cd-hook-uppercut-signed-direction/20260607-203453/family_fixture_summary.json`, while this restored override is the in-repo manual-inspection variant.
 
 ### Task 10CE: Repair replay-loop timestamp rewind regression in the boxing proving path
 

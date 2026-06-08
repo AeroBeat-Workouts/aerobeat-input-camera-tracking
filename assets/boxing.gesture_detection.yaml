@@ -43,7 +43,7 @@ hook:
     min_velocity: 0.08
     # Hook motion must stay at least this much more lateral than vertical. input.
     min_lateral_dominance_ratio: 0.5
-    # Required left/right horizontal travel must make up at least this much of total horizontal motion. input.
+    # Required left/right horizontal travel must make up at least this much of total shared elbow+wrist motion magnitude. input.
     min_horizontal_direction_ratio: 0.55
   timing:
     # Keep the hook in its triggered state for this long after it fires. input.
@@ -65,7 +65,7 @@ uppercut:
     min_velocity: 0.08
     # Uppercut motion must stay at least this much more vertical than lateral. input.
     min_vertical_dominance_ratio: 0.4
-    # Upward travel must make up at least this much of total vertical motion. input.
+    # Upward travel must make up at least this much of total shared elbow+wrist motion magnitude. input.
     min_upward_direction_ratio: 0.55
   timing:
     # Keep the uppercut in its triggered state for this long after it fires. input.
