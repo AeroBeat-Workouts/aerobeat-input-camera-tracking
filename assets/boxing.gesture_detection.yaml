@@ -32,7 +32,7 @@ straight_punch:
 
 hook:
   # Turn hook detection on or off. input.
-  enabled: true
+  enabled: false
   evaluation:
     # Measure the shared hook motion window across this much recent time. input.
     window_ms: 250
@@ -62,7 +62,7 @@ hook:
     lost_tracking_reacquire_stable_ms: 40
 uppercut:
   # Turn uppercut detection on or off. input.
-  enabled: true
+  enabled: false
   evaluation:
     # Measure the shared uppercut motion window across this much recent time. input.
     window_ms: 250
