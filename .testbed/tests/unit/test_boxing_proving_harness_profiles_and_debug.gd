@@ -352,9 +352,9 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	assert_eq(String(rows[7].get("threshold_text", "")), "0.180")
 	assert_eq(String(rows[7].get("current_text", "")), "0.420")
 	assert_eq(String(rows[9].get("threshold_text", "")), "0.010")
-	assert_eq(String(rows[10].get("current_text", "")), "3/4")
+	assert_eq(String(rows[10].get("current_text", "")), "3/3")
 	assert_eq(String(rows[14].get("current_text", "")), "0.061")
-	assert_eq(String(rows[15].get("current_text", "")), "0.052 >= 0.064 (trigger 0.061 + eps 0.003)")
+	assert_eq(String(rows[15].get("current_text", "")), "0.052 <= 0.058 (trigger 0.061 - eps 0.003)")
 
 func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	var harness = _new_harness()
@@ -378,7 +378,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.012,
 					"min_bbox_area_growth": 0.010,
-					"positive_growth_samples": 4,
+					"positive_growth_samples": 3,
 					"min_positive_growth_samples": 3,
 					"sample_window_size": 4,
 					"growth_window_areas": [0.020, 0.038, 0.055, 0.071],
@@ -401,10 +401,10 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Punch velocity >= 0.180 - 0.310")
 	assert_string_contains(body, "BBox area - 0.071")
 	assert_string_contains(body, "BBox area growth >= 0.010 - 0.012")
-	assert_string_contains(body, "Positive growth samples >= 3/4 - 4/4")
+	assert_string_contains(body, "Positive growth samples >= 3/3 - 3/3")
 	assert_string_contains(body, "Grace timer - 160/240ms remaining (active)")
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
-	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 >= 0.074 (trigger 0.071 + eps 0.003)")
+	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
 
 func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 	var harness = _new_harness()
@@ -629,7 +629,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.012,
 					"min_bbox_area_growth": 0.010,
-					"positive_growth_samples": 4,
+					"positive_growth_samples": 3,
 					"min_positive_growth_samples": 3,
 					"sample_window_size": 4,
 					"growth_window_areas": [0.020, 0.038, 0.055, 0.071],

@@ -936,6 +936,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var min_positive_growth_samples := int(straight_side.get("min_positive_growth_samples", 0))
 	var sample_window_size := int(straight_side.get("sample_window_size", 0))
 	var growth_window_areas: Array = straight_side.get("growth_window_areas", []) as Array
+	var positive_growth_sample_slots := maxi(sample_window_size - 1, 0)
 	var fresh_sample := bool(straight_side.get("fresh_sample", false))
 	var tracking_valid := bool(straight_side.get("tracking_valid", false))
 	var tracking_state := String(straight_side.get("tracking_state", "idle"))
@@ -952,8 +953,8 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var trigger_bbox_area := float(straight_side.get("trigger_bbox_area", 0.0))
 	var bbox_area_retract_epsilon := float(straight_side.get("bbox_area_retract_epsilon", 0.0))
 	var pose_only_rearm_ms := int(straight_side.get("pose_only_rearm_ms", 0))
-	var rearm_threshold := trigger_bbox_area + bbox_area_retract_epsilon
-	var rearm_ready := trigger_bbox_area > 0.0 and bbox_area >= rearm_threshold
+	var rearm_threshold := maxf(trigger_bbox_area - bbox_area_retract_epsilon, 0.0)
+	var rearm_ready := trigger_bbox_area > 0.0 and bbox_area <= rearm_threshold
 	var reacquire_stable_ms_required := int(straight_side.get("reacquire_stable_ms_required", 0))
 	var reference_time_ms: int = _boxing_reference_time_ms()
 	var transition_age_ms: int = max(0, reference_time_ms - transition_timestamp_ms) if transition_timestamp_ms > 0 else 0
@@ -1022,8 +1023,8 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 				passed = pose_tracking_valid
 		"positive_growth_samples":
 			if hand_tracking_enabled:
-				threshold_text = "%d/%d" % [min_positive_growth_samples, sample_window_size]
-				current_text = "%d/%d" % [positive_growth_samples, sample_window_size]
+				threshold_text = "%d/%d" % [min_positive_growth_samples, positive_growth_sample_slots]
+				current_text = "%d/%d" % [positive_growth_samples, positive_growth_sample_slots]
 				passed = positive_growth_samples >= min_positive_growth_samples
 			else:
 				threshold_text = "skipped"
@@ -1063,7 +1064,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					current_text = "waiting for a trigger bbox snapshot"
 					passed = state_name == "ready"
 				else:
-					current_text = "%s >= %s (trigger %s + eps %s)" % [
+					current_text = "%s <= %s (trigger %s - eps %s)" % [
 						_fmt_float(bbox_area),
 						_fmt_float(rearm_threshold),
 						_fmt_float(trigger_bbox_area),

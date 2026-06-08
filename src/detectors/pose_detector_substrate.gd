@@ -1011,7 +1011,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		if use_hand_tracking:
 			var retract_epsilon := maxf(float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)), 0.0)
 			var trigger_bbox_area := maxf(float(state.get("trigger_bbox_area", 0.0)), 0.0)
-			if bbox_area >= trigger_bbox_area + retract_epsilon:
+			if bbox_area <= maxf(trigger_bbox_area - retract_epsilon, 0.0):
 				state["trigger_bbox_area"] = 0.0
 				state["grace_ms_remaining"] = 0
 				state["grace_deadline_timestamp_ms"] = 0
@@ -1889,7 +1889,7 @@ func _resolve_straight_punch_bbox_area_growth(state: Dictionary, bbox_area: floa
 	var newest: Dictionary = history[history.size() - 1]
 	var dt_ms := maxi(int(newest.get("timestamp_ms", timestamp_ms)) - int(oldest.get("timestamp_ms", timestamp_ms)), 1)
 	state["last_bbox_area_growth_window_span_ms"] = dt_ms
-	return float(oldest.get("area", bbox_area)) - float(newest.get("area", bbox_area))
+	return float(newest.get("area", bbox_area)) - float(oldest.get("area", bbox_area))
 
 func _bbox_area_window_values(history: Array) -> Array:
 	var values: Array = []
@@ -1906,7 +1906,7 @@ func _count_positive_bbox_growth_samples(history: Array) -> int:
 		return 0
 	var positive_growth_samples := 0
 	for idx in range(1, history.size()):
-		var growth := float(history[idx - 1]) - float(history[idx])
+		var growth := float(history[idx]) - float(history[idx - 1])
 		if growth > 0.000001:
 			positive_growth_samples += 1
 	return positive_growth_samples
