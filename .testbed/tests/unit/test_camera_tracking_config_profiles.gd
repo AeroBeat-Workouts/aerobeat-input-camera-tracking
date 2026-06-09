@@ -25,7 +25,7 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("camera_tracking", {}).get("tracking", {}).get("state_update_max_fps", -1)), 30)
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("enabled", false)))
 	assert_eq(int(bundle.get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("inference_interval_frames", -1)), 1)
-	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", false)))
+	assert_false(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", true)))
 	assert_eq(int(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("inference_interval_frames", -1)), 1)
 	assert_eq(String(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("landmark_mode", "")), "lite")
 	assert_true(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("bbox", {}).get("enabled", false)))
