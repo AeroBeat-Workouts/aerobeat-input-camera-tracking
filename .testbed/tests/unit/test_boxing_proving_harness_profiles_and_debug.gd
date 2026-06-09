@@ -290,9 +290,9 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 					"state": "triggered",
 					"wrist_velocity": 0.42,
 					"wrist_forward_velocity": 0.09,
-					"wrist_elbow_xy_distance": 0.082,
-					"max_wrist_elbow_xy_distance": 0.090,
-					"wrist_elbow_xy_gate_passed": true,
+					"elbow_shoulder_xy_distance": 0.082,
+					"max_elbow_shoulder_xy_distance": 0.090,
+					"elbow_shoulder_xy_gate_passed": true,
 					"bbox_area_growth": 0.015,
 					"grace_ms_remaining": 160,
 				}
@@ -322,7 +322,7 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	assert_string_contains(line, "source=none")
 	assert_string_contains(line, "wrist_xyz_vel=0.420")
 	assert_string_contains(line, "wrist_forward_vel=0.090")
-	assert_string_contains(line, "wrist_elbow_xy=0.082<=0.090(true)")
+	assert_string_contains(line, "elbow_shoulder_xy=0.082<=0.090(true)")
 	assert_string_contains(line, "bbox_area=0.055")
 	assert_string_contains(line, "bbox_growth=0.015")
 	assert_string_contains(line, "grace=160ms")
@@ -349,9 +349,9 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"wrist_velocity": 0.420,
 					"wrist_forward_velocity": 0.150,
 					"min_velocity": 0.180,
-					"wrist_elbow_xy_distance": 0.082,
-					"max_wrist_elbow_xy_distance": 0.090,
-					"wrist_elbow_xy_gate_passed": true,
+					"elbow_shoulder_xy_distance": 0.082,
+					"max_elbow_shoulder_xy_distance": 0.090,
+					"elbow_shoulder_xy_gate_passed": true,
 					"bbox_area": 0.052,
 					"bbox_area_growth": 0.015,
 					"min_bbox_area_growth": 0.010,
@@ -405,9 +405,9 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"wrist_velocity": 0.310,
 					"wrist_forward_velocity": 0.120,
 					"min_velocity": 0.180,
-					"wrist_elbow_xy_distance": 0.076,
-					"max_wrist_elbow_xy_distance": 0.090,
-					"wrist_elbow_xy_gate_passed": true,
+					"elbow_shoulder_xy_distance": 0.076,
+					"max_elbow_shoulder_xy_distance": 0.090,
+					"elbow_shoulder_xy_gate_passed": true,
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.012,
 					"min_bbox_area_growth": 0.010,
@@ -432,7 +432,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Fresh sample valid - false")
 	assert_false(body.contains("Event payload snapshot"))
 	assert_string_contains(body, "Recent punch velocity peak >= 0.180 - 0.310")
-	assert_string_contains(body, "Wrist-elbow XY distance <= 0.090 - 0.076")
+	assert_string_contains(body, "Elbow-shoulder XY distance <= 0.090 - 0.076")
 	assert_string_contains(body, "BBox area - 0.071")
 	assert_string_contains(body, "Recent bbox area growth peak >= 0.010 - 0.012")
 	assert_string_contains(body, "Positive growth samples >= 3/3 - 3/3")
@@ -456,9 +456,9 @@ func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake
 					"wrist_velocity": 0.474,
 					"recent_peak_wrist_velocity": 0.474,
 					"min_velocity": 0.500,
-					"wrist_elbow_xy_distance": 0.040,
-					"max_wrist_elbow_xy_distance": 0.060,
-					"wrist_elbow_xy_gate_passed": true,
+					"elbow_shoulder_xy_distance": 0.040,
+					"max_elbow_shoulder_xy_distance": 0.060,
+					"elbow_shoulder_xy_gate_passed": true,
 					"bbox_area": 0.007,
 					"bbox_area_growth": 0.00297168485325905,
 					"recent_peak_bbox_area_growth": 0.00297168485325905,
@@ -632,9 +632,9 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 					"wrist_velocity": 0.420,
 					"wrist_forward_velocity": 0.150,
 					"min_velocity": 0.180,
-					"wrist_elbow_xy_distance": 0.082,
-					"max_wrist_elbow_xy_distance": 0.090,
-					"wrist_elbow_xy_gate_passed": true,
+					"elbow_shoulder_xy_distance": 0.082,
+					"max_elbow_shoulder_xy_distance": 0.090,
+					"elbow_shoulder_xy_gate_passed": true,
 					"bbox_area": 0.0,
 					"bbox_area_growth": 0.0,
 					"min_bbox_area_growth": 0.010,
@@ -666,7 +666,7 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Hand tracking - pose-only fallback, pose_valid=true, tracking=pose_tracked, source=pose")
-	assert_string_contains(body, "Wrist-elbow XY distance <= 0.090 - 0.082")
+	assert_string_contains(body, "Elbow-shoulder XY distance <= 0.090 - 0.082")
 	assert_string_contains(body, "BBox area - pose-only fallback (bbox skipped)")
 	assert_string_contains(body, "Recent bbox area growth peak >= skipped - pose-only fallback")
 	assert_string_contains(body, "Positive growth samples >= skipped - pose-only fallback")
@@ -1018,9 +1018,9 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 			"stable_ms": 160,
 			"fresh_sample": true,
 			"wrist_velocity": 0.280,
-			"wrist_elbow_xy_distance": 0.082,
-			"max_wrist_elbow_xy_distance": 0.090,
-			"wrist_elbow_xy_gate_passed": true,
+			"elbow_shoulder_xy_distance": 0.082,
+			"max_elbow_shoulder_xy_distance": 0.090,
+			"elbow_shoulder_xy_gate_passed": true,
 			"bbox_area": 0.064,
 			"bbox_area_growth": 0.011,
 			"grace_ms_remaining": 240,

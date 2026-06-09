@@ -57,7 +57,7 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("gesture_detection", {}).get("uppercut", {}).get("evaluation", {}).get("window_ms", -1)), 250)
 	assert_false(bundle.get("gesture_detection", {}).get("uppercut", {}).get("evaluation", {}).has("wrist_velocity_window_ms"))
 	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).get("min_velocity", -1.0)), 0.5))
-	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).get("max_wrist_elbow_xy_distance", -1.0)), 0.09))
+	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).get("max_elbow_shoulder_xy_distance", -1.0)), 0.09))
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).has("min_punch_velocity"))
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).has("min_wrist_velocity"))
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("rearm", {}).get("pose_only_rearm_ms", -1)), 50)
