@@ -290,6 +290,9 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 					"state": "triggered",
 					"wrist_velocity": 0.42,
 					"wrist_forward_velocity": 0.09,
+					"wrist_elbow_xy_distance": 0.082,
+					"max_wrist_elbow_xy_distance": 0.090,
+					"wrist_elbow_xy_gate_passed": true,
 					"bbox_area_growth": 0.015,
 					"grace_ms_remaining": 160,
 				}
@@ -319,6 +322,7 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	assert_string_contains(line, "source=none")
 	assert_string_contains(line, "wrist_xyz_vel=0.420")
 	assert_string_contains(line, "wrist_forward_vel=0.090")
+	assert_string_contains(line, "wrist_elbow_xy=0.082<=0.090(true)")
 	assert_string_contains(line, "bbox_area=0.055")
 	assert_string_contains(line, "bbox_growth=0.015")
 	assert_string_contains(line, "grace=160ms")
@@ -345,6 +349,9 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"wrist_velocity": 0.420,
 					"wrist_forward_velocity": 0.150,
 					"min_velocity": 0.180,
+					"wrist_elbow_xy_distance": 0.082,
+					"max_wrist_elbow_xy_distance": 0.090,
+					"wrist_elbow_xy_gate_passed": true,
 					"bbox_area": 0.052,
 					"bbox_area_growth": 0.015,
 					"min_bbox_area_growth": 0.010,
@@ -369,13 +376,15 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, source=fresh_inference, stale=40ms (1 frames), grace=40ms (1 frames), stable=120ms")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[4].get("current_text", "")), "waiting for first straight-punch state change")
-	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 bbox=0.052 growth=0.015 fresh=true source=fresh_inference grace=0ms valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 xy=0.082<=0.090 (true) bbox=0.052 growth=0.015 fresh=true source=fresh_inference grace=0ms valid=true")
 	assert_eq(String(rows[7].get("threshold_text", "")), "0.180")
 	assert_eq(String(rows[7].get("current_text", "")), "0.420")
-	assert_eq(String(rows[9].get("threshold_text", "")), "0.010")
-	assert_eq(String(rows[10].get("current_text", "")), "3/3")
-	assert_eq(String(rows[14].get("current_text", "")), "0.061")
-	assert_eq(String(rows[15].get("current_text", "")), "0.052 <= 0.058 (trigger 0.061 - eps 0.003)")
+	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
+	assert_eq(String(rows[8].get("current_text", "")), "0.082")
+	assert_eq(String(rows[10].get("threshold_text", "")), "0.010")
+	assert_eq(String(rows[11].get("current_text", "")), "3/3")
+	assert_eq(String(rows[15].get("current_text", "")), "0.061")
+	assert_eq(String(rows[16].get("current_text", "")), "0.052 <= 0.058 (trigger 0.061 - eps 0.003)")
 
 func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	var harness = _new_harness()
@@ -396,6 +405,9 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"wrist_velocity": 0.310,
 					"wrist_forward_velocity": 0.120,
 					"min_velocity": 0.180,
+					"wrist_elbow_xy_distance": 0.076,
+					"max_wrist_elbow_xy_distance": 0.090,
+					"wrist_elbow_xy_gate_passed": true,
 					"bbox_area": 0.071,
 					"bbox_area_growth": 0.012,
 					"min_bbox_area_growth": 0.010,
@@ -420,6 +432,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Fresh sample valid - false")
 	assert_false(body.contains("Event payload snapshot"))
 	assert_string_contains(body, "Recent punch velocity peak >= 0.180 - 0.310")
+	assert_string_contains(body, "Wrist-elbow XY distance <= 0.090 - 0.076")
 	assert_string_contains(body, "BBox area - 0.071")
 	assert_string_contains(body, "Recent bbox area growth peak >= 0.010 - 0.012")
 	assert_string_contains(body, "Positive growth samples >= 3/3 - 3/3")
@@ -443,6 +456,9 @@ func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake
 					"wrist_velocity": 0.474,
 					"recent_peak_wrist_velocity": 0.474,
 					"min_velocity": 0.500,
+					"wrist_elbow_xy_distance": 0.040,
+					"max_wrist_elbow_xy_distance": 0.060,
+					"wrist_elbow_xy_gate_passed": true,
 					"bbox_area": 0.007,
 					"bbox_area_growth": 0.00297168485325905,
 					"recent_peak_bbox_area_growth": 0.00297168485325905,
@@ -463,9 +479,9 @@ func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake
 
 	var model: Dictionary = harness._build_hover_card_model("punch_left")
 	var rows: Array = model.get("rows", [])
-	assert_eq(String(rows[9].get("threshold_text", "")), "0.003")
-	assert_eq(String(rows[9].get("current_text", "")), "0.002972")
-	assert_false(bool(rows[9].get("passed", true)))
+	assert_eq(String(rows[10].get("threshold_text", "")), "0.003")
+	assert_eq(String(rows[10].get("current_text", "")), "0.002972")
+	assert_false(bool(rows[10].get("passed", true)))
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var body := String(inspector.get("body", ""))
@@ -616,6 +632,9 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 					"wrist_velocity": 0.420,
 					"wrist_forward_velocity": 0.150,
 					"min_velocity": 0.180,
+					"wrist_elbow_xy_distance": 0.082,
+					"max_wrist_elbow_xy_distance": 0.090,
+					"wrist_elbow_xy_gate_passed": true,
 					"bbox_area": 0.0,
 					"bbox_area_growth": 0.0,
 					"min_bbox_area_growth": 0.010,
@@ -637,14 +656,17 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 	var model: Dictionary = harness._build_hover_card_model("punch_left")
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(rows[2].get("current_text", "")), "pose-only fallback, pose_valid=true, tracking=pose_tracked, source=pose")
-	assert_eq(String(rows[8].get("current_text", "")), "pose-only fallback (bbox skipped)")
-	assert_eq(String(rows[9].get("threshold_text", "")), "skipped")
+	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
+	assert_eq(String(rows[8].get("current_text", "")), "0.082")
+	assert_eq(String(rows[9].get("current_text", "")), "pose-only fallback (bbox skipped)")
 	assert_eq(String(rows[10].get("threshold_text", "")), "skipped")
-	assert_string_contains(String(rows[15].get("current_text", "")), "elapsed (pose-only timer)")
+	assert_eq(String(rows[11].get("threshold_text", "")), "skipped")
+	assert_string_contains(String(rows[16].get("current_text", "")), "elapsed (pose-only timer)")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Hand tracking - pose-only fallback, pose_valid=true, tracking=pose_tracked, source=pose")
+	assert_string_contains(body, "Wrist-elbow XY distance <= 0.090 - 0.082")
 	assert_string_contains(body, "BBox area - pose-only fallback (bbox skipped)")
 	assert_string_contains(body, "Recent bbox area growth peak >= skipped - pose-only fallback")
 	assert_string_contains(body, "Positive growth samples >= skipped - pose-only fallback")
@@ -996,6 +1018,9 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 			"stable_ms": 160,
 			"fresh_sample": true,
 			"wrist_velocity": 0.280,
+			"wrist_elbow_xy_distance": 0.082,
+			"max_wrist_elbow_xy_distance": 0.090,
+			"wrist_elbow_xy_gate_passed": true,
 			"bbox_area": 0.064,
 			"bbox_area_growth": 0.011,
 			"grace_ms_remaining": 240,
@@ -1007,4 +1032,4 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 	var rows: Array = model.get("rows", [])
 	assert_string_contains(String(rows[1].get("current_text", "")), "triggered")
 	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> triggered")
-	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 bbox=0.064 growth=0.011 fresh=true source=fresh_inference grace=240ms valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 xy=0.082<=0.090 (true) bbox=0.064 growth=0.011 fresh=true source=fresh_inference grace=240ms valid=true")

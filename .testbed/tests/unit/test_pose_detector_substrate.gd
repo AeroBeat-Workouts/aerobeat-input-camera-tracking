@@ -256,6 +256,63 @@ func test_straight_punch_uses_xyz_wrist_velocity_magnitude_for_trigger_gate() ->
 	assert_true(float(state.get("metrics", {}).get("measurements", {}).get("left_wrist_velocity_magnitude", 0.0)) > float(state.get("metrics", {}).get("measurements", {}).get("left_forward_velocity", 0.0)))
 
 
+func test_straight_punch_requires_wrist_elbow_xy_gate_before_triggering() -> void:
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"thresholds": {
+				"min_velocity": 0.18,
+				"min_bbox_area_growth": 0.003,
+				"max_wrist_elbow_xy_distance": 0.05,
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.020), _tracked_hand_payload_physical("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.021), _tracked_hand_payload_physical("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.12}}), 1260, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.0240), _tracked_hand_payload_physical("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.20}}), 1340, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.0272), _tracked_hand_payload_physical("right", 0.020)))
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "ready")
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) >= float(left_debug.get("min_velocity", 0.0)))
+	assert_true(float(left_debug.get("bbox_area_growth", 0.0)) >= float(left_debug.get("min_bbox_area_growth", 0.0)))
+	assert_true(float(left_debug.get("wrist_elbow_xy_distance", 0.0)) > float(left_debug.get("max_wrist_elbow_xy_distance", 0.0)))
+	assert_false(bool(left_debug.get("wrist_elbow_xy_gate_passed", true)))
+
+func test_straight_punch_debug_surfaces_wrist_elbow_xy_gate_truth() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.020), _tracked_hand_payload_physical("right", 0.020)))
+	state = substrate.process_landmarks(
+		_make_pose_frame({
+			PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.62, "z": -0.01},
+			PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.60, "z": -0.04},
+		}),
+		1180,
+		_make_tracking_frame(_tracked_hand_payload_physical("left", 0.021), _tracked_hand_payload_physical("right", 0.020))
+	)
+	state = substrate.process_landmarks(
+		_make_pose_frame({
+			PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.56, "z": -0.02},
+			PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.54, "z": -0.12},
+		}),
+		1260,
+		_make_tracking_frame(_tracked_hand_payload_physical("left", 0.0240), _tracked_hand_payload_physical("right", 0.020))
+	)
+	state = substrate.process_landmarks(
+		_make_pose_frame({
+			PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.50, "z": -0.03},
+			PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.48, "z": -0.20},
+		}),
+		1340,
+		_make_tracking_frame(_tracked_hand_payload_physical("left", 0.0275), _tracked_hand_payload_physical("right", 0.020))
+	)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_true(is_equal_approx(float(left_debug.get("max_wrist_elbow_xy_distance", 0.0)), 0.09))
+	assert_true(is_equal_approx(float(left_debug.get("wrist_elbow_xy_distance", 0.0)), sqrt(0.0005)))
+	assert_true(bool(left_debug.get("wrist_elbow_xy_gate_passed", false)))
+
 func test_straight_punch_wrist_velocity_averages_all_samples_inside_configured_time_window() -> void:
 	config.gesture_profile_document = {
 		"straight_punch": {

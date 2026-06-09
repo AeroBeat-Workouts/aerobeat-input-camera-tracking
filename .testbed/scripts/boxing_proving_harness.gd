@@ -163,6 +163,10 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"label": "Recent punch velocity peak >= {threshold}",
 	},
 	{
+		"id": "wrist_elbow_xy_distance",
+		"label": "Wrist-elbow XY distance <= {threshold}",
+	},
+	{
 		"id": "bbox_area",
 		"label": "BBox area",
 		"row_kind": "info",
@@ -1342,6 +1346,9 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var recent_peak_wrist_velocity := float(straight_side.get("recent_peak_wrist_velocity", wrist_velocity))
 	var min_velocity := float(straight_side.get("min_velocity", 0.0))
 	var bbox_area := float(straight_side.get("bbox_area", 0.0))
+	var wrist_elbow_xy_distance := float(straight_side.get("wrist_elbow_xy_distance", 0.0))
+	var max_wrist_elbow_xy_distance := float(straight_side.get("max_wrist_elbow_xy_distance", 0.0))
+	var wrist_elbow_xy_gate_passed := bool(straight_side.get("wrist_elbow_xy_gate_passed", false))
 	var bbox_area_growth := float(straight_side.get("bbox_area_growth", 0.0))
 	var recent_peak_bbox_area_growth := float(straight_side.get("recent_peak_bbox_area_growth", bbox_area_growth))
 	var min_bbox_area_growth := float(straight_side.get("min_bbox_area_growth", 0.0))
@@ -1405,9 +1412,12 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					current_text += " (%s ago)" % _fmt_age_ms(_boxing_reference_time_ms() - transition_timestamp_ms)
 				passed = true
 		"state_change_payload":
-			current_text = "state=%s wrist=%s bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
+			current_text = "state=%s wrist=%s xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
 				state_name,
 				_fmt_float(wrist_velocity),
+				_fmt_float(wrist_elbow_xy_distance),
+				_fmt_float(max_wrist_elbow_xy_distance),
+				_fmt_bool(wrist_elbow_xy_gate_passed),
 				_fmt_float(bbox_area),
 				_fmt_float(bbox_area_growth),
 				_fmt_bool(fresh_sample),
@@ -1420,6 +1430,10 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			threshold_text = _fmt_float(min_velocity)
 			passed = recent_peak_wrist_velocity >= min_velocity
 			current_text = _fmt_threshold_comparison_value(recent_peak_wrist_velocity, min_velocity)
+		"wrist_elbow_xy_distance":
+			threshold_text = _fmt_float(max_wrist_elbow_xy_distance)
+			passed = wrist_elbow_xy_gate_passed
+			current_text = _fmt_threshold_comparison_value(wrist_elbow_xy_distance, max_wrist_elbow_xy_distance, true)
 		"bbox_area":
 			if hand_tracking_enabled:
 				current_text = _fmt_float(bbox_area)
@@ -1922,6 +1936,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Positive growth samples: %d" % int(straight_eval.get("min_positive_growth_samples", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(straight_thresholds.get("min_velocity", 0.0)))
 	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))
+	lines.append("Max wrist-elbow XY distance: %s" % _fmt_float(straight_thresholds.get("max_wrist_elbow_xy_distance", 0.0)))
 	lines.append("Triggered grace: %dms" % int(straight_timing.get("triggered_grace_ms", 0)))
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
 	lines.append("Pose-only rearm timer: %dms" % int(straight_rearm.get("pose_only_rearm_ms", 0)))
@@ -2093,7 +2108,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		hand_grace_ms = 0
 		hand_stable_ms = 0
 		stale_ms = 0
-	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s bbox_area=%s bbox_growth=%s grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
+	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s wrist_elbow_xy=%s<=%s(%s) bbox_area=%s bbox_growth=%s grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
 		"L" if side == "left" else "R",
 		state_name,
 		tracking_state,
@@ -2101,6 +2116,9 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		sample_source,
 		_fmt_float(side_debug.get("wrist_velocity", 0.0)),
 		_fmt_float(side_debug.get("wrist_forward_velocity", 0.0)),
+		_fmt_float(side_debug.get("wrist_elbow_xy_distance", 0.0)),
+		_fmt_float(side_debug.get("max_wrist_elbow_xy_distance", 0.0)),
+		_fmt_bool(bool(side_debug.get("wrist_elbow_xy_gate_passed", false))),
 		_fmt_float(bbox.get("area", side_debug.get("bbox_area", 0.0))),
 		_fmt_float(side_debug.get("bbox_area_growth", 0.0)),
 		int(side_debug.get("grace_ms_remaining", 0)),
@@ -2156,7 +2174,7 @@ func _any_recent_event(names_variant: Variant) -> bool:
 func _fmt_bool(value: bool) -> String:
 	return "true" if value else "false"
 
-func _fmt_threshold_comparison_value(value: float, threshold: float) -> String:
+func _fmt_threshold_comparison_value(value: float, threshold: float, _at_most: bool = false) -> String:
 	var rounded_value := _fmt_float(value)
 	if rounded_value == _fmt_float(threshold) and not is_equal_approx(value, threshold):
 		return "%.6f" % value
