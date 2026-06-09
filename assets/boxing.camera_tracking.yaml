@@ -47,7 +47,7 @@ tracking:
     smoothing_style: lite_filtered
   hands:
     # Turn hand tracking on or off for this profile. tool -> vendor.
-    enabled: true
+    enabled: false
     # [lite, full] Pick the hand landmark detail level. vendor.
     landmark_mode: lite
     # Run hand inference every N source frames. vendor.
