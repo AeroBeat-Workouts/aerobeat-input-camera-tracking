@@ -4297,7 +4297,7 @@ Focused validation run:
 - `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" "$PWD/.testbed/test-results/task10ct-weave-fix/right-fixed" 5000`
 - Post-fix evidence from the same `jq` query now shows `weave_left_start` for the named left fixture and `weave_right_start` for the named right fixture, matching fixture truth.
 
-Known proving limitation unchanged: the dummy headless renderer still logs the existing null-texture screenshot warning, so the proof artifacts for this slice are the capture report JSON timeline/event payloads rather than PNG screenshots. Commit hash: `PENDING` until commit/push completes; bead remains open until commit is recorded and left/right truth is handed off for QA/audit.
+Known proving limitation unchanged: the dummy headless renderer still logs the existing null-texture screenshot warning, so the proof artifacts for this slice are the capture report JSON timeline/event payloads rather than PNG screenshots. Final implementation commit: `785c9f4` (`Fix inverted weave left-right proving truth`), pushed to `origin/main`. Bead closed after recording this result because the named left/right proving truth now matches the real fixture outputs and is ready for QA/audit follow-up.
 
 ### Task 10CU: QA repaired weave left/right proving truth
 
