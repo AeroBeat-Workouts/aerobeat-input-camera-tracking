@@ -4536,7 +4536,7 @@ Validation run from repo root:
 
 Known validation noise unchanged by this slice: the GUT run still reports the pre-existing orphan / dummy-renderer RID cleanup warnings on exit.
 
-Commit/push/closure for this coder slice were completed after this plan update; see the follow-up lines below for the exact commit hash and bead-close state.
+Commit/push status: committed and pushed to `main` as `ff01c57` (`Add guard nose gate and held weave state`).
 
 ### Task 10DB: QA guard nose-proximity gating plus continuous weave hold behavior
 
