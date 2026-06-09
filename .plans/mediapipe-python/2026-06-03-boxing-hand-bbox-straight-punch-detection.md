@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 05:50 EDT
+**Last Updated:** 2026-06-09 06:13 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -4244,6 +4244,91 @@ Commit: `310bc3f` - `Preserve straight-punch continuity across reacquiring hand 
 **Folders Created/Deleted/Modified:**
 - `.testbed/`
 - `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ❌ Failed
+
+**Results:**
+- **Repo/YAML ownership check:** `assets/boxing.gesture_detection.yaml` now publicly owns the weave knobs under `weave.enabled` + `weave.thresholds` with the same short user-facing comment style used elsewhere in this file (`enter_head_lateral_offset_min`, `enter_relative_head_hip_offset_min`, `enter_head_drop_ratio_min`, `exit_head_lateral_offset_max`, `exit_relative_head_hip_offset_max`). This part passes.
+- **Focused automated validation:** `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`76/76` passing, `825` asserts). Relevant weave coverage that passed: detector YAML/debug truth in `.testbed/tests/unit/test_pose_detector_substrate.gd::test_weave_uses_yaml_thresholds_and_surfaces_debug_truth`, plus hover-card / inspector wording + threshold surfacing in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd::test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth`.
+- **Highest-fidelity proving-scene verification available in this QA pass:** ran the real boxing proving scene headlessly against the real weave fixture videos via `godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn <fixture-mp4> <output-dir> 5000` for both `/.testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4` and `/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4`.
+- **Truthful failure found in the live proving path:** both scene runs reached `status_label = Boxing harness live` with `provider_present = true` and `camera_streaming = true`, so the proving path itself was active. But the actual live weave state/events did **not** match fixture truth: the `weave_left` fixture emitted only `weave_right_start` (at `4210ms`) and the latest live weave debug state was `right`; the `weave_right` fixture emitted `weave_left_start` (at `2227ms`) and the latest live weave debug state was `left`. The `weave_right` run also produced an incidental `punch_right` event at `3744ms`.
+- **QA conclusion:** although the new YAML ownership/comments and the hover/inspector formatting tests pass, the real boxing proving scene is not yet trustworthy enough for Derrick to tune weave left/right against the named weave fixtures because the live proving-path state is currently directionally inverted on those fixture captures. Bead `aerobeat-input-camera-tracking-70g` was **not** closed.
+- **Manual/proving limitation:** the headless dummy-renderer proving capture still logs the known null-texture screenshot limitation, so this QA pass used the capture report JSON/state timeline rather than a saved PNG as the high-fidelity proof artifact. That limitation does **not** explain the left/right inversion above; the event/state payloads themselves showed the mismatch.
+- **Relevant commits inspected:** implementation commit `4729c49` (`Expose weave tuning and proving debug truth`); repo HEAD during QA `9e3c9de` (`Update weave task plan with final commit hash`).
+
+### Task 10CT: Repair weave left/right inversion in the live boxing proving path
+
+**Bead ID:** `aerobeat-input-camera-tracking-7j6`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** QA proved the new weave YAML/inspector slice is not truthfully correct in the live proving path: the named `weave_left` fixture is surfacing `weave_right`, and the named `weave_right` fixture is surfacing `weave_left`. Keep this repair slice narrow to that inversion bug and any directly required truth fixes in the weave detector/proving path. Preserve the public YAML ownership/comments and the new weave inspector surfaces unless a direct fix requires adjustment. Claim `aerobeat-input-camera-tracking-7j6` on start with `bd update aerobeat-input-camera-tracking-7j6 --status in_progress --json`, reproduce the failure against the real weave fixtures, repair the cause, run focused validation plus the high-fidelity fixture proving path, update this plan with exact commands/results/commit, commit and push to `main`, and close the bead only after the left/right truth is actually fixed.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.testbed/test-results/task10ct-weave-fix/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/test-results/task10ct-weave-fix/left/report.json`
+- `.testbed/test-results/task10ct-weave-fix/right/report.json`
+- `.testbed/test-results/task10ct-weave-fix/left-fixed/report.json`
+- `.testbed/test-results/task10ct-weave-fix/right-fixed/report.json`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Reproduced the live proving-path inversion first against the real named weave fixtures by running the boxing proving capture harness headlessly with `AEROBEAT_CAMERA_TRACKING_SOURCE` set to each fixture. Pre-fix evidence from `jq -r '.fixture_capture.camera_source, (.fixture_capture.event_timeline[] | select(.name|test("weave")) | .name)'` showed the exact inversion QA reported: `weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4` emitted `weave_right_start`, and `weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4` emitted `weave_left_start`.
+
+Root cause was narrow and detector-local in `src/detectors/pose_detector_substrate.gd::_process_weave()`: weave side classification still treated **negative** head / head-vs-hip lateral offsets as `left` and **positive** offsets as `right`, but the live proving path and named fixtures use the opposite truth convention. Repaired only that seam by flipping the left/right sign checks for `head_offset` and `relative_offset`, then updated the focused weave detector / proving-harness unit expectations to match the corrected truth surface without changing the public YAML ownership/comments.
+
+Focused validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4" "$PWD/.testbed/test-results/task10ct-weave-fix/left-fixed" 5000`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" "$PWD/.testbed/test-results/task10ct-weave-fix/right-fixed" 5000`
+- Post-fix evidence from the same `jq` query now shows `weave_left_start` for the named left fixture and `weave_right_start` for the named right fixture, matching fixture truth.
+
+Known proving limitation unchanged: the dummy headless renderer still logs the existing null-texture screenshot warning, so the proof artifacts for this slice are the capture report JSON timeline/event payloads rather than PNG screenshots. Commit hash: `PENDING` until commit/push completes; bead remains open until commit is recorded and left/right truth is handed off for QA/audit.
+
+### Task 10CU: QA repaired weave left/right proving truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-lfw`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the narrow weave inversion repair after Task 10CT lands. Re-run the focused automated weave tests, then re-run the high-fidelity boxing proving fixture checks for both named weave fixtures and verify left/right truth now matches the fixture names and surfaced weave debug state. Claim `aerobeat-input-camera-tracking-lfw` with `bd update aerobeat-input-camera-tracking-lfw --status in_progress --json` on start, update this plan with exact commands/evidence, and close the bead only if the repaired live proving path really passes.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10CV: Audit repaired weave left/right proving truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-ao1`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the repaired weave inversion slice after Task 10CU. Truth-check that the live boxing proving path now reports the correct left/right weave direction for the named fixtures, and that the YAML/inspector surfaces remain truthful after the repair. Claim `aerobeat-input-camera-tracking-ao1` with `bd update aerobeat-input-camera-tracking-ao1 --status in_progress --json`, inspect the diff/plan/tests/proving evidence, rerun only the validation needed to prove the fix, and close the bead yourself only if the work is actually done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
 - `src/detectors/`
 
 **Files Created/Deleted/Modified:**

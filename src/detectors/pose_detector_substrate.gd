@@ -1588,10 +1588,10 @@ func _process_squat(events: Array, height_ratio: float) -> void:
 func _process_weave(events: Array, head_offset: float, hip_offset: float, head_drop_ratio: float) -> void:
 	var weave_config := _get_weave_config()
 	var relative_offset := head_offset - hip_offset
-	var left_head_ready := head_offset <= -float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
-	var right_head_ready := head_offset >= float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
-	var left_relative_ready := relative_offset <= -float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
-	var right_relative_ready := relative_offset >= float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
+	var left_head_ready := head_offset >= float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
+	var right_head_ready := head_offset <= -float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
+	var left_relative_ready := relative_offset >= float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
+	var right_relative_ready := relative_offset <= -float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
 	var head_drop_ready := head_drop_ratio >= float(weave_config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN))
 	var weaving_left := left_head_ready and left_relative_ready and head_drop_ready
 	var weaving_right := right_head_ready and right_relative_ready and head_drop_ready

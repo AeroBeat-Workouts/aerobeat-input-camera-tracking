@@ -699,9 +699,9 @@ func test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth() -> vo
 				"enter_head_drop_ratio_min": 0.05,
 				"exit_head_lateral_offset_max": 0.12,
 				"exit_relative_head_hip_offset_max": 0.08,
-				"head_lateral_offset": -0.31,
-				"hip_lateral_offset": -0.04,
-				"relative_head_hip_offset": -0.27,
+				"head_lateral_offset": 0.31,
+				"hip_lateral_offset": 0.04,
+				"relative_head_hip_offset": 0.27,
 				"head_drop_ratio": 0.06,
 				"left_candidate": true,
 				"right_candidate": false,
@@ -730,9 +730,9 @@ func test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth() -> vo
 	assert_eq(String(rows[8].get("current_text", "")), "0.060")
 	assert_eq(String(rows[9].get("threshold_text", "")), "0.120")
 	assert_eq(String(rows[10].get("threshold_text", "")), "0.080")
-	assert_eq(String(rows[12].get("current_text", "")), "-0.310")
-	assert_eq(String(rows[13].get("current_text", "")), "-0.040")
-	assert_eq(String(rows[14].get("current_text", "")), "-0.270")
+	assert_eq(String(rows[12].get("current_text", "")), "0.310")
+	assert_eq(String(rows[13].get("current_text", "")), "0.040")
+	assert_eq(String(rows[14].get("current_text", "")), "0.270")
 	assert_eq(String(rows[15].get("current_text", "")), "0.060")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "weave")
@@ -743,8 +743,8 @@ func test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth() -> vo
 	assert_string_contains(body, "Head lateral offset magnitude >= 0.300 - 0.310")
 	assert_string_contains(body, "Head-vs-hip offset magnitude >= 0.120 - 0.270")
 	assert_string_contains(body, "Head drop ratio >= 0.050 - 0.060")
-	assert_string_contains(body, "Head lateral offset - -0.310")
-	assert_string_contains(body, "Head-vs-hip lateral offset - -0.270")
+	assert_string_contains(body, "Head lateral offset - 0.310")
+	assert_string_contains(body, "Head-vs-hip lateral offset - 0.270")
 
 func test_proving_scenes_surface_recalibrate_button_and_route_press_to_provider() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:

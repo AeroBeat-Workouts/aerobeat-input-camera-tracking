@@ -1134,7 +1134,7 @@ func test_weave_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
 	_calibrate_stance()
 
 	var weave_left_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.42, "y": 0.84},
+		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.84},
 		PoseLandmarkIds.LEFT_HIP: {"x": 0.42, "y": 0.46},
 		PoseLandmarkIds.RIGHT_HIP: {"x": 0.58, "y": 0.46},
 	}), 1200)
@@ -1146,9 +1146,9 @@ func test_weave_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
 	assert_true(is_equal_approx(float(weave_debug.get("enter_head_drop_ratio_min", 0.0)), 0.04))
 	assert_true(is_equal_approx(float(weave_debug.get("exit_head_lateral_offset_max", 0.0)), 0.10))
 	assert_true(is_equal_approx(float(weave_debug.get("exit_relative_head_hip_offset_max", 0.0)), 0.06))
-	assert_true(float(weave_debug.get("head_lateral_offset", 0.0)) < 0.0)
+	assert_true(float(weave_debug.get("head_lateral_offset", 0.0)) > 0.0)
 	assert_true(absf(float(weave_debug.get("hip_lateral_offset", 0.0))) < float(weave_debug.get("enter_head_lateral_offset_min", 0.0)))
-	assert_true(float(weave_debug.get("relative_head_hip_offset", 0.0)) < 0.0)
+	assert_true(float(weave_debug.get("relative_head_hip_offset", 0.0)) > 0.0)
 	assert_true(float(weave_debug.get("head_drop_ratio", 0.0)) >= float(weave_debug.get("enter_head_drop_ratio_min", 0.0)))
 	assert_true(bool(weave_debug.get("left_candidate", false)))
 	assert_false(bool(weave_debug.get("right_candidate", true)))
@@ -1191,7 +1191,7 @@ func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 	assert_eq(_event_names(squat_end_state.get("events", [])), ["squat_end"])
 
 	var weave_left_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.43, "y": 0.85},
+		PoseLandmarkIds.NOSE: {"x": 0.57, "y": 0.85},
 	}), 1600)
 	assert_eq(_event_names(weave_left_state.get("events", [])), ["weave_left_start"])
 	var weave_end_state := substrate.process_landmarks(_make_pose_frame(), 1700)
