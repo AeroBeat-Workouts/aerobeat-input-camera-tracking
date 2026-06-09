@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 09:44 EDT
+**Last Updated:** 2026-06-09 13:00 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -4407,9 +4407,24 @@ Caveat unchanged from prior slices: the dummy headless screenshot capture still 
 - validation artifacts / touched proof files as needed
 - `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA passed. I inspected Task 10CW commit `8411b26` and reran the focused automated coverage with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit` from the owner repo root. Result: ✅ `77/77` tests passed (`831` asserts). Known pre-existing GUT orphan / dummy-renderer RID cleanup warnings still appear on exit and were unchanged by this slice.
+
+For the highest-fidelity paused/proving validation available here without widening scope, I ran the real boxing proving scene headlessly against the straight-left prerecorded fixture and captured paused UI truth artifacts under `.testbed/test-results/task10cx-qa-20260609-0957/`. Exact commands used:
+- `export AEROBEAT_CAMERA_TRACKING_SOURCE='/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4'`
+- `godot --headless --path .testbed --script /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cx-qa-20260609-0957/task10cx_paused_seek_probe.gd -- res://scenes/boxing_proving.tscn /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cx-qa-20260609-0957/paused_seek_probe.json`
+
+Artifact evidence from `paused_seek_probe.json` shows the proving UI now reports a paused non-trigger state truthfully enough to trust the gate reason:
+- paused playback state captured successfully: `paused=true`, `current_time_sec=3.433`
+- hover/inspector state: `Current state - ready`
+- hand-tracking truth is explicit: `tracked, valid=true, source=fresh_inference, stale=0ms (0 frames), grace=0ms (0 frames), stable=900ms`
+- velocity gate now uses the detector’s recent-peak comparator value, not a last-sample surrogate: `Recent punch velocity peak >= 0.500 - 0.128` (`passed=false`)
+- bbox-growth gate now uses the detector’s recent-peak comparator value, not a last-sample surrogate: `Recent bbox area growth peak >= 0.003 - 0.002` (`passed=false`)
+- positive-growth gate remains independently true: `Positive growth samples >= 1/17 - 5/17` (`passed=true`)
+- the paused hover-card/event snapshot no longer implies a false equality; it shows a truthful non-trigger contract where the count gate passes but the velocity and bbox-growth comparator gates do not.
+
+Caveat recorded for audit: this replay backend still reports `transport_mode=approx_time_seek` and explicitly says exact frame stepping is unavailable, so QA could not truthfully claim an exact frame-addressed pause on the original manually observed frame. I therefore used the strongest available repo-local proving path: a paused real-fixture probe through the actual boxing proving scene plus the focused regression tests added in Task 10CW. That is sufficient to confirm the repaired UI wording/value source is now truthful on paused non-trigger evidence, and the bead can advance to audit.
 
 ### Task 10CY: Audit straight-punch paused-snapshot gate mismatch fix
 
@@ -4421,6 +4436,140 @@ Caveat unchanged from prior slices: the dummy headless screenshot capture still 
 
 **Folders Created/Deleted/Modified:**
 - `.testbed/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed with one bounded replay caveat. I independently inspected the landed fix in commit `8411b26` plus the existing coder/QA evidence, then reran only the narrow proof needed from the repo root:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit`
+- `export AEROBEAT_CAMERA_TRACKING_SOURCE='/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4'`
+- `godot --headless --path .testbed --script /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cx-qa-20260609-0957/task10cx_paused_seek_probe.gd -- res://scenes/boxing_proving.tscn /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cy-audit-20260609-1014/paused_seek_probe.json`
+- I also ran the stricter live-capture probe `task10cx_paused_truth_probe.gd`; it timed out without re-finding the original near-threshold sample before the clip looped, which reinforces QA’s existing `approx_time_seek` caveat rather than contradicting the fix.
+
+Focused automated coverage passed again: `77/77` tests, `831` asserts. That includes the proving-harness regression `test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake_threshold_equality` plus the detector regressions that prove the state machine gates on `recent_peak_wrist_velocity` / `recent_peak_bbox_area_growth`, not the last sample. My paused replay artifact lives under `.testbed/test-results/task10cy-audit-20260609-1014/` (`gut.log`, `paused_seek_probe.json`, `paused_seek_probe_summary.json`, `paused_truth_probe.json`).
+
+Independent truth check results:
+- The paused proving UI is now semantically truthful about what the detector compares. The trigger rows are labeled `Recent punch velocity peak >= {threshold}` and `Recent bbox area growth peak >= {threshold}`, which matches the actual straight-punch gate inputs from `REF-01` instead of implying last-sample comparisons.
+- The threshold display is truthful. In my reproducible paused audit probe, the hover/inspector surfaced `Recent punch velocity peak >= 0.500 - 0.122` (`passed=false`) and `Recent bbox area growth peak >= 0.003 - 0.001` (`passed=false`) while still showing `Positive growth samples >= 1/17 - 4/17` (`passed=true`). That matches the frozen detector debug state in the same artifact (`recent_peak_wrist_velocity=0.130975663661957`, `recent_peak_bbox_area_growth=0.000513609102799961`, `positive_growth_samples=4`, thresholds `0.5` / `0.003` / `1`).
+- The UI no longer falsely suggests threshold equality through rounding. That behavior is covered by the passing regression test above and by the commit diff itself, which widens precision when 3-decimal rounding would fake equality.
+- On the reproducible paused slice I could re-stage locally, the trigger should not be armed. The paused state is non-trigger (`tracking_lost`/reacquiring in my run, `ready` in QA’s earlier run), velocity and bbox-growth peak gates are both false, and the positive-growth count alone is insufficient to arm the detector.
+
+Caveat: exact replaying of the originally observed “paused full extension” frame is still not deterministic because the backend reports `transport_mode=approx_time_seek` with no frame stepping. My rerun landed on a truthful paused non-trigger slice slightly later than QA’s `ready` sample, while QA’s artifact landed on `ready`. Both artifacts agree on the point that matters for this audit: the paused UI now explains the non-trigger truth correctly, and the detector should not arm from that paused post-extension slice. Closed bead `aerobeat-input-camera-tracking-kjz` on that basis.
+
+### Task 10CZ: Research improvements for fist/fast-punch hand tracking reliability
+
+**Bead ID:** `aerobeat-input-camera-tracking-z0w`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-01`, `REF-03`
+**Prompt:** Research practical ways to improve webcam hand tracking reliability for boxing fists and fast punches in this AeroBeat pipeline, with emphasis on MediaPipe-style hand tracking failure modes under motion blur, self-occlusion, closed fists, and fast extension/retraction. Use current repo context first, then research online for credible implementation ideas we could actually apply. Keep the output actionable for Derrick: separate likely wins that can be achieved in software/config from limits that are really camera/light/blur problems. Also call out whether any hand-tracking changes are worth pursuing for straight punches versus continuing the pose-primary / bbox-assisted direction already in the repo. Claim `aerobeat-input-camera-tracking-z0w` on start with `bd update aerobeat-input-camera-tracking-z0w --status in_progress --json`, update this plan with a concise findings summary, and close the bead when the research handoff is ready.
+
+**Folders Created/Deleted/Modified:**
+- `/.plans/mediapipe-python/`
+- optional notes/docs locations if truly helpful
+
+**Files Created/Deleted/Modified:**
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+- optional lightweight findings note if useful
+
+**Status:** ✅ Complete
+
+**Results:** Repo context + source review suggest the current direction is mostly right: keep straight-punch detection pose-primary and use hand tracking mainly as a bbox/depth-ish assist rather than trying to make MediaPipe hand landmarks the primary truth for fists. In this repo, hands currently run every frame but the tool caps tracking/state publishing at 30 FPS from a 60 FPS camera request, the vendor runs MediaPipe `HandLandmarker` in `IMAGE` mode (independent per-frame detections, no vendor-side interpolation/IDs), and boxing is still configured with `tracking.hands.landmark_mode: lite`, where the vendor README explicitly says bbox geometry is intentionally smaller than `full`. That makes `lite` a likely self-inflicted handicap for a detector that already relies on bbox growth during extension.
+
+Ranked practical recommendations:
+1. **Highest-value software change: test `tracking.hands.landmark_mode: full` for boxing straight punches.** The repo already documents that `lite` under-bounds compared with `full`; for extension/retraction logic based on bbox area growth, `full` should give a truer apparent-size change and less fingertip/palm-subset brittleness.
+2. **Raise boxing tracking cadence to 60 FPS if the host can sustain it truthfully.** Current boxing config requests 60 FPS capture but caps tracker/state work at 30 FPS. Fast jabs over a 250 ms window benefit more from denser temporal samples than from extra post-filtering.
+3. **Keep hand tracking assistive, not primary, for straight punches.** MediaPipe’s own design rationale says palm/fist boxes are easier than articulated hand keypoints, and the vendor slice here has no stable per-hand IDs or temporal hand model. Use pose velocity/arm extension as the primary trigger and hand bbox growth/shrink as confidence/rearm evidence.
+4. **Treat missing/`grace` hand samples as UX continuity, not punch evidence.** The tool’s grace path predicts bbox/landmark carry-forward; that is useful for overlays and short dropouts, but it should not become positive punch/rearm evidence during blur/occlusion gaps.
+5. **Retune boxing hand validity for sports, not general tracking.** `tracking.hands.validity.max_stale_ms: 2000` is very forgiving for boxing. For strike logic, a much shorter trust horizon (roughly tens to low hundreds of ms) is more believable; otherwise the system risks carrying stale fists far past the moment where the camera really lost them.
+6. **If more hand work is attempted, spend it on tracker-layer association/reliability surfaces, not finer fist landmarks.** Good examples: expose/weight handedness score confidence, detect abrupt bbox/side swaps, gate punch evidence on `tracked`/fresh samples only, and log real dropout causes in proving runs.
+
+What looks software-solvable vs physically limited:
+- **Software-solvable / worth trying here:** `full` hand landmark mode for bbox derivation; truthful 60 FPS tracking if CPU budget allows; shorter stale/reacquire trust for boxing; excluding grace/stale from punch evidence; continued pose-primary fusion with bbox-assisted confirmation.
+- **Mostly camera/lighting limited:** motion-blurred fists during fast extension/retraction, heavily self-occluded closed fists, and low-light webcam auto-exposure smear. Once the hand spans multiple pixels of blur during exposure, post-hoc smoothing cannot restore missing geometry; the practical fixes are more light, shorter exposure, higher real FPS, closer/larger framing, and a better camera.
+
+Recommendation on investment: **do not invest heavily in making MediaPipe hand landmarks themselves reliable enough to be the main straight-punch detector for webcam boxing.** Closed fists and fast punches hit exactly the failure modes MediaPipe users report (motion blur + self-occlusion), and this repo’s current vendor path is frame-independent hand detection anyway. The better ROI is to continue the current pose-primary / bbox-assisted direction, improve the bbox signal quality (`full` mode, cadence, stale/grace policy), and accept that some misses are sensor/exposure-limited rather than algorithm-tunable.
+
+Evidence used: repo config/README review (`assets/boxing.camera_tracking.yaml`, `assets/boxing.gesture_detection.yaml`, `aerobeat-vendor-mediapipe-python/README.md`), MediaPipe Hands docs/blog noting self-occlusion difficulty and that palm/fist detection is easier than full articulated-hand detection, GitHub issue `google-ai-edge/mediapipe#221` documenting motion-blur degradation, GitHub issue `google/mediapipe#3008` noting occluded landmarks are still predicted/hallucinated rather than visibility-aware, and a machine-vision exposure reference explaining blur as object motion during exposure. Ready for Derrick handoff; close this bead.
+
+### Task 10DA: Implement guard nose-proximity gating plus continuous weave hold behavior
+
+**Bead ID:** `aerobeat-input-camera-tracking-zsh`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** In `REF-01`, make two narrow boxing-pose behavior changes. First, guard should require both wrists to be close to the nose landmark in addition to the existing wrist-closeness / wrists-above-elbows rule, and the new nose-closeness threshold must be publicly YAML-owned with the same simple comment style as the other boxing gesture knobs. Second, weave should behave like a held pose state: once active, it should remain active for as long as the athlete continues to satisfy the weave criteria, rather than behaving like a momentary strike trigger. Keep scope narrow to detector logic, YAML exposure, and proving-scene debug/inspector truth for these two pose-state changes. Claim `aerobeat-input-camera-tracking-zsh` on start with `bd update aerobeat-input-camera-tracking-zsh --status in_progress --json`, add focused proof/tests, update this plan with exact results/commands/commit, commit and push to `main`, and close the bead only after the implementation truthfully lands.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-zsh` with `bd update aerobeat-input-camera-tracking-zsh --status in_progress --json`, then kept the slice narrowly inside detector/config/proving truth.
+
+Guard repair: `src/detectors/pose_detector_substrate.gd` now requires **both** wrists to be within a new YAML-owned `guard.thresholds.max_wrist_nose_distance` gate in addition to the existing wrist-separation and wrists-above-elbows checks. The default/config/debug plumbing now carries that threshold and live per-wrist nose-distance truth through `guard_debug`, including `left_wrist_nose_distance`, `right_wrist_nose_distance`, `left_wrist_near_nose`, and `right_wrist_near_nose`. `assets/boxing.gesture_detection.yaml` exposes the new knob publicly with the same short comment style as the surrounding boxing gesture thresholds.
+
+Weave repair: `_process_weave()` now behaves like a true held pose state instead of a sticky momentary trigger. While the athlete still satisfies the live left/right weave criteria, the matching `weave_left` / `weave_right` state stays active without re-emitting start events; once the live weave criteria stop passing, the state ends immediately instead of lingering until a separate neutral-only condition. The emitted `weave_debug.state` now mirrors that live held-state truth directly (`left`, `right`, or `inactive`).
+
+Proving/debug truth: `.testbed/scripts/boxing_proving_harness.gd` now surfaces the guard nose gate in both the hover-card checklist and the inspector text (`Wrist nose distance <= ...`, plus live left/right wrist-to-nose distances). `.testbed/scripts/proving_harness.gd` also exports the new guard debug fields into the proving snapshot payload so inspector/debug consumers see the same truth as the detector.
+
+Focused proof: `.testbed/tests/unit/test_pose_detector_substrate.gd` now asserts the new guard nose requirement, the new guard debug fields/threshold, and the weave held-state lifecycle (start once, stay active while live criteria still pass, end when the live weave pose is left).
+
+Validation run from repo root:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`83/83` passed, `942` asserts)
+
+Known validation noise unchanged by this slice: the GUT run still reports the pre-existing orphan / dummy-renderer RID cleanup warnings on exit.
+
+Commit/push/closure for this coder slice were completed after this plan update; see the follow-up lines below for the exact commit hash and bead-close state.
+
+### Task 10DB: QA guard nose-proximity gating plus continuous weave hold behavior
+
+**Bead ID:** `aerobeat-input-camera-tracking-ly6`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the guard nose-proximity + continuous-weave implementation after Task 10DA lands. Verify the new guard requirement is publicly YAML-owned, reflected truthfully in the boxing inspector/hover surfaces, and behaves correctly against focused proof and the highest-fidelity proving flow available. Also verify weave now stays active while the athlete remains in the weave pose and clears only when the athlete leaves that pose. Claim `aerobeat-input-camera-tracking-ly6` on start with `bd update aerobeat-input-camera-tracking-ly6 --status in_progress --json`, update this plan with exact commands/evidence, and close the bead only if the slice really passes.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10DC: Audit guard nose-proximity gating plus continuous weave hold behavior
+
+**Bead ID:** `aerobeat-input-camera-tracking-zug`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the guard nose-proximity + continuous-weave slice after Task 10DB. Truth-check the new YAML-owned guard nose threshold, the proving inspector/hover/debug truth, and the held-pose weave state behavior. Claim `aerobeat-input-camera-tracking-zug` on start with `bd update aerobeat-input-camera-tracking-zug --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the fix, and close the bead only if the work is actually done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
 - `src/detectors/`
 
 **Files Created/Deleted/Modified:**

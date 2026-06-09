@@ -42,6 +42,7 @@ const UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO := 0.55
 
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_X := 0.20
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y := 0.12
+const GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE := 0.15
 const SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX := 0.82
 const SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN := 0.92
 const WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN := 0.30
@@ -586,6 +587,7 @@ func _build_guard_debug_state() -> Dictionary:
 	guard_debug["enabled"] = bool(guard_config.get("enabled", true))
 	guard_debug["max_wrist_separation_x"] = float(guard_config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))
 	guard_debug["max_wrist_separation_y"] = float(guard_config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))
+	guard_debug["max_wrist_nose_distance"] = float(guard_config.get("max_wrist_nose_distance", GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE))
 	return guard_debug
 
 func _build_squat_debug_state(metrics: Dictionary = {}) -> Dictionary:
@@ -853,12 +855,17 @@ func _reset_gesture_state() -> void:
 			"enabled": true,
 			"max_wrist_separation_x": GUARD_DEFAULT_MAX_WRIST_SEPARATION_X,
 			"max_wrist_separation_y": GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y,
+			"max_wrist_nose_distance": GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE,
 			"wrist_separation_x": 0.0,
 			"wrist_separation_y": 0.0,
+			"left_wrist_nose_distance": 0.0,
+			"right_wrist_nose_distance": 0.0,
 			"wrists_close_x": false,
 			"wrists_close_y": false,
 			"left_wrist_above_elbow": false,
 			"right_wrist_above_elbow": false,
+			"left_wrist_near_nose": false,
+			"right_wrist_near_nose": false,
 			"candidate": false,
 		},
 		"weave_debug": {
@@ -919,6 +926,7 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	var shoulder_center_vec: Vector3 = measurements.get("shoulder_center", Vector3(float(_baseline.get("shoulder_center_x", 0.0)), 0.0, 0.0))
 	var shoulder_center := Vector2(shoulder_center_vec.x, shoulder_center_vec.y)
 	var torso_height := maxf(float(measurements.get("torso_height", float(_baseline.get("torso_height", 0.0)))), 0.000001)
+	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
 	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
 	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
 	var left_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_ELBOW)
@@ -942,7 +950,7 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	_update_flow_hand_history("left", left_wrist, left_hand_confidence, timestamp_ms)
 	_update_flow_hand_history("right", right_wrist, right_hand_confidence, timestamp_ms)
 
-	_process_guard(events, left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist, shoulder_width)
+	_process_guard(events, nose, left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist, shoulder_width)
 	if torso_confidence >= lower_body_confidence_gate:
 		_process_squat(events, float(measurements.get("height_ratio", 1.0)))
 	_process_weave(events, float(measurements.get("head_lateral_offset", 0.0)), float(measurements.get("hip_lateral_offset", 0.0)), float(measurements.get("head_drop_ratio", 0.0)))
@@ -1531,42 +1539,56 @@ func _set_flow_meta(state_name: String, data: Dictionary) -> void:
 	flow[state_name] = data
 	_gesture_state["flow"] = flow
 
-func _process_guard(events: Array, left_shoulder: Dictionary, right_shoulder: Dictionary, left_elbow: Dictionary, right_elbow: Dictionary, left_wrist: Dictionary, right_wrist: Dictionary, _shoulder_width: float) -> void:
+func _process_guard(events: Array, nose: Dictionary, left_shoulder: Dictionary, right_shoulder: Dictionary, left_elbow: Dictionary, right_elbow: Dictionary, left_wrist: Dictionary, right_wrist: Dictionary, _shoulder_width: float) -> void:
 	var guard_config := _get_guard_config()
 	var guard_debug := {
 		"state": bool(_get_state("guard")),
 		"enabled": bool(guard_config.get("enabled", true)),
 		"max_wrist_separation_x": float(guard_config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X)),
 		"max_wrist_separation_y": float(guard_config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y)),
+		"max_wrist_nose_distance": float(guard_config.get("max_wrist_nose_distance", GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE)),
 		"wrist_separation_x": 0.0,
 		"wrist_separation_y": 0.0,
+		"left_wrist_nose_distance": 0.0,
+		"right_wrist_nose_distance": 0.0,
 		"wrists_close_x": false,
 		"wrists_close_y": false,
 		"left_wrist_above_elbow": false,
 		"right_wrist_above_elbow": false,
+		"left_wrist_near_nose": false,
+		"right_wrist_near_nose": false,
 		"candidate": false,
 	}
 	if not bool(guard_config.get("enabled", true)):
 		_gesture_state["guard_debug"] = guard_debug
 		_set_state_toggle(events, "guard", false)
 		return
-	if left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
+	if nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
 		_gesture_state["guard_debug"] = guard_debug
 		_set_state_toggle(events, "guard", false)
 		return
+	var max_wrist_nose_distance := float(guard_config.get("max_wrist_nose_distance", GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE))
 	var wrist_separation_x := absf(float(left_wrist.get("x", 0.0)) - float(right_wrist.get("x", 0.0)))
 	var wrist_separation_y := absf(float(left_wrist.get("y", 0.0)) - float(right_wrist.get("y", 0.0)))
+	var left_wrist_nose_distance := PoseMetrics.distance_2d(left_wrist, nose)
+	var right_wrist_nose_distance := PoseMetrics.distance_2d(right_wrist, nose)
 	var wrists_close_x := wrist_separation_x <= float(guard_config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))
 	var wrists_close_y := wrist_separation_y <= float(guard_config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))
 	var left_wrist_above_elbow := float(left_wrist.get("y", 0.0)) >= float(left_elbow.get("y", 0.0))
 	var right_wrist_above_elbow := float(right_wrist.get("y", 0.0)) >= float(right_elbow.get("y", 0.0))
-	var candidate := wrists_close_x and wrists_close_y and left_wrist_above_elbow and right_wrist_above_elbow
+	var left_wrist_near_nose := left_wrist_nose_distance <= max_wrist_nose_distance
+	var right_wrist_near_nose := right_wrist_nose_distance <= max_wrist_nose_distance
+	var candidate := wrists_close_x and wrists_close_y and left_wrist_above_elbow and right_wrist_above_elbow and left_wrist_near_nose and right_wrist_near_nose
 	guard_debug["wrist_separation_x"] = wrist_separation_x
 	guard_debug["wrist_separation_y"] = wrist_separation_y
+	guard_debug["left_wrist_nose_distance"] = left_wrist_nose_distance
+	guard_debug["right_wrist_nose_distance"] = right_wrist_nose_distance
 	guard_debug["wrists_close_x"] = wrists_close_x
 	guard_debug["wrists_close_y"] = wrists_close_y
 	guard_debug["left_wrist_above_elbow"] = left_wrist_above_elbow
 	guard_debug["right_wrist_above_elbow"] = right_wrist_above_elbow
+	guard_debug["left_wrist_near_nose"] = left_wrist_near_nose
+	guard_debug["right_wrist_near_nose"] = right_wrist_near_nose
 	guard_debug["candidate"] = candidate
 	guard_debug["state"] = candidate
 	_gesture_state["guard_debug"] = guard_debug
@@ -1596,8 +1618,13 @@ func _process_weave(events: Array, head_offset: float, hip_offset: float, head_d
 	var weaving_left := left_head_ready and left_relative_ready and head_drop_ready
 	var weaving_right := right_head_ready and right_relative_ready and head_drop_ready
 	var neutral := absf(head_offset) <= float(weave_config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX)) and absf(relative_offset) <= float(weave_config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX))
+	var weave_state := "inactive"
+	if weaving_left:
+		weave_state = "left"
+	elif weaving_right:
+		weave_state = "right"
 	_gesture_state["weave_debug"] = {
-		"state": "inactive",
+		"state": weave_state,
 		"enabled": bool(weave_config.get("enabled", true)),
 		"head_lateral_offset": head_offset,
 		"hip_lateral_offset": hip_offset,
@@ -1622,14 +1649,12 @@ func _process_weave(events: Array, head_offset: float, hip_offset: float, head_d
 		_set_state_toggle(events, "weave_right", false)
 		return
 	if weaving_left:
-		_gesture_state["weave_debug"]["state"] = "left"
 		_set_state_toggle(events, "weave_right", false)
 		_set_state_toggle(events, "weave_left", true)
 	elif weaving_right:
-		_gesture_state["weave_debug"]["state"] = "right"
 		_set_state_toggle(events, "weave_left", false)
 		_set_state_toggle(events, "weave_right", true)
-	elif neutral:
+	else:
 		_set_state_toggle(events, "weave_left", false)
 		_set_state_toggle(events, "weave_right", false)
 
@@ -1737,6 +1762,7 @@ func _get_guard_config() -> Dictionary:
 		"enabled": true,
 		"max_wrist_separation_x": GUARD_DEFAULT_MAX_WRIST_SEPARATION_X,
 		"max_wrist_separation_y": GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y,
+		"max_wrist_nose_distance": GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE,
 	}
 	if _config == null:
 		return config
@@ -1748,6 +1774,7 @@ func _get_guard_config() -> Dictionary:
 	config["enabled"] = bool(guard.get("enabled", config.get("enabled", true)))
 	config["max_wrist_separation_x"] = maxf(0.0, float(thresholds.get("max_wrist_separation_x", config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))))
 	config["max_wrist_separation_y"] = maxf(0.0, float(thresholds.get("max_wrist_separation_y", config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))))
+	config["max_wrist_nose_distance"] = maxf(0.0, float(thresholds.get("max_wrist_nose_distance", config.get("max_wrist_nose_distance", GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE))))
 	return config
 
 func _get_squat_config() -> Dictionary:

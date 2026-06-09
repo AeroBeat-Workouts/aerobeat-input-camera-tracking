@@ -301,6 +301,14 @@ const GUARD_REQUIREMENT_ROWS := [
 		"id": "right_wrist_above_elbow",
 		"label": "Right wrist above right elbow",
 	},
+	{
+		"id": "left_wrist_nose_distance",
+		"label": "Left wrist nose distance <= {threshold}",
+	},
+	{
+		"id": "right_wrist_nose_distance",
+		"label": "Right wrist nose distance <= {threshold}",
+	},
 ]
 const SQUAT_REQUIREMENT_ROWS := [
 	{
@@ -1234,6 +1242,14 @@ func _build_guard_requirement_row(row_spec: Dictionary, guard_debug: Dictionary)
 		"right_wrist_above_elbow":
 			current_text = _fmt_bool(bool(guard_debug.get("right_wrist_above_elbow", false)))
 			passed = bool(guard_debug.get("right_wrist_above_elbow", false))
+		"left_wrist_nose_distance":
+			threshold_text = _fmt_float(guard_debug.get("max_wrist_nose_distance", 0.0))
+			current_text = _fmt_float(guard_debug.get("left_wrist_nose_distance", 0.0))
+			passed = bool(guard_debug.get("left_wrist_near_nose", false))
+		"right_wrist_nose_distance":
+			threshold_text = _fmt_float(guard_debug.get("max_wrist_nose_distance", 0.0))
+			current_text = _fmt_float(guard_debug.get("right_wrist_nose_distance", 0.0))
+			passed = bool(guard_debug.get("right_wrist_near_nose", false))
 		_:
 			current_text = "pending"
 			passed = false
@@ -1948,9 +1964,11 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Enabled: %s" % _fmt_bool(bool(guard_config.get("enabled", true))))
 	lines.append("Wrist separation X <= %s" % _fmt_float(guard_thresholds.get("max_wrist_separation_x", 0.0)))
 	lines.append("Wrist separation Y <= %s" % _fmt_float(guard_thresholds.get("max_wrist_separation_y", 0.0)))
+	lines.append("Wrist nose distance <= %s" % _fmt_float(guard_thresholds.get("max_wrist_nose_distance", 0.0)))
 	lines.append("Guard candidate: %s" % _fmt_bool(bool(guard_debug.get("candidate", false))))
 	lines.append("Live wrist separation: x=%s y=%s" % [_fmt_float(guard_debug.get("wrist_separation_x", 0.0)), _fmt_float(guard_debug.get("wrist_separation_y", 0.0))])
 	lines.append("Wrists above elbows: L=%s R=%s" % [_fmt_bool(bool(guard_debug.get("left_wrist_above_elbow", false))), _fmt_bool(bool(guard_debug.get("right_wrist_above_elbow", false)))])
+	lines.append("Wrist-to-nose distances: L=%s R=%s" % [_fmt_float(guard_debug.get("left_wrist_nose_distance", 0.0)), _fmt_float(guard_debug.get("right_wrist_nose_distance", 0.0))])
 
 	var squat_config: Dictionary = gesture_document.get("squat", {}) if gesture_document.get("squat", {}) is Dictionary else {}
 	var squat_thresholds: Dictionary = squat_config.get("thresholds", {}) if squat_config.get("thresholds", {}) is Dictionary else {}

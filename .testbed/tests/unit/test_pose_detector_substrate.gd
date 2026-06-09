@@ -1180,8 +1180,13 @@ func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 	assert_true(bool(guard_debug.get("wrists_close_y", false)))
 	assert_true(bool(guard_debug.get("left_wrist_above_elbow", false)))
 	assert_true(bool(guard_debug.get("right_wrist_above_elbow", false)))
+	assert_true(bool(guard_debug.get("left_wrist_near_nose", false)))
+	assert_true(bool(guard_debug.get("right_wrist_near_nose", false)))
 	assert_true(is_equal_approx(float(guard_debug.get("max_wrist_separation_x", 0.0)), 0.20))
 	assert_true(is_equal_approx(float(guard_debug.get("max_wrist_separation_y", 0.0)), 0.12))
+	assert_true(is_equal_approx(float(guard_debug.get("max_wrist_nose_distance", 0.0)), 0.15))
+	assert_true(float(guard_debug.get("left_wrist_nose_distance", 0.0)) <= float(guard_debug.get("max_wrist_nose_distance", 0.0)))
+	assert_true(float(guard_debug.get("right_wrist_nose_distance", 0.0)) <= float(guard_debug.get("max_wrist_nose_distance", 0.0)))
 	var guard_end_state := substrate.process_landmarks(_make_pose_frame(), 1300)
 	assert_true(_event_names(guard_end_state.get("events", [])).has("guard_end"))
 
@@ -1217,6 +1222,44 @@ func test_guard_no_longer_uses_old_elbow_shoulder_head_composite_rule() -> void:
 	assert_false(bool(guard_debug.get("wrists_close_x", true)))
 	assert_true(bool(guard_debug.get("left_wrist_above_elbow", false)))
 	assert_true(bool(guard_debug.get("right_wrist_above_elbow", false)))
+
+func test_guard_requires_both_wrists_to_stay_near_nose() -> void:
+	_calibrate_stance()
+	var guard_without_nose_proximity := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.42, "y": 0.69},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.58, "y": 0.69},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.36, "y": 0.80},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.54, "y": 0.80},
+	}), 1200)
+	assert_false(_event_names(guard_without_nose_proximity.get("events", [])).has("guard_start"))
+	var guard_debug: Dictionary = guard_without_nose_proximity.get("gesture_debug", {}).get("guard", {})
+	assert_true(bool(guard_debug.get("wrists_close_x", false)))
+	assert_true(bool(guard_debug.get("wrists_close_y", false)))
+	assert_true(bool(guard_debug.get("left_wrist_above_elbow", false)))
+	assert_true(bool(guard_debug.get("right_wrist_above_elbow", false)))
+	assert_false(bool(guard_debug.get("left_wrist_near_nose", true)))
+	assert_true(bool(guard_debug.get("right_wrist_near_nose", false)))
+	assert_false(bool(guard_debug.get("candidate", true)))
+	assert_true(float(guard_debug.get("left_wrist_nose_distance", 0.0)) > float(guard_debug.get("max_wrist_nose_distance", 0.0)))
+
+func test_weave_remains_active_only_while_live_weave_criteria_still_pass() -> void:
+	_calibrate_stance()
+	var weave_left_start_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.57, "y": 0.85},
+	}), 1200)
+	assert_true(_event_names(weave_left_start_state.get("events", [])).has("weave_left_start"))
+	var held_weave_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.86},
+	}), 1300)
+	assert_false(_event_names(held_weave_state.get("events", [])).has("weave_left_start"))
+	assert_false(_event_names(held_weave_state.get("events", [])).has("weave_left_end"))
+	var held_weave_debug: Dictionary = held_weave_state.get("gesture_debug", {}).get("weave", {})
+	assert_eq(String(held_weave_debug.get("state", "")), "left")
+	assert_true(bool(held_weave_debug.get("left_candidate", false)))
+	var weave_end_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.53, "y": 0.80},
+	}), 1400)
+	assert_true(_event_names(weave_end_state.get("events", [])).has("weave_left_end"))
 
 func test_detects_knee_and_leg_lift_events_with_reset_behavior() -> void:
 	_calibrate_stance()

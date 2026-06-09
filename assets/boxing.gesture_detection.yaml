@@ -9,6 +9,8 @@ guard:
     max_wrist_separation_x: 0.20
     # Left/right wrists must be at least this close together in camera-space Y. input.
     max_wrist_separation_y: 0.12
+    # Each wrist must stay at least this close to the nose landmark in camera space. input.
+    max_wrist_nose_distance: 0.15
 
 squat:
   # Turn calibrated torso-height squat detection on or off. input.
