@@ -160,7 +160,7 @@ const PUNCH_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "wrist_velocity",
-		"label": "Punch velocity >= {threshold}",
+		"label": "Recent punch velocity peak >= {threshold}",
 	},
 	{
 		"id": "bbox_area",
@@ -169,7 +169,7 @@ const PUNCH_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "bbox_area_growth",
-		"label": "BBox area growth >= {threshold}",
+		"label": "Recent bbox area growth peak >= {threshold}",
 	},
 	{
 		"id": "positive_growth_samples",
@@ -1323,9 +1323,11 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var pose_tracking_valid := bool(straight_side.get("pose_tracking_valid", false))
 	var state_name := String(straight_side.get("state", straight_side.get("phase", "tracking_lost")))
 	var wrist_velocity := float(straight_side.get("wrist_velocity", 0.0))
+	var recent_peak_wrist_velocity := float(straight_side.get("recent_peak_wrist_velocity", wrist_velocity))
 	var min_velocity := float(straight_side.get("min_velocity", 0.0))
 	var bbox_area := float(straight_side.get("bbox_area", 0.0))
 	var bbox_area_growth := float(straight_side.get("bbox_area_growth", 0.0))
+	var recent_peak_bbox_area_growth := float(straight_side.get("recent_peak_bbox_area_growth", bbox_area_growth))
 	var min_bbox_area_growth := float(straight_side.get("min_bbox_area_growth", 0.0))
 	var positive_growth_samples := int(straight_side.get("positive_growth_samples", 0))
 	var min_positive_growth_samples := int(straight_side.get("min_positive_growth_samples", 0))
@@ -1400,8 +1402,8 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			passed = transition_timestamp_ms > 0 or not straight_side.is_empty()
 		"wrist_velocity":
 			threshold_text = _fmt_float(min_velocity)
-			current_text = _fmt_float(wrist_velocity)
-			passed = wrist_velocity >= min_velocity
+			passed = recent_peak_wrist_velocity >= min_velocity
+			current_text = _fmt_threshold_comparison_value(recent_peak_wrist_velocity, min_velocity)
 		"bbox_area":
 			if hand_tracking_enabled:
 				current_text = _fmt_float(bbox_area)
@@ -1412,8 +1414,8 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 		"bbox_area_growth":
 			if hand_tracking_enabled:
 				threshold_text = _fmt_float(min_bbox_area_growth)
-				current_text = _fmt_float(bbox_area_growth)
-				passed = bbox_area_growth >= min_bbox_area_growth
+				passed = recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth
+				current_text = _fmt_threshold_comparison_value(recent_peak_bbox_area_growth, min_bbox_area_growth)
 			else:
 				threshold_text = "skipped"
 				current_text = "pose-only fallback"
@@ -2135,6 +2137,12 @@ func _any_recent_event(names_variant: Variant) -> bool:
 
 func _fmt_bool(value: bool) -> String:
 	return "true" if value else "false"
+
+func _fmt_threshold_comparison_value(value: float, threshold: float) -> String:
+	var rounded_value := _fmt_float(value)
+	if rounded_value == _fmt_float(threshold) and not is_equal_approx(value, threshold):
+		return "%.6f" % value
+	return rounded_value
 
 func _fmt_degrees_int(value: float) -> String:
 	return "%d°" % int(round(value))

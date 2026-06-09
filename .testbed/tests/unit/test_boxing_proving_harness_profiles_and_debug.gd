@@ -419,13 +419,59 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Hand tracking - tracked, valid=true, source=carried_forward, stale=0ms (0 frames), grace=0ms (0 frames), stable=160ms")
 	assert_string_contains(body, "Fresh sample valid - false")
 	assert_false(body.contains("Event payload snapshot"))
-	assert_string_contains(body, "Punch velocity >= 0.180 - 0.310")
+	assert_string_contains(body, "Recent punch velocity peak >= 0.180 - 0.310")
 	assert_string_contains(body, "BBox area - 0.071")
-	assert_string_contains(body, "BBox area growth >= 0.010 - 0.012")
+	assert_string_contains(body, "Recent bbox area growth peak >= 0.010 - 0.012")
 	assert_string_contains(body, "Positive growth samples >= 3/3 - 3/3")
 	assert_string_contains(body, "Grace timer - 160/240ms remaining (active)")
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
 	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
+
+func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake_threshold_equality() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"left": {
+					"state": "ready",
+					"hand_tracking_enabled": true,
+					"pose_tracking_valid": true,
+					"tracking_state": "tracked",
+					"tracking_valid": true,
+					"sample_source": "fresh_inference",
+					"fresh_sample": true,
+					"wrist_velocity": 0.474,
+					"recent_peak_wrist_velocity": 0.474,
+					"min_velocity": 0.500,
+					"bbox_area": 0.007,
+					"bbox_area_growth": 0.00297168485325905,
+					"recent_peak_bbox_area_growth": 0.00297168485325905,
+					"min_bbox_area_growth": 0.003,
+					"positive_growth_samples": 4,
+					"min_positive_growth_samples": 1,
+					"sample_window_size": 17,
+					"growth_window_areas": [0.005, 0.004, 0.004, 0.004, 0.004, 0.004, 0.005, 0.005, 0.010, 0.010, 0.008, 0.008, 0.012, 0.007, 0.007, 0.007, 0.007],
+					"grace_ms_remaining": 0,
+					"triggered_grace_ms": 240,
+					"trigger_bbox_area": 0.0,
+					"bbox_area_retract_epsilon": 0.003,
+					"reacquire_stable_ms_required": 40,
+				}
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(rows[9].get("threshold_text", "")), "0.003")
+	assert_eq(String(rows[9].get("current_text", "")), "0.002972")
+	assert_false(bool(rows[9].get("passed", true)))
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Recent punch velocity peak >= 0.500 - 0.474")
+	assert_string_contains(body, "Recent bbox area growth peak >= 0.003 - 0.002972")
+	assert_string_contains(body, "Positive growth samples >= 1/16 - 4/16")
 
 func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 	var harness = _new_harness()
@@ -600,7 +646,7 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Hand tracking - pose-only fallback, pose_valid=true, tracking=pose_tracked, source=pose")
 	assert_string_contains(body, "BBox area - pose-only fallback (bbox skipped)")
-	assert_string_contains(body, "BBox area growth >= skipped - pose-only fallback")
+	assert_string_contains(body, "Recent bbox area growth peak >= skipped - pose-only fallback")
 	assert_string_contains(body, "Positive growth samples >= skipped - pose-only fallback")
 	assert_string_contains(body, "BBox retracted enough to rearm - ")
 	assert_string_contains(body, "pose-only timer")
@@ -898,8 +944,8 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 
 	assert_eq(still_frozen_body, frozen_body)
 	assert_string_contains(still_frozen_body, "Latest state change - ready -> triggered")
-	assert_string_contains(still_frozen_body, "Punch velocity >= 0.180 - 0.310")
-	assert_string_contains(still_frozen_body, "BBox area growth >= 0.010 - 0.012")
+	assert_string_contains(still_frozen_body, "Recent punch velocity peak >= 0.180 - 0.310")
+	assert_string_contains(still_frozen_body, "Recent bbox area growth peak >= 0.010 - 0.012")
 	assert_false(still_frozen_body.contains("Event payload snapshot"))
 
 func test_playback_step_buttons_only_enable_while_paused() -> void:

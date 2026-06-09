@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 06:13 EDT
+**Last Updated:** 2026-06-09 09:44 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -4315,9 +4315,26 @@ Known proving limitation unchanged: the dummy headless renderer still logs the e
 - validation artifacts / touched proof files as needed
 - `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Focused QA pass **passed** for the narrow weave inversion repair.
+
+Exact commands run:
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && /home/derrick/.openclaw/workspace/scripts/godotenv-sync --repo "$PWD"`
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && godot --headless --path .testbed --import --quit-after 1000`
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4" "$PWD/.testbed/test-results/task10cu-weave-qa-2026-06-09-0622/left" 5000`
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" "$PWD/.testbed/test-results/task10cu-weave-qa-2026-06-09-0622/right" 5000`
+
+Evidence gathered:
+- **Focused automated weave coverage:** `76/76` passed (`825` asserts) across `.testbed/tests/unit/test_pose_detector_substrate.gd` and `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`. The changed weave assertions that matter for this slice passed, including `test_weave_uses_yaml_thresholds_and_surfaces_debug_truth`, `test_detects_guard_squat_weave_and_sidestep_state_events`, and `test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth`.
+- **Fresh proving artifacts:** `.testbed/test-results/task10cu-weave-qa-2026-06-09-0622/{left,right}/report.{json,md}`.
+- **Named left fixture now matches left truth:** `left/report.json` status shows `status_label="Boxing harness live"`, `provider_present=true`, `camera_streaming=true`, and `camera_has_texture=true`. The event timeline now emits `weave_left_start` at `3300ms` and `weave_left_end` at `4943ms`. The captured state timeline also shows the first active weave state at `3312ms` with `latest_event="weave_left_start"`, `gesture_states.weave_left=true`, and `gesture_states.weave_right=false`, matching the fixture name instead of the old inversion.
+- **Named right fixture now matches right truth:** `right/report.json` status also shows `status_label="Boxing harness live"`, `provider_present=true`, `camera_streaming=true`, and `camera_has_texture=true`. The event timeline emits `weave_right_start` at `1748ms`, and the captured state timeline first surfaces the active state at `1759ms` with `latest_event="weave_right_start"`, `gesture_states.weave_left=false`, and `gesture_states.weave_right=true`.
+- **Surfaced weave debug state remains truthful after the repair:** the right capture’s latest debug snapshot still reports `gesture_debug.weave.state="right"`, `left_candidate=false`, and `right_candidate=true`, while the left capture cleanly returns to `gesture_debug.weave.state="inactive"` after the `weave_left_end` event rather than ending stuck on the wrong side. The boxing proving quick-stats surface also now lists `Detected events -> Weave Left` for the left fixture and `Detected events -> Weave Right` for the right fixture, matching the named fixture truth.
+- **Non-blocking noise:** the proving captures still log the existing dummy-renderer screenshot failure (`Parameter "t" is null` in `capture_fixture_proving.gd`) and the pre-existing GUT orphan/RID leak warnings, but JSON/Markdown capture reports were written successfully and the assertions all passed.
+
+QA conclusion: the repaired live boxing proving path is now truthfully reporting the correct weave direction for both named fixtures, and the surfaced weave state/debug evidence aligns with the fixture names. QA bead `aerobeat-input-camera-tracking-lfw` is ready to close.
 
 ### Task 10CV: Audit repaired weave left/right proving truth
 
@@ -4326,6 +4343,81 @@ Known proving limitation unchanged: the dummy headless renderer still logs the e
 **Role:** `auditor`
 **References:** `REF-01`
 **Prompt:** Independently audit the repaired weave inversion slice after Task 10CU. Truth-check that the live boxing proving path now reports the correct left/right weave direction for the named fixtures, and that the YAML/inspector surfaces remain truthful after the repair. Claim `aerobeat-input-camera-tracking-ao1` with `bd update aerobeat-input-camera-tracking-ao1 --status in_progress --json`, inspect the diff/plan/tests/proving evidence, rerun only the validation needed to prove the fix, and close the bead yourself only if the work is actually done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Independent audit pass **passed** on current repo HEAD `705ca14` after inspecting the repair diff in commit `785c9f4` (`Fix inverted weave left-right proving truth`) plus the Task 10CU QA evidence. The repair is still narrow and truthful: `src/detectors/pose_detector_substrate.gd::_process_weave()` now classifies left/right weave readiness with positive `head_offset` / `relative_offset` for `left` and negative values for `right`, and the proving-harness/unit expectations were updated to match that convention without changing YAML ownership.
+
+Validation rerun in this audit pass was limited to the proof surfaces that matter for the inversion fix:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ (`76/76` passing, `825` asserts).
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4" "$PWD/.testbed/test-results/task10cv-audit-2026-06-09-0628/left" 5000`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" "$PWD/.testbed/test-results/task10cv-audit-2026-06-09-0628/right" 5000`
+
+Fresh audit evidence from `/.testbed/test-results/task10cv-audit-2026-06-09-0628/`:
+- **Left fixture truth:** `left/report.json` top-level `status` shows `status_label="Boxing harness live"`, `provider_present=true`, `camera_streaming=true`, and `camera_has_texture=true`. The event timeline emits `weave_left_start` at `3340ms` and `weave_left_end` at `4987ms`. The first active weave state appears at `3352ms` with `latest_event="weave_left_start"`, `gesture_states.weave_left=true`, and `gesture_states.weave_right=false`.
+- **Right fixture truth:** `right/report.json` top-level `status` shows `status_label="Boxing harness live"`, `provider_present=true`, `camera_streaming=true`, and `camera_has_texture=true`. The event timeline emits `weave_right_start` at `1760ms`. The first active weave state appears at `1771ms` with `latest_event="weave_right_start"`, `gesture_states.weave_left=false`, and `gesture_states.weave_right=true`.
+- **YAML / inspector truth remained intact after the fix:** `assets/boxing.gesture_detection.yaml` still publicly owns the weave knobs under `weave.enabled` + `weave.thresholds` with the same simple comment style as the other user-facing settings. The proving-harness hover/inspector coverage still passes in the focused GUT run, including `test_weave_uses_yaml_thresholds_and_surfaces_debug_truth`, `test_detects_guard_squat_weave_and_sidestep_state_events`, and `test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth`. The fresh proving artifacts also keep the surfaced inspector truth aligned with the repaired direction: `surfaces.quick_stats` in `left/report.json` lists `Detected events -> ... Weave Left ... Weave Left Ended`, while `right/report.json` lists `Detected events -> ... Weave Right ...`; the live weave tuning section still shows the public YAML thresholds and the current measured offsets/drop for the captured frame.
+
+Caveat unchanged from prior slices: the dummy headless screenshot capture still logs the known null-texture warning in this environment, so the authoritative proof for this audit is the JSON/Markdown capture reports rather than the PNG screenshot files. Despite that renderer limitation, the live proving-path event/state truth and the surfaced YAML/inspector data both independently pass, so bead `aerobeat-input-camera-tracking-ao1` is ready to close.
+
+### Task 10CW: Diagnose straight-punch paused-snapshot gate mismatch in the proving UI
+
+**Bead ID:** `aerobeat-input-camera-tracking-vgj`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-05`
+**Prompt:** Derrick manually tested the straight left punch fixture after syncing the latest state and found a confusing paused-frame mismatch in the boxing proving UI: at the visible full-extension frame, the hover card shows `BBox area growth >= 0.003 - 0.003` but the checkbox is still false, while `Positive growth samples` is true; the same snapshot also shows `Punch velocity >= 0.500 - 0.474` as false. Diagnose this slice narrowly and truthfully. Determine whether the detector is behaving correctly and the UI is merely rounded/misleading, or whether there is a real detector/proving mismatch around paused snapshots / reported gate values. Reproduce against the straight-left proving fixture and inspect the straight-punch detector and hover-card formatting. If needed, repair either the detector truth seam or the proving-surface wording/precision so Derrick can trust what the paused snapshot says. Keep scope to straight-punch paused-snapshot truth only. Claim `aerobeat-input-camera-tracking-vgj` on start with `bd update aerobeat-input-camera-tracking-vgj --status in_progress --json`, run focused validation, update this plan with exact findings/commands/commit, commit and push to `main`, and close the bead only after the paused-snapshot truth is actually clear.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Reproduced the paused-snapshot confusion against the straight-left proving fixture with `godot --headless --path .testbed --script .testbed/test-results/task10-qa-captures/2026-06-04-063854/task10_straight_punch_trace.gd -- res://scenes/boxing_proving.tscn /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10cw-paused-truth-20260609-094841/straight_punch_trace.json 7000` and inspected the current detector/proving seam. The detector in `src/detectors/pose_detector_substrate.gd` is behaving correctly: it only arms on fresh samples when `recent_peak_wrist_velocity >= min_velocity`, `recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth`, and `positive_growth_samples >= min_positive_growth_samples`. The proving hover card was the misleading piece in two ways: it rendered the trigger rows from the last per-sample `wrist_velocity` / `bbox_area_growth` instead of the detector’s `recent_peak_*` gate values, and it rounded threshold comparisons to three decimals so sub-threshold values like `0.00297168485325905` surfaced as `0.003` while still failing. Updated `.testbed/scripts/boxing_proving_harness.gd` so the straight-punch trigger rows now show the actual recent-peak values the state machine compares, renamed those rows to `Recent ... peak` for paused-snapshot clarity, and expand precision to six decimals when 3-decimal rounding would fake threshold equality. Added focused regression coverage in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` for the rounded-false case and updated the existing inspector expectations to the new peak-based wording. Focused validation ran with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit` (77/77 passing; known pre-existing GUT orphan/RID warnings unchanged). Commit hash: `e69d086` (`Clarify paused straight punch gate truth`).
+
+### Task 10CX: QA straight-punch paused-snapshot gate mismatch fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-e4g`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-05`
+**Prompt:** QA the straight-punch paused-snapshot truth slice after Task 10CW lands. Verify the paused straight-left proving frame now communicates the gate truth clearly enough that Derrick can trust why the trigger is or is not enabled, and verify any focused automated tests for the touched detector/proving surfaces. Claim `aerobeat-input-camera-tracking-e4g` on start with `bd update aerobeat-input-camera-tracking-e4g --status in_progress --json`, update this plan with exact commands/evidence, and close the bead only if the paused-snapshot truth really passes.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10CY: Audit straight-punch paused-snapshot gate mismatch fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-kjz`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-05`
+**Prompt:** Independently audit the straight-punch paused-snapshot truth slice after Task 10CX. Truth-check that the detector/proving UI now explains the paused straight-left punch frame correctly, especially around bbox-growth threshold display, velocity threshold display, and whether the trigger should be armed at full extension. Claim `aerobeat-input-camera-tracking-kjz` on start with `bd update aerobeat-input-camera-tracking-kjz --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the fix, and close the bead only if the work is actually done.
 
 **Folders Created/Deleted/Modified:**
 - `.testbed/`
