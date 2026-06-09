@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 18:01 EDT
+**Last Updated:** 2026-06-09 18:35 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -4665,9 +4665,22 @@ On that basis I closed bead `aerobeat-input-camera-tracking-zug` as audit-passin
 - validation artifacts / touched proof files as needed
 - `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** QA claimed bead `aerobeat-input-camera-tracking-5eh` with `bd update aerobeat-input-camera-tracking-5eh --status in_progress --json`, inspected `aadbcfe` plus the Task 10DD plan entry, then reran the focused validation and fixture proof for the XY gate. Diff inspection confirmed the intended implementation seam landed in `assets/boxing.gesture_detection.yaml`, `src/detectors/pose_detector_substrate.gd`, `.testbed/scripts/boxing_proving_harness.gd`, and the three focused unit files. Public YAML ownership is present in the owning repo: `assets/boxing.gesture_detection.yaml:57` now exposes `straight_punch.thresholds.max_wrist_elbow_xy_distance: 0.09`, and the focused proving-surface/unit files still contain explicit assertions for the live threshold/distance/gate fields (`test_pose_detector_substrate.gd`, `test_boxing_proving_harness_profiles_and_debug.gd`, `test_camera_tracking_config_profiles.gd`).
+
+Focused automated validation did **not** stay green in the current worktree. Exact commands/evidence:
+- `godot --headless --path .testbed --import --quit-after 1000` ✅
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ❌ (`84/85` passed, `969/970` asserts). The sole failure was `res://tests/unit/test_camera_tracking_config_profiles.gd::test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_paths` at line 28, where the test still expects `tracking.hands.enabled == true` while the current `assets/boxing.camera_tracking.yaml` in this repo now resolves `tracking.hands.enabled: false`.
+
+Highest-fidelity proving evidence also failed the slice. I captured the live boxing proving scene against both punch fixtures with:
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/punch_left" "$PWD/.testbed/test-results/task10de-qa-captures/2026-06-09-181923/left" 7000`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/punch_right" "$PWD/.testbed/test-results/task10de-qa-captures/2026-06-09-181923/right" 7000`
+- `AEROBEAT_CAMERA_TRACKING_SOURCE=... godot --headless --path .testbed --script .testbed/test-results/task10q-qa-captures/2026-06-04-211034/task10q_side_trace.gd -- res://scenes/boxing_proving.tscn <fixture_dir> <output_json> 9000` for both sides
+
+Those captures wrote reports under `.testbed/test-results/task10de-qa-captures/2026-06-09-181923/`. In both punch fixtures, the straight-punch debug payload truthfully surfaced the new gate fields, but the gate never passed and no punch fired: left trace `min wrist_elbow_xy_distance = 0.124456323683262` vs threshold `0.09`, `gate_pass_samples = 0`, `trigger_samples = 0`; right trace `min wrist_elbow_xy_distance = 0.160777017474174` vs threshold `0.09`, `gate_pass_samples = 0`, `trigger_samples = 0`. The fixture event timelines only showed `tracking_restored`, `provider_started`, and guard start/end events—no punch events at all. The capture reports also showed `hand_tracking_enabled: false` in the straight-punch debug snapshot, matching the currently loaded boxing tracker profile.
+
+Because the focused validation is red in the current tree and the highest-fidelity punch fixtures never satisfy the new XY gate / never emit punch events, this QA slice does **not** currently pass. I left bead `aerobeat-input-camera-tracking-5eh` open for retry and did **not** close it.
 
 ### Task 10DF: Audit straight-punch wrist-elbow XY alignment threshold
 
@@ -4676,6 +4689,77 @@ On that basis I closed bead `aerobeat-input-camera-tracking-zug` as audit-passin
 **Role:** `auditor`
 **References:** `REF-01`
 **Prompt:** Independently audit the straight-punch wrist-elbow XY alignment threshold after Task 10DE. Truth-check the new YAML-owned threshold, the detector usage, and the proving hover/inspector/debug truth. Claim `aerobeat-input-camera-tracking-fi7` on start with `bd update aerobeat-input-camera-tracking-fi7 --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the fix, and close the bead only if the work is actually done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10DG: Repair straight-punch XY gate acceptance for YAML+inspector tuning workflow
+
+**Bead ID:** `aerobeat-input-camera-tracking-dxr`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick clarified the acceptance criterion for the new straight-punch wrist-elbow XY gate: for now, it only needs to be publicly YAML-owned, commented in the same simple style as the other variables, and surfaced truthfully in the straight-punch testbed inspector/hover so he can tune it manually. The current QA failure is therefore a narrow cleanup problem, not a rejection of the feature concept. Repair this slice narrowly by making the focused repo proof/acceptance align with that tuning workflow: fix the stale focused test expectation(s), keep the XY threshold publicly exposed and inspector-visible, and ensure the repo no longer falsely treats the feature as failed merely because the current default threshold value blocks the canned punch fixtures. Do not hide or fake the live XY gate truth; Derrick still needs to see the real live value/pass state. Claim `aerobeat-input-camera-tracking-dxr` on start with `bd update aerobeat-input-camera-tracking-dxr --status in_progress --json`, update this plan with exact results/commands/commit, commit and push to `main`, and close the bead only after the exposure/inspector/tuning workflow truthfully lands.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/tests/unit/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `/.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Narrow acceptance repair landed without changing the live XY gate behavior. I first inspected the current QA evidence from Task 10DE and reran the focused owner proof; that showed the repo was failing on a stale config-bundle expectation, not on missing YAML/inspector exposure. The current boxing tracker profile in `REF-01` `assets/boxing.camera_tracking.yaml` truthfully has `tracking.hands.enabled: false`, while the proving/inspector tests already expect the straight-punch XY threshold to stay visible and truthful in pose-only/manual-tuning mode. The only focused repo failure was `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`, which still expected boxing hand tracking to be enabled.
+
+I repaired that expectation narrowly by updating `test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_paths()` to assert the shipped boxing profile truth (`tracking.hands.enabled == false`) instead of the older hand-enabled assumption. No detector logic, YAML ownership, or proving/hover surfacing was changed; the current live XY threshold remains publicly YAML-owned at `assets/boxing.gesture_detection.yaml:57`, commented in the existing simple style, and still surfaces its real threshold/value/pass state through the proving/testbed inspector/hover paths already covered by the focused proving tests.
+
+Exact commands run:
+- `bd update aerobeat-input-camera-tracking-dxr --status in_progress --json`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → initially failed `84/85` because `test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_paths` still expected `tracking.hands.enabled == true`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → passed `85/85` after the expectation fix (same pre-existing GUT orphan / RID leak shutdown noise only)
+
+Implementation commit before plan update: `be375f0` (`Fix stale boxing hand-tracking profile expectation`). This slice intentionally does **not** claim the current default XY threshold is tuned for the canned punch fixtures; it only restores truthful repo acceptance for Derrick's YAML+inspector manual-tuning workflow.
+
+### Task 10DH: QA straight-punch XY gate YAML+inspector tuning workflow
+
+**Bead ID:** `aerobeat-input-camera-tracking-xsv`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the repaired straight-punch XY gate slice after Task 10DG. Use Derrick's clarified acceptance criterion: the XY threshold must be publicly YAML-owned, commented like the other variables, and surfaced truthfully in the straight-punch proving/testbed inspector/hover for manual tuning. Verify focused proof and the real proving surfaces needed for that exposure workflow, without requiring the current default threshold to already be perfectly tuned for the canned punch fixtures. Claim `aerobeat-input-camera-tracking-xsv` on start with `bd update aerobeat-input-camera-tracking-xsv --status in_progress --json`, update this plan with exact commands/evidence, and close the bead only if that tuning workflow really passes.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10DI: Audit straight-punch XY gate YAML+inspector tuning workflow
+
+**Bead ID:** `aerobeat-input-camera-tracking-ane`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the repaired straight-punch XY gate slice after Task 10DH using Derrick's clarified acceptance criterion: YAML ownership, comment clarity, and truthful inspector/hover/debug surfacing for manual tuning. Confirm the feature is honestly exposed without pretending the current default threshold is already fully tuned. Claim `aerobeat-input-camera-tracking-ane` on start with `bd update aerobeat-input-camera-tracking-ane --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the tuning workflow, and close the bead only if the work is actually done.
 
 **Folders Created/Deleted/Modified:**
 - `.testbed/`
