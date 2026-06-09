@@ -1,9 +1,9 @@
 # AeroBeat Boxing Hand BBox Straight Punch Detection
 
 **Date:** 2026-06-03
-**Status:** Blocked
-**Last Updated:** 2026-06-08 22:16 EDT
-**Blocked Reason:** Awaiting Derrick's manual-testing follow-up on the latest synced boxing proving state after today's straight-punch reacquire/bbox-growth fixes, simplified guard rule, exposed squat tuning, and new proving-scene recalibrate button. Next action depends on Derrick's live Cookie feedback.
+**Status:** In Progress
+**Last Updated:** 2026-06-09 05:50 EDT
+**Blocked Reason:** None
 **Agent:** `pico`
 
 ---
@@ -4201,3 +4201,76 @@ Commit: `310bc3f` - `Preserve straight-punch continuity across reacquiring hand 
 - **Commands / evidence:** `bd update aerobeat-input-camera-tracking-umx --status in_progress --json`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → `74/74` passing for the touched squat/inspector/recalibrate coverage.
 - **Result:** Derrick can now tune squat enter/exit thresholds in YAML, see the live calibrated torso-height squat truth in the boxing inspector/testbed, and manually refresh athlete calibration from both boxing + flow proving scenes without restarting.
 - **Commit:** `679b460` — `Expose squat tuning and proving recalibration`
+
+### Task 10CQ: Expose weave gesture tuning in public YAML and the boxing proving inspector
+
+**Bead ID:** `aerobeat-input-camera-tracking-awq`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** In `REF-01`, expose the current weave boxing gesture thresholds through the public gesture YAML in the same simple-comment style as the other user-facing knobs, and surface truthful weave debug/threshold details in the boxing proving scene inspector/hover UI so Derrick can see exactly why weave left/right is or is not active. Keep the slice narrow to weave only: no broader retuning unless required for truthful config ownership. Preserve the existing behavior unless a bug blocks truthful exposure. Include the exact bead ID in your work, claim `aerobeat-input-camera-tracking-awq` with `bd update aerobeat-input-camera-tracking-awq --status in_progress --json` when you start, run focused repo-local tests for the touched detector/testbed surfaces, commit and push to `main` by default, and close the bead with a clear reason only after the implementation and proof are complete.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:**
+- **Implementation:** exposed the existing weave enter/exit thresholds in `assets/boxing.gesture_detection.yaml`, plumbed those values through `src/detectors/pose_detector_substrate.gd` without changing the underlying weave contract, and added explicit weave debug truth (`state`, live offsets, per-threshold readiness, neutral-release readiness) to the detector output.
+- **Inspector / hover UI:** added a dedicated `weave` hover-card model plus event-feed/inspector sections in `.testbed/scripts/boxing_proving_harness.gd` so the proving scene now shows the live weave state, threshold inputs, candidate booleans, and measured head/hip/drop values that explain why weave left/right is or is not active.
+- **Tests / evidence:** extended `.testbed/tests/unit/test_pose_detector_substrate.gd` and `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → `76/76` passing.
+- **Result:** weave tuning is now publicly owned by the boxing gesture YAML, and the boxing proving inspector/hover surfaces truthful weave-only threshold/debug detail for tuning and diagnosis.
+- **Commit:** `0f460c4` — `Expose weave tuning and proving debug truth`
+
+### Task 10CR: QA weave YAML exposure and boxing proving inspector truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-70g`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the weave-only slice in `REF-01` after Task 10CQ lands. Verify the boxing gesture YAML now owns the weave thresholds with clear simple comments, and verify the boxing proving scene inspector/hover UI surfaces truthful live weave state plus the threshold inputs/measurements that drive weave activation. Claim `aerobeat-input-camera-tracking-70g` with `bd update aerobeat-input-camera-tracking-70g --status in_progress --json` when you start, use focused automated validation first, then do the highest-fidelity proving-scene verification available without widening scope, and close the bead with a clear reason only if the slice really passes.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10CS: Audit weave YAML exposure and boxing proving inspector truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-c6m`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the completed weave slice in `REF-01`. Truth-check that weave config ownership is really public YAML, that the comments match the repo's simple user-facing style, and that the boxing proving inspector/hover UI reports the live weave measurements and thresholds truthfully enough for Derrick to tune against. Claim `aerobeat-input-camera-tracking-c6m` with `bd update aerobeat-input-camera-tracking-c6m --status in_progress --json` when you start, inspect the diff/plan/tests, rerun only the validation needed to prove the slice, and close the bead yourself if and only if the work is actually done; otherwise report the exact gap and leave it open.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.

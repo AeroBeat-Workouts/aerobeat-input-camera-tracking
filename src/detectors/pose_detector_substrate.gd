@@ -44,6 +44,11 @@ const GUARD_DEFAULT_MAX_WRIST_SEPARATION_X := 0.20
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y := 0.12
 const SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX := 0.82
 const SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN := 0.92
+const WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN := 0.30
+const WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN := 0.12
+const WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN := 0.05
+const WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX := 0.12
+const WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX := 0.08
 
 const FLOW_HISTORY_MAX_MS := 560
 const FLOW_SWING_WINDOW_MIN_MS := 120
@@ -567,6 +572,7 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		"ready": _gesture_state.get("ready", {}).duplicate(true),
 		"guard": _build_guard_debug_state(),
 		"squat": _build_squat_debug_state(metrics),
+		"weave": _build_weave_debug_state(metrics),
 		"straight_punch": _build_straight_punch_debug_state(metrics),
 		"hook": _build_pose_strike_debug_state("hook", metrics),
 		"uppercut": _build_pose_strike_debug_state("uppercut", metrics),
@@ -598,6 +604,28 @@ func _build_squat_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
 		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
 	}
+
+func _build_weave_debug_state(metrics: Dictionary = {}) -> Dictionary:
+	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+	var weave_debug: Dictionary = (_gesture_state.get("weave_debug", {}) as Dictionary).duplicate(true)
+	var weave_config := _get_weave_config()
+	var state_name := "inactive"
+	if bool(_get_state("weave_left")):
+		state_name = "left"
+	elif bool(_get_state("weave_right")):
+		state_name = "right"
+	weave_debug["state"] = state_name
+	weave_debug["enabled"] = bool(weave_config.get("enabled", true))
+	weave_debug["head_lateral_offset"] = float(measurements.get("head_lateral_offset", weave_debug.get("head_lateral_offset", 0.0)))
+	weave_debug["hip_lateral_offset"] = float(measurements.get("hip_lateral_offset", weave_debug.get("hip_lateral_offset", 0.0)))
+	weave_debug["relative_head_hip_offset"] = float(measurements.get("head_lateral_offset", 0.0)) - float(measurements.get("hip_lateral_offset", 0.0))
+	weave_debug["head_drop_ratio"] = float(measurements.get("head_drop_ratio", weave_debug.get("head_drop_ratio", 0.0)))
+	weave_debug["enter_head_lateral_offset_min"] = float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
+	weave_debug["enter_relative_head_hip_offset_min"] = float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
+	weave_debug["enter_head_drop_ratio_min"] = float(weave_config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN))
+	weave_debug["exit_head_lateral_offset_max"] = float(weave_config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX))
+	weave_debug["exit_relative_head_hip_offset_max"] = float(weave_config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX))
+	return weave_debug
 
 func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
@@ -832,6 +860,27 @@ func _reset_gesture_state() -> void:
 			"left_wrist_above_elbow": false,
 			"right_wrist_above_elbow": false,
 			"candidate": false,
+		},
+		"weave_debug": {
+			"state": "inactive",
+			"enabled": true,
+			"head_lateral_offset": 0.0,
+			"hip_lateral_offset": 0.0,
+			"relative_head_hip_offset": 0.0,
+			"head_drop_ratio": 0.0,
+			"enter_head_lateral_offset_min": WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN,
+			"enter_relative_head_hip_offset_min": WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN,
+			"enter_head_drop_ratio_min": WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN,
+			"exit_head_lateral_offset_max": WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX,
+			"exit_relative_head_hip_offset_max": WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX,
+			"left_candidate": false,
+			"right_candidate": false,
+			"neutral_candidate": true,
+			"head_offset_left_ready": false,
+			"head_offset_right_ready": false,
+			"relative_offset_left_ready": false,
+			"relative_offset_right_ready": false,
+			"head_drop_ready": false,
 		},
 		"flow": {
 			"left_hand": [],
@@ -1537,14 +1586,47 @@ func _process_squat(events: Array, height_ratio: float) -> void:
 		_set_state_toggle(events, "squat", false)
 
 func _process_weave(events: Array, head_offset: float, hip_offset: float, head_drop_ratio: float) -> void:
+	var weave_config := _get_weave_config()
 	var relative_offset := head_offset - hip_offset
-	var weaving_left := head_offset <= -0.30 and relative_offset <= -0.12 and head_drop_ratio >= 0.05
-	var weaving_right := head_offset >= 0.30 and relative_offset >= 0.12 and head_drop_ratio >= 0.05
-	var neutral := absf(head_offset) <= 0.12 and absf(relative_offset) <= 0.08
+	var left_head_ready := head_offset <= -float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
+	var right_head_ready := head_offset >= float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
+	var left_relative_ready := relative_offset <= -float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
+	var right_relative_ready := relative_offset >= float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
+	var head_drop_ready := head_drop_ratio >= float(weave_config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN))
+	var weaving_left := left_head_ready and left_relative_ready and head_drop_ready
+	var weaving_right := right_head_ready and right_relative_ready and head_drop_ready
+	var neutral := absf(head_offset) <= float(weave_config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX)) and absf(relative_offset) <= float(weave_config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX))
+	_gesture_state["weave_debug"] = {
+		"state": "inactive",
+		"enabled": bool(weave_config.get("enabled", true)),
+		"head_lateral_offset": head_offset,
+		"hip_lateral_offset": hip_offset,
+		"relative_head_hip_offset": relative_offset,
+		"head_drop_ratio": head_drop_ratio,
+		"enter_head_lateral_offset_min": float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN)),
+		"enter_relative_head_hip_offset_min": float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN)),
+		"enter_head_drop_ratio_min": float(weave_config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN)),
+		"exit_head_lateral_offset_max": float(weave_config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX)),
+		"exit_relative_head_hip_offset_max": float(weave_config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX)),
+		"left_candidate": weaving_left,
+		"right_candidate": weaving_right,
+		"neutral_candidate": neutral,
+		"head_offset_left_ready": left_head_ready,
+		"head_offset_right_ready": right_head_ready,
+		"relative_offset_left_ready": left_relative_ready,
+		"relative_offset_right_ready": right_relative_ready,
+		"head_drop_ready": head_drop_ready,
+	}
+	if not bool(weave_config.get("enabled", true)):
+		_set_state_toggle(events, "weave_left", false)
+		_set_state_toggle(events, "weave_right", false)
+		return
 	if weaving_left:
+		_gesture_state["weave_debug"]["state"] = "left"
 		_set_state_toggle(events, "weave_right", false)
 		_set_state_toggle(events, "weave_left", true)
 	elif weaving_right:
+		_gesture_state["weave_debug"]["state"] = "right"
 		_set_state_toggle(events, "weave_left", false)
 		_set_state_toggle(events, "weave_right", true)
 	elif neutral:
@@ -1686,6 +1768,30 @@ func _get_squat_config() -> Dictionary:
 	config["exit_height_ratio_min"] = clampf(float(thresholds.get("exit_height_ratio_min", config.get("exit_height_ratio_min", SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN))), 0.0, 1.0)
 	if float(config["exit_height_ratio_min"]) < float(config["enter_height_ratio_max"]):
 		config["exit_height_ratio_min"] = float(config["enter_height_ratio_max"])
+	return config
+
+func _get_weave_config() -> Dictionary:
+	var config := {
+		"enabled": true,
+		"enter_head_lateral_offset_min": WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN,
+		"enter_relative_head_hip_offset_min": WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN,
+		"enter_head_drop_ratio_min": WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN,
+		"exit_head_lateral_offset_max": WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX,
+		"exit_relative_head_hip_offset_max": WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX,
+	}
+	if _config == null:
+		return config
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return config
+	var weave: Dictionary = gesture_profile_document.get("weave", {}) if gesture_profile_document.get("weave", {}) is Dictionary else {}
+	var thresholds: Dictionary = weave.get("thresholds", {}) if weave.get("thresholds", {}) is Dictionary else {}
+	config["enabled"] = bool(weave.get("enabled", config.get("enabled", true)))
+	config["enter_head_lateral_offset_min"] = maxf(0.0, float(thresholds.get("enter_head_lateral_offset_min", config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))))
+	config["enter_relative_head_hip_offset_min"] = maxf(0.0, float(thresholds.get("enter_relative_head_hip_offset_min", config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))))
+	config["enter_head_drop_ratio_min"] = maxf(0.0, float(thresholds.get("enter_head_drop_ratio_min", config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN))))
+	config["exit_head_lateral_offset_max"] = maxf(0.0, float(thresholds.get("exit_head_lateral_offset_max", config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX))))
+	config["exit_relative_head_hip_offset_max"] = maxf(0.0, float(thresholds.get("exit_relative_head_hip_offset_max", config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX))))
 	return config
 
 func _get_straight_punch_config() -> Dictionary:

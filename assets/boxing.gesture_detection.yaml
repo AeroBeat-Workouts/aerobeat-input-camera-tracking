@@ -19,6 +19,21 @@ squat:
     # Squat exits when live torso height / calibrated torso height rises back to or above this ratio. input.
     exit_height_ratio_min: 0.92
 
+weave:
+  # Turn pose-only weave detection on or off. input.
+  enabled: true
+  thresholds:
+    # Weave starts when head lateral offset reaches at least this far left or right. input.
+    enter_head_lateral_offset_min: 0.30
+    # Weave starts when head-vs-hip lateral offset reaches at least this far left or right. input.
+    enter_relative_head_hip_offset_min: 0.12
+    # Weave starts when head drop reaches at least this much below the standing baseline. input.
+    enter_head_drop_ratio_min: 0.05
+    # Weave ends when head lateral offset settles back within this neutral window. input.
+    exit_head_lateral_offset_max: 0.12
+    # Weave ends when head-vs-hip lateral offset settles back within this neutral window. input.
+    exit_relative_head_hip_offset_max: 0.08
+
 straight_punch:
   # Turn straight-punch detection on or off. input.
   enabled: true

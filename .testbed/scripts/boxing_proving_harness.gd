@@ -362,6 +362,83 @@ const SQUAT_REQUIREMENT_ROWS := [
 		"row_kind": "info",
 	},
 ]
+const WEAVE_REQUIREMENT_ROWS := [
+	{
+		"id": "state_section",
+		"label": "Live state",
+		"row_kind": "section",
+	},
+	{
+		"id": "current_state",
+		"label": "Current state",
+		"row_kind": "info",
+	},
+	{
+		"id": "left_candidate",
+		"label": "Left weave candidate",
+		"row_kind": "info",
+	},
+	{
+		"id": "right_candidate",
+		"label": "Right weave candidate",
+		"row_kind": "info",
+	},
+	{
+		"id": "neutral_candidate",
+		"label": "Neutral release candidate",
+		"row_kind": "info",
+	},
+	{
+		"id": "threshold_section",
+		"label": "Pose-only thresholds",
+		"row_kind": "section",
+	},
+	{
+		"id": "enter_head_lateral_offset_min",
+		"label": "Head lateral offset magnitude >= {threshold}",
+	},
+	{
+		"id": "enter_relative_head_hip_offset_min",
+		"label": "Head-vs-hip offset magnitude >= {threshold}",
+	},
+	{
+		"id": "enter_head_drop_ratio_min",
+		"label": "Head drop ratio >= {threshold}",
+	},
+	{
+		"id": "exit_head_lateral_offset_max",
+		"label": "Neutral head lateral offset magnitude <= {threshold}",
+	},
+	{
+		"id": "exit_relative_head_hip_offset_max",
+		"label": "Neutral head-vs-hip offset magnitude <= {threshold}",
+	},
+	{
+		"id": "live_section",
+		"label": "Live measurements",
+		"row_kind": "section",
+	},
+	{
+		"id": "head_lateral_offset",
+		"label": "Head lateral offset",
+		"row_kind": "info",
+	},
+	{
+		"id": "hip_lateral_offset",
+		"label": "Hip lateral offset",
+		"row_kind": "info",
+	},
+	{
+		"id": "relative_head_hip_offset",
+		"label": "Head-vs-hip lateral offset",
+		"row_kind": "info",
+	},
+	{
+		"id": "head_drop_ratio",
+		"label": "Head drop ratio",
+		"row_kind": "info",
+	},
+]
 
 const HOVER_REQUIREMENT_SPECS := {
 	"punch_left": {
@@ -399,6 +476,10 @@ const HOVER_REQUIREMENT_SPECS := {
 	"squat": {
 		"title": "Squat",
 		"rows": SQUAT_REQUIREMENT_ROWS,
+	},
+	"weave": {
+		"title": "Weave",
+		"rows": WEAVE_REQUIREMENT_ROWS,
 	},
 }
 
@@ -980,6 +1061,8 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 			return _build_guard_hover_card_model(spec)
 		"squat":
 			return _build_squat_hover_card_model(spec)
+		"weave":
+			return _build_weave_hover_card_model(spec)
 		_:
 			return spec.duplicate(true)
 
@@ -1051,6 +1134,20 @@ func _build_squat_hover_card_model(spec: Dictionary) -> Dictionary:
 		"title": spec.get("title", "Squat"),
 		"rows": rows,
 		"footer": spec.get("footer", "Live values come from the calibrated torso-height squat detector."),
+	}
+
+func _build_weave_hover_card_model(spec: Dictionary) -> Dictionary:
+	var latest_state := _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var weave_debug: Dictionary = ((gesture_debug.get("weave", {}) as Dictionary)).duplicate(true)
+	var rows: Array[Dictionary] = []
+	for row_spec_variant: Variant in spec.get("rows", []):
+		var row_spec: Dictionary = row_spec_variant
+		rows.append(_build_weave_requirement_row(row_spec, weave_debug))
+	return {
+		"title": spec.get("title", "Weave"),
+		"rows": rows,
+		"footer": spec.get("footer", "Live values come from the pose-only weave detector."),
 	}
 
 func _boxing_reference_time_ms() -> int:
@@ -1137,6 +1234,75 @@ func _build_guard_requirement_row(row_spec: Dictionary, guard_debug: Dictionary)
 		"right_wrist_above_elbow":
 			current_text = _fmt_bool(bool(guard_debug.get("right_wrist_above_elbow", false)))
 			passed = bool(guard_debug.get("right_wrist_above_elbow", false))
+		_:
+			current_text = "pending"
+			passed = false
+	row["label"] = label
+	row["passed"] = passed
+	row["threshold_text"] = threshold_text
+	row["current_text"] = current_text
+	return row
+
+func _build_weave_requirement_row(row_spec: Dictionary, weave_debug: Dictionary) -> Dictionary:
+	var row := row_spec.duplicate(true)
+	var row_id := String(row_spec.get("id", ""))
+	var label := String(row_spec.get("label", ""))
+	var passed := false
+	var current_text := ""
+	var threshold_text := ""
+	var state_name := String(weave_debug.get("state", "inactive"))
+	var head_offset := float(weave_debug.get("head_lateral_offset", 0.0))
+	var hip_offset := float(weave_debug.get("hip_lateral_offset", 0.0))
+	var relative_offset := float(weave_debug.get("relative_head_hip_offset", 0.0))
+	var head_drop_ratio := float(weave_debug.get("head_drop_ratio", 0.0))
+	match row_id:
+		"state_section", "threshold_section", "live_section":
+			current_text = ""
+			passed = false
+		"current_state":
+			current_text = state_name
+			passed = state_name != "inactive"
+		"left_candidate":
+			current_text = _fmt_bool(bool(weave_debug.get("left_candidate", false)))
+			passed = bool(weave_debug.get("left_candidate", false))
+		"right_candidate":
+			current_text = _fmt_bool(bool(weave_debug.get("right_candidate", false)))
+			passed = bool(weave_debug.get("right_candidate", false))
+		"neutral_candidate":
+			current_text = _fmt_bool(bool(weave_debug.get("neutral_candidate", false)))
+			passed = bool(weave_debug.get("neutral_candidate", false))
+		"enter_head_lateral_offset_min":
+			threshold_text = _fmt_float(weave_debug.get("enter_head_lateral_offset_min", 0.0))
+			current_text = _fmt_float(absf(head_offset))
+			passed = bool(weave_debug.get("head_offset_left_ready", false)) or bool(weave_debug.get("head_offset_right_ready", false))
+		"enter_relative_head_hip_offset_min":
+			threshold_text = _fmt_float(weave_debug.get("enter_relative_head_hip_offset_min", 0.0))
+			current_text = _fmt_float(absf(relative_offset))
+			passed = bool(weave_debug.get("relative_offset_left_ready", false)) or bool(weave_debug.get("relative_offset_right_ready", false))
+		"enter_head_drop_ratio_min":
+			threshold_text = _fmt_float(weave_debug.get("enter_head_drop_ratio_min", 0.0))
+			current_text = _fmt_float(head_drop_ratio)
+			passed = bool(weave_debug.get("head_drop_ready", false))
+		"exit_head_lateral_offset_max":
+			threshold_text = _fmt_float(weave_debug.get("exit_head_lateral_offset_max", 0.0))
+			current_text = _fmt_float(absf(head_offset))
+			passed = absf(head_offset) <= float(weave_debug.get("exit_head_lateral_offset_max", 0.0))
+		"exit_relative_head_hip_offset_max":
+			threshold_text = _fmt_float(weave_debug.get("exit_relative_head_hip_offset_max", 0.0))
+			current_text = _fmt_float(absf(relative_offset))
+			passed = absf(relative_offset) <= float(weave_debug.get("exit_relative_head_hip_offset_max", 0.0))
+		"head_lateral_offset":
+			current_text = _fmt_float(head_offset)
+			passed = state_name == "left" or state_name == "right"
+		"hip_lateral_offset":
+			current_text = _fmt_float(hip_offset)
+			passed = absf(hip_offset) > 0.0
+		"relative_head_hip_offset":
+			current_text = _fmt_float(relative_offset)
+			passed = state_name == "left" or state_name == "right"
+		"head_drop_ratio":
+			current_text = _fmt_float(head_drop_ratio)
+			passed = head_drop_ratio > 0.0
 		_:
 			current_text = "pending"
 			passed = false
@@ -1798,6 +1964,34 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Live height ratio: %s (%s)" % [_fmt_float(squat_debug.get("height_ratio", 1.0)), String(squat_debug.get("height_state", "unknown"))])
 	lines.append("Squat depth: %s" % _fmt_float(squat_debug.get("squat_depth", 0.0)))
 	lines.append("Torso height live / baseline: %s / %s" % [_fmt_float(squat_debug.get("torso_height", 0.0)), _fmt_float(squat_debug.get("baseline_torso_height", 0.0))])
+
+	var weave_config: Dictionary = gesture_document.get("weave", {}) if gesture_document.get("weave", {}) is Dictionary else {}
+	var weave_thresholds: Dictionary = weave_config.get("thresholds", {}) if weave_config.get("thresholds", {}) is Dictionary else {}
+	var weave_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("weave", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("weave", {}) is Dictionary) else {}
+	lines.append("")
+	lines.append("Weave tuning")
+	lines.append("------------")
+	lines.append("Enabled: %s" % _fmt_bool(bool(weave_config.get("enabled", true))))
+	lines.append("Enter head lateral offset >= %s" % _fmt_float(weave_thresholds.get("enter_head_lateral_offset_min", 0.0)))
+	lines.append("Enter head-vs-hip offset >= %s" % _fmt_float(weave_thresholds.get("enter_relative_head_hip_offset_min", 0.0)))
+	lines.append("Enter head drop ratio >= %s" % _fmt_float(weave_thresholds.get("enter_head_drop_ratio_min", 0.0)))
+	lines.append("Exit head lateral offset <= %s" % _fmt_float(weave_thresholds.get("exit_head_lateral_offset_max", 0.0)))
+	lines.append("Exit head-vs-hip offset <= %s" % _fmt_float(weave_thresholds.get("exit_relative_head_hip_offset_max", 0.0)))
+	lines.append("Current state: %s" % String(weave_debug.get("state", "inactive")))
+	lines.append("Candidates: left=%s right=%s neutral=%s" % [
+		_fmt_bool(bool(weave_debug.get("left_candidate", false))),
+		_fmt_bool(bool(weave_debug.get("right_candidate", false))),
+		_fmt_bool(bool(weave_debug.get("neutral_candidate", false))),
+	])
+	lines.append("Live offsets: head=%s hip=%s relative=%s" % [
+		_fmt_float(weave_debug.get("head_lateral_offset", 0.0)),
+		_fmt_float(weave_debug.get("hip_lateral_offset", 0.0)),
+		_fmt_float(weave_debug.get("relative_head_hip_offset", 0.0)),
+	])
+	lines.append("Head drop ratio: %s (ready=%s)" % [
+		_fmt_float(weave_debug.get("head_drop_ratio", 0.0)),
+		_fmt_bool(bool(weave_debug.get("head_drop_ready", false))),
+	])
 
 	lines.append("")
 	lines.append("Tracker hand truth")

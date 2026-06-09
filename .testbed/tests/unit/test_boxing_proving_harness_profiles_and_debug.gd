@@ -687,6 +687,65 @@ func test_boxing_squat_hover_card_reports_yaml_thresholds_and_live_truth() -> vo
 	assert_string_contains(body, "Live torso / calibrated torso - 0.780")
 	assert_string_contains(body, "Torso height (live / baseline) - 0.234 / 0.300")
 
+func test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"weave": {
+				"state": "left",
+				"enabled": true,
+				"enter_head_lateral_offset_min": 0.30,
+				"enter_relative_head_hip_offset_min": 0.12,
+				"enter_head_drop_ratio_min": 0.05,
+				"exit_head_lateral_offset_max": 0.12,
+				"exit_relative_head_hip_offset_max": 0.08,
+				"head_lateral_offset": -0.31,
+				"hip_lateral_offset": -0.04,
+				"relative_head_hip_offset": -0.27,
+				"head_drop_ratio": 0.06,
+				"left_candidate": true,
+				"right_candidate": false,
+				"neutral_candidate": false,
+				"head_offset_left_ready": true,
+				"head_offset_right_ready": false,
+				"relative_offset_left_ready": true,
+				"relative_offset_right_ready": false,
+				"head_drop_ready": true,
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("weave")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(model.get("title", "")), "Weave")
+	assert_eq(String(rows[1].get("current_text", "")), "left")
+	assert_eq(String(rows[2].get("current_text", "")), "true")
+	assert_eq(String(rows[3].get("current_text", "")), "false")
+	assert_eq(String(rows[4].get("current_text", "")), "false")
+	assert_eq(String(rows[6].get("threshold_text", "")), "0.300")
+	assert_eq(String(rows[6].get("current_text", "")), "0.310")
+	assert_eq(String(rows[7].get("threshold_text", "")), "0.120")
+	assert_eq(String(rows[7].get("current_text", "")), "0.270")
+	assert_eq(String(rows[8].get("threshold_text", "")), "0.050")
+	assert_eq(String(rows[8].get("current_text", "")), "0.060")
+	assert_eq(String(rows[9].get("threshold_text", "")), "0.120")
+	assert_eq(String(rows[10].get("threshold_text", "")), "0.080")
+	assert_eq(String(rows[12].get("current_text", "")), "-0.310")
+	assert_eq(String(rows[13].get("current_text", "")), "-0.040")
+	assert_eq(String(rows[14].get("current_text", "")), "-0.270")
+	assert_eq(String(rows[15].get("current_text", "")), "0.060")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "weave")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Current state - left")
+	assert_string_contains(body, "Left weave candidate - true")
+	assert_string_contains(body, "Right weave candidate - false")
+	assert_string_contains(body, "Head lateral offset magnitude >= 0.300 - 0.310")
+	assert_string_contains(body, "Head-vs-hip offset magnitude >= 0.120 - 0.270")
+	assert_string_contains(body, "Head drop ratio >= 0.050 - 0.060")
+	assert_string_contains(body, "Head lateral offset - -0.310")
+	assert_string_contains(body, "Head-vs-hip lateral offset - -0.270")
+
 func test_proving_scenes_surface_recalibrate_button_and_route_press_to_provider() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
 		var packed_scene := packed_scene_variant as PackedScene

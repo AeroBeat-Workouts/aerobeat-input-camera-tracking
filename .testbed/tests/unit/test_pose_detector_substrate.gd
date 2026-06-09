@@ -1117,6 +1117,54 @@ func test_request_athlete_recalibration_clears_baseline_and_squat_truth_until_re
 	assert_eq(String(squat_debug.get("height_state", "")), "unknown")
 	assert_true(is_equal_approx(float(squat_debug.get("squat_depth", -1.0)), 0.0))
 
+func test_weave_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
+	config.gesture_profile_document = {
+		"weave": {
+			"enabled": true,
+			"thresholds": {
+				"enter_head_lateral_offset_min": 0.28,
+				"enter_relative_head_hip_offset_min": 0.10,
+				"enter_head_drop_ratio_min": 0.04,
+				"exit_head_lateral_offset_max": 0.10,
+				"exit_relative_head_hip_offset_max": 0.06,
+			}
+		}
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+
+	var weave_left_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.42, "y": 0.84},
+		PoseLandmarkIds.LEFT_HIP: {"x": 0.42, "y": 0.46},
+		PoseLandmarkIds.RIGHT_HIP: {"x": 0.58, "y": 0.46},
+	}), 1200)
+	assert_true(_event_names(weave_left_state.get("events", [])).has("weave_left_start"))
+	var weave_debug: Dictionary = weave_left_state.get("gesture_debug", {}).get("weave", {})
+	assert_eq(String(weave_debug.get("state", "")), "left")
+	assert_true(is_equal_approx(float(weave_debug.get("enter_head_lateral_offset_min", 0.0)), 0.28))
+	assert_true(is_equal_approx(float(weave_debug.get("enter_relative_head_hip_offset_min", 0.0)), 0.10))
+	assert_true(is_equal_approx(float(weave_debug.get("enter_head_drop_ratio_min", 0.0)), 0.04))
+	assert_true(is_equal_approx(float(weave_debug.get("exit_head_lateral_offset_max", 0.0)), 0.10))
+	assert_true(is_equal_approx(float(weave_debug.get("exit_relative_head_hip_offset_max", 0.0)), 0.06))
+	assert_true(float(weave_debug.get("head_lateral_offset", 0.0)) < 0.0)
+	assert_true(absf(float(weave_debug.get("hip_lateral_offset", 0.0))) < float(weave_debug.get("enter_head_lateral_offset_min", 0.0)))
+	assert_true(float(weave_debug.get("relative_head_hip_offset", 0.0)) < 0.0)
+	assert_true(float(weave_debug.get("head_drop_ratio", 0.0)) >= float(weave_debug.get("enter_head_drop_ratio_min", 0.0)))
+	assert_true(bool(weave_debug.get("left_candidate", false)))
+	assert_false(bool(weave_debug.get("right_candidate", true)))
+	assert_false(bool(weave_debug.get("neutral_candidate", true)))
+	assert_true(bool(weave_debug.get("head_offset_left_ready", false)))
+	assert_true(bool(weave_debug.get("relative_offset_left_ready", false)))
+	assert_true(bool(weave_debug.get("head_drop_ready", false)))
+
+	var weave_end_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.49, "y": 0.80},
+	}), 1300)
+	assert_true(_event_names(weave_end_state.get("events", [])).has("weave_left_end"))
+	weave_debug = weave_end_state.get("gesture_debug", {}).get("weave", {})
+	assert_eq(String(weave_debug.get("state", "")), "inactive")
+	assert_true(bool(weave_debug.get("neutral_candidate", false)))
+
 func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 	_calibrate_stance()
 	var guard_start_state := substrate.process_landmarks(_make_pose_frame({
