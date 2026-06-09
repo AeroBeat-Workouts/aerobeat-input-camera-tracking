@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-03
 **Status:** Blocked
-**Last Updated:** 2026-06-08 10:04 EDT
-**Blocked Reason:** Awaiting Derrick's manual-testing follow-up on the latest synced experimental boxing state after Task 10CG clarified that hook arm ownership remains athlete-side while hook directionality/debug wording should be read in preview space.
+**Last Updated:** 2026-06-08 22:16 EDT
+**Blocked Reason:** Awaiting Derrick's manual-testing follow-up on the latest synced boxing proving state after today's straight-punch reacquire/bbox-growth fixes, simplified guard rule, exposed squat tuning, and new proving-scene recalibrate button. Next action depends on Derrick's live Cookie feedback.
 **Agent:** `pico`
 
 ---
