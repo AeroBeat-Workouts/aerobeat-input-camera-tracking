@@ -4231,7 +4231,7 @@ Commit: `310bc3f` - `Preserve straight-punch continuity across reacquiring hand 
 - **Inspector / hover UI:** added a dedicated `weave` hover-card model plus event-feed/inspector sections in `.testbed/scripts/boxing_proving_harness.gd` so the proving scene now shows the live weave state, threshold inputs, candidate booleans, and measured head/hip/drop values that explain why weave left/right is or is not active.
 - **Tests / evidence:** extended `.testbed/tests/unit/test_pose_detector_substrate.gd` and `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → `76/76` passing.
 - **Result:** weave tuning is now publicly owned by the boxing gesture YAML, and the boxing proving inspector/hover surfaces truthful weave-only threshold/debug detail for tuning and diagnosis.
-- **Commit:** `0f460c4` — `Expose weave tuning and proving debug truth`
+- **Commit:** `4729c49` — `Expose weave tuning and proving debug truth`
 
 ### Task 10CR: QA weave YAML exposure and boxing proving inspector truth
 
