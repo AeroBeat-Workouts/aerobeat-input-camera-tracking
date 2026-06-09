@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 18:35 EDT
+**Last Updated:** 2026-06-09 19:40 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -4741,6 +4741,109 @@ Implementation commit before plan update: `be375f0` (`Fix stale boxing hand-trac
 **Prompt:** QA the repaired straight-punch XY gate slice after Task 10DG. Use Derrick's clarified acceptance criterion: the XY threshold must be publicly YAML-owned, commented like the other variables, and surfaced truthfully in the straight-punch proving/testbed inspector/hover for manual tuning. Verify focused proof and the real proving surfaces needed for that exposure workflow, without requiring the current default threshold to already be perfectly tuned for the canned punch fixtures. Claim `aerobeat-input-camera-tracking-xsv` on start with `bd update aerobeat-input-camera-tracking-xsv --status in_progress --json`, update this plan with exact commands/evidence, and close the bead only if that tuning workflow really passes.
 
 **Folders Created/Deleted/Modified:**
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `src/detectors/pose_detector_substrate.gd`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** QA passed Derrick's clarified acceptance criterion for the repaired straight-punch XY gate slice. I verified the shipped YAML ownership/comment surface directly in `REF-01` `assets/boxing.gesture_detection.yaml:48-57`: the threshold remains publicly owned at `straight_punch.thresholds.max_wrist_elbow_xy_distance: 0.09` and is commented in the same simple `input.` style as the surrounding knobs (`# Wrist and elbow must stay at least this close together in camera-space XY for the straight-arm pose hint. input.`).
+
+I also verified the live debug/inspector plumbing in code and focused proving tests. `src/detectors/pose_detector_substrate.gd` still reads that threshold from YAML, applies it to the live `wrist_elbow_xy_gate_passed` check, and surfaces `wrist_elbow_xy_distance`, `max_wrist_elbow_xy_distance`, and `wrist_elbow_xy_gate_passed` back into straight-punch debug state. The proving/testbed coverage remains truthful for the actual tuning workflow: `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` explicitly checks the hand debug line (`wrist_elbow_xy=0.082<=0.090(true)`), the hover card threshold/current rows, the inspector body text (`Wrist-elbow XY distance <= 0.090 - 0.076` / `0.082`), and the pose-only fallback inspector/hover path that skips bbox gates while still surfacing the XY threshold/value truth. `.testbed/tests/unit/test_pose_detector_substrate.gd` separately proves the live detector blocks triggering when the XY gate fails and exposes the pass/fail truth in gesture debug.
+
+Exact commands run:
+- `bd update aerobeat-input-camera-tracking-xsv --status in_progress --json`
+- `rg -n "wrist.*elbow.*(xy|horizontal)|xy.*threshold|wrist_elbow_xy_distance|max_wrist_elbow_xy_distance|wrist_elbow_xy_gate_passed" assets src .testbed/tests -S`
+- `sed -n '1,160p' assets/boxing.gesture_detection.yaml`
+- `sed -n '980,1045p;640,735p;2248,2270p;1838,1878p' src/detectors/pose_detector_substrate.gd`
+- `sed -n '250,460p;600,690p' .testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `sed -n '259,320p' .testbed/tests/unit/test_pose_detector_substrate.gd`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → passed `85/85`
+
+Caveat preserved intentionally: the current default `0.09` threshold is now accepted only as a truthful YAML+inspector tuning surface. This QA slice does **not** claim that the canned punch fixtures already pass under that live XY gate; it confirms that Derrick can now tune the threshold honestly from the public YAML and proving/testbed surfaces without stale acceptance noise.
+
+### Task 10DI: Audit straight-punch XY gate YAML+inspector tuning workflow
+
+**Bead ID:** `aerobeat-input-camera-tracking-ane`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the repaired straight-punch XY gate slice after Task 10DH using Derrick's clarified acceptance criterion: YAML ownership, comment clarity, and truthful inspector/hover/debug surfacing for manual tuning. Confirm the feature is honestly exposed without pretending the current default threshold is already fully tuned. Claim `aerobeat-input-camera-tracking-ane` on start with `bd update aerobeat-input-camera-tracking-ane --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the tuning workflow, and close the bead only if the work is actually done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Independent audit passed against Derrick's clarified acceptance criterion for the repaired XY-gate slice.
+
+What I verified independently:
+- **YAML ownership + comment clarity:** `assets/boxing.gesture_detection.yaml:48-57` still exposes the threshold publicly as `straight_punch.thresholds.max_wrist_elbow_xy_distance: 0.09`, and the shipped comment matches the repo's simple knob style: `# Wrist and elbow must stay at least this close together in camera-space XY for the straight-arm pose hint. input.`
+- **Detector truth surface:** `src/detectors/pose_detector_substrate.gd:652-654`, `1000-1017`, `1124`, and `2258-2260` show the input repo really reads the YAML threshold, computes the live `wrist_elbow_xy_distance`, stores `max_wrist_elbow_xy_distance` + `wrist_elbow_xy_gate_passed` in straight-punch state/debug payloads, and requires that gate before trigger. This is not a dead/comment-only knob.
+- **Inspector / hover / debug surfacing for manual tuning:** `/.testbed/scripts/boxing_proving_harness.gd:166-167`, `1349-1436`, `1939`, and `2111-2121` still surface the same live values truthfully across the tuning surfaces Derrick actually uses: hover/inspector rows show `Wrist-elbow XY distance <= {threshold}` with the current measured value, the runtime tuning summary includes `Max wrist-elbow XY distance: ...`, and the per-hand debug line prints `wrist_elbow_xy=<live><=<threshold>(<pass>)`.
+- **Acceptance repair truthfulness:** inspected `be375f0` directly. The coder's repair was intentionally narrow: it only fixed the stale boxing profile expectation in `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` from `hands.enabled == true` to the current shipped boxing truth `false`. I also inspected `e989f68`, which documents that narrowed acceptance seam in the plan. I did **not** find evidence that the repair hid or faked the XY gate behavior.
+- **No overclaim about tuning:** the current default `0.09` remains presented only as a public/manual tuning knob. The slice now passes because YAML ownership, comments, and inspector/hover/debug truth are correct—not because the canned punch fixtures are claimed to already satisfy the gate.
+
+Focused validation rerun used for the audit:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`85/85` passed, `970` asserts; same pre-existing orphan/RID/invalid-UID shutdown noise only)
+
+Focused proof covered by that rerun:
+- `.testbed/tests/unit/test_pose_detector_substrate.gd::test_straight_punch_requires_wrist_elbow_xy_gate_before_triggering` proves the XY gate can block a punch even when the velocity and bbox-growth signals are otherwise sufficient.
+- `.testbed/tests/unit/test_pose_detector_substrate.gd::test_straight_punch_debug_surfaces_wrist_elbow_xy_gate_truth` proves the detector reports threshold/value/pass truth.
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` proves the hover/inspector/debug surfaces show the threshold and live values, including the pose-only/manual-tuning path (`wrist_elbow_xy=0.082<=0.090(true)`, `Wrist-elbow XY distance <= 0.090 - 0.076`, and `Wrist-elbow XY distance <= 0.090 - 0.082`).
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` proves the current shipped boxing profile bundle resolves truthfully, including the public XY threshold and the current `tracking.hands.enabled == false` boxing-profile setting that caused the stale failure before `be375f0`.
+
+Audit conclusion: **PASS** for the clarified YAML+inspector tuning-workflow acceptance rule. I closed bead `aerobeat-input-camera-tracking-ane` because the work is actually done for that scope, while intentionally preserving the caveat that the default threshold is not being claimed as fully tuned yet.
+
+### Task 10DJ: Replace straight-punch wrist-elbow XY gate with elbow-shoulder XY gate
+
+**Bead ID:** `aerobeat-input-camera-tracking-7bb`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Derrick manually tested on Chip and found a better camera-geometry truth for front-facing straight punches: with the camera lower than the athlete, wrist↔elbow XY alignment is not the right pose hint, but elbow↔shoulder XY alignment gets meaningfully tighter during straight punches. Replace the new straight-punch wrist-elbow XY gate with an elbow-shoulder XY gate instead. Update the public YAML variable name/value/comment accordingly, update the detector gate/debug fields accordingly, and update the straight-punch proving/testbed hover + inspector + debug surfacing so Derrick can tune the new elbow-shoulder variable manually. Keep scope narrow to renaming/replacing the pose-hint gate, not wider punch retuning. Claim `aerobeat-input-camera-tracking-7bb` on start with `bd update aerobeat-input-camera-tracking-7bb --status in_progress --json`, add focused proof/tests, update this plan with exact results/commands/commit, commit and push to `main`, and close the bead only after the replacement truthfully lands.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Replaced the straight-punch XY pose-hint gate from wrist↔elbow to elbow↔shoulder without widening scope beyond that pose-hint seam. In `src/detectors/pose_detector_substrate.gd`, the live gate now measures `PoseMetrics.distance_2d(elbow, shoulder)`, the public config/debug keys are now `max_elbow_shoulder_xy_distance`, `elbow_shoulder_xy_distance`, and `elbow_shoulder_xy_gate_passed`, and the trigger gate uses that renamed truth everywhere it is surfaced or emitted. Updated the shipped boxing YAML in `assets/boxing.gesture_detection.yaml` so Derrick now tunes `max_elbow_shoulder_xy_distance` with an elbow/shoulder-specific comment. Updated the proving/testbed punch requirement rows, inspector/hover text, event-feed tuning text, and compact hand-debug line in `.testbed/scripts/boxing_proving_harness.gd` so the UI/debug surfaces match the new elbow-shoulder truth. Focused proof landed in `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`, and `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`, including pose fixtures that explicitly keep elbow↔shoulder alignment tight when the gate is expected to pass. Commands run: `bd update aerobeat-input-camera-tracking-7bb --status in_progress --json`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → 85/85 passing (exit 0), with pre-existing GUT orphan/RID leak warnings only; `git commit -m "Swap straight punch XY pose hint to elbow-shoulder"` → `c08d028`.
+
+### Task 10DK: QA elbow-shoulder XY straight-punch gate
+
+**Bead ID:** `aerobeat-input-camera-tracking-8yj`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the straight-punch elbow-shoulder XY gate after Task 10DJ lands. Verify the new threshold is publicly YAML-owned, commented like the other variables, and surfaced truthfully in the straight-punch proving/testbed inspector/hover/debug so Derrick can tune it. Also verify focused proof and the highest-fidelity proving flow available for the new elbow-shoulder gate truth. Claim `aerobeat-input-camera-tracking-8yj` on start with `bd update aerobeat-input-camera-tracking-8yj --status in_progress --json`, update this plan with exact commands/evidence, and close the bead only if the slice truly passes.
+
+**Folders Created/Deleted/Modified:**
 - `.testbed/`
 - `assets/`
 - `src/detectors/`
@@ -4753,13 +4856,13 @@ Implementation commit before plan update: `be375f0` (`Fix stale boxing hand-trac
 
 **Results:** Pending.
 
-### Task 10DI: Audit straight-punch XY gate YAML+inspector tuning workflow
+### Task 10DL: Audit elbow-shoulder XY straight-punch gate
 
-**Bead ID:** `aerobeat-input-camera-tracking-ane`
+**Bead ID:** `aerobeat-input-camera-tracking-seq`
 **SubAgent:** `primary`
 **Role:** `auditor`
 **References:** `REF-01`
-**Prompt:** Independently audit the repaired straight-punch XY gate slice after Task 10DH using Derrick's clarified acceptance criterion: YAML ownership, comment clarity, and truthful inspector/hover/debug surfacing for manual tuning. Confirm the feature is honestly exposed without pretending the current default threshold is already fully tuned. Claim `aerobeat-input-camera-tracking-ane` on start with `bd update aerobeat-input-camera-tracking-ane --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the tuning workflow, and close the bead only if the work is actually done.
+**Prompt:** Independently audit the straight-punch elbow-shoulder XY gate after Task 10DK. Truth-check the new YAML-owned threshold/comment, the detector usage, and the proving/testbed hover + inspector + debug truth for manual tuning. Claim `aerobeat-input-camera-tracking-seq` on start with `bd update aerobeat-input-camera-tracking-seq --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the replacement gate, and close the bead only if the work is actually done.
 
 **Folders Created/Deleted/Modified:**
 - `.testbed/`
