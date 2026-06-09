@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 13:00 EDT
+**Last Updated:** 2026-06-09 18:01 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -4555,9 +4555,30 @@ Commit/push status: committed and pushed to `main` as `ff01c57` (`Add guard nose
 - validation artifacts / touched proof files as needed
 - `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA passed. I first inspected the landed `ff01c57` diff plus Task 10DA’s plan notes, then verified the public config/debug ownership seam with targeted source checks:
+- `rg -n "max_wrist_nose_distance|weave|guard:" assets/boxing.gesture_detection.yaml`
+- `rg -n "max_wrist_nose_distance|left_wrist_nose_distance|right_wrist_nose_distance|_process_weave|weave_debug.state|is_weaving" src/detectors/pose_detector_substrate.gd`
+- `rg -n "wrist nose distance|left_wrist_nose_distance|right_wrist_nose_distance|weave" .testbed/scripts/boxing_proving_harness.gd .testbed/scripts/proving_harness.gd`
+- `rg -n "nose|weave" .testbed/tests/unit/test_pose_detector_substrate.gd .testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+
+Focused automated validation from the repo root:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit`
+- Result: ✅ `83/83` tests passed (`942` asserts). That includes the new detector regressions `test_guard_requires_both_wrists_to_stay_near_nose` and `test_weave_remains_active_only_while_live_weave_criteria_still_pass`, plus the proving-surface coverage `test_guard_hover_card_reports_pose_only_thresholds_and_live_truth` and `test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth`. Known pre-existing GUT orphan / RID-leak exit noise remained unchanged.
+
+Highest-fidelity proving verification available here without widening scope: I replayed the real boxing proving scene headlessly against the prerecorded `weave_right` fixture and captured live harness artifacts under `.testbed/test-results/task10db-qa-20260609-132427/`:
+- `export AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4"`
+- `godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_right" "$PWD/.testbed/test-results/task10db-qa-20260609-132427/guard" 1800`
+- `godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_right" "$PWD/.testbed/test-results/task10db-qa-20260609-132427/weave" 5200`
+
+Artifact evidence summary:
+- Public YAML ownership is real: `assets/boxing.gesture_detection.yaml` exposes `guard.thresholds.max_wrist_nose_distance: 0.15` with the same short comment style as the neighboring guard knobs.
+- Proving inspector truth is real in the live harness quick-stats surface: both captures show `Wrist nose distance <= 0.150` plus `Wrist-to-nose distances: L=... R=...`; for example the later weave capture reported `L=0.076 R=0.093`, both under the `0.150` threshold, matching the detector snapshot fields `left_wrist_nose_distance=0.0757540911436081`, `right_wrist_nose_distance=0.092641569674015`, and both `*_near_nose=true` in `report.json`.
+- Weave hold-state truth is real in the live proving replay: the later capture’s `event_timeline` shows `weave_right_start`, then `punch_right`, then `weave_right_end`, and the retained `state_timeline` keeps `gesture_states.weave_right=true` continuously across the 41 `weave_right_start` samples and the next 12 `punch_right` samples, only clearing to `false` on the single `weave_right_end` sample at `3295ms`. That demonstrates the new behavior: weave stays active while the athlete remains in the weave pose and clears only when the pose is left.
+- The live harness surfaces also stayed aligned with that state truth: the later capture quick-stats reported `Weave tuning ... Current state: right ... Candidates: left=false right=true neutral=false`, while `fixture_capture.latest_state.gesture_states.weave_right=true` and `fixture_capture.latest_state.gesture_debug.weave.state="right"`.
+
+On that basis I closed bead `aerobeat-input-camera-tracking-ly6` as passing QA.
 
 ### Task 10DC: Audit guard nose-proximity gating plus continuous weave hold behavior
 
@@ -4566,6 +4587,95 @@ Commit/push status: committed and pushed to `main` as `ff01c57` (`Add guard nose
 **Role:** `auditor`
 **References:** `REF-01`
 **Prompt:** Independently audit the guard nose-proximity + continuous-weave slice after Task 10DB. Truth-check the new YAML-owned guard nose threshold, the proving inspector/hover/debug truth, and the held-pose weave state behavior. Claim `aerobeat-input-camera-tracking-zug` on start with `bd update aerobeat-input-camera-tracking-zug --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the fix, and close the bead only if the work is actually done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed. I independently inspected the landed `ff01c57` diff plus the QA artifacts, then re-ran only the focused proof needed for this slice:
+- Source truth / config wiring checks:
+  - `git show --stat --oneline ff01c57 6d44f4b --`
+  - `git show --unified=40 ff01c57 -- assets/boxing.gesture_detection.yaml src/detectors/pose_detector_substrate.gd .testbed/scripts/boxing_proving_harness.gd .testbed/scripts/proving_harness.gd .testbed/tests/unit/test_pose_detector_substrate.gd`
+  - `rg -n "max_wrist_nose_distance|guard.*thresholds" .testbed/tests/unit/test_camera_tracking_config_profiles.gd assets/boxing.gesture_detection.yaml src/detectors/pose_detector_substrate.gd`
+- Focused automated proof:
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+  - Result: ✅ `79/79` tests passed (`861` asserts). This includes `test_guard_requires_both_wrists_to_stay_near_nose`, `test_weave_remains_active_only_while_live_weave_criteria_still_pass`, `test_guard_hover_card_reports_pose_only_thresholds_and_live_truth`, and `test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth`. The known pre-existing GUT orphan / RID-leak exit noise remained non-fatal.
+- Independent live replay audit:
+  - `mkdir -p .testbed/test-results/task10dc-audit-20260609-1331 && export AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4" && godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/weave_right" "$PWD/.testbed/test-results/task10dc-audit-20260609-1331/weave" 5200`
+  - Artifact set: `.testbed/test-results/task10dc-audit-20260609-1331/weave/{report.json,report.md,capture.log}`.
+
+Independent truth-check results:
+- YAML-owned guard threshold is real. `assets/boxing.gesture_detection.yaml` exposes `guard.thresholds.max_wrist_nose_distance: 0.15`, and `src/detectors/pose_detector_substrate.gd` reads that threshold through `_get_guard_config()` and threads it into both detection and debug state.
+- Proving inspector / hover / debug surfaces are aligned with detector truth. In the fresh replay artifact `report.md`, the live tuning block reports `Wrist nose distance <= 0.150` and `Wrist-to-nose distances: L=0.068 R=0.092`, while the matching `report.json` detector snapshot records `max_wrist_nose_distance=0.15`, `left_wrist_nose_distance=0.0681935399770737`, `right_wrist_nose_distance=0.0915145203471184`, and both `left_wrist_near_nose` / `right_wrist_near_nose` true.
+- Held-pose weave behavior is real in replay, not just unit tests. In the fresh `report.json` event timeline, `weave_right_start` occurs at `1800ms`, `punch_right` at `3024ms`, and `weave_right_end` at `3363ms`. The replay state timeline keeps `gesture_states.weave_right=true` continuously through the punch window (`3036ms` through `3334ms`) and only clears on the post-end sample (`3375ms` false). The same replay’s `report.md` weave block shows `Current state: right` and `Candidates: left=false right=true neutral=false` while active.
+
+Minor caveat: the fresh capture emitted a non-fatal screenshot warning (`Parameter "t" is null`) while writing `proving.png`, but `report.json`, `report.md`, and `capture.log` were produced successfully, and the command exited `0`. That warning does not contradict the audited detector / proving-text truth for this slice.
+
+On that basis I closed bead `aerobeat-input-camera-tracking-zug` as audit-passing.
+
+### Task 10DD: Add straight-punch wrist-elbow XY alignment threshold
+
+**Bead ID:** `aerobeat-input-camera-tracking-cer`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`
+**Prompt:** Add a new straight-punch threshold in `REF-01` based on wrist/elbow closeness in camera-space XY, using Derrick's intent: because the camera faces the athlete, wrist and elbow become more aligned in XY as the arm straightens during a straight punch, so that alignment should be a pose hint gate for straight punches. Expose the new threshold publicly in `assets/boxing.gesture_detection.yaml` with the same simple comment style as the other user-facing boxing knobs. Then wire it into straight-punch detection and the boxing proving hover/inspector/debug truth so Derrick can see the threshold, the live wrist-elbow XY distance, and whether the gate passes. Keep scope narrow to straight-punch pose hint logic + public YAML + truthful proving surfaces. Claim `aerobeat-input-camera-tracking-cer` on start with `bd update aerobeat-input-camera-tracking-cer --status in_progress --json`, add focused proof/tests, update this plan with exact results/commands/commit, commit and push to `main`, and close the bead only after the implementation truthfully lands.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Added a new public straight-punch pose-hint threshold, `straight_punch.thresholds.max_wrist_elbow_xy_distance`, to `REF-01` with the same user-facing comment style as the other boxing knobs. In `src/detectors/pose_detector_substrate.gd`, straight-punch processing now measures live wrist/elbow camera-space XY distance per side, stores the configured threshold + live distance + gate result in straight-punch state/debug payloads, and requires that XY gate to pass before a straight punch can trigger. The straight-punch state-change debug payload now also carries those same truthful fields so transition snapshots stay aligned with live state. In `.testbed/scripts/boxing_proving_harness.gd`, the boxing hover/inspector/debug surfaces now show the threshold, live wrist-elbow XY distance, and whether the gate passes in the straight-punch requirement rows, event payload snapshot text, runtime tuning summary, and per-hand debug line. Focused proof was added in `.testbed/tests/unit/test_pose_detector_substrate.gd` for both the blocking case (velocity + bbox growth pass but XY gate fails) and the truthful debug case, while `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` and `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` now prove the public YAML ownership plus the hover/inspector/debug surfacing. Commands run: `bd update aerobeat-input-camera-tracking-cer --status in_progress --json`; `godot --headless --path .testbed --import --quit-after 1000`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`85/85` passed, `970` asserts); `bd close aerobeat-input-camera-tracking-cer --reason "Implemented straight-punch wrist-elbow XY gate" --json` ✅. Implementation commit: `e82fcaa` (`Add straight punch wrist-elbow XY gate`). The bead is now closed.
+
+### Task 10DE: QA straight-punch wrist-elbow XY alignment threshold
+
+**Bead ID:** `aerobeat-input-camera-tracking-5eh`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`
+**Prompt:** QA the straight-punch wrist-elbow XY alignment threshold after Task 10DD lands. Verify the new threshold is publicly YAML-owned, reflected truthfully in the straight-punch proving hover/inspector/debug surfaces, and behaves correctly in focused proof plus the highest-fidelity proving flow available. Claim `aerobeat-input-camera-tracking-5eh` on start with `bd update aerobeat-input-camera-tracking-5eh --status in_progress --json`, update this plan with exact commands/evidence, and close the bead only if the slice truly passes.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- `assets/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10DF: Audit straight-punch wrist-elbow XY alignment threshold
+
+**Bead ID:** `aerobeat-input-camera-tracking-fi7`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`
+**Prompt:** Independently audit the straight-punch wrist-elbow XY alignment threshold after Task 10DE. Truth-check the new YAML-owned threshold, the detector usage, and the proving hover/inspector/debug truth. Claim `aerobeat-input-camera-tracking-fi7` on start with `bd update aerobeat-input-camera-tracking-fi7 --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed to prove the fix, and close the bead only if the work is actually done.
 
 **Folders Created/Deleted/Modified:**
 - `.testbed/`
