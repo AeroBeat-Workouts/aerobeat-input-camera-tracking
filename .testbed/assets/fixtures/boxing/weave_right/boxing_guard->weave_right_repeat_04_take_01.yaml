@@ -4,35 +4,36 @@ family: boxing
 video:
   path: ./boxing_guard->weave_right_repeat_04_take_01.mp4
 notes:
-  - Boxing clip of Derrick
-  - starts in guard, ends in guard, with four repeated weave right gestures
-  expected_gestures:
-  - name: weave_right
-    windows:
-      - start_ms: 650
-        end_ms: 1100
-      - start_ms: 2100
-        end_ms: 2600
-      - start_ms: 3600
-        end_ms: 4400
-      - start_ms: 5150
-        end_ms: 6000
-  - name: guard_start
-    surface: state
-    windows:
-      - start_ms: 0
-        end_ms: 6500
+- Boxing clip of Derrick
+- starts in guard, ends in guard, with four repeated weave right gestures
+expected_gestures:
+- name: weave_right
+  windows:
+  - start_ms: 650
+    end_ms: 1100
+  - start_ms: 2100
+    end_ms: 2600
+  - start_ms: 3600
+    end_ms: 4400
+  - start_ms: 5150
+    end_ms: 6000
+  surface: state
+- name: guard
+  surface: state
+  windows:
+  - start_ms: 0
+    end_ms: 6500
 forbidden_gestures:
-  - name: punch_left
-  - name: punch_right
-  - name: hook_left
-  - name: hook_right
-  - name: uppercut_left
-  - name: knee_left
-  - name: knee_right
-  - name: leg_lift_left
-  - name: leg_lift_right
-  - name: weave_left
-  - name: sidestep_left
-  - name: sidestep_right
-  - name: run_in_place
+- name: punch_left
+- name: punch_right
+- name: hook_left
+- name: hook_right
+- name: uppercut_left
+- name: knee_left
+- name: knee_right
+- name: leg_lift_left_start
+- name: leg_lift_right_start
+- name: weave_left_start
+- name: sidestep_left_start
+- name: sidestep_right_start
+- name: run_in_place_start

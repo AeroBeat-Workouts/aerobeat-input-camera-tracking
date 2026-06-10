@@ -4,46 +4,45 @@ family: boxing
 video:
   path: ./boxing_guard->punch_right_repeat_04_take_01.mp4
 notes:
-  - Boxing clip of Derrick
-  - starts in guard, ends in guard, with four repeated right punches
+- Boxing clip of Derrick
+- starts in guard, ends in guard, with four repeated right punches
 expected_gestures:
-  - name: punch_right
-    windows:
-      - start_ms: 400
-        end_ms: 600
-      - start_ms: 1700
-        end_ms: 2000
-      - start_ms: 3100
-        end_ms: 3400
-      - start_ms: 4400
-        end_ms: 4900
-  - name: guard
-    surface: state
-    windows:
-      - start_ms: 0
-        end_ms: 400
-      - start_ms: 600
-        end_ms: 1700
-      - start_ms: 2000
-        end_ms: 3100
-      - start_ms: 3400
-        end_ms: 4400
-      - start_ms: 4900
-        end_ms: 6000
+- name: punch_right
+  windows:
+  - start_ms: 400
+    end_ms: 600
+  - start_ms: 1700
+    end_ms: 2000
+  - start_ms: 3100
+    end_ms: 3400
+  - start_ms: 4400
+    end_ms: 4900
+- name: guard
+  surface: state
+  windows:
+  - start_ms: 0
+    end_ms: 400
+  - start_ms: 600
+    end_ms: 1700
+  - start_ms: 2000
+    end_ms: 3100
+  - start_ms: 3400
+    end_ms: 4400
+  - start_ms: 4900
+    end_ms: 6000
 forbidden_gestures:
-  - name: punch_left
-  - name: hook_left
-  - name: hook_right
-  - name: uppercut_left
-  - name: uppercut_right
-  - name: knee_left
-  - name: knee_right
-  - name: squat
-  - name: leg_lift_left
-  - name: leg_lift_right
-  - name: run_in_place
-  - name: weave_left
-  - name: weave_right
-  - name: side_step_left
-  - name: side_step_right
-  - name: run_in_place_start
+- name: punch_left
+- name: hook_left
+- name: hook_right
+- name: uppercut_left
+- name: uppercut_right
+- name: knee_left
+- name: knee_right
+- name: squat_start
+- name: leg_lift_left_start
+- name: leg_lift_right_start
+- name: run_in_place_start
+- name: weave_left_start
+- name: weave_right_start
+- name: sidestep_left_start
+- name: sidestep_right_start
