@@ -36,7 +36,7 @@ source:
 tracking:
   # Cap tracker sampling work. This is a requested upper bound, not a promise of achieved FPS on all hardware. input -> tool -> vendor.
   max_fps: 30
-  # Cap how often runtime state updates publish. Replay/live preview writes are emitted with those snapshots, so preview cannot outrun this cap even if preview.*.max_fps is higher. This is a requested upper bound, not a guaranteed delivered FPS. input -> tool -> vendor.
+  # Cap how often runtime state/debug updates publish. Replay/live preview cadence is now decoupled and continues to follow its own preview.*.max_fps caps. This is a requested upper bound, not a guaranteed delivered FPS. input -> tool -> vendor.
   state_update_max_fps: 10
   pose:
     # Turn pose tracking on or off. Passed through tool -> vendor.

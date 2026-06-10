@@ -114,7 +114,7 @@ tracking:
 - `tracking.state_update_max_fps: 30`
 - `tracking.pose.enabled: true`
 
-`tracking.state_update_max_fps` is a publication cap, not a preview-only cap. In the current tool/vendor path, replay/live preview writes are emitted together with state snapshots, so a lower `state_update_max_fps` also lowers the visible preview cadence even when `preview.live.max_fps` or `preview.replay.max_fps` is set higher.
+`tracking.state_update_max_fps` is a state/debug publication cap, not a preview cadence cap. In the current tool/vendor path, replay/live preview publication is decoupled from state writes, so lowering `state_update_max_fps` no longer lowers visible preview cadence by itself; preview still follows `preview.live.max_fps` / `preview.replay.max_fps` and source/runtime limits.
 - `tracking.pose.inference_interval_frames: 1`
 - `tracking.pose.smoothing_style: lite_filtered`
 - `tracking.hands.enabled: false`
