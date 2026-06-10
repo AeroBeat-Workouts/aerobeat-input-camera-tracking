@@ -54,15 +54,15 @@ straight_punch:
     # Windowed forward-punch bbox growth must reach at least this value to count as a punch. input.
     min_bbox_area_growth: 0.003
     # Elbow and shoulder must stay at least this close together in camera-space XY for the straight-arm pose hint. input.
-    max_elbow_shoulder_xy_distance: 0.120
+    max_elbow_shoulder_xy_distance: 0.140
   timing:
     # Keep the punch in its triggered state for this long after it fires. input.
-    triggered_grace_ms: 500
+    triggered_grace_ms: 10
   rearm:
     # After a punch, bbox area must shrink by at least this much before rearming when hands are enabled. input.
     bbox_area_retract_epsilon: 0.0003
     # When hand tracking is disabled, wait this long before rearming from the pose-only fallback. input.
-    pose_only_rearm_ms: 50
+    pose_only_rearm_ms: 10
   state_machine:
     # After tracking comes back, wait this long before punches can arm again. input.
     lost_tracking_reacquire_stable_ms: 40
