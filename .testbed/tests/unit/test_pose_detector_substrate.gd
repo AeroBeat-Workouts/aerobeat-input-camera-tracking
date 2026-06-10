@@ -45,6 +45,29 @@ func test_profile_pose_smoothing_style_can_select_exponential_moving_average() -
 	assert_true(is_equal_approx(float(smoothed_wrist.get("x", -1.0)), 0.52475))
 	assert_true(is_equal_approx(float(smoothed_wrist.get("y", -1.0)), 0.62475))
 
+func test_profile_pose_smoothing_style_can_select_adaptive_exponential_moving_average() -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"pose": {
+				"smoothing_style": "adaptive_exponential_moving_average",
+			}
+		}
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+
+	substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60},
+	}), 1000)
+	substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.51, "y": 0.61},
+	}), 1100)
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60},
+	}), 1200)
+	var smoothed_wrist: Dictionary = state.get("landmarks_by_id", {}).get(PoseLandmarkIds.LEFT_WRIST, {})
+	assert_true(abs(float(smoothed_wrist.get("x", -1.0)) - 0.501704) < 0.00001)
+	assert_true(abs(float(smoothed_wrist.get("y", -1.0)) - 0.601704) < 0.00001)
+
 func test_profile_pose_smoothing_style_can_select_median_of_3() -> void:
 	config.tracker_profile_document = {
 		"tracking": {

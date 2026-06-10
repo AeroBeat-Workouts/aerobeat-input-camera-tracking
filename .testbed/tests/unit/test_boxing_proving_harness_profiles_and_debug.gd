@@ -181,7 +181,7 @@ func test_proving_runtime_config_uses_profile_yaml_pose_smoothing_over_hidden_sc
 	var config: Variant = harness._build_runtime_config()
 	assert_not_null(config)
 	var selected_style := String(config.get_selected_profile_bundle().get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("smoothing_style", "")).strip_edges().to_lower()
-	assert_true(["lite_raw", "lite_filtered", "exponential_moving_average", "median_of_3"].has(selected_style))
+	assert_true(["lite_raw", "lite_filtered", "exponential_moving_average", "adaptive_exponential_moving_average", "median_of_3"].has(selected_style))
 	var expects_filter_enabled := selected_style == "lite_filtered"
 	assert_eq(bool(config.runtime.get("filter_enabled", false)), expects_filter_enabled)
 	assert_eq(bool(config.runtime.get("no_filter", true)), not expects_filter_enabled)

@@ -4,8 +4,13 @@ extends RefCounted
 const STYLE_LITE_RAW := "lite_raw"
 const STYLE_LITE_FILTERED := "lite_filtered"
 const STYLE_EXPONENTIAL_MOVING_AVERAGE := "exponential_moving_average"
+const STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE := "adaptive_exponential_moving_average"
 const STYLE_MEDIAN_OF_3 := "median_of_3"
 const EXPONENTIAL_MOVING_AVERAGE_ALPHA := 0.45
+const ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MIN_ALPHA := 0.18
+const ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MAX_ALPHA := 0.82
+const ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_LOW_MOTION_DISTANCE := 0.01
+const ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_HIGH_MOTION_DISTANCE := 0.08
 const MEDIAN_OF_3_WINDOW_SIZE := 3
 
 var _window_size: int = 4
@@ -61,6 +66,9 @@ func _update_smoothed_landmark(landmark_id: int, current_sample: Dictionary, his
 	if _smoothing_style == STYLE_EXPONENTIAL_MOVING_AVERAGE:
 		_smoothed_samples_by_id[landmark_id] = _smooth_history_exponential_moving_average(landmark_id, current_sample)
 		return
+	if _smoothing_style == STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE:
+		_smoothed_samples_by_id[landmark_id] = _smooth_history_adaptive_exponential_moving_average(landmark_id, current_sample, history)
+		return
 	if _smoothing_style == STYLE_MEDIAN_OF_3:
 		_smoothed_samples_by_id[landmark_id] = _smooth_history_median_of_3(current_sample, history)
 		return
@@ -90,10 +98,28 @@ func _smooth_history_moving_average(history: Array) -> Dictionary:
 func _smooth_history_exponential_moving_average(landmark_id: int, current_sample: Dictionary) -> Dictionary:
 	var previous: Dictionary = _smoothed_samples_by_id.get(landmark_id, current_sample)
 	return {
-		"x": _ema_axis(previous, current_sample, "x"),
-		"y": _ema_axis(previous, current_sample, "y"),
-		"z": _ema_axis(previous, current_sample, "z"),
-		"v": _ema_axis(previous, current_sample, "v"),
+		"x": _ema_axis(previous, current_sample, "x", EXPONENTIAL_MOVING_AVERAGE_ALPHA),
+		"y": _ema_axis(previous, current_sample, "y", EXPONENTIAL_MOVING_AVERAGE_ALPHA),
+		"z": _ema_axis(previous, current_sample, "z", EXPONENTIAL_MOVING_AVERAGE_ALPHA),
+		"v": _ema_axis(previous, current_sample, "v", EXPONENTIAL_MOVING_AVERAGE_ALPHA),
+	}
+
+func _smooth_history_adaptive_exponential_moving_average(landmark_id: int, current_sample: Dictionary, history: Array) -> Dictionary:
+	if history.size() < 2:
+		return {
+			"x": float(current_sample.get("x", 0.0)),
+			"y": float(current_sample.get("y", 0.0)),
+			"z": float(current_sample.get("z", 0.0)),
+			"v": float(current_sample.get("v", 0.0)),
+		}
+	var previous_smoothed: Dictionary = _smoothed_samples_by_id.get(landmark_id, history[history.size() - 2])
+	var previous_raw: Dictionary = history[history.size() - 2]
+	var alpha := _adaptive_exponential_moving_average_alpha(previous_raw, current_sample)
+	return {
+		"x": _ema_axis(previous_smoothed, current_sample, "x", alpha),
+		"y": _ema_axis(previous_smoothed, current_sample, "y", alpha),
+		"z": _ema_axis(previous_smoothed, current_sample, "z", alpha),
+		"v": _ema_axis(previous_smoothed, current_sample, "v", alpha),
 	}
 
 func _smooth_history_median_of_3(current_sample: Dictionary, history: Array) -> Dictionary:
@@ -122,22 +148,40 @@ func _history_axis_median(history: Array, key: String) -> float:
 	values.sort()
 	return float(values[values.size() / 2])
 
-func _ema_axis(previous: Dictionary, current_sample: Dictionary, key: String) -> float:
+func _adaptive_exponential_moving_average_alpha(previous_sample: Dictionary, current_sample: Dictionary) -> float:
+	var motion_distance := _sample_motion_distance(previous_sample, current_sample)
+	if motion_distance <= ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_LOW_MOTION_DISTANCE:
+		return ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MIN_ALPHA
+	if motion_distance >= ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_HIGH_MOTION_DISTANCE:
+		return ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MAX_ALPHA
+	var motion_span := ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_HIGH_MOTION_DISTANCE - ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_LOW_MOTION_DISTANCE
+	if motion_span <= 0.0:
+		return ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MAX_ALPHA
+	var ratio := (motion_distance - ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_LOW_MOTION_DISTANCE) / motion_span
+	return lerpf(ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MIN_ALPHA, ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MAX_ALPHA, clampf(ratio, 0.0, 1.0))
+
+func _sample_motion_distance(previous_sample: Dictionary, current_sample: Dictionary) -> float:
+	var dx := float(current_sample.get("x", 0.0)) - float(previous_sample.get("x", 0.0))
+	var dy := float(current_sample.get("y", 0.0)) - float(previous_sample.get("y", 0.0))
+	var dz := float(current_sample.get("z", 0.0)) - float(previous_sample.get("z", 0.0))
+	return sqrt(dx * dx + dy * dy + dz * dz)
+
+func _ema_axis(previous: Dictionary, current_sample: Dictionary, key: String, alpha: float) -> float:
 	var previous_value := float(previous.get(key, current_sample.get(key, 0.0)))
 	var current_value := float(current_sample.get(key, 0.0))
-	return previous_value + (current_value - previous_value) * EXPONENTIAL_MOVING_AVERAGE_ALPHA
+	return previous_value + (current_value - previous_value) * alpha
 
 func _normalize_smoothing_style(smoothing_style: String) -> String:
 	var normalized := smoothing_style.strip_edges().to_lower()
 	match normalized:
-		STYLE_LITE_FILTERED, STYLE_EXPONENTIAL_MOVING_AVERAGE, STYLE_MEDIAN_OF_3:
+		STYLE_LITE_FILTERED, STYLE_EXPONENTIAL_MOVING_AVERAGE, STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE, STYLE_MEDIAN_OF_3:
 			return normalized
 		_:
 			return STYLE_LITE_RAW
 
 func _resolve_window_size(window_size: int, smoothing_style: String) -> int:
 	var normalized_window_size := maxi(window_size, 1)
-	if smoothing_style == STYLE_EXPONENTIAL_MOVING_AVERAGE:
+	if smoothing_style == STYLE_EXPONENTIAL_MOVING_AVERAGE or smoothing_style == STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE:
 		return maxi(normalized_window_size, 2)
 	if smoothing_style == STYLE_MEDIAN_OF_3:
 		return MEDIAN_OF_3_WINDOW_SIZE

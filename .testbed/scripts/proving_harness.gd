@@ -2928,6 +2928,8 @@ func _resolved_pose_smoothing_style() -> String:
 		return "lite_filtered"
 	if smoothing_style == "exponential_moving_average":
 		return "exponential_moving_average"
+	if smoothing_style == "adaptive_exponential_moving_average":
+		return "adaptive_exponential_moving_average"
 	if smoothing_style == "median_of_3":
 		return "median_of_3"
 	match tracking_smoothing_style:
@@ -2942,6 +2944,8 @@ func _tracking_smoothing_style_spec() -> Dictionary:
 			return {"label": "Lite + raw", "model_complexity": 0, "no_filter": true}
 		"exponential_moving_average":
 			return {"label": "EMA + raw", "model_complexity": 0, "no_filter": true}
+		"adaptive_exponential_moving_average":
+			return {"label": "Adaptive EMA + raw", "model_complexity": 0, "no_filter": true}
 		"median_of_3":
 			return {"label": "Median-of-3 + raw", "model_complexity": 0, "no_filter": true}
 		_:
