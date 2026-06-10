@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 21:07 EDT
+**Last Updated:** 2026-06-09 22:04 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -5033,12 +5033,33 @@ QA caveat to carry forward into Task 10DQ: preview-only writes intentionally reu
 - docs/tool/vendor files as needed
 
 **Files Created/Deleted/Modified:**
-- validation artifacts / touched proof files as needed
+- `/.temp/qa-10dq/proving_probe_simple.json`
 - `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA pass for Task 10DQ.
+
+Exact validation run:
+1. `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python && python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_keeps_preview_writes_decoupled_from_state_cadence runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_live_session_keeps_preview_writes_decoupled_from_state_cadence`
+   - Passed (`Ran 2 tests in 0.008s`, `OK`).
+   - Tight `REF-02` proof: replay/live preview revisions continue advancing while throttled state/debug payloads intentionally reuse the last published `raw_tracking_frame.timestamp_ms` (`[100,100,100,100]` for replay, `[100,100,100]` for live) instead of forcing preview onto the same 1 FPS cadence.
+2. `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python && python3 -m unittest runtime.tests.test_mediapipe_runtime_probe`
+   - Passed full vendor runtime suite (`Ran 43 tests`, `OK`).
+3. `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && godot --headless --path .testbed --script /tmp/aerobeat_10dq_proving_probe_simple.gd -- /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard-\>punch_left_repeat_04_take_01.mp4 /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.temp/qa-10dq/proving_probe_simple.json`
+   - Godot boxing proving surface reached `status_label: "Boxing harness live"` with `preview_texture_present: true` while replaying the real proving scene under `tracking_max_fps=30` and `state_update_max_fps=1`.
+   - Artifact: `/.temp/qa-10dq/proving_probe_simple.json`.
+   - Evidence from that artifact: the proving surface stayed attached (`attached_surface_count: 1`), replay remained file-backed and unpaused (`is_file_source: true`, `paused: false`), playback advanced to `current_time_sec: 0.833`, and preview image revisions changed (`1781055095984` → `1781055096018`) while the tracked state snapshot stayed pinned at the same replay timestamp (`final_tracking_frame.timestamp_ms: 833`). That is the Godot-side proof that preview refresh can advance independently of a throttled state payload, and the consumer-facing proving surface did not stall.
+4. Focused repo-side suites also run for context:
+   - `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_camera_tracking_provider.gd -gexit`
+   - `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+   - Both surfaced pre-existing expectation drift against today’s tuned profile YAML defaults rather than a 10DP/10DQ cadence regression (`test_camera_tracking_provider.gd`: 3 failures, `test_boxing_proving_harness_profiles_and_debug.gd`: 1 failure). They are worth auditor awareness but did not contradict the decoupling proof above.
+
+QA conclusion for `REF-01`/`REF-02`/`REF-03`:
+- Lowering `tracking.state_update_max_fps` no longer drags replay/live preview publication to the same low cadence.
+- State/debug snapshots still honor the lower cap by reusing the last published tracking/debug payload between throttled updates.
+- The real Godot boxing proving surface stayed live with an attached preview texture during replay, and the sampled preview revisions advanced without requiring a fresh state payload each refresh.
+- Caveat for audit: the ad-hoc Godot proving probe warmed up slowly enough that the captured replay window only covered the first ~0.83s of the clip, so the strongest cadence proof remains the vendor runtime tests plus the proving-surface attachment/live-status artifact rather than a long continuous Godot-side revision timeline.
 
 ### Task 10DR: Audit decoupled preview cadence vs `state_update_max_fps`
 
@@ -5054,6 +5075,99 @@ QA caveat to carry forward into Task 10DQ: preview-only writes intentionally reu
 
 **Files Created/Deleted/Modified:**
 - validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ❌ Failed
+
+**Results:** Audit FAIL for Task 10DR because the runtime/code path and focused validation pass, but `REF-01` still contains a stale public-contract comment that contradicts the landed decoupled behavior, so the full code+docs truth surface is not yet clean enough to close truthfully.
+
+Independent audit evidence:
+- `REF-03` vendor repair `ec64399` is the real behavior change. In `runtime/mediapipe_runtime_probe.py`, replay and live loops now compute `should_write_state` and `include_preview` independently, write a full state-bearing snapshot when `should_write_state` is true, and otherwise emit `_continuous_preview_only_snapshot(...)` when preview cadence allows and a prior state snapshot exists. The replay path does this around `runtime/mediapipe_runtime_probe.py:1879-1894`; the live path does the same around `runtime/mediapipe_runtime_probe.py:3740-3755`. That means `tracking.state_update_max_fps` now caps state/debug publication, while preview cadence follows `preview.*.max_fps` subject to source/runtime limits.
+- The preview-only path intentionally reuses the last published state-bearing payload rather than inventing a new state sample. The replay regression `runtime/tests/test_mediapipe_runtime_probe.py::test_run_continuous_video_file_session_keeps_preview_writes_decoupled_from_state_cadence` passed on this audit rerun and proves four preview writes / revisions with throttled state pinned at the same `raw_tracking_frame.timestamp_ms` values `[100, 100, 100, 100]` under `state_update_max_fps=1`, `preview_max_fps=30`. The live regression `...::test_run_continuous_live_session_keeps_preview_writes_decoupled_from_state_cadence` also passed and proves three preview writes while state stayed pinned at `[100, 100, 100]`.
+- `REF-02` tool docs are aligned with the new behavior after `1d92d01`: `docs/tracker-config-schema.md` now states that `tracking.state_update_max_fps` is a requested upper bound for runtime state/debug emission and that preview publication follows its own `preview.*.max_fps` caps instead of being forced to the same cadence.
+- `REF-01` public YAML comments are also aligned: `assets/boxing.camera_tracking.yaml` and `assets/flow.camera_tracking.yaml` say `state_update_max_fps` caps runtime state/debug publication while preview follows its own preview caps.
+- But `REF-01` still has one stale contradictory comment in `docs/cross-repo-config-contract.md:77`: `Replay/live preview writes cannot outrun this cadence even if preview.*.max_fps is higher.` Later in that same file (`docs/cross-repo-config-contract.md:117`), the newer text correctly says preview publication is decoupled from state writes. That contradiction is exactly the kind of user-facing truth gap this audit was supposed to catch.
+
+Commands run in this audit pass:
+1. `bd update aerobeat-input-camera-tracking-eqy --status in_progress --json`
+2. `git show --stat --oneline ec64399` in `REF-03`
+3. `git show --stat --oneline 1d92d01` in `REF-02`
+4. `git show --stat --oneline 31c882f` in `REF-01`
+5. `python3 -m unittest runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_video_file_session_keeps_preview_writes_decoupled_from_state_cadence runtime.tests.test_mediapipe_runtime_probe.MediaPipeRuntimeProbeTests.test_run_continuous_live_session_keeps_preview_writes_decoupled_from_state_cadence` in `REF-03` ✅ (`Ran 2 tests in 0.017s`)
+6. `rg -n "state_update_max_fps|preview.*cannot|preview.*follows|decoupled|preview caps|state/debug" ...` across `REF-01` / `REF-02` / `REF-03`
+7. Targeted code inspection with `sed -n '1870,1905p'` and `sed -n '3736,3758p'` in `REF-03`, plus targeted readback of `REF-01` docs and `REF-03` tests.
+
+Audit conclusion for Derrick:
+- `tracking.state_update_max_fps` now controls **how often state/debug snapshots are published**, not how often preview frames are allowed to refresh.
+- `preview.live.max_fps` / `preview.replay.max_fps` now control **preview image publication cadence** independently, subject to source/runtime throughput.
+- Preview-only writes intentionally reuse the most recent published state/debug payload between throttled state writes, so a newer preview revision does **not** imply a newer tracking/state payload.
+- The implementation truth looks good, but the audit is still a FAIL until `REF-01` removes or corrects the stale old-coupling sentence in `docs/cross-repo-config-contract.md`.
+
+### Task 10DS: Fix stale `state_update_max_fps` doc line after preview decoupling
+
+**Bead ID:** `aerobeat-input-camera-tracking-4p7`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Audit found one remaining truth seam after the preview/state cadence decoupling: `REF-01` still has a stale sentence in `docs/cross-repo-config-contract.md` saying preview cannot outrun `state_update_max_fps`, which now contradicts the decoupled runtime behavior and the later corrected docs. Fix that doc inconsistency narrowly, update this plan with exact results/commands/commit, commit and push to `main`, and close the bead only after the input-repo docs are fully aligned with the shipped behavior.
+
+**Folders Created/Deleted/Modified:**
+- `docs/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `docs/cross-repo-config-contract.md`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Narrow truth/doc repair landed in `REF-01` only. I replaced the one stale inline YAML comment in `docs/cross-repo-config-contract.md` that still claimed replay/live preview writes could not outrun `tracking.state_update_max_fps`. The comment now matches the shipped decoupled behavior already documented later in the same file and in `REF-02` / `REF-03`: `tracking.state_update_max_fps` caps state/debug publication, while replay/live preview publication follows `preview.*.max_fps` independently subject to source/runtime limits. No runtime/config behavior changed in this slice; this was a doc-only contradiction cleanup.
+
+Exact commands/evidence for this slice:
+1. `bd update aerobeat-input-camera-tracking-4p7 --status in_progress --json`
+2. `rg -n "state_update_max_fps|preview" docs/cross-repo-config-contract.md .plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+3. Edited `docs/cross-repo-config-contract.md` line comment at the public `tracking.state_update_max_fps` example block.
+4. `rg -n "cannot outrun this cadence|state_update_max_fps|decoupled|preview follows|preview publication follows" docs/cross-repo-config-contract.md`
+5. `git diff -- docs/cross-repo-config-contract.md`
+6. `git commit -m "docs: align preview cadence contract comment" && git push origin main`
+7. `bd close aerobeat-input-camera-tracking-4p7 --reason "Input-repo preview/state cadence docs now fully align with shipped decoupled behavior." --json`
+
+Commit: `PENDING`
+
+### Task 10DT: QA stale `state_update_max_fps` doc line fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-56a`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** QA the narrow input-repo doc fix after Task 10DS. Verify `REF-01` no longer contradicts the decoupled preview/state behavior and that the input/tool/vendor documentation now tells a consistent story. Claim `aerobeat-input-camera-tracking-56a` on start with `bd update aerobeat-input-camera-tracking-56a --status in_progress --json`, update this plan with exact evidence, and close the bead only if the docs truth now passes.
+
+**Folders Created/Deleted/Modified:**
+- `docs/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- validation notes / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10DU: Audit stale `state_update_max_fps` doc line fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-j46`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Independently audit the narrow input-repo doc fix after Task 10DT. Truth-check that the docs are fully consistent with the decoupled runtime behavior and no stale contradictory statement remains. Claim `aerobeat-input-camera-tracking-j46` on start with `bd update aerobeat-input-camera-tracking-j46 --status in_progress --json`, inspect the diff/plan/evidence, rerun only the validation needed, and close the bead only if the truth seam is actually closed.
+
+**Folders Created/Deleted/Modified:**
+- `docs/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- validation notes / touched proof files as needed
 - `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
 **Status:** ⏳ Pending

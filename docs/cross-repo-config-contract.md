@@ -74,7 +74,7 @@ preview:
     hand_bbox_visible: true|false
 tracking:
   max_fps: 30
-  # Requested cap for runtime state publication. Replay/live preview writes cannot outrun this cadence even if preview.*.max_fps is higher.
+  # Requested cap for runtime state/debug publication. Replay/live preview publication follows preview.*.max_fps independently, subject to source/runtime limits.
   state_update_max_fps: 30
   pose:
     enabled: true
