@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 20:45 EDT
+**Last Updated:** 2026-06-09 20:58 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -4931,7 +4931,7 @@ Commands/evidence used:
 - targeted source reads of `REF-01`, `REF-02`, and `REF-03` files listed above
 - `python3 - <<'PY' ...` one-off cadence proof showing that with `state_update_max_fps=1` and `preview_max_fps=30`, preview publication timestamps collapse to roughly `[0, 1023, 2046]` ms over ~3 seconds because preview writes are gated by state writes first.
 
-Commit/push: pending at time of this plan update; if committed, record hash below.
+Commit/push: committed and pushed to `main` as `f00059c` (`docs: clarify state update preview coupling`). During rebase onto newer upstream boxing tuning work, the public boxing profile kept its newer `tracking.state_update_max_fps: 10` value; this slice only clarified the comment semantics rather than reverting Derrick's tuning.
 
 ### Task 10DN: QA `state_update_max_fps` diagnosis / fix
 
