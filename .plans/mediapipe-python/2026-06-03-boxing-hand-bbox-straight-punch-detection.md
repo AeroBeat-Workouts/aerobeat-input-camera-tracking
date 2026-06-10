@@ -5129,10 +5129,11 @@ Exact commands/evidence for this slice:
 3. Edited `docs/cross-repo-config-contract.md` line comment at the public `tracking.state_update_max_fps` example block.
 4. `rg -n "cannot outrun this cadence|state_update_max_fps|decoupled|preview follows|preview publication follows" docs/cross-repo-config-contract.md`
 5. `git diff -- docs/cross-repo-config-contract.md`
-6. `git commit -m "docs: align preview cadence contract comment" && git push origin main`
-7. `bd close aerobeat-input-camera-tracking-4p7 --reason "Input-repo preview/state cadence docs now fully align with shipped decoupled behavior." --json`
+6. `git add docs/cross-repo-config-contract.md .plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md && git commit -m "docs: align preview cadence contract comment"`
+7. Initial `git push origin main` was rejected because `origin/main` advanced; rebased cleanly with `git fetch origin main && git rebase origin/main`, then pushed with `git push origin main`.
+8. `bd close aerobeat-input-camera-tracking-4p7 --reason "Input-repo preview/state cadence docs now fully align with shipped decoupled behavior." --json`
 
-Commit: `PENDING`
+Commit: `6837587`
 
 ### Task 10DT: QA stale `state_update_max_fps` doc line fix
 
