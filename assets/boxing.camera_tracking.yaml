@@ -35,8 +35,10 @@ source:
     requested_fps: 60
 tracking:
   # Cap tracker sampling work. This is a requested upper bound, not a promise of achieved FPS on all hardware. input -> tool -> vendor.
+  # How often tracking system is allowed to look
   max_fps: 30
   # Cap how often runtime state/debug updates publish. Replay/live preview cadence is now decoupled and continues to follow its own preview.*.max_fps caps. This is a requested upper bound, not a guaranteed delivered FPS. input -> tool -> vendor.
+  # How often tracking system is allowed to report its findings
   state_update_max_fps: 10
   pose:
     # Turn pose tracking on or off. Passed through tool -> vendor.
@@ -44,7 +46,7 @@ tracking:
     # Run pose inference every N source frames. vendor.
     inference_interval_frames: 1
     # [lite_filtered, lite_raw] Pick the pose smoothing mode after pose samples come back. tool -> vendor.
-    smoothing_style: lite_raw
+    smoothing_style: lite_raw	
   hands:
     # Turn hand tracking on or off for this profile. tool -> vendor.
     enabled: false

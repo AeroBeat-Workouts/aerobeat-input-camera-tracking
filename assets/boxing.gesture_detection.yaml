@@ -3,7 +3,7 @@ version: 1
 profile: boxing
 guard:
   # Turn pose-only guard detection on or off. input.
-  enabled: false
+  enabled: true
   thresholds:
     # Left/right wrists must be at least this close together in camera-space X. input.
     max_wrist_separation_x: 0.20
@@ -14,7 +14,7 @@ guard:
 
 squat:
   # Turn calibrated torso-height squat detection on or off. input.
-  enabled: false
+  enabled: true
   thresholds:
     # Squat enters when live torso height / calibrated torso height drops to or below this ratio. input.
     enter_height_ratio_max: 0.82
@@ -23,7 +23,7 @@ squat:
 
 weave:
   # Turn pose-only weave detection on or off. input.
-  enabled: false
+  enabled: true
   thresholds:
     # Weave starts when head lateral offset reaches at least this far left or right. input.
     enter_head_lateral_offset_min: 0.30
@@ -69,7 +69,7 @@ straight_punch:
 
 hook:
   # Turn hook detection on or off. input.
-  enabled: false
+  enabled: true
   evaluation:
     # Measure the shared hook motion window across this much recent time. input.
     window_ms: 250
@@ -100,7 +100,7 @@ hook:
     
 uppercut:
   # Turn uppercut detection on or off. input.
-  enabled: false
+  enabled: true
   evaluation:
     # Measure the shared uppercut motion window across this much recent time. input.
     window_ms: 250
