@@ -74,6 +74,7 @@ preview:
     hand_bbox_visible: true|false
 tracking:
   max_fps: 30
+  # Requested cap for runtime state publication. Replay/live preview writes cannot outrun this cadence even if preview.*.max_fps is higher.
   state_update_max_fps: 30
   pose:
     enabled: true
@@ -112,6 +113,8 @@ tracking:
 - `tracking.max_fps: 30`
 - `tracking.state_update_max_fps: 30`
 - `tracking.pose.enabled: true`
+
+`tracking.state_update_max_fps` is a publication cap, not a preview-only cap. In the current tool/vendor path, replay/live preview writes are emitted together with state snapshots, so a lower `state_update_max_fps` also lowers the visible preview cadence even when `preview.live.max_fps` or `preview.replay.max_fps` is set higher.
 - `tracking.pose.inference_interval_frames: 1`
 - `tracking.pose.smoothing_style: lite_filtered`
 - `tracking.hands.enabled: false`

@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-03
 **Status:** In Progress
-**Last Updated:** 2026-06-09 19:40 EDT
+**Last Updated:** 2026-06-09 20:45 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -4852,9 +4852,9 @@ Audit conclusion: **PASS** for the clarified YAML+inspector tuning-workflow acce
 - validation artifacts / touched proof files as needed
 - `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA passed. Verified `assets/boxing.gesture_detection.yaml:56-57` now exposes the public tuning knob as `max_elbow_shoulder_xy_distance: 0.09` with the same simple user-facing comment style as adjacent boxing thresholds. Verified truthful detector/testbed surfacing in code and focused proof: `.testbed/scripts/boxing_proving_harness.gd:1349-1351` consumes `elbow_shoulder_xy_distance`, `max_elbow_shoulder_xy_distance`, and `elbow_shoulder_xy_gate_passed` for the straight-punch requirement rows used by hover/inspector; `:1930-1939` prints `Max elbow-shoulder XY distance` in the runtime tuning summary; and `:2111-2120` emits the compact per-hand debug truth as `elbow_shoulder_xy=<live><=<threshold>(<pass>)`. Focused automated validation passed with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`85/85` passed, `970` asserts). That run specifically covered the detector gate truth in `.testbed/tests/unit/test_pose_detector_substrate.gd:262-285` and `:286-305`, hover/debug expectations in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:284-387`, and YAML-owned profile loading in `.testbed/tests/unit/test_camera_tracking_config_profiles.gd:52-64`. Highest-fidelity proof available without widening scope also passed: `AEROBEAT_CAMERA_TRACKING_SOURCE='res://assets/videos/shadow_boxing.mp4' godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn res://docs/proving-scene-video-fixture-template.fixture.yaml /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10dk-qa-capture/2026-06-09-195128-abs 8000` ✅. Capture evidence in `/.testbed/test-results/task10dk-qa-capture/2026-06-09-195128-abs/report.md` shows the live proving UI surfacing `Max elbow-shoulder XY distance: 0.090` plus per-hand debug lines `L: ... elbow_shoulder_xy=0.085<=0.090(true)` and `R: ... elbow_shoulder_xy=0.127<=0.090(false)`. Structured capture truth in the paired `report.json` confirms the same live values under `fixture_capture.latest_state.gesture_debug.straight_punch.{left,right}` (`left.elbow_shoulder_xy_distance=0.084824`, `left.max_elbow_shoulder_xy_distance=0.09`, `left.elbow_shoulder_xy_gate_passed=true`; `right.elbow_shoulder_xy_distance=0.127376`, `right.max_elbow_shoulder_xy_distance=0.09`, `right.elbow_shoulder_xy_gate_passed=false`). Headless capture still logged the pre-existing dummy-renderer screenshot warning (`Parameter "t" is null`, no `proving.png` written), but the report surfaces and JSON state were captured successfully, so QA accepted the slice and closed the bead.
 
 ### Task 10DL: Audit elbow-shoulder XY straight-punch gate
 
@@ -4868,6 +4868,102 @@ Audit conclusion: **PASS** for the clarified YAML+inspector tuning-workflow acce
 - `.testbed/`
 - `assets/`
 - `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit PASS for the replacement straight-punch XY gate slice.
+
+Independent truth checks completed:
+- **YAML-owned threshold/comment:** verified directly in `assets/boxing.gesture_detection.yaml:52-57`. The shipped public knob is now `straight_punch.thresholds.max_elbow_shoulder_xy_distance: 0.09`, and the comment truthfully matches the new pose hint: `# Elbow and shoulder must stay at least this close together in camera-space XY for the straight-arm pose hint. input.` I also confirmed the old wrist-elbow key is no longer the active public threshold in the focused config bundle test.
+- **Detector usage:** verified in `src/detectors/pose_detector_substrate.gd`. `_process_straight_punch()` now measures `PoseMetrics.distance_2d(elbow, shoulder)`, stores `elbow_shoulder_xy_distance`, `max_elbow_shoulder_xy_distance`, and `elbow_shoulder_xy_gate_passed` into state/debug, and gates trigger readiness on that elbow-shoulder pass condition. `_get_straight_punch_config()` now reads the YAML threshold from `straight_punch.thresholds.max_elbow_shoulder_xy_distance`.
+- **Proving hover / inspector / compact debug truth:** verified in `.testbed/scripts/boxing_proving_harness.gd`. The straight-punch hover/inspector rows now use the elbow-shoulder fields (`Elbow-shoulder XY distance <= ...`), the runtime tuning summary prints `Max elbow-shoulder XY distance`, and the per-hand debug line emits `elbow_shoulder_xy=<live><=<threshold>(<pass>)`.
+
+Independent validation rerun kept intentionally narrow:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ (`85/85` passed, `970` asserts; only pre-existing GUT orphan/RID leak shutdown noise).
+- `AEROBEAT_CAMERA_TRACKING_SOURCE='res://assets/videos/shadow_boxing.mp4' godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn res://docs/proving-scene-video-fixture-template.fixture.yaml /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/test-results/task10dl-audit-capture/2026-06-09-195507-abs 8000` ✅
+
+Fresh proving evidence from `/.testbed/test-results/task10dl-audit-capture/2026-06-09-195507-abs/` matched the code/test truth:
+- `report.md` surfaced `Max elbow-shoulder XY distance: 0.090` in the Straight-punch tuning section.
+- The compact live hand-debug rows in `report.md` showed `L: ... elbow_shoulder_xy=0.088<=0.090(true)` and `R: ... elbow_shoulder_xy=0.113<=0.090(false)`.
+- The paired `report.json` preserved the same live detector state under `fixture_capture.latest_state.gesture_debug.straight_punch`: left `elbow_shoulder_xy_distance=0.0879890471696854`, threshold `0.09`, gate `true`; right `elbow_shoulder_xy_distance=0.112788207828999`, threshold `0.09`, gate `false`.
+
+Important acceptance-boundary truth preserved: the active boxing tracker profile still has `tracking.hands.enabled: false`, so this proving capture exercised Derrick's current pose-only/manual-tuning workflow while still surfacing the elbow-shoulder gate truthfully. That matches the current accepted scope for this slice; this audit does **not** overclaim that the threshold is universally tuned beyond the exposed/manual-tuning workflow.
+
+### Derrick Manual Validation Note — 2026-06-09 20:33 EDT
+
+**Status:** ✅ Positive manual confirmation
+
+**Results:** Derrick synced the latest pose-only straight-punch state onto Chip and reported a strong manual validation win. On Chip, performance was acceptable after lowering the pose tracking check/update cadence from `30` to `10` and switching pose smoothing from filtered to raw. With those tuning changes plus the new elbow-shoulder pose-hint gate, both the left and right straight-punch proving videos now hit `100%` success while avoiding the old opposite-side false-trigger problem. In particular, left straight punch no longer causes right punch to fire and vice versa. Derrick's explanation matches the current detector truth: the added pose-hint gate blocks the opposite guard-side arm from satisfying the straight-punch trigger just from natural body/guard motion, because that opposite elbow does not get close enough to its shoulder to pass the new gate while the athlete remains in guard.
+
+### Task 10DM: Diagnose `state_update_max_fps` coupling to replay feed and pose updates
+
+**Bead ID:** `aerobeat-input-camera-tracking-9lx`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Derrick observed that lowering `tracking.state_update_max_fps` to `1` did not merely make pose/state updates less frequent; it also made the visible replay video feed itself look lower-FPS. Diagnose the real behavior of `state_update_max_fps` across input -> tool -> vendor for replay/proving use. Determine whether this is the intended documented coupling, a truth/documentation gap, or an implementation bug where state throttling is incorrectly dragging preview/replay feed cadence with it. Keep the slice narrow to diagnosis first; if a small truthful fix is obvious and safe, you may land it, otherwise preserve the exact finding. Claim `aerobeat-input-camera-tracking-9lx` on start with `bd update aerobeat-input-camera-tracking-9lx --status in_progress --json`, inspect the code/docs/runtime path, add focused proof if needed, update this plan with exact findings/commands/commit, commit and push to `main` if you change code/docs, and close the bead only after the behavior is truthfully explained or repaired.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `docs/`
+- `/.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.camera_tracking.yaml`
+- `assets/flow.camera_tracking.yaml`
+- `docs/cross-repo-config-contract.md`
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ✅ Complete
+
+**Results:** Root cause is an intentional publication-cadence coupling in the current tool/vendor path, not a hidden replay-only framerate bug. `REF-01` forwards `tracking.state_update_max_fps` from the selected YAML into the tracker request (`src/providers/camera_tracking_provider.gd:348-351`). `REF-02` normalizes that public field into vendor runtime `state_update_max_fps` and already documents the coupling explicitly: `docs/tracker-config-schema.md` says preview writes cannot exceed `tracking.state_update_max_fps`, and `src/CameraTrackingConfig.gd:381-386` maps both `tracking.state_update_max_fps` and preview caps into runtime. `REF-03` then enforces that behavior in both replay and live continuous loops: in `runtime/mediapipe_runtime_probe.py`, `include_preview` is only true when `should_write_state` is true (`_run_video_file_session`: around lines 1878-1883, `_run_live_camera_session`: around lines 3722-3729). That means dropping `tracking.state_update_max_fps` to `1` will also drop visible replay/live preview publication to about one frame per second even if `preview.replay.max_fps` or `preview.live.max_fps` is higher.
+
+Classification: this is primarily a truth/documentation gap at the input/contract layer, not an implementation bug. The coupling is already deliberate and documented in `REF-02`, but `REF-01`'s public contract/docs were easy to read as if preview cadence and state cadence were independent knobs. I landed the narrow truthful doc fix in `REF-01` only: `docs/cross-repo-config-contract.md` now states that preview cannot outrun `tracking.state_update_max_fps`, and both public profile YAML comments (`assets/boxing.camera_tracking.yaml`, `assets/flow.camera_tracking.yaml`) now say replay/live preview writes are emitted with state snapshots.
+
+Commands/evidence used:
+- `bd update aerobeat-input-camera-tracking-9lx --status in_progress --json`
+- `rg -n "state_update_max_fps|preview\.replay|max_fps.*preview|replay.*max_fps|throttl|fps" .`
+- `rg -n "state_update_max_fps|preview\.replay|max_fps.*preview|replay.*max_fps|state update" /home/derrick/.openclaw/workspace/projects -g '!**/node_modules/**'`
+- targeted source reads of `REF-01`, `REF-02`, and `REF-03` files listed above
+- `python3 - <<'PY' ...` one-off cadence proof showing that with `state_update_max_fps=1` and `preview_max_fps=30`, preview publication timestamps collapse to roughly `[0, 1023, 2046]` ms over ~3 seconds because preview writes are gated by state writes first.
+
+Commit/push: pending at time of this plan update; if committed, record hash below.
+
+### Task 10DN: QA `state_update_max_fps` diagnosis / fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-3v5`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** QA the `state_update_max_fps` diagnosis/fix after Task 10DM. Verify the actual behavior against the documented/implemented semantics, and if a fix lands, verify replay feed cadence and state cadence now behave truthfully. Claim `aerobeat-input-camera-tracking-3v5` on start with `bd update aerobeat-input-camera-tracking-3v5 --status in_progress --json`, update this plan with exact commands/evidence, and close the bead only if the slice truly passes.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- docs/tool/vendor files as needed
+
+**Files Created/Deleted/Modified:**
+- validation artifacts / touched proof files as needed
+- `/.plans/mediapipe-python/2026-06-03-boxing-hand-bbox-straight-punch-detection.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10DO: Audit `state_update_max_fps` diagnosis / fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-dyd`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`
+**Prompt:** Independently audit the `state_update_max_fps` diagnosis/fix after Task 10DN. Truth-check the code path, docs, and any landed repair so Derrick understands exactly what the knob really controls. Claim `aerobeat-input-camera-tracking-dyd` on start with `bd update aerobeat-input-camera-tracking-dyd --status in_progress --json`, inspect the diff/plan/tests/evidence, rerun only the validation needed, and close the bead only if the work is actually done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/`
+- docs/tool/vendor files as needed
 
 **Files Created/Deleted/Modified:**
 - validation artifacts / touched proof files as needed
