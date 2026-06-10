@@ -2932,6 +2932,8 @@ func _resolved_pose_smoothing_style() -> String:
 		return "adaptive_exponential_moving_average"
 	if smoothing_style == "median_of_3":
 		return "median_of_3"
+	if smoothing_style == "micro_deadband_adaptive":
+		return "micro_deadband_adaptive"
 	match tracking_smoothing_style:
 		TrackingSmoothingStyle.LITE_RAW:
 			return "lite_raw"
@@ -2948,6 +2950,8 @@ func _tracking_smoothing_style_spec() -> Dictionary:
 			return {"label": "Adaptive EMA + raw", "model_complexity": 0, "no_filter": true}
 		"median_of_3":
 			return {"label": "Median-of-3 + raw", "model_complexity": 0, "no_filter": true}
+		"micro_deadband_adaptive":
+			return {"label": "Micro-deadband adaptive + raw", "model_complexity": 0, "no_filter": true}
 		_:
 			return {"label": "Lite + One-Euro", "model_complexity": 0, "no_filter": false}
 

@@ -62,3 +62,20 @@ func test_median_of_3_rejects_single_frame_spike_without_adding_average_lag() ->
 	assert_true(is_equal_approx(float(landmark.get("z", -1.0)), 0.11))
 	assert_true(is_equal_approx(float(landmark.get("v", -1.0)), 0.85))
 	assert_eq(int(landmark.get("sample_count", 0)), 3)
+
+func test_micro_deadband_adaptive_freezes_tiny_idle_wobble_but_releases_large_motion_with_only_deadband_shave() -> void:
+	var smoother := LandmarkSmoother.new(1, LandmarkSmoother.STYLE_MICRO_DEADBAND_ADAPTIVE)
+	smoother.push_landmarks([{"id": 1, "x": 0.50, "y": 0.60, "z": 0.0, "v": 0.9}])
+	smoother.push_landmarks([{"id": 1, "x": 0.503, "y": 0.603, "z": 0.0, "v": 0.9}])
+	var idle: Dictionary = smoother.push_landmarks([{"id": 1, "x": 0.50, "y": 0.60, "z": 0.0, "v": 0.9}])
+	var idle_landmark: Dictionary = idle.get(1, {})
+	assert_true(is_equal_approx(float(idle_landmark.get("x", -1.0)), 0.50))
+	assert_true(is_equal_approx(float(idle_landmark.get("y", -1.0)), 0.60))
+
+	var burst: Dictionary = smoother.push_landmarks([{"id": 1, "x": 0.80, "y": 0.90, "z": 0.0, "v": 0.7}])
+	var burst_landmark: Dictionary = burst.get(1, {})
+	assert_true(abs(float(burst_landmark.get("x", -1.0)) - 0.798) < 0.00001)
+	assert_true(abs(float(burst_landmark.get("y", -1.0)) - 0.898) < 0.00001)
+	assert_true(float(burst_landmark.get("x", -1.0)) > 0.79)
+	assert_true(float(burst_landmark.get("latest_visibility", -1.0)) == 0.7)
+	assert_eq(int(burst_landmark.get("sample_count", 0)), 2)

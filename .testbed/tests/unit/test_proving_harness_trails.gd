@@ -761,6 +761,27 @@ func test_profile_declared_adaptive_exponential_moving_average_reports_raw_runti
 	assert_true(bool(spec.get("no_filter", false)))
 	assert_false(spec.has("filter_enabled"))
 
+func test_profile_declared_micro_deadband_adaptive_reports_raw_runtime_spec() -> void:
+	harness.free()
+	harness = ContractAwareHarness.new()
+	add_child(harness)
+	var tracking_singleton := FakeProfileBundleTrackingSingleton.new()
+	tracking_singleton.bundle = {
+		"ok": true,
+		"camera_tracking": {
+			"tracking": {
+				"pose": {
+					"smoothing_style": "micro_deadband_adaptive",
+				}
+			}
+		}
+	}
+	harness.fake_singleton = tracking_singleton
+	var spec := harness._tracking_smoothing_style_spec()
+	assert_eq(String(spec.get("label", "")), "Micro-deadband adaptive + raw")
+	assert_true(bool(spec.get("no_filter", false)))
+	assert_false(spec.has("filter_enabled"))
+
 func test_camera_picker_accepts_camera_id_only_device_entries() -> void:
 	harness._camera_devices = [
 		{"camera_id": "/dev/video7", "label": "USB camera"},

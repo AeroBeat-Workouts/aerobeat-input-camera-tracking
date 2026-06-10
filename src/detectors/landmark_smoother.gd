@@ -6,12 +6,17 @@ const STYLE_LITE_FILTERED := "lite_filtered"
 const STYLE_EXPONENTIAL_MOVING_AVERAGE := "exponential_moving_average"
 const STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE := "adaptive_exponential_moving_average"
 const STYLE_MEDIAN_OF_3 := "median_of_3"
+const STYLE_MICRO_DEADBAND_ADAPTIVE := "micro_deadband_adaptive"
 const EXPONENTIAL_MOVING_AVERAGE_ALPHA := 0.45
 const ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MIN_ALPHA := 0.18
 const ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_MAX_ALPHA := 0.82
 const ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_LOW_MOTION_DISTANCE := 0.01
 const ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE_HIGH_MOTION_DISTANCE := 0.08
 const MEDIAN_OF_3_WINDOW_SIZE := 3
+const MICRO_DEADBAND_ADAPTIVE_MAX_DISTANCE := 0.0100
+const MICRO_DEADBAND_ADAPTIVE_MIN_DISTANCE := 0.0020
+const MICRO_DEADBAND_ADAPTIVE_LOW_MOTION_DISTANCE := 0.0040
+const MICRO_DEADBAND_ADAPTIVE_HIGH_MOTION_DISTANCE := 0.050
 
 var _window_size: int = 4
 var _smoothing_style: String = STYLE_LITE_RAW
@@ -71,6 +76,9 @@ func _update_smoothed_landmark(landmark_id: int, current_sample: Dictionary, his
 		return
 	if _smoothing_style == STYLE_MEDIAN_OF_3:
 		_smoothed_samples_by_id[landmark_id] = _smooth_history_median_of_3(current_sample, history)
+		return
+	if _smoothing_style == STYLE_MICRO_DEADBAND_ADAPTIVE:
+		_smoothed_samples_by_id[landmark_id] = _smooth_history_micro_deadband_adaptive(landmark_id, current_sample, history)
 		return
 	_smoothed_samples_by_id[landmark_id] = _smooth_history_moving_average(history)
 
@@ -137,6 +145,24 @@ func _smooth_history_median_of_3(current_sample: Dictionary, history: Array) -> 
 		"v": _history_axis_median(history, "v"),
 	}
 
+func _smooth_history_micro_deadband_adaptive(landmark_id: int, current_sample: Dictionary, history: Array) -> Dictionary:
+	if history.size() < 2:
+		return {
+			"x": float(current_sample.get("x", 0.0)),
+			"y": float(current_sample.get("y", 0.0)),
+			"z": float(current_sample.get("z", 0.0)),
+			"v": float(current_sample.get("v", 0.0)),
+		}
+	var previous_raw: Dictionary = history[history.size() - 2]
+	var previous_smoothed: Dictionary = _smoothed_samples_by_id.get(landmark_id, previous_raw)
+	var deadband_distance := _micro_deadband_adaptive_distance(previous_raw, current_sample)
+	return {
+		"x": _adaptive_deadband_axis(previous_smoothed, current_sample, "x", deadband_distance),
+		"y": _adaptive_deadband_axis(previous_smoothed, current_sample, "y", deadband_distance),
+		"z": float(current_sample.get("z", previous_smoothed.get("z", 0.0))),
+		"v": float(current_sample.get("v", previous_smoothed.get("v", 0.0))),
+	}
+
 func _history_axis_median(history: Array, key: String) -> float:
 	var values: Array = []
 	for sample_variant: Variant in history:
@@ -166,6 +192,28 @@ func _sample_motion_distance(previous_sample: Dictionary, current_sample: Dictio
 	var dz := float(current_sample.get("z", 0.0)) - float(previous_sample.get("z", 0.0))
 	return sqrt(dx * dx + dy * dy + dz * dz)
 
+func _micro_deadband_adaptive_distance(previous_sample: Dictionary, current_sample: Dictionary) -> float:
+	var motion_distance := _sample_motion_distance(previous_sample, current_sample)
+	if motion_distance <= MICRO_DEADBAND_ADAPTIVE_LOW_MOTION_DISTANCE:
+		return MICRO_DEADBAND_ADAPTIVE_MAX_DISTANCE
+	if motion_distance >= MICRO_DEADBAND_ADAPTIVE_HIGH_MOTION_DISTANCE:
+		return MICRO_DEADBAND_ADAPTIVE_MIN_DISTANCE
+	var motion_span := MICRO_DEADBAND_ADAPTIVE_HIGH_MOTION_DISTANCE - MICRO_DEADBAND_ADAPTIVE_LOW_MOTION_DISTANCE
+	if motion_span <= 0.0:
+		return MICRO_DEADBAND_ADAPTIVE_MIN_DISTANCE
+	var ratio := (motion_distance - MICRO_DEADBAND_ADAPTIVE_LOW_MOTION_DISTANCE) / motion_span
+	return lerpf(MICRO_DEADBAND_ADAPTIVE_MAX_DISTANCE, MICRO_DEADBAND_ADAPTIVE_MIN_DISTANCE, clampf(ratio, 0.0, 1.0))
+
+func _adaptive_deadband_axis(previous: Dictionary, current_sample: Dictionary, key: String, deadband_distance: float) -> float:
+	var previous_value := float(previous.get(key, current_sample.get(key, 0.0)))
+	var current_value := float(current_sample.get(key, 0.0))
+	var delta := current_value - previous_value
+	var absolute_delta := absf(delta)
+	if absolute_delta <= deadband_distance:
+		return previous_value
+	var direction := -1.0 if delta < 0.0 else 1.0
+	return current_value - direction * deadband_distance
+
 func _ema_axis(previous: Dictionary, current_sample: Dictionary, key: String, alpha: float) -> float:
 	var previous_value := float(previous.get(key, current_sample.get(key, 0.0)))
 	var current_value := float(current_sample.get(key, 0.0))
@@ -174,14 +222,14 @@ func _ema_axis(previous: Dictionary, current_sample: Dictionary, key: String, al
 func _normalize_smoothing_style(smoothing_style: String) -> String:
 	var normalized := smoothing_style.strip_edges().to_lower()
 	match normalized:
-		STYLE_LITE_FILTERED, STYLE_EXPONENTIAL_MOVING_AVERAGE, STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE, STYLE_MEDIAN_OF_3:
+		STYLE_LITE_FILTERED, STYLE_EXPONENTIAL_MOVING_AVERAGE, STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE, STYLE_MEDIAN_OF_3, STYLE_MICRO_DEADBAND_ADAPTIVE:
 			return normalized
 		_:
 			return STYLE_LITE_RAW
 
 func _resolve_window_size(window_size: int, smoothing_style: String) -> int:
 	var normalized_window_size := maxi(window_size, 1)
-	if smoothing_style == STYLE_EXPONENTIAL_MOVING_AVERAGE or smoothing_style == STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE:
+	if smoothing_style == STYLE_EXPONENTIAL_MOVING_AVERAGE or smoothing_style == STYLE_ADAPTIVE_EXPONENTIAL_MOVING_AVERAGE or smoothing_style == STYLE_MICRO_DEADBAND_ADAPTIVE:
 		return maxi(normalized_window_size, 2)
 	if smoothing_style == STYLE_MEDIAN_OF_3:
 		return MEDIAN_OF_3_WINDOW_SIZE
