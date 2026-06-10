@@ -2,7 +2,7 @@ schema_version: 1
 fixture_id: boxing_guard->run_in_place_repeat_01_take_01
 family: boxing
 video:
-  path: ./boxing_guard->run_in_place_repeat_01_take_01..mp4
+  path: ./boxing_guard->run_in_place_repeat_01_take_01.mp4
 notes:
 - Boxing clip of Derrick
 - starts in guard, ends in guard, with one run in place gesture
