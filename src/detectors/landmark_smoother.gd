@@ -4,7 +4,9 @@ extends RefCounted
 const STYLE_LITE_RAW := "lite_raw"
 const STYLE_LITE_FILTERED := "lite_filtered"
 const STYLE_EXPONENTIAL_MOVING_AVERAGE := "exponential_moving_average"
+const STYLE_MEDIAN_OF_3 := "median_of_3"
 const EXPONENTIAL_MOVING_AVERAGE_ALPHA := 0.45
+const MEDIAN_OF_3_WINDOW_SIZE := 3
 
 var _window_size: int = 4
 var _smoothing_style: String = STYLE_LITE_RAW
@@ -59,6 +61,9 @@ func _update_smoothed_landmark(landmark_id: int, current_sample: Dictionary, his
 	if _smoothing_style == STYLE_EXPONENTIAL_MOVING_AVERAGE:
 		_smoothed_samples_by_id[landmark_id] = _smooth_history_exponential_moving_average(landmark_id, current_sample)
 		return
+	if _smoothing_style == STYLE_MEDIAN_OF_3:
+		_smoothed_samples_by_id[landmark_id] = _smooth_history_median_of_3(current_sample, history)
+		return
 	_smoothed_samples_by_id[landmark_id] = _smooth_history_moving_average(history)
 
 func _smooth_history_moving_average(history: Array) -> Dictionary:
@@ -91,6 +96,32 @@ func _smooth_history_exponential_moving_average(landmark_id: int, current_sample
 		"v": _ema_axis(previous, current_sample, "v"),
 	}
 
+func _smooth_history_median_of_3(current_sample: Dictionary, history: Array) -> Dictionary:
+	if history.size() < MEDIAN_OF_3_WINDOW_SIZE:
+		return {
+			"x": float(current_sample.get("x", 0.0)),
+			"y": float(current_sample.get("y", 0.0)),
+			"z": float(current_sample.get("z", 0.0)),
+			"v": float(current_sample.get("v", 0.0)),
+		}
+	return {
+		"x": _history_axis_median(history, "x"),
+		"y": _history_axis_median(history, "y"),
+		"z": _history_axis_median(history, "z"),
+		"v": _history_axis_median(history, "v"),
+	}
+
+func _history_axis_median(history: Array, key: String) -> float:
+	var values: Array = []
+	for sample_variant: Variant in history:
+		if not sample_variant is Dictionary:
+			continue
+		values.append(float((sample_variant as Dictionary).get(key, 0.0)))
+	if values.is_empty():
+		return 0.0
+	values.sort()
+	return float(values[values.size() / 2])
+
 func _ema_axis(previous: Dictionary, current_sample: Dictionary, key: String) -> float:
 	var previous_value := float(previous.get(key, current_sample.get(key, 0.0)))
 	var current_value := float(current_sample.get(key, 0.0))
@@ -99,7 +130,7 @@ func _ema_axis(previous: Dictionary, current_sample: Dictionary, key: String) ->
 func _normalize_smoothing_style(smoothing_style: String) -> String:
 	var normalized := smoothing_style.strip_edges().to_lower()
 	match normalized:
-		STYLE_LITE_FILTERED, STYLE_EXPONENTIAL_MOVING_AVERAGE:
+		STYLE_LITE_FILTERED, STYLE_EXPONENTIAL_MOVING_AVERAGE, STYLE_MEDIAN_OF_3:
 			return normalized
 		_:
 			return STYLE_LITE_RAW
@@ -108,4 +139,6 @@ func _resolve_window_size(window_size: int, smoothing_style: String) -> int:
 	var normalized_window_size := maxi(window_size, 1)
 	if smoothing_style == STYLE_EXPONENTIAL_MOVING_AVERAGE:
 		return maxi(normalized_window_size, 2)
+	if smoothing_style == STYLE_MEDIAN_OF_3:
+		return MEDIAN_OF_3_WINDOW_SIZE
 	return normalized_window_size

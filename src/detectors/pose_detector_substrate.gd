@@ -810,7 +810,7 @@ func _get_pose_smoothing_style() -> String:
 	var pose: Dictionary = tracking.get("pose", {}) if tracking.get("pose", {}) is Dictionary else {}
 	var smoothing_style := String(pose.get("smoothing_style", "")).strip_edges().to_lower()
 	match smoothing_style:
-		LandmarkSmoother.STYLE_LITE_FILTERED, LandmarkSmoother.STYLE_EXPONENTIAL_MOVING_AVERAGE:
+		LandmarkSmoother.STYLE_LITE_FILTERED, LandmarkSmoother.STYLE_EXPONENTIAL_MOVING_AVERAGE, LandmarkSmoother.STYLE_MEDIAN_OF_3:
 			return smoothing_style
 		_:
 			return LandmarkSmoother.STYLE_LITE_RAW

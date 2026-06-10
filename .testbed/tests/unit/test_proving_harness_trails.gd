@@ -60,6 +60,14 @@ class FakeAutoStartManager:
 	func get_model_asset_path() -> String:
 		return model_asset_path
 
+class FakeProfileBundleTrackingSingleton:
+	extends Node
+
+	var bundle: Dictionary = {}
+
+	func get_selected_profile_bundle() -> Dictionary:
+		return bundle.duplicate(true)
+
 class FakeSignalProvider:
 	extends Node
 
@@ -683,8 +691,10 @@ func test_singleton_runtime_config_includes_prepared_vendor_runtime_facts() -> v
 	assert_eq(runtime.get("working_directory", ""), vendor_root)
 	assert_eq(runtime.get("pose_landmarker_model_path", ""), vendor_root.path_join("models/pose_landmarker_lite.task"))
 	assert_eq(int(runtime.get("model_complexity", -1)), 0)
-	assert_true(bool(runtime.get("filter_enabled", false)))
-	assert_false(bool(runtime.get("no_filter", true)))
+	var selected_style := String((runtime_config as Resource).get_selected_profile_bundle().get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("smoothing_style", "")).strip_edges().to_lower()
+	var expects_filter_enabled := selected_style == "lite_filtered"
+	assert_eq(bool(runtime.get("filter_enabled", false)), expects_filter_enabled)
+	assert_eq(bool(runtime.get("no_filter", true)), not expects_filter_enabled)
 
 func test_exposed_tracking_smoothing_styles_stay_backed_by_existing_vendor_assets() -> void:
 	add_child(harness)
@@ -701,11 +711,34 @@ func test_exposed_tracking_smoothing_styles_stay_backed_by_existing_vendor_asset
 		var config := harness._build_runtime_config() as Resource
 		var runtime: Dictionary = config.get("runtime")
 		var model_path := String(runtime.get("pose_landmarker_model_path", ""))
+		var selected_style := String(config.get_selected_profile_bundle().get("camera_tracking", {}).get("tracking", {}).get("pose", {}).get("smoothing_style", "")).strip_edges().to_lower()
+		var expects_filter_enabled := selected_style == "lite_filtered"
 		assert_true(FileAccess.file_exists(model_path), "%s should map to an existing vendor model asset" % String(style.get("label", "unknown")))
 		assert_eq(int(runtime.get("model_complexity", -1)), 0)
-		assert_eq(bool(runtime.get("filter_enabled", false)), bool(style.get("filter_enabled", false)))
-		assert_eq(bool(runtime.get("no_filter", true)), not bool(style.get("filter_enabled", false)))
+		assert_eq(bool(runtime.get("filter_enabled", false)), expects_filter_enabled)
+		assert_eq(bool(runtime.get("no_filter", true)), not expects_filter_enabled)
 		assert_eq(String(config.get("tracking_overlay_mode")), "optimized")
+
+func test_profile_declared_median_of_3_reports_raw_runtime_spec() -> void:
+	harness.free()
+	harness = ContractAwareHarness.new()
+	add_child(harness)
+	var tracking_singleton := FakeProfileBundleTrackingSingleton.new()
+	tracking_singleton.bundle = {
+		"ok": true,
+		"camera_tracking": {
+			"tracking": {
+				"pose": {
+					"smoothing_style": "median_of_3",
+				}
+			}
+		}
+	}
+	harness.fake_singleton = tracking_singleton
+	var spec := harness._tracking_smoothing_style_spec()
+	assert_eq(String(spec.get("label", "")), "Median-of-3 + raw")
+	assert_true(bool(spec.get("no_filter", false)))
+	assert_false(spec.has("filter_enabled"))
 
 func test_camera_picker_accepts_camera_id_only_device_entries() -> void:
 	harness._camera_devices = [

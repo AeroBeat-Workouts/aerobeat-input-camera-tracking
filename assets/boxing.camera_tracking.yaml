@@ -45,7 +45,7 @@ tracking:
     enabled: true
     # Run pose inference every N source frames. vendor.
     inference_interval_frames: 1
-    # [lite_filtered, lite_raw, exponential_moving_average] Pick the pose smoothing mode after pose samples come back. tool -> vendor.
+    # [lite_filtered, lite_raw, exponential_moving_average, median_of_3] Pick the pose smoothing mode after pose samples come back. tool -> vendor.
     smoothing_style: lite_raw
   hands:
     # Turn hand tracking on or off for this profile. tool -> vendor.
