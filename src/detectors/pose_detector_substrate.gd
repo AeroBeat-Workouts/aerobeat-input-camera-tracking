@@ -109,17 +109,17 @@ var _last_processed_timestamp_ms := 0
 var _frame_index := 0
 
 func _init() -> void:
-	_smoother = LandmarkSmoother.new(_get_smoothing_window_size())
+	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
 	_latest_state = _build_empty_state()
 	_reset_gesture_state()
 
 func configure(config) -> PoseDetectorSubstrate:
 	_config = config
-	_smoother = LandmarkSmoother.new(_get_smoothing_window_size())
+	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
 	return self
 
 func reset() -> void:
-	_smoother = LandmarkSmoother.new(_get_smoothing_window_size())
+	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
 	_previous_positions.clear()
 	_consecutive_valid_frames = 0
 	_consecutive_invalid_frames = 0
@@ -800,6 +800,21 @@ func _get_smoothing_window_size() -> int:
 	var smoothing_factor := clampf(float(_config.smoothing_factor), 0.0, 1.0)
 	return maxi(int(round(1.0 + smoothing_factor * 4.0)), 1)
 
+func _get_pose_smoothing_style() -> String:
+	if _config == null:
+		return LandmarkSmoother.STYLE_LITE_RAW
+	var tracker_profile_document: Variant = _config.get("tracker_profile_document") if _config.has_method("get") else null
+	if not tracker_profile_document is Dictionary:
+		return LandmarkSmoother.STYLE_LITE_RAW
+	var tracking: Dictionary = tracker_profile_document.get("tracking", {}) if tracker_profile_document.get("tracking", {}) is Dictionary else {}
+	var pose: Dictionary = tracking.get("pose", {}) if tracking.get("pose", {}) is Dictionary else {}
+	var smoothing_style := String(pose.get("smoothing_style", "")).strip_edges().to_lower()
+	match smoothing_style:
+		LandmarkSmoother.STYLE_LITE_FILTERED, LandmarkSmoother.STYLE_EXPONENTIAL_MOVING_AVERAGE:
+			return smoothing_style
+		_:
+			return LandmarkSmoother.STYLE_LITE_RAW
+
 func _get_min_visibility() -> float:
 	if _config == null:
 		return 0.5
@@ -913,7 +928,7 @@ func _clear_transient_gesture_state() -> void:
 	_reset_gesture_state()
 
 func _reset_temporal_runtime_state_for_timestamp_rewind() -> void:
-	_smoother = LandmarkSmoother.new(_get_smoothing_window_size())
+	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
 	_previous_positions.clear()
 	_consecutive_valid_frames = 0
 	_consecutive_invalid_frames = 0

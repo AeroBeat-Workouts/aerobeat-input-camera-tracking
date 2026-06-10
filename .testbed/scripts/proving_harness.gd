@@ -2926,6 +2926,8 @@ func _resolved_pose_smoothing_style() -> String:
 		return "lite_raw"
 	if smoothing_style == "lite_filtered":
 		return "lite_filtered"
+	if smoothing_style == "exponential_moving_average":
+		return "exponential_moving_average"
 	match tracking_smoothing_style:
 		TrackingSmoothingStyle.LITE_RAW:
 			return "lite_raw"
@@ -2936,6 +2938,8 @@ func _tracking_smoothing_style_spec() -> Dictionary:
 	match _resolved_pose_smoothing_style():
 		"lite_raw":
 			return {"label": "Lite + raw", "model_complexity": 0, "no_filter": true}
+		"exponential_moving_average":
+			return {"label": "EMA + raw", "model_complexity": 0, "no_filter": true}
 		_:
 			return {"label": "Lite + One-Euro", "model_complexity": 0, "no_filter": false}
 
