@@ -858,6 +858,27 @@ func test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth() -> 
 	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
 	assert_eq(String(left_debug.get("tracking_state", "")), "pose_missing")
 
+func test_guard_no_longer_suppresses_hook_and_uppercut_state_machine_progress() -> void:
+	_calibrate_stance()
+	var guard_pose := _make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.42, "y": 0.69},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.58, "y": 0.69},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.41, "y": 0.80},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.59, "y": 0.80},
+	})
+	var state := substrate.process_landmarks(guard_pose, 1000)
+	assert_true(_event_names(state.get("events", [])).has("guard_start"))
+	assert_true(bool(state.get("gesture_states", {}).get("guard", false)))
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "tracking_lost")
+	assert_true(["tracking_lost", "ready"].has(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", ""))))
+
+	state = substrate.process_landmarks(guard_pose, 1160)
+	assert_true(bool(state.get("gesture_states", {}).get("guard", false)))
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["ready"])
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["ready"])
+	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
 func test_replay_timestamp_rewind_resets_straight_punch_temporal_windows() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.020, "tracked", true, 0, 10, 1.10, null, "", 0), _tracked_hand_payload_physical("right", 0.020)))
@@ -1236,7 +1257,7 @@ func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.41, "y": 0.80},
 		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.59, "y": 0.80},
 	}), 1200)
-	assert_eq(_event_names(guard_start_state.get("events", [])), ["guard_start"])
+	assert_true(_event_names(guard_start_state.get("events", [])).has("guard_start"))
 	var guard_debug: Dictionary = guard_start_state.get("gesture_debug", {}).get("guard", {})
 	assert_true(bool(guard_debug.get("candidate", false)))
 	assert_true(bool(guard_debug.get("wrists_close_x", false)))
