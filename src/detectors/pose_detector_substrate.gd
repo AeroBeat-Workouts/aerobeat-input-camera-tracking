@@ -17,6 +17,7 @@ const STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES := 2
 const STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS := 240
 const STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY := 0.18
 const STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH := 0.006
+const STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE := 0.0
 const STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE := 0.09
 const STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS := 240
 const STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON := 0.003
@@ -648,11 +649,17 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 	return {
 		"phase": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
 		"state": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
+		"previous_state": String(state.get("previous_state", "")),
+		"timestamp_ms": int(state.get("timestamp_ms", 0)),
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
 		"elbow_shoulder_xy_distance": float(state.get("elbow_shoulder_xy_distance", 0.0)),
 		"max_elbow_shoulder_xy_distance": float(straight_punch_config.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE)),
 		"elbow_shoulder_xy_gate_passed": bool(state.get("elbow_shoulder_xy_gate_passed", false)),
 		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),
+		"forward_depth_spike": float(state.get("last_forward_depth_spike", 0.0)),
+		"recent_peak_forward_depth_spike": float(state.get("recent_peak_forward_depth_spike", 0.0)),
+		"forward_depth_spike_gate_passed": bool(state.get("forward_depth_spike_gate_passed", false)),
+		"min_forward_depth_spike": float(straight_punch_config.get("min_forward_depth_spike", STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE)),
 		"recent_peak_wrist_velocity": float(state.get("recent_peak_wrist_velocity", 0.0)),
 		"min_velocity": float(straight_punch_config.get("min_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)),
 		"bbox_area": float(bbox.get("area", state.get("last_bbox_area", 0.0))),
@@ -664,6 +671,7 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"sample_window_size": int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)),
 		"window_ms": int(straight_punch_config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)),
 		"wrist_velocity_window_span_ms": int(state.get("last_wrist_velocity_window_span_ms", 0)),
+		"forward_depth_spike_window_span_ms": int(state.get("last_forward_depth_spike_window_span_ms", 0)),
 		"bbox_area_growth_window_span_ms": int(state.get("last_bbox_area_growth_window_span_ms", 0)),
 		"min_bbox_area_growth": float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)),
 		"trigger_bbox_area": float(state.get("trigger_bbox_area", 0.0)),
@@ -1016,17 +1024,20 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var elbow_shoulder_xy_gate_passed := elbow_shoulder_xy_distance <= max_elbow_shoulder_xy_distance + 0.000001
 	var velocity_signal_position := _resolve_straight_punch_velocity_signal_position(state, elbow, wrist_position)
 	var wrist_velocity_vector := _resolve_straight_punch_wrist_velocity(state, velocity_signal_position, timestamp_ms, fresh_sample, straight_punch_config)
+	var forward_depth_spike := _resolve_straight_punch_forward_depth_spike(state, timestamp_ms, fresh_sample, straight_punch_config)
 	var wrist_velocity := maxf(wrist_velocity_vector.length(), 0.0)
 	var wrist_forward_velocity := maxf(-float(wrist_velocity_vector.z), 0.0)
 	state["last_bbox_area"] = bbox_area
 	state["last_wrist_velocity"] = wrist_velocity
 	state["last_wrist_velocity_vector"] = wrist_velocity_vector
 	state["last_wrist_forward_velocity"] = wrist_forward_velocity
+	state["last_forward_depth_spike"] = forward_depth_spike
 	state["last_sample_fresh"] = fresh_sample
 	state["hand_tracking_state"] = hand_tracking_state
 	state["hand_sample_source"] = String(hand_payload.get("sample_source", "none")) if use_hand_tracking else "pose"
 	state["pose_tracking_valid"] = pose_tracking_valid
 	state["elbow_shoulder_xy_distance"] = elbow_shoulder_xy_distance
+	state["forward_depth_spike_gate_passed"] = float(state.get("recent_peak_forward_depth_spike", forward_depth_spike)) + 0.000001 >= float(state.get("min_forward_depth_spike", STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE))
 	state["max_elbow_shoulder_xy_distance"] = max_elbow_shoulder_xy_distance
 	state["elbow_shoulder_xy_gate_passed"] = elbow_shoulder_xy_gate_passed
 	var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
@@ -1036,10 +1047,15 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var bbox_area_growth_history: Array = (state.get("bbox_area_growth_history", []) as Array).duplicate(true)
 	state["bbox_area_growth_history"] = bbox_area_growth_history
 	state["recent_peak_bbox_area_growth"] = _window_peak_float(bbox_area_growth_history)
+	var forward_depth_spike_history: Array = (state.get("forward_depth_spike_history", []) as Array).duplicate(true)
+	state["forward_depth_spike_history"] = forward_depth_spike_history
+	state["recent_peak_forward_depth_spike"] = _window_peak_float(forward_depth_spike_history)
 	var bbox_area_window_history: Array = (state.get("bbox_area_window_history", []) as Array).duplicate(true)
 	state["bbox_area_window_history"] = bbox_area_window_history
 	state["hand_tracking_valid"] = hand_tracking_valid
 	state["stale_frames"] = int(hand_payload.get("stale_frames", 0)) if use_hand_tracking else 0
+	state["current_timestamp_ms"] = timestamp_ms
+	state["min_forward_depth_spike"] = maxf(float(straight_punch_config.get("min_forward_depth_spike", STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE)), 0.0)
 	if not pose_tracking_valid:
 		valid_sample = false
 		fresh_sample = false
@@ -1059,11 +1075,16 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["bbox_area_window_history"] = []
 		state["bbox_area_growth_history"] = []
 		state["recent_peak_bbox_area_growth"] = 0.0
+		state["forward_depth_spike_history"] = []
+		state["recent_peak_forward_depth_spike"] = 0.0
+		state["forward_depth_spike_gate_passed"] = false
 		state["positive_growth_samples"] = 0
 		state["grace_ms_remaining"] = 0
 		state["grace_deadline_timestamp_ms"] = 0
 		state["trigger_bbox_area"] = 0.0
 		state["last_bbox_area_growth_window_span_ms"] = 0
+		state["last_forward_depth_spike_window_span_ms"] = 0
+		state["last_forward_depth_spike"] = 0.0
 		state["last_bbox_area_growth"] = 0.0
 		state["last_positive_bbox_growth_samples"] = 0
 		state["reacquire_started_timestamp_ms"] = -1
@@ -1091,6 +1112,11 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			bbox_area_growth_history.remove_at(0)
 		state["bbox_area_growth_history"] = bbox_area_growth_history
 		state["recent_peak_bbox_area_growth"] = _window_peak_float(bbox_area_growth_history)
+		forward_depth_spike_history.append(forward_depth_spike)
+		while forward_depth_spike_history.size() > sample_window_size:
+			forward_depth_spike_history.remove_at(0)
+		state["forward_depth_spike_history"] = forward_depth_spike_history
+		state["recent_peak_forward_depth_spike"] = _window_peak_float(forward_depth_spike_history)
 		state["reacquire_started_timestamp_ms"] = timestamp_ms if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST and int(state.get("reacquire_started_timestamp_ms", -1)) < 0 else int(state.get("reacquire_started_timestamp_ms", -1))
 		if use_hand_tracking:
 			state["last_observation_frame_index"] = int(hand_payload.get("frame_index", -1))
@@ -1103,6 +1129,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["wrist_velocity_history"] = wrist_velocity_history
 		state["bbox_area_window_history"] = bbox_area_window_history
 		state["bbox_area_growth_history"] = bbox_area_growth_history
+		state["forward_depth_spike_history"] = forward_depth_spike_history
+	state["forward_depth_spike_gate_passed"] = float(state.get("recent_peak_forward_depth_spike", forward_depth_spike)) + 0.000001 >= float(state.get("min_forward_depth_spike", STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE))
 
 	if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST:
 		if fresh_sample:
@@ -1118,8 +1146,13 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["bbox_area_window_history"] = [{"timestamp_ms": timestamp_ms, "area": bbox_area}]
 				state["bbox_area_growth_history"] = []
 				state["recent_peak_bbox_area_growth"] = 0.0
+				state["forward_depth_spike_history"] = []
+				state["recent_peak_forward_depth_spike"] = 0.0
+				state["forward_depth_spike_gate_passed"] = false
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth_window_span_ms"] = 0
+				state["last_forward_depth_spike_window_span_ms"] = 0
+				state["last_forward_depth_spike"] = 0.0
 				state["last_bbox_area_growth"] = 0.0
 				state["last_positive_bbox_growth_samples"] = 0
 				state["not_ready_started_timestamp_ms"] = -1
@@ -1133,9 +1166,13 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			var min_velocity := maxf(float(straight_punch_config.get("min_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.0)
 			var min_bbox_area_growth := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.0)
 			var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
+			var min_forward_depth_spike := maxf(float(straight_punch_config.get("min_forward_depth_spike", STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE)), 0.0)
 			var recent_peak_wrist_velocity := maxf(float(state.get("recent_peak_wrist_velocity", wrist_velocity)), wrist_velocity)
 			var recent_peak_bbox_area_growth := maxf(float(state.get("recent_peak_bbox_area_growth", state.get("last_bbox_area_growth", 0.0))), float(state.get("last_bbox_area_growth", 0.0)))
-			var ready_to_trigger := recent_peak_wrist_velocity >= min_velocity and elbow_shoulder_xy_gate_passed
+			var recent_peak_forward_depth_spike := maxf(float(state.get("recent_peak_forward_depth_spike", forward_depth_spike)), forward_depth_spike)
+			var forward_depth_spike_gate_passed := recent_peak_forward_depth_spike + 0.000001 >= min_forward_depth_spike
+			state["forward_depth_spike_gate_passed"] = forward_depth_spike_gate_passed
+			var ready_to_trigger := recent_peak_wrist_velocity >= min_velocity and elbow_shoulder_xy_gate_passed and forward_depth_spike_gate_passed
 			if use_hand_tracking:
 				ready_to_trigger = ready_to_trigger and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples
 			if ready_to_trigger:
@@ -1176,8 +1213,13 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["bbox_area_window_history"] = [{"timestamp_ms": timestamp_ms, "area": bbox_area}]
 				state["bbox_area_growth_history"] = []
 				state["recent_peak_bbox_area_growth"] = 0.0
+				state["forward_depth_spike_history"] = []
+				state["recent_peak_forward_depth_spike"] = 0.0
+				state["forward_depth_spike_gate_passed"] = false
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth_window_span_ms"] = 0
+				state["last_forward_depth_spike_window_span_ms"] = 0
+				state["last_forward_depth_spike"] = 0.0
 				state["last_bbox_area_growth"] = 0.0
 				state["not_ready_started_timestamp_ms"] = -1
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
@@ -1197,8 +1239,13 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["bbox_area_window_history"] = [{"timestamp_ms": timestamp_ms, "area": bbox_area}]
 				state["bbox_area_growth_history"] = []
 				state["recent_peak_bbox_area_growth"] = 0.0
+				state["forward_depth_spike_history"] = []
+				state["recent_peak_forward_depth_spike"] = 0.0
+				state["forward_depth_spike_gate_passed"] = false
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth_window_span_ms"] = 0
+				state["last_forward_depth_spike_window_span_ms"] = 0
+				state["last_forward_depth_spike"] = 0.0
 				state["last_bbox_area_growth"] = 0.0
 				state["not_ready_started_timestamp_ms"] = -1
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
@@ -1750,6 +1797,11 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"bbox_area_window_history": [],
 		"bbox_area_growth_history": [],
 		"recent_peak_bbox_area_growth": 0.0,
+		"forward_depth_spike_history": [],
+		"recent_peak_forward_depth_spike": 0.0,
+		"forward_depth_spike_gate_passed": false,
+		"last_forward_depth_spike": 0.0,
+		"last_forward_depth_spike_window_span_ms": 0,
 		"last_bbox_area_growth": 0.0,
 		"last_positive_bbox_growth_samples": 0,
 		"last_bbox_area_growth_window_span_ms": 0,
@@ -1857,6 +1909,7 @@ func _get_straight_punch_config() -> Dictionary:
 		"window_ms": STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS,
 		"min_velocity": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY,
 		"min_bbox_area_growth": STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH,
+		"min_forward_depth_spike": STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE,
 		"max_elbow_shoulder_xy_distance": STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE,
 		"triggered_grace_ms": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS,
 		"bbox_area_retract_epsilon": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON,
@@ -1881,6 +1934,7 @@ func _get_straight_punch_config() -> Dictionary:
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", config.get("min_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY))))
 	config["min_bbox_area_growth"] = maxf(0.0, float(thresholds.get("min_bbox_area_growth", config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH))))
+	config["min_forward_depth_spike"] = maxf(0.0, float(thresholds.get("min_forward_depth_spike", config.get("min_forward_depth_spike", STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE))))
 	config["max_elbow_shoulder_xy_distance"] = maxf(0.0, float(thresholds.get("max_elbow_shoulder_xy_distance", config.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE))))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["bbox_area_retract_epsilon"] = maxf(0.0, float(rearm.get("bbox_area_retract_epsilon", config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON))))
@@ -2095,6 +2149,30 @@ func _resolve_straight_punch_wrist_velocity(state: Dictionary, wrist_position: V
 		return Vector3.ZERO
 	return velocity_sum / float(velocity_sample_count)
 
+func _resolve_straight_punch_forward_depth_spike(state: Dictionary, timestamp_ms: int, fresh_sample: bool, straight_punch_config: Dictionary) -> float:
+	var history: Array = (state.get("wrist_position_history", []) as Array).duplicate(true)
+	if not fresh_sample:
+		state["last_forward_depth_spike_window_span_ms"] = int(state.get("last_forward_depth_spike_window_span_ms", 0))
+		return float(state.get("last_forward_depth_spike", 0.0))
+	var window_ms := max(1, int(straight_punch_config.get("window_ms", STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS)))
+	while history.size() > 0 and timestamp_ms - int((history[0] as Dictionary).get("timestamp_ms", timestamp_ms)) > window_ms:
+		history.remove_at(0)
+	state["wrist_position_history"] = history
+	if history.size() < 2:
+		state["last_forward_depth_spike_window_span_ms"] = 0
+		return 0.0
+	var newest: Dictionary = history[history.size() - 1] as Dictionary
+	var newest_position: Vector3 = newest.get("position", Vector3.ZERO)
+	var newest_timestamp_ms := int(newest.get("timestamp_ms", timestamp_ms))
+	var oldest_timestamp_ms := int((history[0] as Dictionary).get("timestamp_ms", timestamp_ms))
+	var reference_z := float(newest_position.z)
+	for entry_variant: Variant in history:
+		var entry: Dictionary = entry_variant as Dictionary
+		var position: Vector3 = entry.get("position", newest_position)
+		reference_z = maxf(reference_z, float(position.z))
+	state["last_forward_depth_spike_window_span_ms"] = maxi(newest_timestamp_ms - oldest_timestamp_ms, 0)
+	return maxf(reference_z - float(newest_position.z), 0.0)
+
 func _resolve_pose_strike_motion_window(state: Dictionary, side: String, fallback_velocity_vector: Vector3, timestamp_ms: int) -> Dictionary:
 	var history: Array = (state.get("wrist_position_history", []) as Array).duplicate(true)
 	if history.size() < 2:
@@ -2263,6 +2341,8 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 	if previous_phase == next_phase:
 		return
 	state["phase"] = next_phase
+	state["previous_state"] = previous_phase
+	state["timestamp_ms"] = int(state.get("current_timestamp_ms", _last_processed_timestamp_ms))
 	events.append({
 		"name": StringName("straight_punch_state_changed"),
 		"side": side,
@@ -2275,6 +2355,10 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
 		"bbox_area": float(state.get("last_bbox_area", 0.0)),
 		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),
+		"forward_depth_spike": float(state.get("last_forward_depth_spike", 0.0)),
+		"recent_peak_forward_depth_spike": float(state.get("recent_peak_forward_depth_spike", 0.0)),
+		"min_forward_depth_spike": float(state.get("min_forward_depth_spike", STRAIGHT_PUNCH_DEFAULT_MIN_FORWARD_DEPTH_SPIKE)),
+		"forward_depth_spike_gate_passed": bool(state.get("forward_depth_spike_gate_passed", false)),
 		"positive_growth_samples": int(state.get("positive_growth_samples", 0)),
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
 		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),

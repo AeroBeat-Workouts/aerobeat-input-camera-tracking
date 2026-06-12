@@ -163,6 +163,10 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"label": "Recent punch velocity peak >= {threshold}",
 	},
 	{
+		"id": "forward_depth_spike",
+		"label": "Recent forward depth spike >= {threshold}",
+	},
+	{
 		"id": "elbow_shoulder_xy_distance",
 		"label": "Elbow-shoulder XY distance <= {threshold}",
 	},
@@ -1345,6 +1349,10 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var wrist_velocity := float(straight_side.get("wrist_velocity", 0.0))
 	var recent_peak_wrist_velocity := float(straight_side.get("recent_peak_wrist_velocity", wrist_velocity))
 	var min_velocity := float(straight_side.get("min_velocity", 0.0))
+	var forward_depth_spike := float(straight_side.get("forward_depth_spike", 0.0))
+	var recent_peak_forward_depth_spike := float(straight_side.get("recent_peak_forward_depth_spike", forward_depth_spike))
+	var min_forward_depth_spike := float(straight_side.get("min_forward_depth_spike", 0.0))
+	var forward_depth_spike_gate_passed := bool(straight_side.get("forward_depth_spike_gate_passed", false))
 	var bbox_area := float(straight_side.get("bbox_area", 0.0))
 	var elbow_shoulder_xy_distance := float(straight_side.get("elbow_shoulder_xy_distance", 0.0))
 	var max_elbow_shoulder_xy_distance := float(straight_side.get("max_elbow_shoulder_xy_distance", 0.0))
@@ -1412,9 +1420,12 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					current_text += " (%s ago)" % _fmt_age_ms(_boxing_reference_time_ms() - transition_timestamp_ms)
 				passed = true
 		"state_change_payload":
-			current_text = "state=%s wrist=%s xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
+			current_text = "state=%s wrist=%s depth=%s>=%s (%s) xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
 				state_name,
 				_fmt_float(wrist_velocity),
+				_fmt_float(recent_peak_forward_depth_spike),
+				_fmt_float(min_forward_depth_spike),
+				_fmt_bool(forward_depth_spike_gate_passed),
 				_fmt_float(elbow_shoulder_xy_distance),
 				_fmt_float(max_elbow_shoulder_xy_distance),
 				_fmt_bool(elbow_shoulder_xy_gate_passed),
@@ -1430,6 +1441,10 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			threshold_text = _fmt_float(min_velocity)
 			passed = recent_peak_wrist_velocity >= min_velocity
 			current_text = _fmt_threshold_comparison_value(recent_peak_wrist_velocity, min_velocity)
+		"forward_depth_spike":
+			threshold_text = _fmt_float(min_forward_depth_spike)
+			passed = forward_depth_spike_gate_passed
+			current_text = _fmt_threshold_comparison_value(recent_peak_forward_depth_spike, min_forward_depth_spike)
 		"elbow_shoulder_xy_distance":
 			threshold_text = _fmt_float(max_elbow_shoulder_xy_distance)
 			passed = elbow_shoulder_xy_gate_passed
@@ -1936,6 +1951,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Positive growth samples: %d" % int(straight_eval.get("min_positive_growth_samples", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(straight_thresholds.get("min_velocity", 0.0)))
 	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))
+	lines.append("Min forward depth spike: %s" % _fmt_float(straight_thresholds.get("min_forward_depth_spike", 0.0)))
 	lines.append("Max elbow-shoulder XY distance: %s" % _fmt_float(straight_thresholds.get("max_elbow_shoulder_xy_distance", 0.0)))
 	lines.append("Triggered grace: %dms" % int(straight_timing.get("triggered_grace_ms", 0)))
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
@@ -2108,7 +2124,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		hand_grace_ms = 0
 		hand_stable_ms = 0
 		stale_ms = 0
-	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s elbow_shoulder_xy=%s<=%s(%s) bbox_area=%s bbox_growth=%s grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
+	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s depth_spike=%s>=%s(%s) elbow_shoulder_xy=%s<=%s(%s) bbox_area=%s bbox_growth=%s grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
 		"L" if side == "left" else "R",
 		state_name,
 		tracking_state,
@@ -2116,6 +2132,9 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		sample_source,
 		_fmt_float(side_debug.get("wrist_velocity", 0.0)),
 		_fmt_float(side_debug.get("wrist_forward_velocity", 0.0)),
+		_fmt_float(side_debug.get("recent_peak_forward_depth_spike", side_debug.get("forward_depth_spike", 0.0))),
+		_fmt_float(side_debug.get("min_forward_depth_spike", 0.0)),
+		_fmt_bool(bool(side_debug.get("forward_depth_spike_gate_passed", false))),
 		_fmt_float(side_debug.get("elbow_shoulder_xy_distance", 0.0)),
 		_fmt_float(side_debug.get("max_elbow_shoulder_xy_distance", 0.0)),
 		_fmt_bool(bool(side_debug.get("elbow_shoulder_xy_gate_passed", false))),
