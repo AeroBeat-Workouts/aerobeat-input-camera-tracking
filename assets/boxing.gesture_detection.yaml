@@ -130,3 +130,18 @@ uppercut:
   state_machine:
     # After pose tracking comes back, wait this long before uppercuts can arm again. input.
     lost_tracking_reacquire_stable_ms: 40
+
+prototype_matcher:
+  # Turn side-aware prototype matching on or off. input.
+  enabled: false
+  prototype_library:
+    # Named curated prototype library/profile to load for boxing prototype matching. input.
+    library_id: boxing_side_aware_v1
+  evaluation:
+    # Measure each prototype-matching decision across this much recent time. input.
+    window_ms: 250
+    # Re-evaluate the rolling matcher this often. input.
+    window_step_ms: 33
+  thresholds:
+    # Require the best positive-class match score to reach at least this 0..1 value or emit no_punch. input.
+    match_score_min: 0.70

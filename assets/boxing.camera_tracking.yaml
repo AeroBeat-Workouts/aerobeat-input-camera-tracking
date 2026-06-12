@@ -33,6 +33,13 @@ source:
     requested_height: 540
     # Request this live capture cadence from the real camera path. tool -> vendor.
     requested_fps: 60
+  replay:
+    # Pick whether replay reads a direct video file or a saved session manifest. input -> tool.
+    input_kind: video_file
+    # Use this when input_kind = video_file for direct replay from a source video path. Relative to this YAML file unless absolute. input -> tool.
+    video_input_path: ""
+    # Use this when input_kind = session_manifest for replay from a saved session package entrypoint. Relative to this YAML file unless absolute. input -> tool.
+    session_manifest_path: ""
 tracking:
   # Cap tracker sampling work. This is a requested upper bound, not a promise of achieved FPS on all hardware. input -> tool -> vendor.
   # How often tracking system is allowed to look

@@ -42,6 +42,9 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("camera_tracking", {}).get("source", {}).get("live_camera", {}).get("requested_width", -1)), 960)
 	assert_eq(int(bundle.get("camera_tracking", {}).get("source", {}).get("live_camera", {}).get("requested_height", -1)), 540)
 	assert_eq(int(bundle.get("camera_tracking", {}).get("source", {}).get("live_camera", {}).get("requested_fps", -1)), 60)
+	assert_eq(String(bundle.get("camera_tracking", {}).get("source", {}).get("replay", {}).get("input_kind", "")), "video_file")
+	assert_eq(String(bundle.get("camera_tracking", {}).get("source", {}).get("replay", {}).get("video_input_path", "")), "")
+	assert_eq(String(bundle.get("camera_tracking", {}).get("source", {}).get("replay", {}).get("session_manifest_path", "")), "")
 	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmarks", false)))
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_trails", true)))
 	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_hand_bbox_overlay", false)))
@@ -62,6 +65,11 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("thresholds", {}).has("min_wrist_velocity"))
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("rearm", {}).get("pose_only_rearm_ms", -1)), 10)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("state_machine", {}).get("lost_tracking_reacquire_stable_ms", -1)), 40)
+	assert_false(bool(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("enabled", true)))
+	assert_eq(String(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("prototype_library", {}).get("library_id", "")), "boxing_side_aware_v1")
+	assert_eq(int(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("evaluation", {}).get("window_ms", -1)), 250)
+	assert_eq(int(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("evaluation", {}).get("window_step_ms", -1)), 33)
+	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("thresholds", {}).get("match_score_min", -1.0)), 0.70))
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	var config = CameraTrackingConfigScript.new()

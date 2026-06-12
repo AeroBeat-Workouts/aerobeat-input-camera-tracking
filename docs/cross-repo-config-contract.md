@@ -54,6 +54,10 @@ source:
     requested_width: 960
     requested_height: 540
     requested_fps: 15
+  replay:
+    input_kind: video_file|session_manifest
+    video_input_path: ""
+    session_manifest_path: ""
 preview:
   surface_mode: attach
   flip_horizontal: true
@@ -97,6 +101,9 @@ tracking:
 ### Locked tracker field ownership
 
 - `source.live_camera.*` = live camera request knobs owned by `aerobeat-tool-camera-tracking`
+- `source.replay.input_kind` = public replay selector for direct video replay vs saved-session manifest replay, owned by `aerobeat-input-camera-tracking` and passed into the tool layer
+- `source.replay.video_input_path` = public direct-video replay path owned by `aerobeat-input-camera-tracking` and passed into the tool layer
+- `source.replay.session_manifest_path` = public saved-session manifest replay path owned by `aerobeat-input-camera-tracking` and passed into the tool layer
 - `preview.live.*` = live preview feed knobs owned by `aerobeat-tool-camera-tracking`
 - `preview.replay.*` = replay preview feed knobs owned by `aerobeat-tool-camera-tracking`
 - `preview.overlays.pose_skeleton_visible` = public presentation intent consumed by the input proving surfaces
@@ -128,6 +135,9 @@ tracking:
 - `source.live_camera.requested_width: 960`
 - `source.live_camera.requested_height: 540`
 - `source.live_camera.requested_fps: 15`
+- `source.replay.input_kind: video_file`
+- `source.replay.video_input_path: ""`
+- `source.replay.session_manifest_path: ""`
 - `preview.live.enabled: true`
 - `preview.live.max_fps: 10`
 - `preview.replay.enabled: true`
@@ -136,6 +146,8 @@ tracking:
 - `preview.overlays.hand_bbox_visible: true`
 
 #### Flow tracker defaults
+
+Flow keeps the committed live-camera tracker surface only for now and may omit `source.replay.*` until that profile needs the public replay selector.
 
 - `tracking.max_fps: 30`
 - `tracking.state_update_max_fps: 30`
@@ -182,6 +194,15 @@ straight_punch:
     bbox_area_retract_epsilon: 0.003
   state_machine:
     lost_tracking_reacquire_stable_ms: 40
+prototype_matcher:
+  enabled: true|false
+  prototype_library:
+    library_id: boxing_side_aware_v1
+  evaluation:
+    window_ms: 250
+    window_step_ms: 33
+  thresholds:
+    match_score_min: 0.70
 ```
 
 ### Locked gesture field ownership
@@ -192,6 +213,10 @@ straight_punch:
 - `straight_punch.timing.*` = gameplay timing owned by `aerobeat-input-camera-tracking`
 - `straight_punch.rearm.*` = gameplay rearm policy owned by `aerobeat-input-camera-tracking`
 - `straight_punch.state_machine.*` = gameplay state transition rules owned by `aerobeat-input-camera-tracking`
+- `prototype_matcher.prototype_library.library_id` = public curated prototype-library selector owned by `aerobeat-input-camera-tracking`
+- `prototype_matcher.evaluation.window_ms` = public prototype-matcher evaluation window owned by `aerobeat-input-camera-tracking`
+- `prototype_matcher.evaluation.window_step_ms` = public prototype-matcher evaluation cadence owned by `aerobeat-input-camera-tracking`
+- `prototype_matcher.thresholds.match_score_min` = public prototype-matcher rejection threshold owned by `aerobeat-input-camera-tracking`
 
 ### Locked gesture defaults by profile
 
@@ -207,10 +232,15 @@ straight_punch:
 - `straight_punch.timing.triggered_grace_ms: 240`
 - `straight_punch.rearm.bbox_area_retract_epsilon: 0.003`
 - `straight_punch.state_machine.lost_tracking_reacquire_stable_ms: 40`
+- `prototype_matcher.enabled: false`
+- `prototype_matcher.prototype_library.library_id: boxing_side_aware_v1`
+- `prototype_matcher.evaluation.window_ms: 250`
+- `prototype_matcher.evaluation.window_step_ms: 33`
+- `prototype_matcher.thresholds.match_score_min: 0.70`
 
 #### Flow gesture defaults
 
-Flow does not duplicate unused boxing threshold sections in v1. The flow gesture file is intentionally minimal:
+Flow does not duplicate unused boxing threshold sections in v1. The flow gesture file is intentionally minimal and may omit `prototype_matcher.*` until that profile needs the public matcher selector surface:
 
 - `straight_punch.enabled: false`
 
