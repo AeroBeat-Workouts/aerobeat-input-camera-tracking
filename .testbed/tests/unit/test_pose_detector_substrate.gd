@@ -22,53 +22,31 @@ func test_builds_session_baseline_after_stable_frames() -> void:
 	assert_true(is_equal_approx(float(baseline.get("shoulder_width", 0.0)), 0.20))
 	assert_true(is_equal_approx(float(baseline.get("torso_height", 0.0)), 0.30))
 
-func test_profile_pose_smoothing_style_can_select_exponential_moving_average() -> void:
+func test_profile_pose_smoothing_style_can_select_lite_filtered() -> void:
+	config.smoothing_factor = 0.75
 	config.tracker_profile_document = {
 		"tracking": {
 			"pose": {
-				"smoothing_style": "exponential_moving_average",
+				"smoothing_style": "lite_filtered",
 			}
 		}
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
 	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.0, "y": 0.60},
 	}), 1000)
 	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.60, "y": 0.70},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.6, "y": 0.60},
 	}), 1100)
 	var state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.3, "y": 0.60},
 	}), 1200)
 	var smoothed_wrist: Dictionary = state.get("landmarks_by_id", {}).get(PoseLandmarkIds.LEFT_WRIST, {})
-	assert_true(is_equal_approx(float(smoothed_wrist.get("x", -1.0)), 0.52475))
-	assert_true(is_equal_approx(float(smoothed_wrist.get("y", -1.0)), 0.62475))
+	assert_true(is_equal_approx(float(smoothed_wrist.get("x", -1.0)), 0.3))
 
-func test_profile_pose_smoothing_style_can_select_adaptive_exponential_moving_average() -> void:
-	config.tracker_profile_document = {
-		"tracking": {
-			"pose": {
-				"smoothing_style": "adaptive_exponential_moving_average",
-			}
-		}
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
-
-	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60},
-	}), 1000)
-	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.51, "y": 0.61},
-	}), 1100)
-	var state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60},
-	}), 1200)
-	var smoothed_wrist: Dictionary = state.get("landmarks_by_id", {}).get(PoseLandmarkIds.LEFT_WRIST, {})
-	assert_true(abs(float(smoothed_wrist.get("x", -1.0)) - 0.501704) < 0.00001)
-	assert_true(abs(float(smoothed_wrist.get("y", -1.0)) - 0.601704) < 0.00001)
-
-func test_profile_pose_smoothing_style_can_select_median_of_3() -> void:
+func test_profile_pose_smoothing_style_falls_back_to_lite_raw_for_removed_values() -> void:
+	config.smoothing_factor = 0.75
 	config.tracker_profile_document = {
 		"tracking": {
 			"pose": {
@@ -79,50 +57,16 @@ func test_profile_pose_smoothing_style_can_select_median_of_3() -> void:
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
 	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60, "z": 0.10, "v": 0.9},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.0, "y": 0.60},
 	}), 1000)
 	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.90, "y": 0.10, "z": 0.30, "v": 0.2},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.6, "y": 0.60},
 	}), 1100)
 	var state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.52, "y": 0.61, "z": 0.11, "v": 0.85},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.3, "y": 0.60},
 	}), 1200)
 	var smoothed_wrist: Dictionary = state.get("landmarks_by_id", {}).get(PoseLandmarkIds.LEFT_WRIST, {})
-	assert_true(is_equal_approx(float(smoothed_wrist.get("x", -1.0)), 0.52))
-	assert_true(is_equal_approx(float(smoothed_wrist.get("y", -1.0)), 0.60))
-	assert_true(is_equal_approx(float(smoothed_wrist.get("z", -1.0)), 0.11))
-	assert_true(is_equal_approx(float(smoothed_wrist.get("latest_visibility", -1.0)), 0.85))
-
-func test_profile_pose_smoothing_style_can_select_micro_deadband_adaptive() -> void:
-	config.tracker_profile_document = {
-		"tracking": {
-			"pose": {
-				"smoothing_style": "micro_deadband_adaptive",
-			}
-		}
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
-
-	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60, "z": 0.0, "v": 0.9},
-	}), 1000)
-	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.503, "y": 0.603, "z": 0.0, "v": 0.9},
-	}), 1100)
-	var state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.60, "z": 0.0, "v": 0.9},
-	}), 1200)
-	var idle_wrist: Dictionary = state.get("landmarks_by_id", {}).get(PoseLandmarkIds.LEFT_WRIST, {})
-	assert_true(is_equal_approx(float(idle_wrist.get("x", -1.0)), 0.50))
-	assert_true(is_equal_approx(float(idle_wrist.get("y", -1.0)), 0.60))
-
-	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.80, "y": 0.90, "z": 0.0, "v": 0.7},
-	}), 1300)
-	var burst_wrist: Dictionary = state.get("landmarks_by_id", {}).get(PoseLandmarkIds.LEFT_WRIST, {})
-	assert_true(abs(float(burst_wrist.get("x", -1.0)) - 0.798) < 0.00001)
-	assert_true(abs(float(burst_wrist.get("y", -1.0)) - 0.898) < 0.00001)
-	assert_true(is_equal_approx(float(burst_wrist.get("latest_visibility", -1.0)), 0.7))
+	assert_true(is_equal_approx(float(smoothed_wrist.get("x", -1.0)), 0.3))
 
 func test_reports_hand_velocity_and_direction_from_landmark_deltas() -> void:
 	substrate.process_landmarks(_make_pose_frame(), 1000)

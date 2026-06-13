@@ -719,7 +719,7 @@ func test_exposed_tracking_smoothing_styles_stay_backed_by_existing_vendor_asset
 		assert_eq(bool(runtime.get("no_filter", true)), not expects_filter_enabled)
 		assert_eq(String(config.get("tracking_overlay_mode")), "optimized")
 
-func test_profile_declared_median_of_3_reports_raw_runtime_spec() -> void:
+func test_profile_declared_removed_smoothing_style_falls_back_to_hidden_scene_default() -> void:
 	harness.free()
 	harness = ContractAwareHarness.new()
 	add_child(harness)
@@ -736,51 +736,8 @@ func test_profile_declared_median_of_3_reports_raw_runtime_spec() -> void:
 	}
 	harness.fake_singleton = tracking_singleton
 	var spec := harness._tracking_smoothing_style_spec()
-	assert_eq(String(spec.get("label", "")), "Median-of-3 + raw")
-	assert_true(bool(spec.get("no_filter", false)))
-	assert_false(spec.has("filter_enabled"))
-
-func test_profile_declared_adaptive_exponential_moving_average_reports_raw_runtime_spec() -> void:
-	harness.free()
-	harness = ContractAwareHarness.new()
-	add_child(harness)
-	var tracking_singleton := FakeProfileBundleTrackingSingleton.new()
-	tracking_singleton.bundle = {
-		"ok": true,
-		"camera_tracking": {
-			"tracking": {
-				"pose": {
-					"smoothing_style": "adaptive_exponential_moving_average",
-				}
-			}
-		}
-	}
-	harness.fake_singleton = tracking_singleton
-	var spec := harness._tracking_smoothing_style_spec()
-	assert_eq(String(spec.get("label", "")), "Adaptive EMA + raw")
-	assert_true(bool(spec.get("no_filter", false)))
-	assert_false(spec.has("filter_enabled"))
-
-func test_profile_declared_micro_deadband_adaptive_reports_raw_runtime_spec() -> void:
-	harness.free()
-	harness = ContractAwareHarness.new()
-	add_child(harness)
-	var tracking_singleton := FakeProfileBundleTrackingSingleton.new()
-	tracking_singleton.bundle = {
-		"ok": true,
-		"camera_tracking": {
-			"tracking": {
-				"pose": {
-					"smoothing_style": "micro_deadband_adaptive",
-				}
-			}
-		}
-	}
-	harness.fake_singleton = tracking_singleton
-	var spec := harness._tracking_smoothing_style_spec()
-	assert_eq(String(spec.get("label", "")), "Micro-deadband adaptive + raw")
-	assert_true(bool(spec.get("no_filter", false)))
-	assert_false(spec.has("filter_enabled"))
+	assert_eq(String(spec.get("label", "")), "Lite + One-Euro")
+	assert_false(bool(spec.get("no_filter", true)))
 
 func test_camera_picker_accepts_camera_id_only_device_entries() -> void:
 	harness._camera_devices = [
