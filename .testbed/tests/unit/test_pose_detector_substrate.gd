@@ -385,13 +385,13 @@ func test_straight_punch_requires_elbow_shoulder_xy_gate_before_triggering() -> 
 	assert_true(float(left_debug.get("elbow_shoulder_xy_distance", 0.0)) > float(left_debug.get("max_elbow_shoulder_xy_distance", 0.0)))
 	assert_false(bool(left_debug.get("elbow_shoulder_xy_gate_passed", true)))
 
-func test_straight_punch_requires_forward_depth_spike_gate_before_triggering() -> void:
+func test_straight_punch_ignores_deprecated_forward_depth_spike_threshold_config() -> void:
 	config.gesture_profile_document = {
 		"straight_punch": {
 			"thresholds": {
 				"min_velocity": 0.18,
 				"min_bbox_area_growth": 0.003,
-				"min_forward_depth_spike": 0.11,
+				"min_forward_depth_spike": 99.0,
 			},
 		},
 	}
@@ -401,23 +401,16 @@ func test_straight_punch_requires_forward_depth_spike_gate_before_triggering() -
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1180, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.021), _tracked_hand_payload_physical("right", 0.020)))
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.12}}), 1260, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.0240), _tracked_hand_payload_physical("right", 0.020)))
 	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.20}}), 1340, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.0272), _tracked_hand_payload_physical("right", 0.020)))
-	assert_false(_event_names(state.get("events", [])).has("punch_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
-	assert_eq(String(left_debug.get("state", "")), "ready")
+	assert_eq(String(left_debug.get("state", "")), "triggered")
 	assert_true(float(left_debug.get("wrist_velocity", 0.0)) >= float(left_debug.get("min_velocity", 0.0)))
 	assert_true(float(left_debug.get("bbox_area_growth", 0.0)) >= float(left_debug.get("min_bbox_area_growth", 0.0)))
+	assert_true(bool(left_debug.get("elbow_shoulder_xy_gate_passed", false)))
 	assert_true(is_equal_approx(float(left_debug.get("recent_peak_forward_depth_spike", 0.0)), 0.10))
-	assert_true(is_equal_approx(float(left_debug.get("min_forward_depth_spike", 0.0)), 0.11))
-	assert_false(bool(left_debug.get("forward_depth_spike_gate_passed", true)))
+	assert_false(left_debug.has("min_forward_depth_spike"))
+	assert_false(left_debug.has("forward_depth_spike_gate_passed"))
 
-func test_straight_punch_debug_surfaces_forward_depth_spike_gate_truth() -> void:
-	config.gesture_profile_document = {
-		"straight_punch": {
-			"thresholds": {
-				"min_forward_depth_spike": 0.08,
-			},
-		},
-	}
+func test_straight_punch_debug_surfaces_forward_depth_spike_metrics_without_gate_threshold() -> void:
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.020), _tracked_hand_payload_physical("right", 0.020)))
@@ -428,9 +421,9 @@ func test_straight_punch_debug_surfaces_forward_depth_spike_gate_truth() -> void
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
 	assert_true(is_equal_approx(float(left_debug.get("forward_depth_spike", 0.0)), 0.10))
 	assert_true(is_equal_approx(float(left_debug.get("recent_peak_forward_depth_spike", 0.0)), 0.10))
-	assert_true(is_equal_approx(float(left_debug.get("min_forward_depth_spike", 0.0)), 0.08))
-	assert_true(bool(left_debug.get("forward_depth_spike_gate_passed", false)))
 	assert_eq(int(left_debug.get("forward_depth_spike_window_span_ms", -1)), 240)
+	assert_false(left_debug.has("min_forward_depth_spike"))
+	assert_false(left_debug.has("forward_depth_spike_gate_passed"))
 
 func test_straight_punch_debug_surfaces_elbow_shoulder_xy_gate_truth() -> void:
 	_calibrate_stance()

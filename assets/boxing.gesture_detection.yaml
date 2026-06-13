@@ -61,8 +61,6 @@ straight_punch:
     min_velocity: 0.5
     # Windowed forward-punch bbox growth must reach at least this value to count as a punch. input.
     min_bbox_area_growth: 0.003
-    # The shared motion window must include at least this much back-to-front Z movement from the straight-punch signal position before a punch can fire. input.
-    min_forward_depth_spike: 0.08
     # Elbow and shoulder must stay at least this close together in camera-space XY for the straight-arm pose hint. input.
     max_elbow_shoulder_xy_distance: 0.140
   timing:
