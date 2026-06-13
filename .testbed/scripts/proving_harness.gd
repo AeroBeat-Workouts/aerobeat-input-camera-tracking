@@ -2631,7 +2631,7 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 	var gesture_debug: Dictionary = state.get("gesture_debug", {})
 	var ready_map: Dictionary = (gesture_debug.get("ready", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
-	var landmarks: Dictionary = state.get("landmarks_by_id", {})
+	var _landmarks: Dictionary = state.get("landmarks_by_id", {})
 	var guard_debug: Dictionary = (gesture_debug.get("guard", {}) as Dictionary).duplicate(true)
 	var left_hand_velocity: Vector3 = velocities.get("left_hand", Vector3.ZERO)
 	var right_hand_velocity: Vector3 = velocities.get("right_hand", Vector3.ZERO)
