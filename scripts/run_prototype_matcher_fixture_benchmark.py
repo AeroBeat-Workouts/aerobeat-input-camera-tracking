@@ -42,7 +42,7 @@ def rel_res_path(repo_root: Path, path: Path) -> str:
     return "res://" + path.relative_to(repo_root / ".testbed").as_posix()
 
 
-def run_capture(repo_root: Path, fixture: dict, output_dir: Path, godot_bin: str, capture_delay_ms: int) -> dict:
+def run_capture(repo_root: Path, fixture: dict, output_dir: Path, godot_bin: str, capture_delay_ms: int, library_id: str | None = None) -> dict:
     capture_dir = output_dir / "captures" / fixture["id"]
     ensure_clean_dir(capture_dir)
 
@@ -57,6 +57,8 @@ def run_capture(repo_root: Path, fixture: dict, output_dir: Path, godot_bin: str
     env["AEROBEAT_CAMERA_TRACKING_SOURCE"] = str(source_path)
     env["AEROBEAT_PUNCH_BACKEND_OVERRIDE"] = "prototype_matcher"
     env["AEROBEAT_FIXTURE_STATE_TIMELINE_MODE"] = "full"
+    if library_id:
+        env["AEROBEAT_PROTOTYPE_LIBRARY_ID_OVERRIDE"] = library_id
 
     cmd = [
         godot_bin,
@@ -312,9 +314,10 @@ def main() -> int:
 
     manifest = load_json(manifest_path)
     capture_delay_ms = int(args.capture_delay_ms or manifest.get("capture_delay_ms", 7000))
+    library_id = str(manifest.get("library_id", "")).strip() or None
     fixture_results = []
     for fixture in manifest.get("fixtures", []):
-        report = run_capture(repo_root, fixture, output_dir, args.godot, capture_delay_ms)
+        report = run_capture(repo_root, fixture, output_dir, args.godot, capture_delay_ms, library_id=library_id)
         fixture_results.append(analyze_fixture(fixture, report))
 
     result = {

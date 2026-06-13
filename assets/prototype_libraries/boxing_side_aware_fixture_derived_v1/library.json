@@ -1,0 +1,1842 @@
+{
+  "schema": "aerobeat.prototype_library",
+  "version": 1,
+  "library_id": "boxing_side_aware_fixture_derived_v1",
+  "profile": "boxing",
+  "sample_count": 5,
+  "distance_scale": 0.45,
+  "feature_names": [
+    "elbow_x_from_shoulder_over_shoulder_width",
+    "elbow_y_from_shoulder_over_shoulder_width",
+    "wrist_x_from_shoulder_over_shoulder_width",
+    "wrist_y_from_shoulder_over_shoulder_width",
+    "elbow_z_from_shoulder",
+    "wrist_z_from_shoulder"
+  ],
+  "classes": [
+    "straight_left",
+    "straight_right",
+    "hook_left",
+    "hook_right",
+    "uppercut_left",
+    "uppercut_right"
+  ],
+  "notes": [
+    "Derived from verified boxing fixture videos via capture_fixture_proving.gd pose snapshots.",
+    "Gesture truth comes from the human-verified YAML expected_gestures windows.",
+    "Each prototype corresponds to one verified gesture window resampled to the matcher sample_count."
+  ],
+  "prototypes": [
+    {
+      "id": "straight_left_straight_left_fixture_window_01",
+      "class_name": "straight_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml#window=1",
+      "provenance": {
+        "fixture_id": "boxing_guard->punch_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/straight_left_fixture/report.json",
+        "expected_event": "punch_left",
+        "window_index": 1,
+        "window_start_ms": 1150,
+        "window_end_ms": 1300,
+        "pose_samples_in_window": 5,
+        "pose_samples_used": 5,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          1171,
+          1200,
+          1227,
+          1238,
+          1280
+        ]
+      },
+      "samples": [
+        [
+          -0.02408664931943019,
+          -1.202673384322883,
+          -0.2899952727156789,
+          0.25386551201351754,
+          -0.24560776352882402,
+          -0.51662340760231
+        ],
+        [
+          -0.02408664931943019,
+          -1.202673384322883,
+          -0.2899952727156789,
+          0.25386551201351754,
+          -0.24560776352882402,
+          -0.51662340760231
+        ],
+        [
+          -0.02408664931943019,
+          -1.202673384322883,
+          -0.2899952727156789,
+          0.25386551201351754,
+          -0.24560776352882402,
+          -0.51662340760231
+        ],
+        [
+          -0.06694165118296261,
+          -1.223342489022115,
+          -0.29212525777815274,
+          0.3167094617447299,
+          -0.24796707928180703,
+          -0.519864097237587
+        ],
+        [
+          -0.06694165118296261,
+          -1.223342489022115,
+          -0.29212525777815274,
+          0.3167094617447299,
+          -0.24796707928180703,
+          -0.519864097237587
+        ]
+      ]
+    },
+    {
+      "id": "straight_left_straight_left_fixture_window_02",
+      "class_name": "straight_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml#window=2",
+      "provenance": {
+        "fixture_id": "boxing_guard->punch_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/straight_left_fixture/report.json",
+        "expected_event": "punch_left",
+        "window_index": 2,
+        "window_start_ms": 2150,
+        "window_end_ms": 2650,
+        "pose_samples_in_window": 17,
+        "pose_samples_used": 17,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          2152,
+          2167,
+          2207,
+          2236,
+          2272,
+          2304,
+          2337,
+          2364,
+          2378,
+          2418,
+          2452,
+          2478,
+          2498,
+          2535,
+          2580,
+          2605,
+          2639
+        ]
+      },
+      "samples": [
+        [
+          0.21545184423052074,
+          -1.248845697987634,
+          -0.14375659055097423,
+          0.30745153260599206,
+          -0.21214343607425698,
+          -0.46392901241779394
+        ],
+        [
+          0.19110138401009835,
+          -1.3478056538669547,
+          -0.13508185750637705,
+          0.15543184398133172,
+          -0.20718775689601898,
+          -0.44891084730625197
+        ],
+        [
+          0.15244229828766875,
+          -1.437939666699719,
+          -0.12094232735654316,
+          0.06059556135412891,
+          -0.21885842084884605,
+          -0.47815966606140103
+        ],
+        [
+          0.2628431839171847,
+          -1.4085703304072237,
+          -0.07692715911848903,
+          -0.03843512402097192,
+          -0.222487658262253,
+          -0.48724636435508695
+        ],
+        [
+          0.4145910496265755,
+          -1.262896414368845,
+          -0.08152655620176366,
+          0.12811291319304163,
+          -0.216386526823044,
+          -0.45069107413291903
+        ]
+      ]
+    },
+    {
+      "id": "straight_left_straight_left_fixture_window_03",
+      "class_name": "straight_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml#window=3",
+      "provenance": {
+        "fixture_id": "boxing_guard->punch_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/straight_left_fixture/report.json",
+        "expected_event": "punch_left",
+        "window_index": 3,
+        "window_start_ms": 3333,
+        "window_end_ms": 3833,
+        "pose_samples_in_window": 16,
+        "pose_samples_used": 16,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          3346,
+          3376,
+          3397,
+          3449,
+          3485,
+          3501,
+          3540,
+          3576,
+          3601,
+          3628,
+          3663,
+          3691,
+          3706,
+          3759,
+          3794,
+          3812
+        ]
+      },
+      "samples": [
+        [
+          0.23910158856295022,
+          -1.397264433132671,
+          -0.13142232651044736,
+          0.1557963680708121,
+          -0.18999271094799103,
+          -0.44544903934002
+        ],
+        [
+          0.22813915621599595,
+          -1.4843965818153124,
+          -0.07766210913601082,
+          0.07729491190673782,
+          -0.19263292849063898,
+          -0.44339500367641405
+        ],
+        [
+          0.2633020967799138,
+          -1.5653186614409325,
+          -0.07247171828913386,
+          -0.2538069881062828,
+          -0.18456564843654696,
+          -0.444808885455132
+        ],
+        [
+          0.2633020967799138,
+          -1.5653186614409325,
+          -0.07247171828913386,
+          -0.2538069881062828,
+          -0.18456564843654696,
+          -0.444808885455132
+        ],
+        [
+          0.6011532199002096,
+          -0.9440482471441509,
+          -0.10358281075229415,
+          -0.0842992228530914,
+          -0.21559876203536998,
+          -0.43035989999771096
+        ]
+      ]
+    },
+    {
+      "id": "straight_left_straight_left_fixture_window_04",
+      "class_name": "straight_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml#window=4",
+      "provenance": {
+        "fixture_id": "boxing_guard->punch_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/straight_left_fixture/report.json",
+        "expected_event": "punch_left",
+        "window_index": 4,
+        "window_start_ms": 4833,
+        "window_end_ms": 5088,
+        "pose_samples_in_window": 8,
+        "pose_samples_used": 8,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          4838,
+          4882,
+          4933,
+          4942,
+          4987,
+          5021,
+          5039,
+          5072
+        ]
+      },
+      "samples": [
+        [
+          0.10707722288432264,
+          -1.5462977319615063,
+          -0.2288536098604637,
+          -0.16546234755141043,
+          -0.20919290184974704,
+          -0.478226214647294
+        ],
+        [
+          0.10707722288432264,
+          -1.5462977319615063,
+          -0.2288536098604637,
+          -0.16546234755141043,
+          -0.20919290184974704,
+          -0.478226214647294
+        ],
+        [
+          0.13520400600427424,
+          -1.6087099857100422,
+          -0.22648619492134225,
+          -0.24558261891450114,
+          -0.20619809627532903,
+          -0.446561515331268
+        ],
+        [
+          0.13520400600427424,
+          -1.6087099857100422,
+          -0.22648619492134225,
+          -0.24558261891450114,
+          -0.20619809627532903,
+          -0.446561515331268
+        ],
+        [
+          0.3342969874813128,
+          -1.5291072149996314,
+          -0.09329465281632722,
+          -0.33960742403102473,
+          -0.20951142907142695,
+          -0.45659795403480596
+        ]
+      ]
+    },
+    {
+      "id": "straight_right_straight_right_fixture_window_02",
+      "class_name": "straight_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.yaml#window=2",
+      "provenance": {
+        "fixture_id": "boxing_guard->punch_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/straight_right_fixture/report.json",
+        "expected_event": "punch_right",
+        "window_index": 2,
+        "window_start_ms": 1700,
+        "window_end_ms": 2000,
+        "pose_samples_in_window": 11,
+        "pose_samples_used": 11,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          1703,
+          1714,
+          1752,
+          1782,
+          1811,
+          1835,
+          1844,
+          1885,
+          1933,
+          1955,
+          1976
+        ]
+      },
+      "samples": [
+        [
+          -0.1546874084443515,
+          -1.1407454646592186,
+          0.045307253735873,
+          0.3493703379361642,
+          -0.300408259034157,
+          -0.665667459368706
+        ],
+        [
+          -0.3345050829694551,
+          -1.1442993007097837,
+          0.0253867265279454,
+          0.4260697725581598,
+          -0.306497558951378,
+          -0.634674474596977
+        ],
+        [
+          -0.3345050829694551,
+          -1.1442993007097837,
+          0.0253867265279454,
+          0.4260697725581598,
+          -0.306497558951378,
+          -0.634674474596977
+        ],
+        [
+          -0.44795873859514296,
+          -0.14520540925836511,
+          0.013988276135301273,
+          0.9123676316018584,
+          -0.322893708944321,
+          -0.586929589509964
+        ],
+        [
+          -0.4436002737915225,
+          0.11150893348897988,
+          0.07509793772156381,
+          1.2327366374321664,
+          -0.39817878603935297,
+          -0.731394082307816
+        ]
+      ]
+    },
+    {
+      "id": "straight_right_straight_right_fixture_window_03",
+      "class_name": "straight_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.yaml#window=3",
+      "provenance": {
+        "fixture_id": "boxing_guard->punch_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/straight_right_fixture/report.json",
+        "expected_event": "punch_right",
+        "window_index": 3,
+        "window_start_ms": 3100,
+        "window_end_ms": 3400,
+        "pose_samples_in_window": 9,
+        "pose_samples_used": 9,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          3137,
+          3164,
+          3192,
+          3228,
+          3246,
+          3282,
+          3311,
+          3342,
+          3371
+        ]
+      },
+      "samples": [
+        [
+          -0.48423663289156815,
+          -0.8530115155300847,
+          0.08662988821001415,
+          0.529057041218411,
+          -0.33497647941112496,
+          -0.651962742209435
+        ],
+        [
+          -0.48423663289156815,
+          -0.8530115155300847,
+          0.08662988821001415,
+          0.529057041218411,
+          -0.33497647941112496,
+          -0.651962742209435
+        ],
+        [
+          -0.34847357524753664,
+          0.46999698938250595,
+          0.1939841837427772,
+          1.2056892144675562,
+          -0.32012596726417597,
+          -0.547619223594666
+        ],
+        [
+          -0.34847357524753664,
+          0.46999698938250595,
+          0.1939841837427772,
+          1.2056892144675562,
+          -0.32012596726417597,
+          -0.547619223594666
+        ],
+        [
+          -0.5059974983448065,
+          -0.22238745323703893,
+          -0.02140946844655701,
+          0.7385441253846439,
+          -0.37638984620571103,
+          -0.7359077781438831
+        ]
+      ]
+    },
+    {
+      "id": "straight_right_straight_right_fixture_window_04",
+      "class_name": "straight_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.yaml#window=4",
+      "provenance": {
+        "fixture_id": "boxing_guard->punch_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/straight_right_fixture/report.json",
+        "expected_event": "punch_right",
+        "window_index": 4,
+        "window_start_ms": 4400,
+        "window_end_ms": 4900,
+        "pose_samples_in_window": 17,
+        "pose_samples_used": 17,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          4405,
+          4436,
+          4460,
+          4471,
+          4527,
+          4559,
+          4583,
+          4606,
+          4646,
+          4676,
+          4703,
+          4720,
+          4751,
+          4801,
+          4828,
+          4857,
+          4893
+        ]
+      },
+      "samples": [
+        [
+          -0.33465713470932473,
+          -1.1017555404602175,
+          -0.016983655382010767,
+          0.3138086148088501,
+          -0.27316427230835,
+          -0.6145502328872681
+        ],
+        [
+          -0.5771020589007974,
+          -0.4902415341094685,
+          0.03909532875157489,
+          0.5785926379154117,
+          -0.3286985158920289,
+          -0.612570583820343
+        ],
+        [
+          -0.2600232209444545,
+          0.579420159942594,
+          0.2489662827944304,
+          1.244629241120326,
+          -0.23603670299053203,
+          -0.345045939087867
+        ],
+        [
+          -0.5422511374958136,
+          -0.25973769841558336,
+          0.03818864918460798,
+          0.6244140434195359,
+          -0.390976801514626,
+          -0.7179407030344009
+        ],
+        [
+          -0.42666939497122214,
+          -0.9212139557778186,
+          0.14171074118951332,
+          0.4610185313483982,
+          -0.306846991181373,
+          -0.593411818146705
+        ]
+      ]
+    },
+    {
+      "id": "hook_left_hook_left_fixture_window_01",
+      "class_name": "hook_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml#window=1",
+      "provenance": {
+        "fixture_id": "boxing_guard->hook_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/hook_left_fixture/report.json",
+        "expected_event": "hook_left",
+        "window_index": 1,
+        "window_start_ms": 1000,
+        "window_end_ms": 1600,
+        "pose_samples_in_window": 18,
+        "pose_samples_used": 18,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          1026,
+          1034,
+          1104,
+          1126,
+          1155,
+          1188,
+          1216,
+          1231,
+          1271,
+          1305,
+          1327,
+          1371,
+          1406,
+          1437,
+          1470,
+          1505,
+          1538,
+          1568
+        ]
+      },
+      "samples": [
+        [
+          0.011724654473999282,
+          -1.2100403712059844,
+          -0.2715570451123538,
+          0.2328780524300587,
+          -0.24242091178894,
+          -0.48608303070068304
+        ],
+        [
+          -0.01380443079383793,
+          -1.3268210235533586,
+          -0.2963852137249186,
+          0.06646781404477864,
+          -0.214488193392753,
+          -0.44584037363529194
+        ],
+        [
+          -0.03283845305083967,
+          -1.2847906524553319,
+          -0.29460766964821494,
+          0.08861350022307475,
+          -0.213871538639069,
+          -0.43733859062194896
+        ],
+        [
+          0.4807236771162972,
+          -1.2245077233389008,
+          0.17489773800771216,
+          -0.6516251153383845,
+          -0.18657875061035198,
+          -0.464587181806565
+        ],
+        [
+          0.5929471187677949,
+          -0.43225321774656345,
+          0.564244661638376,
+          -1.299487256683658,
+          0.054109200835227994,
+          0.022415995597838995
+        ]
+      ]
+    },
+    {
+      "id": "hook_left_hook_left_fixture_window_02",
+      "class_name": "hook_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml#window=2",
+      "provenance": {
+        "fixture_id": "boxing_guard->hook_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/hook_left_fixture/report.json",
+        "expected_event": "hook_left",
+        "window_index": 2,
+        "window_start_ms": 2500,
+        "window_end_ms": 3000,
+        "pose_samples_in_window": 16,
+        "pose_samples_used": 16,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          2519,
+          2549,
+          2587,
+          2621,
+          2652,
+          2668,
+          2704,
+          2737,
+          2760,
+          2791,
+          2826,
+          2861,
+          2898,
+          2931,
+          2958,
+          2978
+        ]
+      },
+      "samples": [
+        [
+          0.24719808550635292,
+          -1.4197578653139191,
+          -0.16246719889818204,
+          -0.35507633808178296,
+          -0.20973610877990698,
+          -0.4744464755058291
+        ],
+        [
+          0.14357876929693647,
+          -1.4521563592357396,
+          -0.19476573303888747,
+          -0.21276141443989743,
+          -0.21778039634227697,
+          -0.47041340172290796
+        ],
+        [
+          0.22267820852347267,
+          -1.3500364937843299,
+          -0.10472293182358405,
+          -0.28944634911493883,
+          -0.18889373540878301,
+          -0.451452404260635
+        ],
+        [
+          0.1659974146183363,
+          -1.3402963361556504,
+          -0.14640774399628959,
+          -0.2725361641022969,
+          -0.17407025396823897,
+          -0.40783046185970306
+        ],
+        [
+          0.36956671347816616,
+          -1.227713895674723,
+          -0.014393389276343125,
+          -0.6280202072190934,
+          -0.15689916908741,
+          -0.4331218451261519
+        ]
+      ]
+    },
+    {
+      "id": "hook_left_hook_left_fixture_window_03",
+      "class_name": "hook_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml#window=3",
+      "provenance": {
+        "fixture_id": "boxing_guard->hook_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/hook_left_fixture/report.json",
+        "expected_event": "hook_left",
+        "window_index": 3,
+        "window_start_ms": 4000,
+        "window_end_ms": 4600,
+        "pose_samples_in_window": 19,
+        "pose_samples_used": 19,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          4006,
+          4040,
+          4071,
+          4079,
+          4148,
+          4180,
+          4188,
+          4235,
+          4272,
+          4286,
+          4327,
+          4362,
+          4398,
+          4449,
+          4496,
+          4515,
+          4551,
+          4581,
+          4591
+        ]
+      },
+      "samples": [
+        [
+          0.2732063057363435,
+          -1.3630758666762839,
+          -0.06503470868658674,
+          -0.283485922774687,
+          -0.200757004320621,
+          -0.475319780409336
+        ],
+        [
+          0.26392637462481183,
+          -1.3904134636039867,
+          -0.08065407257386693,
+          -0.34159582106369646,
+          -0.17364223301410597,
+          -0.41242791712284094
+        ],
+        [
+          0.13945017355351683,
+          -1.4265305287669925,
+          -0.19462453068659763,
+          -0.36430454023917175,
+          -0.18009313941001903,
+          -0.42736756801605297
+        ],
+        [
+          0.5234583785128526,
+          -1.2555460345261602,
+          0.37750434833230634,
+          -1.2769985052542296,
+          -0.12734848260879503,
+          -0.35569098591804504
+        ],
+        [
+          0.7135466821397021,
+          -0.2572021983035365,
+          0.5345287352063829,
+          -0.9973385926613284,
+          -0.018010377883911022,
+          -0.01828509569168102
+        ]
+      ]
+    },
+    {
+      "id": "hook_left_hook_left_fixture_window_04",
+      "class_name": "hook_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml#window=4",
+      "provenance": {
+        "fixture_id": "boxing_guard->hook_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/hook_left_fixture/report.json",
+        "expected_event": "hook_left",
+        "window_index": 4,
+        "window_start_ms": 5500,
+        "window_end_ms": 5800,
+        "pose_samples_in_window": 10,
+        "pose_samples_used": 10,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          5502,
+          5512,
+          5557,
+          5592,
+          5607,
+          5667,
+          5700,
+          5709,
+          5755,
+          5795
+        ]
+      },
+      "samples": [
+        [
+          0.2710834490798279,
+          -1.4569249124085815,
+          -0.19310591183094009,
+          -0.4639616733817037,
+          -0.19390015304088598,
+          -0.47749657928943595
+        ],
+        [
+          0.2877407810630479,
+          -1.4531821366590825,
+          -0.16454107425811634,
+          -0.45274988951288603,
+          -0.19931080937385598,
+          -0.460500806570054
+        ],
+        [
+          0.25227157232185116,
+          -1.4079116855742493,
+          -0.16980349190995775,
+          -0.39443583610388455,
+          -0.17314130067825298,
+          -0.4211543500423429
+        ],
+        [
+          0.20778912104869604,
+          -1.3870822567582757,
+          -0.19578693894650318,
+          -0.388219913656297,
+          -0.159070432186127,
+          -0.41447833180427496
+        ],
+        [
+          0.20778912104869604,
+          -1.3870822567582757,
+          -0.19578693894650318,
+          -0.388219913656297,
+          -0.159070432186127,
+          -0.41447833180427496
+        ]
+      ]
+    },
+    {
+      "id": "hook_right_hook_right_fixture_window_01",
+      "class_name": "hook_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml#window=1",
+      "provenance": {
+        "fixture_id": "boxing_guard->hook_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/hook_right_fixture/report.json",
+        "expected_event": "hook_right",
+        "window_index": 1,
+        "window_start_ms": 900,
+        "window_end_ms": 1400,
+        "pose_samples_in_window": 13,
+        "pose_samples_used": 13,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          943,
+          952,
+          1014,
+          1022,
+          1097,
+          1116,
+          1156,
+          1191,
+          1232,
+          1257,
+          1291,
+          1326,
+          1367
+        ]
+      },
+      "samples": [
+        [
+          -0.1274259866684512,
+          -1.124125573006707,
+          0.034135511343827855,
+          0.22607884946769646,
+          -0.17826905846595742,
+          -0.4221346229314804
+        ],
+        [
+          -0.16287741691857377,
+          -1.1165849766556732,
+          0.011476841096064864,
+          0.23387868874821324,
+          -0.1822657361626621,
+          -0.4314832612872121
+        ],
+        [
+          -0.31307016008575284,
+          -1.1845269429677168,
+          -0.05680252410611534,
+          0.1923236593501898,
+          -0.20059207826852804,
+          -0.494971521198749
+        ],
+        [
+          -0.4253334903915487,
+          -1.0354259274184332,
+          -0.32399849554760546,
+          -0.8347877750843652,
+          -0.108370520174503,
+          -0.39379621297121
+        ],
+        [
+          -0.5664653525971747,
+          -0.6841878803717562,
+          -0.48490495269905504,
+          -0.6839146325939008,
+          -0.156197398900986,
+          -0.42130014300346397
+        ]
+      ]
+    },
+    {
+      "id": "hook_right_hook_right_fixture_window_02",
+      "class_name": "hook_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml#window=2",
+      "provenance": {
+        "fixture_id": "boxing_guard->hook_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/hook_right_fixture/report.json",
+        "expected_event": "hook_right",
+        "window_index": 2,
+        "window_start_ms": 2400,
+        "window_end_ms": 2900,
+        "pose_samples_in_window": 16,
+        "pose_samples_used": 16,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          2420,
+          2428,
+          2471,
+          2505,
+          2530,
+          2573,
+          2607,
+          2629,
+          2658,
+          2693,
+          2722,
+          2742,
+          2786,
+          2819,
+          2832,
+          2888
+        ]
+      },
+      "samples": [
+        [
+          -0.18512404177144468,
+          -1.2254930615557444,
+          0.014601346557833343,
+          0.17865040565123128,
+          -0.19690397381782498,
+          -0.462376058101654
+        ],
+        [
+          -0.20736627868294819,
+          -1.2629443270353216,
+          -0.025319950888748086,
+          0.1531956259470381,
+          -0.1917594447731974,
+          -0.45183021575212445
+        ],
+        [
+          -0.2368600943121726,
+          -1.3254211148564892,
+          -0.05289992912759958,
+          0.09660312985875963,
+          -0.17963910102844302,
+          -0.450756996870041
+        ],
+        [
+          -0.3157603176825883,
+          -1.1277317633175337,
+          -0.6349645612684861,
+          -1.033755517344384,
+          -0.05739429593086198,
+          -0.304547399282455
+        ],
+        [
+          -0.39762520545759655,
+          -0.950916845149944,
+          -0.38793341371016776,
+          -1.0436771232861488,
+          -0.07374309003353102,
+          -0.28540389239788
+        ]
+      ]
+    },
+    {
+      "id": "hook_right_hook_right_fixture_window_03",
+      "class_name": "hook_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml#window=3",
+      "provenance": {
+        "fixture_id": "boxing_guard->hook_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/hook_right_fixture/report.json",
+        "expected_event": "hook_right",
+        "window_index": 3,
+        "window_start_ms": 4000,
+        "window_end_ms": 4500,
+        "pose_samples_in_window": 15,
+        "pose_samples_used": 15,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          4022,
+          4059,
+          4096,
+          4130,
+          4161,
+          4178,
+          4215,
+          4246,
+          4279,
+          4312,
+          4365,
+          4386,
+          4432,
+          4466,
+          4486
+        ]
+      },
+      "samples": [
+        [
+          -0.1876907034361903,
+          -1.327824334130061,
+          -0.05249846960687258,
+          0.003917579465558337,
+          -0.1707363128662112,
+          -0.4420284628868102
+        ],
+        [
+          -0.27564357152450253,
+          -1.2065518905925843,
+          -0.19825003748421244,
+          -0.5787163307964713,
+          -0.172879502177239,
+          -0.48584775626659404
+        ],
+        [
+          -0.27564357152450253,
+          -1.2065518905925843,
+          -0.19825003748421244,
+          -0.5787163307964713,
+          -0.172879502177239,
+          -0.48584775626659404
+        ],
+        [
+          -0.40013730397989883,
+          -1.1891344113091857,
+          -0.24723558386615127,
+          -1.1759357475646302,
+          -0.13034611940383897,
+          -0.412461459636688
+        ],
+        [
+          -0.43338787056228567,
+          -0.7923435966681783,
+          0.3058712257364894,
+          -0.3067169136720992,
+          -0.197459995746612,
+          -0.323449790477752
+        ]
+      ]
+    },
+    {
+      "id": "hook_right_hook_right_fixture_window_04",
+      "class_name": "hook_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml#window=4",
+      "provenance": {
+        "fixture_id": "boxing_guard->hook_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/hook_right_fixture/report.json",
+        "expected_event": "hook_right",
+        "window_index": 4,
+        "window_start_ms": 5300,
+        "window_end_ms": 5900,
+        "pose_samples_in_window": 18,
+        "pose_samples_used": 18,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          5300,
+          5336,
+          5372,
+          5400,
+          5429,
+          5468,
+          5500,
+          5541,
+          5580,
+          5603,
+          5641,
+          5677,
+          5700,
+          5732,
+          5768,
+          5805,
+          5845,
+          5882
+        ]
+      },
+      "samples": [
+        [
+          -0.21592762865193538,
+          -1.3199440579082127,
+          -0.0398187866530072,
+          0.037991743195294816,
+          -0.18474271893501298,
+          -0.483851402997971
+        ],
+        [
+          -0.2106972576367278,
+          -1.303586055211703,
+          -0.01862659524743904,
+          0.034678381168358405,
+          -0.176725395023823,
+          -0.44613040238618895
+        ],
+        [
+          -0.1962244772308466,
+          -1.1596238723653072,
+          0.010295635349020496,
+          0.09615981614384944,
+          -0.17269810289144502,
+          -0.43175768107175805
+        ],
+        [
+          -0.16875788271107287,
+          -1.1622687642113623,
+          0.048644642586262915,
+          0.19270914966475913,
+          -0.17758227884769498,
+          -0.429693326354027
+        ],
+        [
+          -0.2534998796616978,
+          -1.3363826273830028,
+          0.00749278268726203,
+          -0.20364497497755513,
+          -0.198357090353966,
+          -0.476999953389168
+        ]
+      ]
+    },
+    {
+      "id": "uppercut_left_uppercut_left_fixture_window_01",
+      "class_name": "uppercut_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml#window=1",
+      "provenance": {
+        "fixture_id": "boxing_guard->uppercut_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/uppercut_left_fixture/report.json",
+        "expected_event": "uppercut_left",
+        "window_index": 1,
+        "window_start_ms": 900,
+        "window_end_ms": 1200,
+        "pose_samples_in_window": 8,
+        "pose_samples_used": 8,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          950,
+          961,
+          1021,
+          1050,
+          1095,
+          1128,
+          1157,
+          1173
+        ]
+      },
+      "samples": [
+        [
+          0.12231902742956771,
+          -1.2368668648589283,
+          -0.07750737321150501,
+          0.2050318972778698,
+          -0.2250770479440686,
+          -0.4883255511522296
+        ],
+        [
+          0.0868049637581439,
+          -1.525690903923863,
+          -0.07993058267040343,
+          -0.7786269310576861,
+          -0.15285612642765,
+          -0.421913430094719
+        ],
+        [
+          0.09936212322528942,
+          -1.145633024058952,
+          0.03255052421496243,
+          -1.5669010913337282,
+          -0.00822144746780401,
+          -0.18596673011779796
+        ],
+        [
+          0.09936212322528942,
+          -1.145633024058952,
+          0.03255052421496243,
+          -1.5669010913337282,
+          -0.00822144746780401,
+          -0.18596673011779796
+        ],
+        [
+          0.1165412791565218,
+          -1.0060362733125108,
+          -0.08056445580482718,
+          -1.702322940784058,
+          0.01865428686142001,
+          -0.09416255354881303
+        ]
+      ]
+    },
+    {
+      "id": "uppercut_left_uppercut_left_fixture_window_02",
+      "class_name": "uppercut_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml#window=2",
+      "provenance": {
+        "fixture_id": "boxing_guard->uppercut_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/uppercut_left_fixture/report.json",
+        "expected_event": "uppercut_left",
+        "window_index": 2,
+        "window_start_ms": 2900,
+        "window_end_ms": 3200,
+        "pose_samples_in_window": 9,
+        "pose_samples_used": 9,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          2904,
+          2949,
+          2983,
+          3011,
+          3049,
+          3082,
+          3103,
+          3151,
+          3184
+        ]
+      },
+      "samples": [
+        [
+          0.1276375699630989,
+          -1.4388724003091429,
+          -0.17077591679297555,
+          -0.4950994015877973,
+          -0.19405260682106001,
+          -0.491953879594803
+        ],
+        [
+          0.1276375699630989,
+          -1.4388724003091429,
+          -0.17077591679297555,
+          -0.4950994015877973,
+          -0.19405260682106001,
+          -0.491953879594803
+        ],
+        [
+          0.17652610348666323,
+          -1.4044941316240647,
+          -0.004584485922719381,
+          -1.1835716383133303,
+          -0.156764328479767,
+          -0.43624073266982993
+        ],
+        [
+          0.24171351104162866,
+          -1.068433437197898,
+          0.09783246256681263,
+          -1.6471429275040117,
+          0.01291269063949596,
+          -0.15048816800117504
+        ],
+        [
+          0.24171351104162866,
+          -1.068433437197898,
+          0.09783246256681263,
+          -1.6471429275040117,
+          0.01291269063949596,
+          -0.15048816800117504
+        ]
+      ]
+    },
+    {
+      "id": "uppercut_left_uppercut_left_fixture_window_03",
+      "class_name": "uppercut_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml#window=3",
+      "provenance": {
+        "fixture_id": "boxing_guard->uppercut_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/uppercut_left_fixture/report.json",
+        "expected_event": "uppercut_left",
+        "window_index": 3,
+        "window_start_ms": 4600,
+        "window_end_ms": 5400,
+        "pose_samples_in_window": 24,
+        "pose_samples_used": 24,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          4619,
+          4637,
+          4700,
+          4733,
+          4743,
+          4789,
+          4825,
+          4843,
+          4881,
+          4916,
+          4953,
+          4998,
+          5033,
+          5046,
+          5088,
+          5123,
+          5146,
+          5176,
+          5210,
+          5239,
+          5249,
+          5309,
+          5346,
+          5366
+        ]
+      },
+      "samples": [
+        [
+          0.07145141747391189,
+          -1.2406204815556925,
+          -0.24081660466393445,
+          0.29018660442969796,
+          -0.228860631585121,
+          -0.496326044201851
+        ],
+        [
+          0.20233744188364997,
+          -1.243719492988851,
+          -0.1370871491763256,
+          0.2779886315875535,
+          -0.25563944131135996,
+          -0.536738462746144
+        ],
+        [
+          0.1190817498520016,
+          -1.4752953049832591,
+          -0.045545448771283505,
+          -1.0348210905010113,
+          -0.153019547462464,
+          -0.432244062423706
+        ],
+        [
+          0.21569685626400215,
+          -1.0059775440308611,
+          0.03229584704533749,
+          -1.6124022824464126,
+          0.006021469831467008,
+          -0.15303182601928705
+        ],
+        [
+          -0.03391686975967409,
+          -1.4024058150595322,
+          -0.5689588110179064,
+          -0.025282133693637455,
+          -0.249044135212898,
+          -0.460505709052086
+        ]
+      ]
+    },
+    {
+      "id": "uppercut_left_uppercut_left_fixture_window_04",
+      "class_name": "uppercut_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml#window=4",
+      "provenance": {
+        "fixture_id": "boxing_guard->uppercut_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/uppercut_left_fixture/report.json",
+        "expected_event": "uppercut_left",
+        "window_index": 4,
+        "window_start_ms": 6000,
+        "window_end_ms": 7000,
+        "pose_samples_in_window": 31,
+        "pose_samples_used": 31,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          6020,
+          6056,
+          6073,
+          6112,
+          6148,
+          6173,
+          6222,
+          6257,
+          6276,
+          6314,
+          6350,
+          6381,
+          6398,
+          6433,
+          6463,
+          6487,
+          6534,
+          6569,
+          6588,
+          6625,
+          6661,
+          6687,
+          6712,
+          6748,
+          6776,
+          6788,
+          6851,
+          6914,
+          6937,
+          6972,
+          6993
+        ]
+      },
+      "samples": [
+        [
+          -0.008611103639614027,
+          -1.2276608907237427,
+          -0.3606022655481747,
+          0.36405344228747555,
+          -0.27518093585968,
+          -0.5145808756351471
+        ],
+        [
+          -0.0014916920221280593,
+          -1.1357553641958131,
+          -0.33186477322463614,
+          0.42389850081998803,
+          -0.283947490155696,
+          -0.534170947968959
+        ],
+        [
+          0.005575587174485761,
+          -1.2230517689436047,
+          -0.3201410575900556,
+          0.33073840271134297,
+          -0.28118544816970903,
+          -0.531367331743241
+        ],
+        [
+          0.16915626863017366,
+          -1.219098639277902,
+          -0.1630799803369903,
+          -0.019317024191776295,
+          -0.18833753466606096,
+          -0.425646930932998
+        ],
+        [
+          0.12484106644093527,
+          -1.4597770213016472,
+          -0.05858483568282696,
+          -1.0371142426107298,
+          -0.12343865633010798,
+          -0.34382861852645796
+        ]
+      ]
+    },
+    {
+      "id": "uppercut_right_uppercut_right_fixture_window_01",
+      "class_name": "uppercut_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml#window=1",
+      "provenance": {
+        "fixture_id": "boxing_guard->uppercut_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/uppercut_right_fixture/report.json",
+        "expected_event": "uppercut_right",
+        "window_index": 1,
+        "window_start_ms": 900,
+        "window_end_ms": 1150,
+        "pose_samples_in_window": 5,
+        "pose_samples_used": 5,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          969,
+          979,
+          1038,
+          1057,
+          1124
+        ]
+      },
+      "samples": [
+        [
+          -0.18595235131568746,
+          -1.2272090417983998,
+          -0.08987870690775585,
+          0.11175406131317321,
+          -0.1904926523566248,
+          -0.46798776835203176
+        ],
+        [
+          -0.214093948987604,
+          -1.4210817863189686,
+          -0.16958099248731445,
+          -0.09185023042776475,
+          -0.1928452979773286,
+          -0.49149460904300163
+        ],
+        [
+          -0.214093948987604,
+          -1.4210817863189686,
+          -0.16958099248731445,
+          -0.09185023042776475,
+          -0.1928452979773286,
+          -0.49149460904300163
+        ],
+        [
+          -0.1322540107922972,
+          -1.3703237956846586,
+          -0.5113515409022626,
+          -1.3911367770398186,
+          -0.07742546871304481,
+          -0.3759467639029028
+        ],
+        [
+          -0.1322540107922972,
+          -1.3703237956846586,
+          -0.5113515409022626,
+          -1.3911367770398186,
+          -0.07742546871304481,
+          -0.3759467639029028
+        ]
+      ]
+    },
+    {
+      "id": "uppercut_right_uppercut_right_fixture_window_02",
+      "class_name": "uppercut_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml#window=2",
+      "provenance": {
+        "fixture_id": "boxing_guard->uppercut_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/uppercut_right_fixture/report.json",
+        "expected_event": "uppercut_right",
+        "window_index": 2,
+        "window_start_ms": 2000,
+        "window_end_ms": 3000,
+        "pose_samples_in_window": 33,
+        "pose_samples_used": 33,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          2008,
+          2043,
+          2066,
+          2094,
+          2130,
+          2157,
+          2171,
+          2211,
+          2245,
+          2272,
+          2314,
+          2348,
+          2374,
+          2396,
+          2433,
+          2461,
+          2472,
+          2515,
+          2548,
+          2574,
+          2615,
+          2648,
+          2678,
+          2695,
+          2729,
+          2759,
+          2795,
+          2818,
+          2851,
+          2898,
+          2931,
+          2964,
+          2991
+        ]
+      },
+      "samples": [
+        [
+          -0.1132835866169182,
+          -1.2366226832893523,
+          0.06685594685594408,
+          0.3110704644037918,
+          -0.271089538931847,
+          -0.577620849013329
+        ],
+        [
+          -0.12957893226024086,
+          -1.1411625502835911,
+          0.06790775832904924,
+          0.31439807482316423,
+          -0.268230095505714,
+          -0.552478745579719
+        ],
+        [
+          -0.15541698375839003,
+          -1.1785891682219753,
+          0.016741264836873906,
+          0.23562110328184838,
+          -0.250459179282188,
+          -0.542026743292808
+        ],
+        [
+          -0.1598258985601902,
+          -1.2125086462659882,
+          -0.09688613542700567,
+          0.15632746155142382,
+          -0.21754101663827907,
+          -0.5036271885037421
+        ],
+        [
+          -0.14818055364676577,
+          -2.144962319185371,
+          -0.811952781684314,
+          -1.4990014985317783,
+          -0.1297055222094059,
+          -0.4260902889072896
+        ]
+      ]
+    },
+    {
+      "id": "uppercut_right_uppercut_right_fixture_window_03",
+      "class_name": "uppercut_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml#window=3",
+      "provenance": {
+        "fixture_id": "boxing_guard->uppercut_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/uppercut_right_fixture/report.json",
+        "expected_event": "uppercut_right",
+        "window_index": 3,
+        "window_start_ms": 3900,
+        "window_end_ms": 4650,
+        "pose_samples_in_window": 24,
+        "pose_samples_used": 24,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          3901,
+          3923,
+          3952,
+          3986,
+          4015,
+          4027,
+          4088,
+          4122,
+          4130,
+          4175,
+          4209,
+          4232,
+          4267,
+          4298,
+          4343,
+          4380,
+          4414,
+          4444,
+          4481,
+          4515,
+          4531,
+          4565,
+          4604,
+          4646
+        ]
+      },
+      "samples": [
+        [
+          -0.18057005240165916,
+          -1.1328256342108474,
+          0.02125663213640553,
+          0.38252782302068256,
+          -0.271678283810615,
+          -0.586452916264534
+        ],
+        [
+          -0.18332674023653645,
+          -1.1712241706648923,
+          0.027537029849156396,
+          0.2887234896537969,
+          -0.258421242237091,
+          -0.554300993680954
+        ],
+        [
+          -0.18919787561701762,
+          -1.25391622648185,
+          -0.03137211169505964,
+          0.24186279591419882,
+          -0.24132947623729703,
+          -0.53852815926075
+        ],
+        [
+          0.04547088375899944,
+          -1.2148022650419872,
+          -0.3688065258204237,
+          -1.2424983617707825,
+          -0.09033802151679998,
+          -0.41257146000862105
+        ],
+        [
+          -0.08218819952476514,
+          -1.482323377368057,
+          0.05725862272062323,
+          -0.7860680974537233,
+          -0.18346574902534502,
+          -0.498864740133286
+        ]
+      ]
+    },
+    {
+      "id": "uppercut_right_uppercut_right_fixture_window_04",
+      "class_name": "uppercut_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml#window=4",
+      "provenance": {
+        "fixture_id": "boxing_guard->uppercut_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
+        "capture_report_path": "docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/uppercut_right_fixture/report.json",
+        "expected_event": "uppercut_right",
+        "window_index": 4,
+        "window_start_ms": 5700,
+        "window_end_ms": 6450,
+        "pose_samples_in_window": 22,
+        "pose_samples_used": 20,
+        "pose_samples_rejected": 2,
+        "pose_sample_timestamps_ms": [
+          5713,
+          5749,
+          5760,
+          5805,
+          5842,
+          5973,
+          5994,
+          6033,
+          6063,
+          6085,
+          6122,
+          6151,
+          6193,
+          6254,
+          6282,
+          6322,
+          6357,
+          6374,
+          6413,
+          6449
+        ]
+      },
+      "samples": [
+        [
+          -0.16063643413079134,
+          -1.3308825641172943,
+          -0.15896629060935974,
+          -0.01973112903352373,
+          -0.20535066723823522,
+          -0.5208973288536072
+        ],
+        [
+          0.0703625851745766,
+          -1.726122405670282,
+          -0.2876956468848855,
+          -1.431357356755069,
+          -0.11797142028808599,
+          -0.370554238557816
+        ],
+        [
+          0.002612393065363304,
+          -1.3167892768835638,
+          -0.22829821428468808,
+          -1.0589544275303815,
+          -0.176856398582459,
+          -0.483524739742279
+        ],
+        [
+          -0.0011252482819320644,
+          -1.2910559019635794,
+          0.23049017349155657,
+          -0.03166149899788247,
+          -0.197581693530083,
+          -0.426999047398567
+        ],
+        [
+          -0.07664249230679487,
+          -1.4056365295215214,
+          0.2507529035706593,
+          -0.06150307388172187,
+          -0.253371581435203,
+          -0.5038519054651259
+        ]
+      ]
+    }
+  ]
+}

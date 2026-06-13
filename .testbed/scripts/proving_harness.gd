@@ -1172,19 +1172,26 @@ func _build_runtime_config() -> Variant:
 func _apply_runtime_gesture_backend_override(config) -> void:
 	if config == null:
 		return
-	var backend_override := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE").strip_edges().to_lower()
-	if backend_override.is_empty():
-		return
 	var gesture_profile: Dictionary = config.gesture_profile_document.duplicate(true) if config.get("gesture_profile_document") is Dictionary else {}
-	var punch_detection: Dictionary = gesture_profile.get("punch_detection", {}) if gesture_profile.get("punch_detection", {}) is Dictionary else {}
-	if backend_override == "prototype_matcher":
-		punch_detection["backend"] = "prototype_matcher"
-		gesture_profile["punch_detection"] = punch_detection
-		var threshold_gates: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
-		threshold_gates["enabled"] = false
-		gesture_profile["threshold_gates"] = threshold_gates
+	var backend_override := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE").strip_edges().to_lower()
+	if not backend_override.is_empty():
+		var punch_detection: Dictionary = gesture_profile.get("punch_detection", {}) if gesture_profile.get("punch_detection", {}) is Dictionary else {}
+		if backend_override == "prototype_matcher":
+			punch_detection["backend"] = "prototype_matcher"
+			gesture_profile["punch_detection"] = punch_detection
+			var threshold_gates: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
+			threshold_gates["enabled"] = false
+			gesture_profile["threshold_gates"] = threshold_gates
+			var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
+			matcher_config["enabled"] = true
+			gesture_profile["prototype_matcher"] = matcher_config
+	var library_id_override := OS.get_environment("AEROBEAT_PROTOTYPE_LIBRARY_ID_OVERRIDE").strip_edges()
+	if not library_id_override.is_empty():
 		var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
 		matcher_config["enabled"] = true
+		var prototype_library: Dictionary = matcher_config.get("prototype_library", {}) if matcher_config.get("prototype_library", {}) is Dictionary else {}
+		prototype_library["library_id"] = library_id_override
+		matcher_config["prototype_library"] = prototype_library
 		gesture_profile["prototype_matcher"] = matcher_config
 	config.gesture_profile_document = gesture_profile
 
@@ -2692,6 +2699,15 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 		},
 	}
 
+func _build_fixture_pose_snapshot() -> Dictionary:
+	return {
+		"frame_index": int(_latest_state.get("frame_index", -1)),
+		"timestamp_ms": int(_latest_state.get("timestamp_ms", 0)),
+		"tracking_state": String(_latest_state.get("tracking_state", "lost")),
+		"landmarks_by_id": (_latest_state.get("landmarks_by_id", {}) as Dictionary).duplicate(true),
+		"metrics": (_latest_state.get("metrics", {}) as Dictionary).duplicate(true),
+	}
+
 func _record_fixture_state_snapshot(reason: String) -> void:
 	var is_pose_snapshot := reason == "pose_updated"
 	if is_pose_snapshot:
@@ -2701,7 +2717,7 @@ func _record_fixture_state_snapshot(reason: String) -> void:
 			return
 	_fixture_state_sequence += 1
 	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
-	_fixture_state_timeline.append({
+	var snapshot := {
 		"sequence": _fixture_state_sequence,
 		"timestamp_ms": _fixture_relative_ms(),
 		"reason": reason,
@@ -2713,7 +2729,10 @@ func _record_fixture_state_snapshot(reason: String) -> void:
 		"prototype_matcher": (gesture_debug.get("prototype_matcher", {}) as Dictionary).duplicate(true),
 		"boxing_debug": _build_fixture_boxing_debug_snapshot(),
 		"latest_event": _latest_event_name(),
-	})
+	}
+	if is_pose_snapshot:
+		snapshot["pose_snapshot"] = _build_fixture_pose_snapshot()
+	_fixture_state_timeline.append(snapshot)
 	if is_pose_snapshot:
 		_fixture_pose_state_snapshots_retained += 1
 		_prune_fixture_pose_state_timeline_if_needed()
