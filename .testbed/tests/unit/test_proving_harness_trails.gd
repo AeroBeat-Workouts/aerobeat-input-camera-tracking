@@ -736,7 +736,7 @@ func test_profile_declared_removed_smoothing_style_falls_back_to_hidden_scene_de
 	}
 	harness.fake_singleton = tracking_singleton
 	var spec := harness._tracking_smoothing_style_spec()
-	assert_eq(String(spec.get("label", "")), "Lite + One-Euro")
+	assert_eq(String(spec.get("label", "")), "Lite + filtered")
 	assert_false(bool(spec.get("no_filter", true)))
 
 func test_camera_picker_accepts_camera_id_only_device_entries() -> void:

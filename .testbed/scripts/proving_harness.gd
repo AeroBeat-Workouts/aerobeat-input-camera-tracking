@@ -2983,7 +2983,7 @@ func _tracking_smoothing_style_spec() -> Dictionary:
 		"lite_raw":
 			return {"label": "Lite + raw", "model_complexity": 0, "no_filter": true}
 		_:
-			return {"label": "Lite + One-Euro", "model_complexity": 0, "no_filter": false}
+			return {"label": "Lite + filtered", "model_complexity": 0, "no_filter": false}
 
 func _apply_tracking_smoothing_style_to_autostart_manager() -> void:
 	if auto_start_manager == null:
