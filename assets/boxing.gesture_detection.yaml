@@ -1,6 +1,14 @@
 schema: aerobeat/gesture_detection_config
 version: 1
 profile: boxing
+punch_detection:
+  # Pick which punch-detection family is active for boxing. input.
+  backend: threshold_gates
+
+threshold_gates:
+  # Keep the current threshold-gate straight/hook/uppercut detector active. input.
+  enabled: true
+
 guard:
   # Turn pose-only guard detection on or off. input.
   enabled: true
@@ -145,3 +153,13 @@ prototype_matcher:
   thresholds:
     # Require the best positive-class match score to reach at least this 0..1 value or emit no_punch. input.
     match_score_min: 0.70
+  timing:
+    # After a punch event fires, suppress duplicate re-fires for this long. input.
+    emit_cooldown_ms: 250
+    # Keep the current confident event active for this long before allowing a new event. input.
+    emit_hold_ms: 100
+  debug:
+    # Show per-class match scores in proving/debug views. input presentation.
+    show_scores: true
+    # Show duplicate-suppression / hold state in proving/debug views. input presentation.
+    show_event_gate_state: true

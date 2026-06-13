@@ -52,6 +52,8 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_target_labels", true)))
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("debug_panel_refresh_interval_ms", -1)), 160)
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
+	assert_eq(String(bundle.get("gesture_detection", {}).get("punch_detection", {}).get("backend", "")), "threshold_gates")
+	assert_true(bool(bundle.get("gesture_detection", {}).get("threshold_gates", {}).get("enabled", false)))
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).get("window_ms", -1)), 250)
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).has("wrist_velocity_window_ms"))
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).has("bbox_area_growth_window_ms"))
@@ -70,6 +72,10 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("evaluation", {}).get("window_ms", -1)), 250)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("evaluation", {}).get("window_step_ms", -1)), 33)
 	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("thresholds", {}).get("match_score_min", -1.0)), 0.70))
+	assert_eq(int(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("timing", {}).get("emit_cooldown_ms", -1)), 250)
+	assert_eq(int(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("timing", {}).get("emit_hold_ms", -1)), 100)
+	assert_true(bool(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("debug", {}).get("show_scores", false)))
+	assert_true(bool(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("debug", {}).get("show_event_gate_state", false)))
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	var config = CameraTrackingConfigScript.new()

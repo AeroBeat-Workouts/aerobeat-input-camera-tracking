@@ -1521,6 +1521,96 @@ func test_detects_knee_and_leg_lift_events_with_reset_behavior() -> void:
 	var leg_lift_end_state := substrate.process_landmarks(_make_pose_frame(), 1700)
 	assert_eq(_event_names(leg_lift_end_state.get("events", [])), ["leg_lift_right_end"])
 
+func test_prototype_matcher_backend_emits_side_aware_straight_and_surfaces_debug_state() -> void:
+	_enable_prototype_matcher_backend({
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 250,
+		"emit_hold_ms": 100,
+	})
+	_calibrate_stance()
+	var timestamps := [1100, 1165, 1230, 1295, 1350]
+	var left_sequence := [
+		{"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00},
+		{"elbow_x": 0.336, "elbow_y": 0.66, "wrist_x": 0.276, "wrist_y": 0.60, "elbow_z": -0.02, "wrist_z": -0.05},
+		{"elbow_x": 0.328, "elbow_y": 0.656, "wrist_x": 0.268, "wrist_y": 0.60, "elbow_z": -0.04, "wrist_z": -0.10},
+		{"elbow_x": 0.316, "elbow_y": 0.65, "wrist_x": 0.260, "wrist_y": 0.60, "elbow_z": -0.06, "wrist_z": -0.15},
+		{"elbow_x": 0.308, "elbow_y": 0.644, "wrist_x": 0.252, "wrist_y": 0.60, "elbow_z": -0.08, "wrist_z": -0.20},
+	]
+	var state: Dictionary = {}
+	for idx in range(timestamps.size()):
+		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(timestamps[idx]))
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	var gesture_debug: Dictionary = state.get("gesture_debug", {})
+	assert_eq(String(gesture_debug.get("punch_detection", {}).get("backend", "")), "prototype_matcher")
+	var matcher_debug: Dictionary = gesture_debug.get("prototype_matcher", {})
+	assert_eq(String(matcher_debug.get("result_class", "")), "straight_left")
+	assert_eq(String(matcher_debug.get("reason", "")), "emitted")
+	assert_eq(String(matcher_debug.get("library_id", "")), "boxing_side_aware_v1")
+	assert_true(float(matcher_debug.get("best_score", 0.0)) >= 0.70)
+	assert_eq(String(matcher_debug.get("emitted_event_name", "")), "punch_left")
+	assert_true(bool(matcher_debug.get("emitted", false)))
+
+func test_prototype_matcher_backend_rejects_no_punch_when_threshold_is_not_met() -> void:
+	_enable_prototype_matcher_backend({
+		"match_score_min": 0.99,
+		"emit_cooldown_ms": 250,
+		"emit_hold_ms": 100,
+	})
+	_calibrate_stance()
+	var timestamps := [1100, 1165, 1230, 1295, 1350]
+	var left_sequence := [
+		{"elbow_x": 0.344, "elbow_y": 0.664, "wrist_x": 0.286, "wrist_y": 0.620, "elbow_z": 0.00, "wrist_z": 0.00},
+		{"elbow_x": 0.340, "elbow_y": 0.664, "wrist_x": 0.282, "wrist_y": 0.622, "elbow_z": -0.01, "wrist_z": -0.03},
+		{"elbow_x": 0.334, "elbow_y": 0.660, "wrist_x": 0.276, "wrist_y": 0.624, "elbow_z": -0.02, "wrist_z": -0.05},
+		{"elbow_x": 0.326, "elbow_y": 0.656, "wrist_x": 0.270, "wrist_y": 0.626, "elbow_z": -0.03, "wrist_z": -0.07},
+		{"elbow_x": 0.320, "elbow_y": 0.652, "wrist_x": 0.264, "wrist_y": 0.628, "elbow_z": -0.04, "wrist_z": -0.09},
+	]
+	var state: Dictionary = {}
+	for idx in range(timestamps.size()):
+		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(timestamps[idx]))
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype_matcher", {})
+	assert_eq(String(matcher_debug.get("result_class", "")), "no_punch")
+	assert_eq(String(matcher_debug.get("reason", "")), "below_threshold")
+	assert_eq(String(matcher_debug.get("best_class", "")), "straight_left")
+	assert_true(float(matcher_debug.get("best_score", 0.0)) < 0.99)
+
+func test_prototype_matcher_backend_applies_emit_cooldown_and_hold_without_spam() -> void:
+	_enable_prototype_matcher_backend({
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 250,
+		"emit_hold_ms": 100,
+	})
+	_calibrate_stance()
+	var timestamps := [1100, 1165, 1230, 1295, 1350]
+	var left_sequence := [
+		{"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00},
+		{"elbow_x": 0.336, "elbow_y": 0.66, "wrist_x": 0.276, "wrist_y": 0.60, "elbow_z": -0.02, "wrist_z": -0.05},
+		{"elbow_x": 0.328, "elbow_y": 0.656, "wrist_x": 0.268, "wrist_y": 0.60, "elbow_z": -0.04, "wrist_z": -0.10},
+		{"elbow_x": 0.316, "elbow_y": 0.65, "wrist_x": 0.260, "wrist_y": 0.60, "elbow_z": -0.06, "wrist_z": -0.15},
+		{"elbow_x": 0.308, "elbow_y": 0.644, "wrist_x": 0.252, "wrist_y": 0.60, "elbow_z": -0.08, "wrist_z": -0.20},
+	]
+	var state: Dictionary = {}
+	for idx in range(timestamps.size()):
+		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(timestamps[idx]))
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[left_sequence.size() - 1]), 1420)
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype_matcher", {})
+	assert_eq(String(matcher_debug.get("reason", "")), "emit_hold_active")
+	assert_true(int(matcher_debug.get("hold_ms_remaining", 0)) > 0)
+	state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[left_sequence.size() - 1]), 1490)
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	matcher_debug = state.get("gesture_debug", {}).get("prototype_matcher", {})
+	assert_eq(String(matcher_debug.get("reason", "")), "emit_cooldown_active")
+	assert_true(int(matcher_debug.get("cooldown_ms_remaining", 0)) > 0)
+	var replay_times := [1660, 1725, 1790, 1855, 1910]
+	for idx in range(replay_times.size()):
+		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(replay_times[idx]))
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	matcher_debug = state.get("gesture_debug", {}).get("prototype_matcher", {})
+	assert_eq(String(matcher_debug.get("reason", "")), "emitted")
+
 func _calibrate_stance() -> void:
 	for idx in range(5):
 		var state := substrate.process_landmarks(_make_pose_frame(), 1000 + idx * 16)
@@ -1633,6 +1723,45 @@ func _disable_hand_tracking_for_straight_punch() -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
+func _enable_prototype_matcher_backend(options: Dictionary = {}) -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"punch_detection": {
+			"backend": "prototype_matcher",
+		},
+		"threshold_gates": {
+			"enabled": true,
+		},
+		"prototype_matcher": {
+			"enabled": true,
+			"prototype_library": {
+				"library_id": "boxing_side_aware_v1",
+			},
+			"evaluation": {
+				"window_ms": int(options.get("window_ms", 250)),
+				"window_step_ms": int(options.get("window_step_ms", 33)),
+			},
+			"thresholds": {
+				"match_score_min": float(options.get("match_score_min", 0.70)),
+			},
+			"timing": {
+				"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
+				"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
+			},
+			"debug": {
+				"show_scores": true,
+				"show_event_gate_state": true,
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+
 func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0, frame_index: int = 1, timestamp_seconds: float = 0.0, fresh_sample: Variant = null, sample_source: String = "", stable_ms: int = -1) -> Dictionary:
 	var physical_bbox_area := maxf(0.10 - bbox_area, 0.0)
 	var width := 0.10
@@ -1705,6 +1834,22 @@ func _tracked_hand_payload_physical(side: String, bbox_area: float, tracking_sta
 	if sample_source != "":
 		payload["sample_source"] = sample_source
 	return payload
+
+func _prototype_pose_frame(side: String, sample: Dictionary) -> Array:
+	var overrides := {}
+	var elbow_id := PoseLandmarkIds.LEFT_ELBOW if side == "left" else PoseLandmarkIds.RIGHT_ELBOW
+	var wrist_id := PoseLandmarkIds.LEFT_WRIST if side == "left" else PoseLandmarkIds.RIGHT_WRIST
+	overrides[elbow_id] = {
+		"x": float(sample.get("elbow_x", 0.0)),
+		"y": float(sample.get("elbow_y", 0.0)),
+		"z": float(sample.get("elbow_z", 0.0)),
+	}
+	overrides[wrist_id] = {
+		"x": float(sample.get("wrist_x", 0.0)),
+		"y": float(sample.get("wrist_y", 0.0)),
+		"z": float(sample.get("wrist_z", 0.0)),
+	}
+	return _make_pose_frame(overrides)
 
 func _make_pose_frame(overrides: Dictionary = {}, center_x: float = 0.50, height_scale: float = 1.0, visibility: float = 0.99, knee_visibility: float = 0.99) -> Array:
 	var shoulder_y := 0.70

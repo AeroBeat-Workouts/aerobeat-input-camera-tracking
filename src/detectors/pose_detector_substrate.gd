@@ -1,6 +1,7 @@
 class_name PoseDetectorSubstrate
 extends RefCounted
 
+const PrototypePunchMatcher = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd")
 
 const TRACKING_TRACKING := &"tracking"
 const TRACKING_DEGRADED := &"degraded"
@@ -73,6 +74,7 @@ const FLOW_RING_START_ANGLE_DEGREES := 60.0
 
 var _config = null
 var _smoother: LandmarkSmoother = LandmarkSmoother.new()
+var _prototype_punch_matcher: PrototypePunchMatcher = PrototypePunchMatcher.new()
 var _latest_state: Dictionary = {}
 var _baseline_accumulator := {
 	"frames": 0,
@@ -111,12 +113,14 @@ var _frame_index := 0
 
 func _init() -> void:
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
+	_prototype_punch_matcher = PrototypePunchMatcher.new()
 	_latest_state = _build_empty_state()
 	_reset_gesture_state()
 
 func configure(config) -> PoseDetectorSubstrate:
 	_config = config
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
+	_prototype_punch_matcher.configure(config)
 	return self
 
 func reset() -> void:
@@ -129,6 +133,7 @@ func reset() -> void:
 	_frame_index = 0
 	_reset_baseline_calibration()
 	_reset_gesture_state()
+	_prototype_punch_matcher.reset()
 	_latest_state = _build_empty_state()
 
 func request_athlete_recalibration() -> void:
@@ -576,10 +581,20 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		"guard": _build_guard_debug_state(),
 		"squat": _build_squat_debug_state(metrics),
 		"weave": _build_weave_debug_state(metrics),
+		"punch_detection": _build_punch_detection_debug_state(),
 		"straight_punch": _build_straight_punch_debug_state(metrics),
 		"hook": _build_pose_strike_debug_state("hook", metrics),
 		"uppercut": _build_pose_strike_debug_state("uppercut", metrics),
+		"prototype_matcher": _prototype_punch_matcher.get_debug_state(),
 		"flow": _build_flow_debug_state(metrics),
+	}
+
+func _build_punch_detection_debug_state() -> Dictionary:
+	return {
+		"backend": _get_active_punch_detection_backend(),
+		"selected_backend": _get_selected_punch_detection_backend(),
+		"threshold_gates_enabled": _threshold_gates_backend_enabled(),
+		"prototype_matcher_enabled": _prototype_matcher_backend_enabled(),
 	}
 
 func _build_guard_debug_state() -> Dictionary:
@@ -934,6 +949,7 @@ func _should_evaluate_gestures_this_frame() -> bool:
 
 func _clear_transient_gesture_state() -> void:
 	_reset_gesture_state()
+	_prototype_punch_matcher.reset()
 
 func _reset_temporal_runtime_state_for_timestamp_rewind() -> void:
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
@@ -988,12 +1004,16 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if right_foot_confidence >= lower_body_confidence_gate:
 		_process_knee(events, "right", float(measurements.get("right_knee_rise", 0.0)), float(measurements.get("right_foot_rise", 0.0)), float(measurements.get("left_knee_rise", 0.0)), right_hip, right_ankle, torso_height)
 		_process_leg_lift(events, "right", float(measurements.get("right_leg_angle_from_core_deg", 0.0)), right_hip, right_ankle, torso_height)
-	_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
-	_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
-	_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-	_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-	_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-	_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+	var punch_backend := _get_active_punch_detection_backend()
+	if punch_backend == "prototype_matcher":
+		events.append_array(_prototype_punch_matcher.process_window(landmarks_by_id, metrics, timestamp_ms))
+	elif punch_backend == "threshold_gates":
+		_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
+		_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
+		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
 	if not _has_any_event(events, ["punch_left", "hook_left", "uppercut_left"]):
 		_process_flow_trail(events, "left", left_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
 		_process_flow_swing(events, "left", left_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
@@ -1835,6 +1855,40 @@ func _set_straight_punch_state(side: String, state: Dictionary) -> void:
 	straight_punch[side] = state.duplicate(true)
 	_gesture_state["straight_punch"] = straight_punch
 	_set_ready("punch_%s" % side, String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)) == STRAIGHT_PUNCH_STATE_READY)
+
+
+func _get_selected_punch_detection_backend() -> String:
+	if _config == null:
+		return "threshold_gates"
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return "threshold_gates"
+	var punch_detection: Dictionary = gesture_profile_document.get("punch_detection", {}) if gesture_profile_document.get("punch_detection", {}) is Dictionary else {}
+	return String(punch_detection.get("backend", "threshold_gates"))
+
+func _threshold_gates_backend_enabled() -> bool:
+	if _config == null:
+		return true
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return true
+	var threshold_gates: Dictionary = gesture_profile_document.get("threshold_gates", {}) if gesture_profile_document.get("threshold_gates", {}) is Dictionary else {}
+	return bool(threshold_gates.get("enabled", true))
+
+func _prototype_matcher_backend_enabled() -> bool:
+	if _config == null:
+		return false
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return false
+	var matcher: Dictionary = gesture_profile_document.get("prototype_matcher", {}) if gesture_profile_document.get("prototype_matcher", {}) is Dictionary else {}
+	return bool(matcher.get("enabled", false))
+
+func _get_active_punch_detection_backend() -> String:
+	var selected_backend := _get_selected_punch_detection_backend()
+	if selected_backend == "prototype_matcher":
+		return "prototype_matcher" if _prototype_matcher_backend_enabled() else "none"
+	return "threshold_gates" if _threshold_gates_backend_enabled() else "none"
 
 func _get_guard_config() -> Dictionary:
 	var config := {

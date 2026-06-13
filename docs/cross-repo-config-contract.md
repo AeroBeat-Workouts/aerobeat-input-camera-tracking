@@ -178,6 +178,10 @@ Flow keeps the committed live-camera tracker surface only for now and may omit `
 schema: aerobeat/gesture_detection_config
 version: 1
 profile: boxing|flow
+punch_detection:
+  backend: threshold_gates|prototype_matcher|learned_classifier
+threshold_gates:
+  enabled: true|false
 straight_punch:
   enabled: true|false
   evaluation:
@@ -203,10 +207,18 @@ prototype_matcher:
     window_step_ms: 33
   thresholds:
     match_score_min: 0.70
+  timing:
+    emit_cooldown_ms: 250
+    emit_hold_ms: 100
+  debug:
+    show_scores: true|false
+    show_event_gate_state: true|false
 ```
 
 ### Locked gesture field ownership
 
+- `punch_detection.backend` = public boxing punch-backend selector owned by `aerobeat-input-camera-tracking`
+- `threshold_gates.enabled` = public on/off wrapper for the legacy threshold backend owned by `aerobeat-input-camera-tracking`
 - `straight_punch.*` = boxing gameplay interpretation owned by `aerobeat-input-camera-tracking`
 - `straight_punch.evaluation.*` = event evaluation policy owned by `aerobeat-input-camera-tracking`
 - `straight_punch.thresholds.*` = gameplay tuning owned by `aerobeat-input-camera-tracking`
@@ -217,11 +229,17 @@ prototype_matcher:
 - `prototype_matcher.evaluation.window_ms` = public prototype-matcher evaluation window owned by `aerobeat-input-camera-tracking`
 - `prototype_matcher.evaluation.window_step_ms` = public prototype-matcher evaluation cadence owned by `aerobeat-input-camera-tracking`
 - `prototype_matcher.thresholds.match_score_min` = public prototype-matcher rejection threshold owned by `aerobeat-input-camera-tracking`
+- `prototype_matcher.timing.emit_cooldown_ms` = public duplicate-suppression cooldown owned by `aerobeat-input-camera-tracking`
+- `prototype_matcher.timing.emit_hold_ms` = public event-hold gate owned by `aerobeat-input-camera-tracking`
+- `prototype_matcher.debug.show_scores` = public proving/debug visibility flag owned by `aerobeat-input-camera-tracking`
+- `prototype_matcher.debug.show_event_gate_state` = public proving/debug visibility flag owned by `aerobeat-input-camera-tracking`
 
 ### Locked gesture defaults by profile
 
 #### Boxing gesture defaults
 
+- `punch_detection.backend: threshold_gates`
+- `threshold_gates.enabled: true`
 - `straight_punch.enabled: true`
 - `straight_punch.evaluation.fresh_samples_only: true`
 - `straight_punch.evaluation.sample_window_size: 4`
@@ -237,6 +255,10 @@ prototype_matcher:
 - `prototype_matcher.evaluation.window_ms: 250`
 - `prototype_matcher.evaluation.window_step_ms: 33`
 - `prototype_matcher.thresholds.match_score_min: 0.70`
+- `prototype_matcher.timing.emit_cooldown_ms: 250`
+- `prototype_matcher.timing.emit_hold_ms: 100`
+- `prototype_matcher.debug.show_scores: true`
+- `prototype_matcher.debug.show_event_gate_state: true`
 
 #### Flow gesture defaults
 
