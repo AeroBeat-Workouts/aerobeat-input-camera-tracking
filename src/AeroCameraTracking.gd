@@ -546,8 +546,8 @@ func _coerce_runtime_config(config_variant: Variant):
 		config = config_script.new()
 		if config_variant is Dictionary:
 			_apply_dictionary_config(config, config_variant)
-	if config != null and config.has_method("load_selected_profile_bundle"):
-		var profile_result: Variant = config.load_selected_profile_bundle()
+	if config != null and config.has_method("get_selected_profile_bundle"):
+		var profile_result: Variant = config.get_selected_profile_bundle()
 		if not (profile_result is Dictionary) or not bool(profile_result.get("ok", false)):
 			push_error("[AeroCameraTracking] Failed to load selected profile bundle")
 			return null

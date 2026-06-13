@@ -199,6 +199,19 @@ func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
 	assert_true(bool(bundle.get("ok", false)))
 	assert_eq(String(bundle.get("profile", "")), "flow")
 
+func test_proving_runtime_config_can_force_prototype_matcher_backend_for_fixture_benchmarks() -> void:
+	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "prototype_matcher")
+	var harness: Variant = ProvingHarnessScript.new()
+	var config: Variant = harness._build_runtime_config()
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
+
+	assert_not_null(config)
+	var gesture_profile: Dictionary = config.gesture_profile_document
+	assert_eq(String(gesture_profile.get("punch_detection", {}).get("backend", "")), "prototype_matcher")
+	assert_true(bool(gesture_profile.get("prototype_matcher", {}).get("enabled", false)))
+	assert_false(bool(gesture_profile.get("threshold_gates", {}).get("enabled", true)))
+
 func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	var harness: Variant = _new_harness()
 	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())

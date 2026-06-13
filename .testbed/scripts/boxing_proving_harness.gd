@@ -2333,6 +2333,7 @@ func _build_runtime_config() -> Variant:
 		var result: Variant = config.set_profile_id(_selected_profile_id)
 		if result is Dictionary and not bool(result.get("ok", false)):
 			push_warning("[BoxingProvingHarness] Failed to load selected profile bundle for %s" % _selected_profile_id)
+	_apply_runtime_gesture_backend_override(config)
 	return config
 
 func _tracker_hand_debug_snapshot() -> Dictionary:

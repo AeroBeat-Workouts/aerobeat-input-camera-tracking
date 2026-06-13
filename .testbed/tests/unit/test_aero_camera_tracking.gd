@@ -1,6 +1,7 @@
 extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const AeroCameraTrackingScript = preload("res://addons/aerobeat-input-camera-tracking/src/AeroCameraTracking.gd")
+const CameraTrackingConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd")
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 const CameraTrackingBackendRegistryScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingBackendRegistry.gd")
@@ -254,6 +255,23 @@ func test_aero_camera_tracking_starts_replay_sources_through_camera_tracking_con
 	assert_eq(String(source.get("kind", "")), "video_file")
 	assert_eq(String(source.get("path", "")), "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
 	assert_true(bool(vendor_source.get("loop", false)))
+
+func test_aero_camera_tracking_coerce_runtime_config_preserves_preloaded_profile_overrides() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var config := CameraTrackingConfigScript.new()
+	assert_true(bool(config.set_profile_id("boxing").get("ok", false)))
+	var gesture_profile: Dictionary = config.gesture_profile_document.duplicate(true)
+	gesture_profile["punch_detection"] = {"backend": "prototype_matcher"}
+	gesture_profile["threshold_gates"] = {"enabled": false}
+	gesture_profile["prototype_matcher"] = {"enabled": true}
+	config.gesture_profile_document = gesture_profile
+
+	var coerced: Variant = singleton._coerce_runtime_config(config)
+	assert_not_null(coerced)
+	var bundle: Dictionary = coerced.get_selected_profile_bundle()
+	assert_eq(String(bundle.get("gesture_detection", {}).get("punch_detection", {}).get("backend", "")), "prototype_matcher")
+	assert_true(bool(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("enabled", false)))
+	assert_false(bool(bundle.get("gesture_detection", {}).get("threshold_gates", {}).get("enabled", true)))
 
 func test_aero_camera_tracking_replay_loop_override_is_respected() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())

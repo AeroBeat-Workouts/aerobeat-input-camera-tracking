@@ -63,3 +63,25 @@ func test_fixture_state_timeline_full_mode_keeps_all_pose_snapshots_explicitly()
 	var report: Dictionary = harness.get_fixture_capture_report()
 	var capture_state: Dictionary = report.get("state_timeline_capture", {})
 	assert_eq(String(capture_state.get("mode", "")), harness.FIXTURE_STATE_TIMELINE_MODE_FULL)
+
+func test_fixture_state_timeline_captures_prototype_matcher_debug_truth() -> void:
+	harness.fixture_state_timeline_mode = harness.FIXTURE_STATE_TIMELINE_MODE_FULL
+	harness._latest_state = {
+		"gesture_debug": {
+			"punch_detection": {"backend": "prototype_matcher"},
+			"prototype_matcher": {
+				"best_class": "straight_left",
+				"best_score": 0.84,
+				"reason": "emitted",
+				"emitted_event_name": "punch_left"
+			}
+		}
+	}
+
+	harness._record_fixture_state_snapshot("pose_updated")
+	var timeline: Array = harness._fixture_state_timeline
+	assert_eq(timeline.size(), 1)
+	var entry: Dictionary = timeline[0]
+	assert_eq(String(entry.get("punch_detection", {}).get("backend", "")), "prototype_matcher")
+	assert_eq(String(entry.get("prototype_matcher", {}).get("best_class", "")), "straight_left")
+	assert_true(is_equal_approx(float(entry.get("prototype_matcher", {}).get("best_score", 0.0)), 0.84))

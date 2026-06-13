@@ -1166,7 +1166,27 @@ func _build_runtime_config() -> Variant:
 	config.model_complexity = int(tracking_style.get("model_complexity", config.model_complexity))
 	var filter_enabled := not bool(tracking_style.get("no_filter", false))
 	config.runtime = _build_vendor_runtime_config(config.model_complexity, filter_enabled)
+	_apply_runtime_gesture_backend_override(config)
 	return config
+
+func _apply_runtime_gesture_backend_override(config) -> void:
+	if config == null:
+		return
+	var backend_override := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE").strip_edges().to_lower()
+	if backend_override.is_empty():
+		return
+	var gesture_profile: Dictionary = config.gesture_profile_document.duplicate(true) if config.get("gesture_profile_document") is Dictionary else {}
+	var punch_detection: Dictionary = gesture_profile.get("punch_detection", {}) if gesture_profile.get("punch_detection", {}) is Dictionary else {}
+	if backend_override == "prototype_matcher":
+		punch_detection["backend"] = "prototype_matcher"
+		gesture_profile["punch_detection"] = punch_detection
+		var threshold_gates: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
+		threshold_gates["enabled"] = false
+		gesture_profile["threshold_gates"] = threshold_gates
+		var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
+		matcher_config["enabled"] = true
+		gesture_profile["prototype_matcher"] = matcher_config
+	config.gesture_profile_document = gesture_profile
 
 func _build_vendor_runtime_config(model_complexity: int, filter_enabled: bool = true) -> Dictionary:
 	var vendor_root := ProjectSettings.globalize_path(VENDOR_REPO_ROOT)
@@ -1231,7 +1251,14 @@ func _connect_power_signal(signal_name: String) -> void:
 	if _provider_mode_signal_relays.has(signal_name):
 		return
 	var relay := func(power: float) -> void:
-		_record_event(signal_name, {"power": power})
+		if provider != null and provider.has_method("get_detector_state"):
+			_latest_state = provider.get_detector_state()
+		var payload := {"power": power}
+		var prototype_match := _prototype_match_payload_for_signal(signal_name)
+		if not prototype_match.is_empty():
+			payload["backend"] = "prototype_matcher"
+			payload["prototype_match"] = prototype_match
+		_record_event(signal_name, payload)
 	_remember_mode_signal_relay(signal_name, relay)
 
 func _connect_flow_signal(signal_name: String) -> void:
@@ -1247,6 +1274,22 @@ func _connect_flow_signal(signal_name: String) -> void:
 		}
 		_record_event(signal_name, {"placement": placement, "direction": direction})
 	_remember_mode_signal_relay(signal_name, relay)
+
+func _prototype_match_payload_for_signal(signal_name: String) -> Dictionary:
+	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
+	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
+	if String(punch_detection.get("backend", "")).strip_edges().to_lower() != "prototype_matcher":
+		return {}
+	var matcher_debug: Dictionary = (gesture_debug.get("prototype_matcher", {}) as Dictionary)
+	if String(matcher_debug.get("emitted_event_name", "")) != signal_name:
+		return {}
+	return {
+		"class_name": String(matcher_debug.get("result_class", "")),
+		"score": float(matcher_debug.get("best_score", 0.0)),
+		"threshold": float(matcher_debug.get("required_score", matcher_debug.get("match_score_min", 0.0))),
+		"library_id": String(matcher_debug.get("library_id", "")),
+		"reason": String(matcher_debug.get("reason", "")),
+	}
 
 func _on_pose_updated(landmarks: Array) -> void:
 	if _is_preview_only_mode():
@@ -2657,14 +2700,17 @@ func _record_fixture_state_snapshot(reason: String) -> void:
 			_fixture_pose_state_snapshots_dropped += 1
 			return
 	_fixture_state_sequence += 1
+	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
 	_fixture_state_timeline.append({
 		"sequence": _fixture_state_sequence,
 		"timestamp_ms": _fixture_relative_ms(),
 		"reason": reason,
 		"tracking_state": _tracking_status_text(_latest_state),
 		"gesture_states": (_latest_state.get("gesture_states", {}) as Dictionary).duplicate(true),
-		"ready": ((_latest_state.get("gesture_debug", {}) as Dictionary).get("ready", {}) as Dictionary).duplicate(true),
-		"flow": ((_latest_state.get("gesture_debug", {}) as Dictionary).get("flow", {}) as Dictionary).duplicate(true),
+		"ready": (gesture_debug.get("ready", {}) as Dictionary).duplicate(true),
+		"flow": (gesture_debug.get("flow", {}) as Dictionary).duplicate(true),
+		"punch_detection": (gesture_debug.get("punch_detection", {}) as Dictionary).duplicate(true),
+		"prototype_matcher": (gesture_debug.get("prototype_matcher", {}) as Dictionary).duplicate(true),
 		"boxing_debug": _build_fixture_boxing_debug_snapshot(),
 		"latest_event": _latest_event_name(),
 	})
