@@ -16,6 +16,11 @@
       "source": "symlink",
       "subfolder": "/"
     },
+    "aerobeat-tool-camera-recording": {
+      "url": "../../aerobeat-tool-camera-recording",
+      "source": "symlink",
+      "subfolder": "/"
+    },
     "aerobeat-vendor-mediapipe-python": {
       "url": "../../aerobeat-vendor-mediapipe-python",
       "source": "symlink",
