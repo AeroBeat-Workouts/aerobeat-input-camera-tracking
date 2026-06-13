@@ -458,6 +458,121 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
 	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
 
+func test_boxing_prototype_matcher_hover_card_surfaces_backend_score_threshold_and_gate_truth() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"punch_detection": {
+				"backend": "prototype_matcher",
+			},
+			"prototype_matcher": {
+				"selected_backend": "prototype_matcher",
+				"active_backend": "prototype_matcher",
+				"library_id": "boxing_side_aware_v1",
+				"library_loaded": true,
+				"best_class": "straight_left",
+				"best_score": 0.842,
+				"required_score": 0.700,
+				"result_class": "straight_left",
+				"emitted_event_name": "punch_left",
+				"show_scores": true,
+				"show_event_gate_state": true,
+				"class_scores": {
+					"hook_left": 0.120,
+					"straight_left": 0.842,
+					"uppercut_left": 0.410,
+				},
+				"reason": "emit_cooldown_active",
+				"hold_ms_remaining": 80,
+				"cooldown_ms_remaining": 190,
+				"active_event_class": "straight_left",
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(model.get("title", "")), "Straight Punch L (Prototype Matcher)")
+	assert_eq(String(rows[1].get("current_text", "")), "prototype_matcher")
+	assert_eq(String(rows[3].get("current_text", "")), "boxing_side_aware_v1")
+	assert_eq(String(rows[6].get("current_text", "")), "straight_left")
+	assert_eq(String(rows[7].get("current_text", "")), "0.842")
+	assert_eq(String(rows[8].get("current_text", "")), "0.700")
+	assert_eq(String(rows[9].get("current_text", "")), "straight_left")
+	assert_eq(String(rows[10].get("current_text", "")), "punch_left")
+	assert_eq(String(rows[11].get("current_text", "")), "true")
+	assert_eq(String(rows[12].get("current_text", "")), "{hook_left=0.120, straight_left=0.842, uppercut_left=0.410}")
+	assert_eq(String(rows[14].get("current_text", "")), "true")
+	assert_eq(String(rows[15].get("current_text", "")), "emit_cooldown_active")
+	assert_eq(String(rows[16].get("current_text", "")), "80ms")
+	assert_eq(String(rows[17].get("current_text", "")), "190ms")
+	assert_eq(String(rows[18].get("current_text", "")), "straight_left")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Active backend - prototype_matcher")
+	assert_string_contains(body, "Active prototype library ID - boxing_side_aware_v1")
+	assert_string_contains(body, "Best class - straight_left")
+	assert_string_contains(body, "Best score - 0.842")
+	assert_string_contains(body, "Threshold required - 0.700")
+	assert_string_contains(body, "Final emitted / result class - straight_left")
+	assert_string_contains(body, "Emitted event name - punch_left")
+	assert_string_contains(body, "Per-class scores - {hook_left=0.120, straight_left=0.842, uppercut_left=0.410}")
+	assert_string_contains(body, "Gate / rejection reason - emit_cooldown_active")
+	assert_string_contains(body, "Hold remaining - 80ms")
+	assert_string_contains(body, "Cooldown remaining - 190ms")
+
+func test_boxing_prototype_matcher_debug_visibility_flags_hide_scores_and_gate_state() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"punch_detection": {
+				"backend": "prototype_matcher",
+			},
+			"prototype_matcher": {
+				"selected_backend": "prototype_matcher",
+				"active_backend": "prototype_matcher",
+				"library_id": "boxing_side_aware_v1",
+				"library_loaded": true,
+				"best_class": "hook_right",
+				"best_score": 0.610,
+				"required_score": 0.700,
+				"result_class": "no_punch",
+				"emitted_event_name": "",
+				"show_scores": false,
+				"show_event_gate_state": false,
+				"class_scores": {
+					"hook_right": 0.610,
+				},
+				"reason": "below_threshold",
+				"hold_ms_remaining": 55,
+				"cooldown_ms_remaining": 144,
+				"active_event_class": "hook_right",
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("punch_right")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(model.get("title", "")), "Straight Punch R (Prototype Matcher)")
+	assert_eq(String(rows[11].get("current_text", "")), "false")
+	assert_eq(String(rows[12].get("current_text", "")), "hidden (show_scores=false)")
+	assert_eq(String(rows[14].get("current_text", "")), "false")
+	assert_eq(String(rows[15].get("current_text", "")), "hidden (show_event_gate_state=false)")
+	assert_eq(String(rows[16].get("current_text", "")), "hidden (show_event_gate_state=false)")
+	assert_eq(String(rows[17].get("current_text", "")), "hidden (show_event_gate_state=false)")
+	assert_eq(String(rows[18].get("current_text", "")), "hidden (show_event_gate_state=false)")
+
+	var text_body := String(harness._build_boxing_event_feed_text())
+	assert_string_contains(text_body, "Prototype matcher truth")
+	assert_string_contains(text_body, "Active backend: prototype_matcher")
+	assert_string_contains(text_body, "Prototype library ID: boxing_side_aware_v1 (loaded=true)")
+	assert_string_contains(text_body, "Best class / score / threshold: hook_right / 0.610 / 0.700")
+	assert_string_contains(text_body, "Result class / emitted event: no_punch / none")
+	assert_string_contains(text_body, "Debug flags: show_scores=false show_event_gate_state=false")
+	assert_string_contains(text_body, "Class scores: hidden (show_scores=false)")
+	assert_string_contains(text_body, "Gate reason / hold / cooldown / active event: hidden (show_event_gate_state=false)")
+
 func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake_threshold_equality() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {

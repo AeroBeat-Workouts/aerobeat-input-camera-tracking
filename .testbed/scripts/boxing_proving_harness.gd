@@ -213,6 +213,103 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"row_kind": "info",
 	},
 ]
+const PROTOTYPE_MATCHER_REQUIREMENT_ROWS := [
+	{
+		"id": "backend_section",
+		"label": "Active backend",
+		"row_kind": "section",
+	},
+	{
+		"id": "active_backend",
+		"label": "Active backend",
+		"row_kind": "info",
+	},
+	{
+		"id": "selected_backend",
+		"label": "Selected backend",
+		"row_kind": "info",
+	},
+	{
+		"id": "library_id",
+		"label": "Active prototype library ID",
+		"row_kind": "info",
+	},
+	{
+		"id": "library_loaded",
+		"label": "Prototype library loaded",
+		"row_kind": "info",
+	},
+	{
+		"id": "score_section",
+		"label": "Matcher result",
+		"row_kind": "section",
+	},
+	{
+		"id": "best_class",
+		"label": "Best class",
+		"row_kind": "info",
+	},
+	{
+		"id": "best_score",
+		"label": "Best score",
+		"row_kind": "info",
+	},
+	{
+		"id": "required_score",
+		"label": "Threshold required",
+		"row_kind": "info",
+	},
+	{
+		"id": "result_class",
+		"label": "Final emitted / result class",
+		"row_kind": "info",
+	},
+	{
+		"id": "emitted_event_name",
+		"label": "Emitted event name",
+		"row_kind": "info",
+	},
+	{
+		"id": "show_scores",
+		"label": "show_scores flag",
+		"row_kind": "info",
+	},
+	{
+		"id": "class_scores",
+		"label": "Per-class scores",
+		"row_kind": "info",
+	},
+	{
+		"id": "gate_section",
+		"label": "Hold / cooldown gate",
+		"row_kind": "section",
+	},
+	{
+		"id": "show_event_gate_state",
+		"label": "show_event_gate_state flag",
+		"row_kind": "info",
+	},
+	{
+		"id": "gate_reason",
+		"label": "Gate / rejection reason",
+		"row_kind": "info",
+	},
+	{
+		"id": "hold_ms_remaining",
+		"label": "Hold remaining",
+		"row_kind": "info",
+	},
+	{
+		"id": "cooldown_ms_remaining",
+		"label": "Cooldown remaining",
+		"row_kind": "info",
+	},
+	{
+		"id": "active_event_class",
+		"label": "Active held event class",
+		"row_kind": "info",
+	},
+]
 const POSE_STRIKE_REQUIREMENT_ROWS := [
 	{
 		"id": "state_section",
@@ -1062,8 +1159,12 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 		}
 	match card_key:
 		"punch_left":
+			if _active_punch_detection_backend() == "prototype_matcher":
+				return _build_prototype_matcher_hover_card_model(spec, "left")
 			return _build_punch_hover_card_model(spec, "left")
 		"punch_right":
+			if _active_punch_detection_backend() == "prototype_matcher":
+				return _build_prototype_matcher_hover_card_model(spec, "right")
 			return _build_punch_hover_card_model(spec, "right")
 		"hook_left":
 			return _build_pose_strike_hover_card_model(spec, "hook", "left")
@@ -1082,8 +1183,22 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 		_:
 			return spec.duplicate(true)
 
+func _boxing_latest_state_snapshot() -> Dictionary:
+	return _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
+
+func _active_punch_detection_backend() -> String:
+	var latest_state := _boxing_latest_state_snapshot()
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
+	return String(punch_detection.get("backend", "threshold_gates"))
+
+func _prototype_matcher_debug_state() -> Dictionary:
+	var latest_state := _boxing_latest_state_snapshot()
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	return ((gesture_debug.get("prototype_matcher", {}) as Dictionary)).duplicate(true)
+
 func _merged_punch_debug_state(side: String) -> Dictionary:
-	var latest_state := _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
+	var latest_state := _boxing_latest_state_snapshot()
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
 	var straight_side: Dictionary = ((straight_punch_debug.get(side, {}) as Dictionary)).duplicate(true)
@@ -1107,6 +1222,18 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 		"title": spec.get("title", _display_name_for_card_key("punch_%s" % side)),
 		"rows": rows,
 		"footer": spec.get("footer", "Live values come from the straight-punch state machine."),
+	}
+
+func _build_prototype_matcher_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
+	var matcher_debug := _prototype_matcher_debug_state()
+	var rows: Array[Dictionary] = []
+	for row_spec_variant: Variant in PROTOTYPE_MATCHER_REQUIREMENT_ROWS:
+		var row_spec: Dictionary = row_spec_variant
+		rows.append(_build_prototype_matcher_requirement_row(row_spec, matcher_debug, side))
+	return {
+		"title": "%s (Prototype Matcher)" % String(spec.get("title", _display_name_for_card_key("punch_%s" % side))),
+		"rows": rows,
+		"footer": "Live values come from gesture_debug.prototype_matcher for the active punch backend.",
 	}
 
 func _build_pose_strike_hover_card_model(spec: Dictionary, family: String, side: String) -> Dictionary:
@@ -1334,6 +1461,97 @@ func _build_weave_requirement_row(row_spec: Dictionary, weave_debug: Dictionary)
 	row["passed"] = passed
 	row["threshold_text"] = threshold_text
 	row["current_text"] = current_text
+	return row
+
+func _fmt_matcher_class_scores(class_scores: Dictionary) -> String:
+	if class_scores.is_empty():
+		return "{}"
+	var ordered_keys: Array[String] = []
+	for key_variant: Variant in class_scores.keys():
+		ordered_keys.append(String(key_variant))
+	ordered_keys.sort()
+	var pairs: Array[String] = []
+	for key: String in ordered_keys:
+		pairs.append("%s=%s" % [key, _fmt_float(class_scores.get(key, 0.0))])
+	return "{" + ", ".join(pairs) + "}"
+
+func _build_prototype_matcher_requirement_row(row_spec: Dictionary, matcher_debug: Dictionary, _side: String) -> Dictionary:
+	var row := row_spec.duplicate(true)
+	var row_id := String(row_spec.get("id", ""))
+	var passed := false
+	var current_text := ""
+	match row_id:
+		"backend_section", "score_section", "gate_section":
+			current_text = ""
+		"active_backend":
+			current_text = String(matcher_debug.get("active_backend", "inactive"))
+			passed = current_text == "prototype_matcher"
+		"selected_backend":
+			current_text = String(matcher_debug.get("selected_backend", ""))
+			passed = current_text == "prototype_matcher"
+		"library_id":
+			current_text = String(matcher_debug.get("library_id", ""))
+			passed = not current_text.is_empty()
+		"library_loaded":
+			current_text = _fmt_bool(bool(matcher_debug.get("library_loaded", false)))
+			passed = bool(matcher_debug.get("library_loaded", false))
+		"best_class":
+			current_text = String(matcher_debug.get("best_class", "no_punch"))
+			passed = not current_text.is_empty()
+		"best_score":
+			current_text = _fmt_float(matcher_debug.get("best_score", 0.0))
+			passed = true
+		"required_score":
+			current_text = _fmt_float(matcher_debug.get("required_score", matcher_debug.get("match_score_min", 0.0)))
+			passed = true
+		"result_class":
+			current_text = String(matcher_debug.get("result_class", "no_punch"))
+			passed = not current_text.is_empty()
+		"emitted_event_name":
+			current_text = String(matcher_debug.get("emitted_event_name", ""))
+			if current_text.is_empty():
+				current_text = "none"
+			passed = true
+		"show_scores":
+			current_text = _fmt_bool(bool(matcher_debug.get("show_scores", false)))
+			passed = true
+		"class_scores":
+			if bool(matcher_debug.get("show_scores", false)):
+				current_text = _fmt_matcher_class_scores(matcher_debug.get("class_scores", {}) as Dictionary)
+			else:
+				current_text = "hidden (show_scores=false)"
+			passed = true
+		"show_event_gate_state":
+			current_text = _fmt_bool(bool(matcher_debug.get("show_event_gate_state", false)))
+			passed = true
+		"gate_reason":
+			if bool(matcher_debug.get("show_event_gate_state", false)):
+				current_text = String(matcher_debug.get("reason", "idle"))
+			else:
+				current_text = "hidden (show_event_gate_state=false)"
+			passed = true
+		"hold_ms_remaining":
+			if bool(matcher_debug.get("show_event_gate_state", false)):
+				current_text = "%dms" % int(matcher_debug.get("hold_ms_remaining", 0))
+			else:
+				current_text = "hidden (show_event_gate_state=false)"
+			passed = true
+		"cooldown_ms_remaining":
+			if bool(matcher_debug.get("show_event_gate_state", false)):
+				current_text = "%dms" % int(matcher_debug.get("cooldown_ms_remaining", 0))
+			else:
+				current_text = "hidden (show_event_gate_state=false)"
+			passed = true
+		"active_event_class":
+			if bool(matcher_debug.get("show_event_gate_state", false)):
+				current_text = String(matcher_debug.get("active_event_class", "no_punch"))
+			else:
+				current_text = "hidden (show_event_gate_state=false)"
+			passed = true
+		_:
+			current_text = "pending"
+	row["current_text"] = current_text
+	row["passed"] = passed
 	return row
 
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
@@ -1985,6 +2203,44 @@ func _build_boxing_event_feed_text() -> String:
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),
 		int(uppercut_state_machine.get("lost_tracking_reacquire_stable_ms", 0)),
 	])
+
+	var punch_detection_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) is Dictionary) else {}
+	var prototype_matcher_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}) is Dictionary) else {}
+	lines.append("")
+	lines.append("Prototype matcher truth")
+	lines.append("-----------------------")
+	lines.append("Active backend: %s" % String(punch_detection_debug.get("backend", prototype_matcher_debug.get("active_backend", "threshold_gates"))))
+	lines.append("Selected backend: %s" % String(prototype_matcher_debug.get("selected_backend", "threshold_gates")))
+	lines.append("Prototype library ID: %s (loaded=%s)" % [
+		String(prototype_matcher_debug.get("library_id", "")),
+		_fmt_bool(bool(prototype_matcher_debug.get("library_loaded", false))),
+	])
+	lines.append("Best class / score / threshold: %s / %s / %s" % [
+		String(prototype_matcher_debug.get("best_class", "no_punch")),
+		_fmt_float(prototype_matcher_debug.get("best_score", 0.0)),
+		_fmt_float(prototype_matcher_debug.get("required_score", prototype_matcher_debug.get("match_score_min", 0.0))),
+	])
+	lines.append("Result class / emitted event: %s / %s" % [
+		String(prototype_matcher_debug.get("result_class", "no_punch")),
+		String(prototype_matcher_debug.get("emitted_event_name", "none")) if not String(prototype_matcher_debug.get("emitted_event_name", "")).is_empty() else "none",
+	])
+	lines.append("Debug flags: show_scores=%s show_event_gate_state=%s" % [
+		_fmt_bool(bool(prototype_matcher_debug.get("show_scores", false))),
+		_fmt_bool(bool(prototype_matcher_debug.get("show_event_gate_state", false))),
+	])
+	if bool(prototype_matcher_debug.get("show_scores", false)):
+		lines.append("Class scores: %s" % _fmt_matcher_class_scores(prototype_matcher_debug.get("class_scores", {}) as Dictionary))
+	else:
+		lines.append("Class scores: hidden (show_scores=false)")
+	if bool(prototype_matcher_debug.get("show_event_gate_state", false)):
+		lines.append("Gate reason / hold / cooldown / active event: %s / %dms / %dms / %s" % [
+			String(prototype_matcher_debug.get("reason", "idle")),
+			int(prototype_matcher_debug.get("hold_ms_remaining", 0)),
+			int(prototype_matcher_debug.get("cooldown_ms_remaining", 0)),
+			String(prototype_matcher_debug.get("active_event_class", "no_punch")),
+		])
+	else:
+		lines.append("Gate reason / hold / cooldown / active event: hidden (show_event_gate_state=false)")
 
 	var guard_config: Dictionary = gesture_document.get("guard", {}) if gesture_document.get("guard", {}) is Dictionary else {}
 	var guard_thresholds: Dictionary = guard_config.get("thresholds", {}) if guard_config.get("thresholds", {}) is Dictionary else {}
