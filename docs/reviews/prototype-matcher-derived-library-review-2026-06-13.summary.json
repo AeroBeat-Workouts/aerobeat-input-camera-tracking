@@ -1,0 +1,73 @@
+{
+  "derived_path": "docs/baselines/prototype-matcher-boxing-fixture-derived-v1/benchmark-results.json",
+  "seed_baseline_path": "docs/baselines/prototype-matcher-boxing-side-aware-v1/benchmark-results.json",
+  "derived_library_id": "boxing_side_aware_fixture_derived_v1",
+  "seed_library_id": "boxing_side_aware_v1",
+  "generated_at": "2026-06-13T20:42:12-04:00",
+  "expected_fixture_count": 6,
+  "expected_fixtures_with_expected_event": 6,
+  "expected_fixtures_with_wrong_events": 6,
+  "negative_control_clean_count": 0,
+  "negative_control_fixture_count": 1,
+  "positive_expected_emit_total": 98,
+  "positive_wrong_emit_total": 74,
+  "negative_control_wrong_emit_total": 30,
+  "total_wrong_emit_total": 104,
+  "total_event_count": 202,
+  "seed_expected_fixtures_with_expected_event": 0,
+  "seed_expected_fixtures_with_wrong_events": 0,
+  "seed_negative_control_clean_count": 1,
+  "wrong_event_totals": {
+    "uppercut_left": 19,
+    "hook_right": 25,
+    "uppercut_right": 12,
+    "punch_left": 9,
+    "hook_left": 39
+  },
+  "wrong_event_by_fixture": {
+    "straight_left_fixture": {
+      "uppercut_left": 6,
+      "hook_right": 6,
+      "uppercut_right": 7
+    },
+    "straight_right_fixture": {
+      "uppercut_left": 6
+    },
+    "hook_left_fixture": {
+      "uppercut_right": 3,
+      "uppercut_left": 5,
+      "hook_right": 9
+    },
+    "hook_right_fixture": {
+      "punch_left": 2,
+      "hook_left": 5,
+      "uppercut_left": 1
+    },
+    "uppercut_left_fixture": {
+      "uppercut_right": 2,
+      "hook_right": 7,
+      "punch_left": 1,
+      "hook_left": 1
+    },
+    "uppercut_right_fixture": {
+      "uppercut_left": 1,
+      "hook_left": 9,
+      "punch_left": 2,
+      "hook_right": 1
+    },
+    "run_in_place_negative_control": {
+      "punch_left": 4,
+      "hook_left": 24,
+      "hook_right": 2
+    }
+  },
+  "recommended_next_branch": {
+    "hypothesis": "prototype-library class-separability / side-disambiguation tuning",
+    "why": [
+      "hook_left and hook_right still cross-fire into each other",
+      "uppercut_left drifts mostly into hook_right while uppercut_right drifts mostly into hook_left",
+      "negative control is dominated by hook_left false positives",
+      "derived library crosses the baseline from 0/6 expected hits to 6/6, so recall exists but decision boundaries are too permissive / overlapping"
+    ]
+  }
+}

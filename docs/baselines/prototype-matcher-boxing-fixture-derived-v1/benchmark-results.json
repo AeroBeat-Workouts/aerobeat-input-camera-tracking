@@ -2,7 +2,7 @@
   "benchmark_id": "prototype_matcher_boxing_fixture_derived_v1",
   "library_id": "boxing_side_aware_fixture_derived_v1",
   "profile": "boxing",
-  "generated_at": "2026-06-13T19:25:54-04:00",
+  "generated_at": "2026-06-13T20:42:12-04:00",
   "runner": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/scripts/run_prototype_matcher_fixture_benchmark.py",
   "manifest_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/benchmarks/prototype_matcher_boxing_fixture_derived_v1.benchmark.json",
   "capture_delay_ms": 9000,
@@ -15,475 +15,481 @@
       "expected_event": "punch_left",
       "expected_class": "straight_left",
       "expect_no_attack": false,
-      "capture_elapsed_ms": 11402,
-      "event_count": 28,
-      "expected_event_count": 17,
-      "wrong_event_count": 11,
+      "capture_elapsed_ms": 11377,
+      "event_count": 29,
+      "expected_event_count": 10,
+      "wrong_event_count": 19,
       "attack_events": [
         {
-          "name": "punch_left",
-          "timestamp_ms": 1144,
+          "name": "uppercut_left",
+          "timestamp_ms": 1128,
           "count": 1,
-          "power": 0.949943137191294,
+          "power": 0.90276952397922,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.949943137191294,
+            "score": 0.90276952397922,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 1359,
+          "name": "uppercut_left",
+          "timestamp_ms": 1348,
           "count": 2,
-          "power": 0.934984699538315,
+          "power": 0.884759208906885,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.934984699538315,
+            "score": 0.884759208906885,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 1674,
+          "timestamp_ms": 1664,
           "count": 1,
-          "power": 0.724335436049585,
+          "power": 0.749642415979747,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.724335436049585,
+            "score": 0.749642415979747,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 2074,
-          "count": 3,
-          "power": 0.846983681630868,
+          "timestamp_ms": 1962,
+          "count": 1,
+          "power": 0.802250715769867,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.846983681630868,
+            "score": 0.802250715769867,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 2390,
-          "count": 4,
-          "power": 0.904376476451065,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.904376476451065,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 2702,
+          "timestamp_ms": 2272,
           "count": 2,
-          "power": 0.800518047090881,
+          "power": 0.923918487609135,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_right",
+            "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.800518047090881,
+            "score": 0.923918487609135,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_right",
-          "timestamp_ms": 3012,
+          "name": "uppercut_right",
+          "timestamp_ms": 2579,
+          "count": 1,
+          "power": 0.905394285067414,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.905394285067414,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 2888,
+          "count": 2,
+          "power": 0.787702458712024,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.787702458712024,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_left",
+          "timestamp_ms": 3193,
           "count": 3,
-          "power": 0.700649244875262,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.700649244875262,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 3318,
-          "count": 5,
-          "power": 0.887194794278938,
+          "power": 0.866952833038507,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.887194794278938,
+            "score": 0.866952833038507,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 3622,
+          "timestamp_ms": 3505,
+          "count": 2,
+          "power": 0.947703434967157,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.947703434967157,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 3814,
+          "count": 3,
+          "power": 0.878535162132626,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.878535162132626,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 4127,
           "count": 4,
-          "power": 0.869129909976558,
+          "power": 0.858471621227402,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.869129909976558,
+            "score": 0.858471621227402,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_right",
-          "timestamp_ms": 3942,
+          "name": "punch_left",
+          "timestamp_ms": 4429,
+          "count": 4,
+          "power": 0.856766919751129,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.856766919751129,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_left",
+          "timestamp_ms": 4731,
           "count": 5,
-          "power": 0.800685572463092,
+          "power": 0.976171969750655,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_right",
+            "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.800685572463092,
+            "score": 0.976171969750655,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 4233,
+          "timestamp_ms": 5040,
+          "count": 5,
+          "power": 0.872115213842978,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.872115213842978,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 5349,
           "count": 6,
-          "power": 0.772693689355693,
+          "power": 0.840246417595304,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.772693689355693,
+            "score": 0.840246417595304,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 5656,
+          "count": 3,
+          "power": 0.852140343399591,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.852140343399591,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 4545,
+          "timestamp_ms": 5954,
           "count": 6,
-          "power": 0.893661485308613,
+          "power": 0.924331867815987,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.893661485308613,
+            "score": 0.924331867815987,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 4873,
+          "timestamp_ms": 6255,
           "count": 7,
-          "power": 0.890966792825104,
+          "power": 0.9248515147503,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.890966792825104,
+            "score": 0.9248515147503,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_right",
-          "timestamp_ms": 5174,
+          "name": "uppercut_left",
+          "timestamp_ms": 6472,
+          "count": 3,
+          "power": 0.895160973120917,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.895160973120917,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 6769,
+          "count": 4,
+          "power": 0.887705964620975,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.887705964620975,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 7075,
+          "count": 5,
+          "power": 0.905661973026527,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.905661973026527,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 7382,
+          "count": 6,
+          "power": 0.925327807252748,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.925327807252748,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 7682,
+          "count": 4,
+          "power": 0.838712949023799,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.838712949023799,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 8009,
+          "count": 5,
+          "power": 0.760134236015031,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.760134236015031,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_left",
+          "timestamp_ms": 8354,
+          "count": 8,
+          "power": 0.88717977687773,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.88717977687773,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_left",
+          "timestamp_ms": 8701,
+          "count": 9,
+          "power": 0.936821570420542,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.936821570420542,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 9030,
+          "count": 6,
+          "power": 0.813038881820932,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.813038881820932,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 9363,
           "count": 7,
-          "power": 0.844739084323349,
+          "power": 0.771240751667547,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_right",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.844739084323349,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 5499,
-          "count": 8,
-          "power": 0.799274217206063,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.799274217206063,
+            "score": 0.771240751667547,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 5794,
-          "count": 8,
-          "power": 0.842101728837665,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.842101728837665,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6094,
-          "count": 9,
-          "power": 0.873514883061655,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.873514883061655,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6513,
+          "timestamp_ms": 9707,
           "count": 10,
-          "power": 0.896182035285885,
+          "power": 0.945177292881073,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.896182035285885,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6814,
-          "count": 11,
-          "power": 0.921917048453119,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.921917048453119,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 7117,
-          "count": 12,
-          "power": 0.944758336883967,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.944758336883967,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 7422,
-          "count": 13,
-          "power": 0.965336276449426,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.965336276449426,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 7734,
-          "count": 9,
-          "power": 0.791610847728247,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.791610847728247,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 8182,
-          "count": 14,
-          "power": 0.748155171617624,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.748155171617624,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 8539,
-          "count": 15,
-          "power": 0.885038006987557,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.885038006987557,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 8901,
-          "count": 16,
-          "power": 0.965496933344493,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.965496933344493,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 9234,
-          "count": 10,
-          "power": 0.747023582181263,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.747023582181263,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 9587,
-          "count": 11,
-          "power": 0.750517357211911,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.750517357211911,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 9944,
-          "count": 17,
-          "power": 0.888833110760289,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.888833110760289,
+            "score": 0.945177292881073,
             "threshold": 0.7
           }
         }
       ],
       "max_best_score_by_class": {
-        "straight_left": 0.999999999999996,
+        "straight_left": 0.999999999999997,
         "straight_right": 0.0,
         "hook_left": 0.0,
-        "hook_right": 0.885001069798992,
-        "uppercut_left": 0.0,
-        "uppercut_right": 0.0
+        "hook_right": 0.947703434967157,
+        "uppercut_left": 0.925327807252748,
+        "uppercut_right": 0.905394285067414
       },
       "max_class_score_by_class": {
-        "straight_left": 0.999999999999996,
-        "straight_right": 0.42204903185136,
-        "hook_left": 0.826859789969764,
-        "hook_right": 0.885001069798992,
-        "uppercut_left": 0.794233903593014,
-        "uppercut_right": 0.747277488109949
+        "straight_left": 0.999999999999997,
+        "straight_right": 0.803369693015373,
+        "hook_left": 0.873291459407097,
+        "hook_right": 0.947703434967157,
+        "uppercut_left": 0.925327807252748,
+        "uppercut_right": 0.915576985637475
       },
       "best_class_snapshot_counts": {
-        "straight_left": 47,
+        "straight_left": 28,
         "straight_right": 0,
         "hook_left": 0,
-        "hook_right": 38,
-        "uppercut_left": 0,
-        "uppercut_right": 0
+        "hook_right": 18,
+        "uppercut_left": 15,
+        "uppercut_right": 24
       },
       "matcher_reason_counts": {
-        "below_threshold": 6,
-        "emit_cooldown_active": 52,
-        "emitted": 27,
+        "emit_cooldown_active": 57,
+        "emitted": 28,
         "idle": 8,
-        "step_wait": 174,
+        "step_wait": 177,
         "window_not_full": 9
       },
       "latest_matcher_debug": {
         "active_backend": "prototype_matcher",
         "active_event_class": "no_punch",
-        "best_class": "hook_right",
-        "best_score": 0.869129909976558,
-        "class_scores": {
-          "hook_left": 0.779970014832979,
-          "hook_right": 0.869129909976558,
-          "straight_left": 0.854928205012731,
-          "straight_right": 0.336206459270198,
-          "uppercut_left": 0.610387838008854,
-          "uppercut_right": 0.699773650361488
-        },
-        "cooldown_ms_remaining": 150,
+        "best_class": "no_punch",
+        "best_score": 0.0,
+        "class_scores": {},
+        "cooldown_ms_remaining": 50,
         "current_timestamp_ms": 3333,
         "emit_cooldown_ms": 250,
         "emit_hold_ms": 100,
         "emitted": false,
         "emitted_event_name": "",
         "enabled": true,
-        "evaluated_window_sample_count": 7,
-        "evaluated_window_span_ms": 200,
+        "evaluated_window_sample_count": 0,
+        "evaluated_window_span_ms": 0,
         "hold_ms_remaining": 0,
-        "last_emit_timestamp_ms": 3233,
+        "last_emit_timestamp_ms": 3133,
         "last_eval_timestamp_ms": 3333,
         "library_error": "",
         "library_id": "boxing_side_aware_fixture_derived_v1",
         "library_loaded": true,
         "library_path": "res://addons/aerobeat-input-camera-tracking/assets/prototype_libraries/boxing_side_aware_fixture_derived_v1/library.json",
         "match_score_min": 0.7,
-        "reason": "emit_cooldown_active",
+        "reason": "step_wait",
         "required_score": 0.7,
-        "result_class": "hook_right",
+        "result_class": "no_punch",
         "selected_backend": "prototype_matcher",
         "show_event_gate_state": true,
         "show_scores": true,
         "window_ms": 250,
         "window_ready_sample_count": 5,
-        "window_sample_count": 8,
+        "window_sample_count": 10,
         "window_span_ms": 300,
         "window_step_ms": 33
       },
@@ -493,10 +499,10 @@
         "negative_control_clean": null
       },
       "findings": [
-        "emitted expected punch_left 17 time(s)",
-        "also emitted other attack events: hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right",
+        "emitted expected punch_left 10 time(s)",
+        "also emitted other attack events: uppercut_left, uppercut_left, hook_right, uppercut_right, uppercut_right, hook_right, hook_right, hook_right, hook_right, hook_right, uppercut_right, uppercut_left, uppercut_left, uppercut_left, uppercut_left, uppercut_right, uppercut_right, uppercut_right, uppercut_right",
         "peak expected-class score 1.000",
-        "latest matcher reason emit_cooldown_active"
+        "latest matcher reason step_wait"
       ]
     },
     {
@@ -507,573 +513,538 @@
       "expected_event": "punch_right",
       "expected_class": "straight_right",
       "expect_no_attack": false,
-      "capture_elapsed_ms": 11275,
-      "event_count": 35,
-      "expected_event_count": 2,
-      "wrong_event_count": 33,
+      "capture_elapsed_ms": 11309,
+      "event_count": 33,
+      "expected_event_count": 27,
+      "wrong_event_count": 6,
       "attack_events": [
         {
-          "name": "punch_left",
-          "timestamp_ms": 1116,
+          "name": "punch_right",
+          "timestamp_ms": 1099,
           "count": 1,
-          "power": 0.74644671437722,
+          "power": 0.846618296000721,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.74644671437722,
+            "score": 0.846618296000721,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 1260,
+          "name": "punch_right",
+          "timestamp_ms": 1271,
           "count": 2,
-          "power": 0.735515952645468,
+          "power": 0.872615206094028,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.735515952645468,
+            "score": 0.872615206094028,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 1496,
+          "name": "punch_right",
+          "timestamp_ms": 1499,
           "count": 3,
-          "power": 0.71803427482567,
+          "power": 0.929592680795785,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.71803427482567,
+            "score": 0.929592680795785,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 1747,
+          "name": "punch_right",
+          "timestamp_ms": 1750,
           "count": 4,
-          "power": 0.773508937379977,
+          "power": 0.939817322104561,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.773508937379977,
+            "score": 0.939817322104561,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_right",
-          "timestamp_ms": 2011,
+          "name": "uppercut_left",
+          "timestamp_ms": 2251,
           "count": 1,
-          "power": 0.852484544541631,
+          "power": 0.829387556228806,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_right",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.852484544541631,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 2248,
-          "count": 5,
-          "power": 0.78350012558972,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.78350012558972,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 2498,
-          "count": 6,
-          "power": 0.819974156198416,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.819974156198416,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 2750,
-          "count": 7,
-          "power": 0.829647048227389,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.829647048227389,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 3002,
-          "count": 8,
-          "power": 0.844553970300556,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.844553970300556,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 3259,
-          "count": 9,
-          "power": 0.73570536124898,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.73570536124898,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 3622,
-          "count": 10,
-          "power": 0.784490683452995,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.784490683452995,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 3875,
-          "count": 11,
-          "power": 0.792188750419088,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.792188750419088,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 4124,
-          "count": 12,
-          "power": 0.840256095239585,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.840256095239585,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 4375,
-          "count": 13,
-          "power": 0.75351921576803,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.75351921576803,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 4636,
-          "count": 14,
-          "power": 0.720497719785772,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.720497719785772,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 4887,
-          "count": 15,
-          "power": 0.73417921070048,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.73417921070048,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 5126,
-          "count": 16,
-          "power": 0.787311823245522,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.787311823245522,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 5374,
-          "count": 17,
-          "power": 0.877514621202379,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.877514621202379,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 5625,
-          "count": 18,
-          "power": 0.827376281973461,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.827376281973461,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 5876,
-          "count": 19,
-          "power": 0.793580078493678,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.793580078493678,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6106,
-          "count": 20,
-          "power": 0.705620808245773,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.705620808245773,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6345,
-          "count": 21,
-          "power": 0.712077727724505,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.712077727724505,
+            "score": 0.829387556228806,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_right",
-          "timestamp_ms": 6595,
-          "count": 2,
-          "power": 0.708232806754884,
+          "timestamp_ms": 2500,
+          "count": 5,
+          "power": 0.900610263880475,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.708232806754884,
+            "score": 0.900610263880475,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 6846,
+          "name": "punch_right",
+          "timestamp_ms": 2751,
+          "count": 6,
+          "power": 0.878597716581828,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.878597716581828,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 3002,
+          "count": 7,
+          "power": 0.965837943107585,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.965837943107585,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 3263,
+          "count": 2,
+          "power": 0.759240088931401,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.759240088931401,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 3626,
+          "count": 8,
+          "power": 0.813598410264324,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.813598410264324,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 3876,
+          "count": 9,
+          "power": 0.916812300453001,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.916812300453001,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 4128,
+          "count": 10,
+          "power": 0.924484323645919,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.924484323645919,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 4376,
+          "count": 11,
+          "power": 0.932143402636786,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.932143402636786,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 4636,
+          "count": 3,
+          "power": 0.741736273205921,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.741736273205921,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 4888,
+          "count": 4,
+          "power": 0.759327985788859,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.759327985788859,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 5127,
+          "count": 12,
+          "power": 0.913507076311769,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.913507076311769,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 5377,
+          "count": 13,
+          "power": 0.948564921231573,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.948564921231573,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 5625,
+          "count": 14,
+          "power": 0.938592581286914,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.938592581286914,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 5877,
+          "count": 15,
+          "power": 0.945345109210603,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.945345109210603,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 6105,
+          "count": 16,
+          "power": 0.92204264113849,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.92204264113849,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 6346,
+          "count": 17,
+          "power": 0.856411247622063,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.856411247622063,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 6850,
+          "count": 18,
+          "power": 0.79986402365233,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.79986402365233,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 7100,
+          "count": 19,
+          "power": 0.847225575994098,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.847225575994098,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 7349,
+          "count": 20,
+          "power": 0.89775464844625,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.89775464844625,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 7600,
+          "count": 21,
+          "power": 0.981652133537262,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.981652133537262,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 7848,
           "count": 22,
-          "power": 0.760010113360668,
+          "power": 0.768375977214925,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.760010113360668,
+            "score": 0.768375977214925,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 7096,
+          "name": "uppercut_left",
+          "timestamp_ms": 8222,
+          "count": 5,
+          "power": 0.829387556228806,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.829387556228806,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_right",
+          "timestamp_ms": 8473,
           "count": 23,
-          "power": 0.737188567444874,
+          "power": 0.900610263880475,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.737188567444874,
+            "score": 0.900610263880475,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 7347,
+          "name": "punch_right",
+          "timestamp_ms": 8723,
           "count": 24,
-          "power": 0.735357037383933,
+          "power": 0.878597716581828,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.735357037383933,
+            "score": 0.878597716581828,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 7601,
-          "count": 25,
-          "power": 0.725500361862701,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.725500361862701,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 7846,
-          "count": 26,
-          "power": 0.741132339113219,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.741132339113219,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 8223,
-          "count": 27,
-          "power": 0.822938930973128,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.822938930973128,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 8471,
-          "count": 28,
-          "power": 0.819974156198416,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.819974156198416,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 8721,
-          "count": 29,
-          "power": 0.829647048227389,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.829647048227389,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
+          "name": "punch_right",
           "timestamp_ms": 8972,
-          "count": 30,
-          "power": 0.844553970300556,
+          "count": 25,
+          "power": 0.965837943107585,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.844553970300556,
+            "score": 0.965837943107585,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 9232,
-          "count": 31,
-          "power": 0.73570536124898,
+          "name": "uppercut_left",
+          "timestamp_ms": 9236,
+          "count": 6,
+          "power": 0.759240088931401,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.73570536124898,
+            "score": 0.759240088931401,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 9599,
-          "count": 32,
-          "power": 0.749427172435287,
+          "name": "punch_right",
+          "timestamp_ms": 9601,
+          "count": 26,
+          "power": 0.813598410264324,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.749427172435287,
+            "score": 0.813598410264324,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 9850,
-          "count": 33,
-          "power": 0.792188750419088,
+          "name": "punch_right",
+          "timestamp_ms": 9851,
+          "count": 27,
+          "power": 0.916812300453001,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "straight_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.792188750419088,
+            "score": 0.916812300453001,
             "threshold": 0.7
           }
         }
       ],
       "max_best_score_by_class": {
-        "straight_left": 0.877514621202379,
-        "straight_right": 0.852484544541631,
+        "straight_left": 0.0,
+        "straight_right": 0.981652133537262,
         "hook_left": 0.0,
         "hook_right": 0.0,
-        "uppercut_left": 0.0,
+        "uppercut_left": 0.829387556228806,
         "uppercut_right": 0.0
       },
       "max_class_score_by_class": {
-        "straight_left": 0.877514621202379,
-        "straight_right": 0.852484544541631,
-        "hook_left": 0.583799485971096,
-        "hook_right": 0.69837767088089,
-        "uppercut_left": 0.699706107647403,
-        "uppercut_right": 0.654470391557532
+        "straight_left": 0.809344955018192,
+        "straight_right": 0.981652133537262,
+        "hook_left": 0.59108325890788,
+        "hook_right": 0.760760799635457,
+        "uppercut_left": 0.878804330082563,
+        "uppercut_right": 0.886464856649858
       },
       "best_class_snapshot_counts": {
-        "straight_left": 66,
-        "straight_right": 6,
+        "straight_left": 0,
+        "straight_right": 53,
         "hook_left": 0,
         "hook_right": 0,
-        "uppercut_left": 0,
+        "uppercut_left": 18,
         "uppercut_right": 0
       },
       "matcher_reason_counts": {
-        "below_threshold": 6,
-        "emit_cooldown_active": 31,
-        "emitted": 35,
+        "below_threshold": 12,
+        "emit_cooldown_active": 26,
+        "emitted": 33,
         "idle": 8,
-        "step_wait": 209,
-        "window_not_full": 10
+        "step_wait": 205,
+        "window_not_full": 9
       },
       "latest_matcher_debug": {
         "active_backend": "prototype_matcher",
-        "active_event_class": "no_punch",
-        "best_class": "straight_left",
-        "best_score": 0.810702196109382,
-        "class_scores": {
-          "hook_left": 0.467170855709192,
-          "hook_right": 0.630281424422948,
-          "straight_left": 0.810702196109382,
-          "straight_right": 0.496643093707078,
-          "uppercut_left": 0.689303691762471,
-          "uppercut_right": 0.589713039663397
-        },
-        "cooldown_ms_remaining": 125,
-        "current_timestamp_ms": 4046,
+        "active_event_class": "straight_right",
+        "best_class": "no_punch",
+        "best_score": 0.0,
+        "class_scores": {},
+        "cooldown_ms_remaining": 250,
+        "current_timestamp_ms": 3921,
         "emit_cooldown_ms": 250,
         "emit_hold_ms": 100,
         "emitted": false,
         "emitted_event_name": "",
         "enabled": true,
-        "evaluated_window_sample_count": 6,
-        "evaluated_window_span_ms": 251,
-        "hold_ms_remaining": 0,
+        "evaluated_window_sample_count": 0,
+        "evaluated_window_span_ms": 0,
+        "hold_ms_remaining": 100,
         "last_emit_timestamp_ms": 3921,
-        "last_eval_timestamp_ms": 4046,
+        "last_eval_timestamp_ms": 3921,
         "library_error": "",
         "library_id": "boxing_side_aware_fixture_derived_v1",
         "library_loaded": true,
         "library_path": "res://addons/aerobeat-input-camera-tracking/assets/prototype_libraries/boxing_side_aware_fixture_derived_v1/library.json",
         "match_score_min": 0.7,
-        "reason": "emit_cooldown_active",
+        "reason": "step_wait",
         "required_score": 0.7,
-        "result_class": "straight_left",
+        "result_class": "no_punch",
         "selected_backend": "prototype_matcher",
         "show_event_gate_state": true,
         "show_scores": true,
         "window_ms": 250,
         "window_ready_sample_count": 5,
-        "window_sample_count": 6,
+        "window_sample_count": 8,
         "window_span_ms": 251,
         "window_step_ms": 33
       },
@@ -1083,10 +1054,10 @@
         "negative_control_clean": null
       },
       "findings": [
-        "emitted expected punch_right 2 time(s)",
-        "also emitted other attack events: punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left",
-        "peak expected-class score 0.852",
-        "latest matcher reason emit_cooldown_active"
+        "emitted expected punch_right 27 time(s)",
+        "also emitted other attack events: uppercut_left, uppercut_left, uppercut_left, uppercut_left, uppercut_left, uppercut_left",
+        "peak expected-class score 0.982",
+        "latest matcher reason step_wait"
       ]
     },
     {
@@ -1097,460 +1068,446 @@
       "expected_event": "hook_left",
       "expected_class": "hook_left",
       "expect_no_attack": false,
-      "capture_elapsed_ms": 11333,
-      "event_count": 28,
+      "capture_elapsed_ms": 11239,
+      "event_count": 27,
       "expected_event_count": 10,
-      "wrong_event_count": 18,
+      "wrong_event_count": 17,
       "attack_events": [
         {
-          "name": "punch_left",
-          "timestamp_ms": 1105,
+          "name": "uppercut_right",
+          "timestamp_ms": 1094,
           "count": 1,
-          "power": 0.879213493665687,
+          "power": 0.900145107504556,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.879213493665687,
+            "score": 0.900145107504556,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 1333,
+          "count": 1,
+          "power": 0.884608540888316,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.884608540888316,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 1317,
+          "timestamp_ms": 1945,
           "count": 1,
-          "power": 0.819898443729835,
+          "power": 0.700553118620804,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.819898443729835,
+            "score": 0.700553118620804,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_right",
-          "timestamp_ms": 1625,
+          "name": "hook_left",
+          "timestamp_ms": 2255,
+          "count": 1,
+          "power": 0.899091551292601,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.899091551292601,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 2561,
           "count": 2,
-          "power": 0.714930741312863,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.714930741312863,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 2045,
-          "count": 3,
-          "power": 0.741592556455896,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.741592556455896,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 2348,
-          "count": 1,
-          "power": 0.905737795367874,
+          "power": 0.944917133627006,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.905737795367874,
+            "score": 0.944917133627006,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 2654,
+          "timestamp_ms": 2876,
+          "count": 3,
+          "power": 0.893128112795322,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.893128112795322,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 3179,
           "count": 2,
-          "power": 0.899792672415014,
+          "power": 0.731145698217487,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_left",
+            "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.899792672415014,
+            "score": 0.731145698217487,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 2961,
+          "timestamp_ms": 3692,
+          "count": 4,
+          "power": 0.774208643775998,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.774208643775998,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 4025,
+          "count": 5,
+          "power": 0.930566783039316,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.930566783039316,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 4338,
+          "count": 6,
+          "power": 0.889302389614676,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.889302389614676,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 4641,
           "count": 3,
-          "power": 0.952123340080867,
+          "power": 0.782769631508618,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_left",
+            "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.952123340080867,
+            "score": 0.782769631508618,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 3270,
+          "timestamp_ms": 5149,
           "count": 4,
-          "power": 0.702583348462027,
+          "power": 0.763196588257718,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.702583348462027,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 3674,
-          "count": 5,
-          "power": 0.709858942421438,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.709858942421438,
+            "score": 0.763196588257718,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 3981,
-          "count": 4,
-          "power": 0.885900858885126,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.885900858885126,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 4294,
-          "count": 5,
-          "power": 0.899514080657825,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.899514080657825,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 4597,
-          "count": 6,
-          "power": 0.75524335767494,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.75524335767494,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 5023,
+          "timestamp_ms": 5459,
           "count": 7,
-          "power": 0.710423198233992,
+          "power": 0.952436718095564,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_right",
+            "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.710423198233992,
+            "score": 0.952436718095564,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 5317,
+          "timestamp_ms": 5761,
+          "count": 8,
+          "power": 0.904769628804983,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.904769628804983,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 6073,
+          "count": 5,
+          "power": 0.713875529299354,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.713875529299354,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 6377,
           "count": 6,
-          "power": 0.775610629054628,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.775610629054628,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 5621,
-          "count": 7,
-          "power": 0.92412819638561,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.92412819638561,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 5941,
-          "count": 8,
-          "power": 0.881258640637034,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.881258640637034,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 6256,
-          "count": 8,
-          "power": 0.704824159306685,
+          "power": 0.705079902691354,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.704824159306685,
+            "score": 0.705079902691354,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 6589,
+          "timestamp_ms": 6694,
+          "count": 7,
+          "power": 0.77043926224919,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.77043926224919,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 6990,
           "count": 9,
-          "power": 0.76008635208803,
+          "power": 0.940877827219383,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_right",
+            "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.76008635208803,
+            "score": 0.940877827219383,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_right",
-          "timestamp_ms": 6898,
-          "count": 10,
-          "power": 0.870606333580243,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.870606333580243,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 7196,
-          "count": 11,
-          "power": 0.840385658383228,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.840385658383228,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 7490,
-          "count": 12,
-          "power": 0.813433647006844,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.813433647006844,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 7844,
+          "name": "uppercut_left",
+          "timestamp_ms": 7289,
           "count": 2,
-          "power": 0.85853399156641,
+          "power": 0.836624079010395,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.85853399156641,
+            "score": 0.836624079010395,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 8146,
+          "name": "uppercut_left",
+          "timestamp_ms": 7579,
           "count": 3,
-          "power": 0.873165004837419,
+          "power": 0.862588910069381,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.873165004837419,
+            "score": 0.862588910069381,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
+          "name": "uppercut_right",
+          "timestamp_ms": 7834,
+          "count": 2,
+          "power": 0.897159513874146,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.897159513874146,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 8134,
+          "count": 4,
+          "power": 0.903976504638359,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.903976504638359,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
           "timestamp_ms": 8442,
-          "count": 4,
-          "power": 0.903979031096473,
+          "count": 3,
+          "power": 0.919889535025781,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.903979031096473,
+            "score": 0.919889535025781,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 8747,
+          "name": "uppercut_left",
+          "timestamp_ms": 8745,
           "count": 5,
-          "power": 0.867177110723485,
+          "power": 0.898417539298286,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.867177110723485,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 9059,
-          "count": 9,
-          "power": 0.944881561990072,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.944881561990072,
+            "score": 0.898417539298286,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 9574,
-          "count": 13,
-          "power": 0.741592556455896,
+          "timestamp_ms": 9061,
+          "count": 8,
+          "power": 0.809030583953845,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.741592556455896,
+            "score": 0.809030583953845,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 9451,
+          "count": 9,
+          "power": 0.700553118620804,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.700553118620804,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 9864,
+          "timestamp_ms": 9758,
           "count": 10,
-          "power": 0.895585862402294,
+          "power": 0.899091551292601,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.895585862402294,
+            "score": 0.899091551292601,
             "threshold": 0.7
           }
         }
       ],
       "max_best_score_by_class": {
-        "straight_left": 0.903979031096473,
+        "straight_left": 0.896787175710115,
         "straight_right": 0.0,
-        "hook_left": 0.991240138051593,
-        "hook_right": 0.896472200924272,
-        "uppercut_left": 0.0,
-        "uppercut_right": 0.590967418930772
+        "hook_left": 0.979966185560837,
+        "hook_right": 0.809030583953845,
+        "uppercut_left": 0.903976504638359,
+        "uppercut_right": 0.922146275372786
       },
       "max_class_score_by_class": {
-        "straight_left": 0.903979031096473,
-        "straight_right": 0.35638122799998,
-        "hook_left": 0.991240138051593,
-        "hook_right": 0.896472200924272,
-        "uppercut_left": 0.730944896335683,
-        "uppercut_right": 0.705249278328865
+        "straight_left": 0.896787175710115,
+        "straight_right": 0.785479341944302,
+        "hook_left": 0.979966185560837,
+        "hook_right": 0.890136961359293,
+        "uppercut_left": 0.903976504638359,
+        "uppercut_right": 0.922146275372786
       },
       "best_class_snapshot_counts": {
-        "straight_left": 14,
+        "straight_left": 3,
         "straight_right": 0,
-        "hook_left": 31,
-        "hook_right": 41,
-        "uppercut_left": 0,
-        "uppercut_right": 1
+        "hook_left": 32,
+        "hook_right": 24,
+        "uppercut_left": 10,
+        "uppercut_right": 18
       },
       "matcher_reason_counts": {
-        "below_threshold": 14,
-        "emit_cooldown_active": 46,
+        "below_threshold": 11,
+        "emit_cooldown_active": 49,
         "emitted": 27,
         "idle": 8,
-        "step_wait": 171,
+        "step_wait": 172,
         "window_not_full": 9
       },
       "latest_matcher_debug": {
         "active_backend": "prototype_matcher",
         "active_event_class": "no_punch",
         "best_class": "hook_left",
-        "best_score": 0.913398960706988,
+        "best_score": 0.963838920853387,
         "class_scores": {
-          "hook_left": 0.913398960706988,
-          "hook_right": 0.789745801700107,
-          "straight_left": 0.831897747608598,
-          "straight_right": 0.148032922838769,
-          "uppercut_left": 0.548419968678311,
-          "uppercut_right": 0.636008472313282
+          "hook_left": 0.963838920853387,
+          "hook_right": 0.781039338392763,
+          "straight_left": 0.841732479656452,
+          "straight_right": 0.543277350296013,
+          "uppercut_left": 0.67543779586225,
+          "uppercut_right": 0.790785395408176
         },
-        "cooldown_ms_remaining": 150,
+        "cooldown_ms_remaining": 50,
         "current_timestamp_ms": 2233,
         "emit_cooldown_ms": 250,
         "emit_hold_ms": 100,
         "emitted": false,
         "emitted_event_name": "",
         "enabled": true,
-        "evaluated_window_sample_count": 5,
-        "evaluated_window_span_ms": 200,
+        "evaluated_window_sample_count": 8,
+        "evaluated_window_span_ms": 300,
         "hold_ms_remaining": 0,
-        "last_emit_timestamp_ms": 2133,
+        "last_emit_timestamp_ms": 2033,
         "last_eval_timestamp_ms": 2233,
         "library_error": "",
         "library_id": "boxing_side_aware_fixture_derived_v1",
@@ -1576,8 +1533,8 @@
       },
       "findings": [
         "emitted expected hook_left 10 time(s)",
-        "also emitted other attack events: punch_left, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, punch_left, punch_left, punch_left, punch_left, hook_right",
-        "peak expected-class score 0.991",
+        "also emitted other attack events: uppercut_right, uppercut_left, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, uppercut_left, uppercut_left, uppercut_right, uppercut_left, uppercut_right, uppercut_left, hook_right, hook_right",
+        "peak expected-class score 0.980",
         "latest matcher reason emit_cooldown_active"
       ]
     },
@@ -1589,439 +1546,453 @@
       "expected_event": "hook_right",
       "expected_class": "hook_right",
       "expect_no_attack": false,
-      "capture_elapsed_ms": 11323,
-      "event_count": 26,
-      "expected_event_count": 14,
-      "wrong_event_count": 12,
+      "capture_elapsed_ms": 11311,
+      "event_count": 27,
+      "expected_event_count": 19,
+      "wrong_event_count": 8,
       "attack_events": [
         {
           "name": "hook_right",
-          "timestamp_ms": 1094,
+          "timestamp_ms": 1091,
           "count": 1,
-          "power": 0.8441780041455,
+          "power": 0.916496890480869,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.8441780041455,
+            "score": 0.916496890480869,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 1416,
+          "timestamp_ms": 1332,
           "count": 1,
-          "power": 0.757932900739104,
+          "power": 0.834447523088422,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.757932900739104,
+            "score": 0.834447523088422,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 1924,
+          "timestamp_ms": 1849,
           "count": 2,
-          "power": 0.715839440224251,
+          "power": 0.739737060629212,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.715839440224251,
+            "score": 0.739737060629212,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 2236,
+          "timestamp_ms": 2144,
           "count": 3,
-          "power": 0.884690923837545,
+          "power": 0.919087360990297,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.884690923837545,
+            "score": 0.919087360990297,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 2539,
+          "timestamp_ms": 2446,
           "count": 4,
-          "power": 0.884875964697752,
+          "power": 0.971932640350548,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.884875964697752,
+            "score": 0.971932640350548,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 2761,
+          "count": 1,
+          "power": 0.84311202263289,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.84311202263289,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 2842,
+          "timestamp_ms": 3054,
           "count": 2,
-          "power": 0.830952257795161,
+          "power": 0.71083413085579,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.830952257795161,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 3473,
-          "count": 1,
-          "power": 0.789388713620867,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.789388713620867,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 3771,
-          "count": 2,
-          "power": 0.876895518462263,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.876895518462263,
+            "score": 0.71083413085579,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 4074,
+          "timestamp_ms": 3471,
           "count": 5,
-          "power": 0.891414585777992,
+          "power": 0.770545845931359,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.891414585777992,
+            "score": 0.770545845931359,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 4402,
+          "timestamp_ms": 3757,
           "count": 6,
-          "power": 0.927142720558815,
+          "power": 0.929528954421775,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.927142720558815,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 4906,
-          "count": 3,
-          "power": 0.769046064393709,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.769046064393709,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 5217,
-          "count": 4,
-          "power": 0.836714173473891,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.836714173473891,
+            "score": 0.929528954421775,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 5527,
+          "timestamp_ms": 4057,
           "count": 7,
-          "power": 0.903656715896676,
+          "power": 0.881722069226665,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.903656715896676,
+            "score": 0.881722069226665,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 4385,
+          "count": 2,
+          "power": 0.823794669697585,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.823794669697585,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 4882,
+          "count": 3,
+          "power": 0.74793108588252,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.74793108588252,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 5834,
+          "timestamp_ms": 5185,
           "count": 8,
-          "power": 0.923701466191978,
+          "power": 0.875066398476131,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.923701466191978,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 6139,
-          "count": 5,
-          "power": 0.761533177092116,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.761533177092116,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 6657,
-          "count": 6,
-          "power": 0.719150193040034,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.719150193040034,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 6956,
-          "count": 7,
-          "power": 0.836249150959802,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.836249150959802,
+            "score": 0.875066398476131,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 7262,
+          "timestamp_ms": 5492,
           "count": 9,
-          "power": 0.89267897925515,
+          "power": 0.944470099321086,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.89267897925515,
+            "score": 0.944470099321086,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 7560,
+          "timestamp_ms": 5810,
           "count": 10,
-          "power": 0.903517135163205,
+          "power": 0.885720411417312,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.903517135163205,
+            "score": 0.885720411417312,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_right",
-          "timestamp_ms": 7858,
-          "count": 11,
-          "power": 0.886964461276623,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.886964461276623,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 8038,
-          "count": 3,
-          "power": 0.864660264254427,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.864660264254427,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 8344,
-          "count": 12,
-          "power": 0.844571739780055,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.844571739780055,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 8647,
+          "name": "hook_left",
+          "timestamp_ms": 6117,
           "count": 4,
-          "power": 0.835710737087363,
+          "power": 0.732959566449493,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.835710737087363,
+            "score": 0.732959566449493,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 8965,
+          "name": "hook_right",
+          "timestamp_ms": 6643,
+          "count": 11,
+          "power": 0.779997074655738,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.779997074655738,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 6940,
           "count": 5,
-          "power": 0.818435288104971,
+          "power": 0.871979091519094,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.818435288104971,
+            "score": 0.871979091519094,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 9659,
+          "timestamp_ms": 7238,
+          "count": 12,
+          "power": 0.943536200652514,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.943536200652514,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 7533,
           "count": 13,
-          "power": 0.715839440224251,
+          "power": 0.91367832640185,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.715839440224251,
+            "score": 0.91367832640185,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 9962,
+          "timestamp_ms": 7836,
           "count": 14,
-          "power": 0.883513113628852,
+          "power": 0.911917749056545,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.883513113628852,
+            "score": 0.911917749056545,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 8055,
+          "count": 15,
+          "power": 0.899476287149218,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.899476287149218,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 8345,
+          "count": 16,
+          "power": 0.929240224184044,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.929240224184044,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 8645,
+          "count": 17,
+          "power": 0.904246286846911,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.904246286846911,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 8956,
+          "count": 1,
+          "power": 0.856939055328462,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.856939055328462,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 9559,
+          "count": 18,
+          "power": 0.705140156028362,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.705140156028362,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 9848,
+          "count": 19,
+          "power": 0.919087360990297,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.919087360990297,
             "threshold": 0.7
           }
         }
       ],
       "max_best_score_by_class": {
-        "straight_left": 0.864660264254427,
+        "straight_left": 0.834447523088422,
         "straight_right": 0.0,
-        "hook_left": 0.891647973950339,
-        "hook_right": 0.927142720558815,
-        "uppercut_left": 0.0,
+        "hook_left": 0.88906695078885,
+        "hook_right": 0.985452914238191,
+        "uppercut_left": 0.875144828423299,
         "uppercut_right": 0.0
       },
       "max_class_score_by_class": {
-        "straight_left": 0.864660264254427,
-        "straight_right": 0.367226619826377,
-        "hook_left": 0.891647973950339,
-        "hook_right": 0.927142720558815,
-        "uppercut_left": 0.725832694525659,
-        "uppercut_right": 0.798379170809063
+        "straight_left": 0.846992738926036,
+        "straight_right": 0.77721678170649,
+        "hook_left": 0.906644278853072,
+        "hook_right": 0.985452914238191,
+        "uppercut_left": 0.884590753544785,
+        "uppercut_right": 0.92405932994715
       },
       "best_class_snapshot_counts": {
-        "straight_left": 16,
+        "straight_left": 14,
         "straight_right": 0,
-        "hook_left": 31,
-        "hook_right": 40,
-        "uppercut_left": 0,
+        "hook_left": 21,
+        "hook_right": 51,
+        "uppercut_left": 2,
         "uppercut_right": 0
       },
       "matcher_reason_counts": {
-        "below_threshold": 18,
-        "emit_cooldown_active": 43,
-        "emitted": 26,
+        "below_threshold": 16,
+        "emit_cooldown_active": 45,
+        "emitted": 27,
         "idle": 8,
-        "step_wait": 174,
+        "step_wait": 173,
         "window_not_full": 9
       },
       "latest_matcher_debug": {
         "active_backend": "prototype_matcher",
-        "active_event_class": "hook_right",
+        "active_event_class": "no_punch",
         "best_class": "hook_right",
-        "best_score": 0.883513113628852,
+        "best_score": 0.969761107227265,
         "class_scores": {
-          "hook_left": 0.725557341822904,
-          "hook_right": 0.883513113628852,
-          "straight_left": 0.755838054518953,
-          "straight_right": 0.277082246090287,
-          "uppercut_left": 0.65284833745317,
-          "uppercut_right": 0.696983253142392
+          "hook_left": 0.822411806129378,
+          "hook_right": 0.969761107227265,
+          "straight_left": 0.78933008866033,
+          "straight_right": 0.67208178133109,
+          "uppercut_left": 0.813566984994364,
+          "uppercut_right": 0.879215061706543
         },
-        "cooldown_ms_remaining": 250,
+        "cooldown_ms_remaining": 150,
         "current_timestamp_ms": 2033,
         "emit_cooldown_ms": 250,
         "emit_hold_ms": 100,
-        "emitted": true,
-        "emitted_event_name": "hook_right",
+        "emitted": false,
+        "emitted_event_name": "",
         "enabled": true,
         "evaluated_window_sample_count": 5,
         "evaluated_window_span_ms": 200,
-        "hold_ms_remaining": 100,
-        "last_emit_timestamp_ms": 1733,
+        "hold_ms_remaining": 0,
+        "last_emit_timestamp_ms": 1933,
         "last_eval_timestamp_ms": 2033,
         "library_error": "",
         "library_id": "boxing_side_aware_fixture_derived_v1",
         "library_loaded": true,
         "library_path": "res://addons/aerobeat-input-camera-tracking/assets/prototype_libraries/boxing_side_aware_fixture_derived_v1/library.json",
         "match_score_min": 0.7,
-        "reason": "emitted",
+        "reason": "emit_cooldown_active",
         "required_score": 0.7,
         "result_class": "hook_right",
         "selected_backend": "prototype_matcher",
@@ -2039,10 +2010,10 @@
         "negative_control_clean": null
       },
       "findings": [
-        "emitted expected hook_right 14 time(s)",
-        "also emitted other attack events: punch_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, punch_left, punch_left, punch_left",
-        "peak expected-class score 0.927",
-        "latest matcher reason emitted"
+        "emitted expected hook_right 19 time(s)",
+        "also emitted other attack events: punch_left, hook_left, punch_left, hook_left, hook_left, hook_left, hook_left, uppercut_left",
+        "peak expected-class score 0.985",
+        "latest matcher reason emit_cooldown_active"
       ]
     },
     {
@@ -2053,475 +2024,489 @@
       "expected_event": "uppercut_left",
       "expected_class": "uppercut_left",
       "expect_no_attack": false,
-      "capture_elapsed_ms": 11337,
-      "event_count": 28,
-      "expected_event_count": 4,
-      "wrong_event_count": 24,
+      "capture_elapsed_ms": 11269,
+      "event_count": 29,
+      "expected_event_count": 18,
+      "wrong_event_count": 11,
       "attack_events": [
         {
-          "name": "uppercut_left",
-          "timestamp_ms": 1101,
+          "name": "uppercut_right",
+          "timestamp_ms": 1075,
           "count": 1,
-          "power": 0.798375038553906,
+          "power": 0.756273942036358,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "uppercut_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.798375038553906,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 1514,
-          "count": 1,
-          "power": 0.837352358004636,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.837352358004636,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 1821,
-          "count": 2,
-          "power": 0.808548454845846,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.808548454845846,
+            "score": 0.756273942036358,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 2124,
+          "timestamp_ms": 1333,
           "count": 1,
-          "power": 0.799209779239246,
+          "power": 0.749771416218767,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.799209779239246,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 2434,
-          "count": 2,
-          "power": 0.851587474723228,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.851587474723228,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 2736,
-          "count": 3,
-          "power": 0.824002584764335,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.824002584764335,
+            "score": 0.749771416218767,
             "threshold": 0.7
           }
         },
         {
           "name": "uppercut_left",
-          "timestamp_ms": 3042,
-          "count": 2,
-          "power": 0.825503124171384,
+          "timestamp_ms": 1625,
+          "count": 1,
+          "power": 0.850958980579542,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.825503124171384,
+            "score": 0.850958980579542,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_right",
-          "timestamp_ms": 3349,
-          "count": 3,
-          "power": 0.735435161699013,
+          "name": "uppercut_left",
+          "timestamp_ms": 1935,
+          "count": 2,
+          "power": 0.924183498216139,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_right",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.735435161699013,
+            "score": 0.924183498216139,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 3760,
+          "name": "uppercut_left",
+          "timestamp_ms": 2246,
+          "count": 3,
+          "power": 0.991966824534044,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.991966824534044,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 2546,
           "count": 4,
-          "power": 0.816956478237822,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.816956478237822,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 4064,
-          "count": 5,
-          "power": 0.927889897123924,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.927889897123924,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 4382,
-          "count": 6,
-          "power": 0.922139471175401,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.922139471175401,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 4695,
-          "count": 7,
-          "power": 0.891049195404243,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.891049195404243,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "uppercut_left",
-          "timestamp_ms": 4999,
-          "count": 3,
-          "power": 0.743733370905755,
+          "power": 0.927856374332471,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.743733370905755,
+            "score": 0.927856374332471,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 5508,
+          "timestamp_ms": 2845,
+          "count": 1,
+          "power": 0.859289171955276,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.859289171955276,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 3144,
+          "count": 2,
+          "power": 0.720894503153885,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.720894503153885,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 3449,
+          "count": 3,
+          "power": 0.808434901535656,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.808434901535656,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 3756,
+          "count": 5,
+          "power": 0.881657366277126,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.881657366277126,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 4061,
+          "count": 6,
+          "power": 0.981231900685795,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.981231900685795,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 4371,
+          "count": 7,
+          "power": 0.95106803959846,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.95106803959846,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 4675,
           "count": 8,
-          "power": 0.840403692104684,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.840403692104684,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 5817,
-          "count": 9,
-          "power": 0.912512381509135,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.912512381509135,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6120,
-          "count": 10,
-          "power": 0.901904932524101,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.901904932524101,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6439,
-          "count": 11,
-          "power": 0.925589096663821,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.925589096663821,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 6738,
-          "count": 4,
-          "power": 0.884116735733855,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.884116735733855,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "uppercut_left",
-          "timestamp_ms": 7049,
-          "count": 4,
-          "power": 0.725753461375851,
+          "power": 0.902397297120053,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.725753461375851,
+            "score": 0.902397297120053,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 7361,
-          "count": 5,
-          "power": 0.719700321980546,
+          "timestamp_ms": 5299,
+          "count": 4,
+          "power": 0.718514455546716,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.719700321980546,
+            "score": 0.718514455546716,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 7661,
+          "name": "uppercut_left",
+          "timestamp_ms": 5592,
+          "count": 9,
+          "power": 0.893998213661954,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.893998213661954,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 5901,
+          "count": 10,
+          "power": 0.965354539729145,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.965354539729145,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 6210,
+          "count": 11,
+          "power": 0.955818005097249,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.955818005097249,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 6512,
           "count": 12,
-          "power": 0.811982699114902,
+          "power": 0.945605612972578,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.811982699114902,
+            "score": 0.945605612972578,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 7963,
+          "name": "hook_left",
+          "timestamp_ms": 6841,
+          "count": 1,
+          "power": 0.8042574938533,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.8042574938533,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 7236,
+          "count": 5,
+          "power": 0.737789116635954,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.737789116635954,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 7536,
           "count": 13,
-          "power": 0.875962166553287,
+          "power": 0.836510743506864,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.875962166553287,
+            "score": 0.836510743506864,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 8252,
+          "name": "uppercut_left",
+          "timestamp_ms": 7832,
           "count": 14,
-          "power": 0.926406823022162,
+          "power": 0.904643300416936,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.926406823022162,
+            "score": 0.904643300416936,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 8559,
+          "name": "uppercut_left",
+          "timestamp_ms": 8218,
           "count": 15,
-          "power": 0.931881244382273,
+          "power": 0.925760897620915,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.931881244382273,
+            "score": 0.925760897620915,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_right",
-          "timestamp_ms": 8871,
-          "count": 6,
-          "power": 0.833919770947587,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.833919770947587,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 9168,
-          "count": 7,
-          "power": 0.739106411822086,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.739106411822086,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 9470,
+          "name": "uppercut_left",
+          "timestamp_ms": 8426,
           "count": 16,
-          "power": 0.760091740685028,
+          "power": 0.928580649495104,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.760091740685028,
+            "score": 0.928580649495104,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 9781,
-          "count": 17,
-          "power": 0.803112010275112,
+          "name": "uppercut_right",
+          "timestamp_ms": 8729,
+          "count": 2,
+          "power": 0.892150969109693,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.803112010275112,
+            "score": 0.892150969109693,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 9028,
+          "count": 6,
+          "power": 0.752093386446068,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.752093386446068,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_right",
+          "timestamp_ms": 9337,
+          "count": 7,
+          "power": 0.76889035699097,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.76889035699097,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 9650,
+          "count": 17,
+          "power": 0.864989335804487,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.864989335804487,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_left",
+          "timestamp_ms": 9949,
+          "count": 18,
+          "power": 0.946631721715188,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.946631721715188,
             "threshold": 0.7
           }
         }
       ],
       "max_best_score_by_class": {
-        "straight_left": 0.931881244382273,
-        "straight_right": 0.0,
-        "hook_left": 0.784718428170032,
-        "hook_right": 0.884116735733855,
-        "uppercut_left": 0.894617339003756,
-        "uppercut_right": 0.0
+        "straight_left": 0.859289171955276,
+        "straight_right": 0.805467039531809,
+        "hook_left": 0.8042574938533,
+        "hook_right": 0.853129433463809,
+        "uppercut_left": 0.993480988897701,
+        "uppercut_right": 0.903544663300408
       },
       "max_class_score_by_class": {
-        "straight_left": 0.931881244382273,
-        "straight_right": 0.466843789471486,
-        "hook_left": 0.796975281765614,
-        "hook_right": 0.884116735733855,
-        "uppercut_left": 0.894617339003756,
-        "uppercut_right": 0.778796294376265
+        "straight_left": 0.885502538890203,
+        "straight_right": 0.866368390084052,
+        "hook_left": 0.8042574938533,
+        "hook_right": 0.909558774914546,
+        "uppercut_left": 0.993480988897701,
+        "uppercut_right": 0.919225307407836
       },
       "best_class_snapshot_counts": {
-        "straight_left": 49,
-        "straight_right": 0,
-        "hook_left": 3,
-        "hook_right": 25,
-        "uppercut_left": 11,
-        "uppercut_right": 0
+        "straight_left": 1,
+        "straight_right": 1,
+        "hook_left": 2,
+        "hook_right": 21,
+        "uppercut_left": 49,
+        "uppercut_right": 15
       },
       "matcher_reason_counts": {
-        "below_threshold": 9,
-        "emit_cooldown_active": 52,
-        "emitted": 27,
+        "below_threshold": 6,
+        "emit_cooldown_active": 55,
+        "emitted": 28,
         "idle": 8,
-        "step_wait": 175,
+        "step_wait": 178,
         "window_not_full": 9
       },
       "latest_matcher_debug": {
         "active_backend": "prototype_matcher",
-        "active_event_class": "no_punch",
-        "best_class": "hook_right",
-        "best_score": 0.79272672906352,
+        "active_event_class": "uppercut_left",
+        "best_class": "uppercut_left",
+        "best_score": 0.946631721715188,
         "class_scores": {
-          "hook_left": 0.594026166001085,
-          "hook_right": 0.79272672906352,
-          "straight_left": 0.789785736868516,
-          "straight_right": 0.326296981666133,
-          "uppercut_left": 0.670030778202195,
-          "uppercut_right": 0.68054439802349
+          "hook_left": 0.725971055769939,
+          "hook_right": 0.841374028965707,
+          "straight_left": 0.788465544226519,
+          "straight_right": 0.716043241911627,
+          "uppercut_left": 0.946631721715188,
+          "uppercut_right": 0.864396424268895
         },
-        "cooldown_ms_remaining": 50,
+        "cooldown_ms_remaining": 250,
         "current_timestamp_ms": 1833,
         "emit_cooldown_ms": 250,
         "emit_hold_ms": 100,
-        "emitted": false,
-        "emitted_event_name": "",
+        "emitted": true,
+        "emitted_event_name": "uppercut_left",
         "enabled": true,
         "evaluated_window_sample_count": 5,
         "evaluated_window_span_ms": 200,
-        "hold_ms_remaining": 0,
-        "last_emit_timestamp_ms": 1633,
+        "hold_ms_remaining": 100,
+        "last_emit_timestamp_ms": 1533,
         "last_eval_timestamp_ms": 1833,
         "library_error": "",
         "library_id": "boxing_side_aware_fixture_derived_v1",
         "library_loaded": true,
         "library_path": "res://addons/aerobeat-input-camera-tracking/assets/prototype_libraries/boxing_side_aware_fixture_derived_v1/library.json",
         "match_score_min": 0.7,
-        "reason": "emit_cooldown_active",
+        "reason": "emitted",
         "required_score": 0.7,
-        "result_class": "hook_right",
+        "result_class": "uppercut_left",
         "selected_backend": "prototype_matcher",
         "show_event_gate_state": true,
         "show_scores": true,
         "window_ms": 250,
         "window_ready_sample_count": 5,
-        "window_sample_count": 7,
+        "window_sample_count": 9,
         "window_span_ms": 300,
         "window_step_ms": 33
       },
@@ -2531,10 +2516,10 @@
         "negative_control_clean": null
       },
       "findings": [
-        "emitted expected uppercut_left 4 time(s)",
-        "also emitted other attack events: punch_left, punch_left, hook_right, hook_right, punch_left, hook_right, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, hook_right, hook_right, punch_left, punch_left, punch_left, punch_left, hook_right, hook_right, punch_left, punch_left",
-        "peak expected-class score 0.895",
-        "latest matcher reason emit_cooldown_active"
+        "emitted expected uppercut_left 18 time(s)",
+        "also emitted other attack events: uppercut_right, hook_right, punch_left, hook_right, hook_right, hook_right, hook_left, hook_right, uppercut_right, hook_right, hook_right",
+        "peak expected-class score 0.993",
+        "latest matcher reason emitted"
       ]
     },
     {
@@ -2545,445 +2530,417 @@
       "expected_event": "uppercut_right",
       "expected_class": "uppercut_right",
       "expect_no_attack": false,
-      "capture_elapsed_ms": 11386,
-      "event_count": 29,
-      "expected_event_count": 4,
-      "wrong_event_count": 25,
+      "capture_elapsed_ms": 11380,
+      "event_count": 27,
+      "expected_event_count": 14,
+      "wrong_event_count": 13,
       "attack_events": [
         {
-          "name": "uppercut_right",
-          "timestamp_ms": 1121,
+          "name": "uppercut_left",
+          "timestamp_ms": 1077,
           "count": 1,
-          "power": 0.999999999999995,
+          "power": 0.768884798281225,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "uppercut_right",
+            "class_name": "uppercut_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.999999999999995,
+            "score": 0.768884798281225,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 1348,
+          "timestamp_ms": 1399,
           "count": 1,
-          "power": 0.803061106814345,
+          "power": 0.790871339191749,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.803061106814345,
+            "score": 0.790871339191749,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 1633,
+          "timestamp_ms": 1681,
           "count": 1,
-          "power": 0.752592801220329,
+          "power": 0.749402415657336,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.752592801220329,
+            "score": 0.749402415657336,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 1943,
+          "name": "uppercut_right",
+          "timestamp_ms": 1991,
+          "count": 1,
+          "power": 0.905058231413219,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.905058231413219,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 2294,
           "count": 2,
-          "power": 0.810441617947322,
+          "power": 0.999999999999997,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.810441617947322,
+            "score": 0.999999999999997,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 2248,
+          "name": "uppercut_right",
+          "timestamp_ms": 2601,
           "count": 3,
-          "power": 0.802297774330777,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.802297774330777,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 2556,
-          "count": 4,
-          "power": 0.839188438127182,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.839188438127182,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "uppercut_right",
-          "timestamp_ms": 2867,
-          "count": 2,
-          "power": 0.859104498352641,
+          "power": 0.932634209477567,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.859104498352641,
+            "score": 0.932634209477567,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 3160,
+          "timestamp_ms": 3209,
           "count": 2,
-          "power": 0.806182943710241,
+          "power": 0.798565721387517,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.806182943710241,
+            "score": 0.798565721387517,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 3469,
-          "count": 5,
-          "power": 0.785316897182934,
+          "name": "uppercut_right",
+          "timestamp_ms": 3517,
+          "count": 4,
+          "power": 0.855536720555226,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.785316897182934,
+            "score": 0.855536720555226,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 3773,
+          "name": "uppercut_right",
+          "timestamp_ms": 3825,
+          "count": 5,
+          "power": 0.928816749339025,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.928816749339025,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 4128,
           "count": 6,
-          "power": 0.823036274199806,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.823036274199806,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 4082,
-          "count": 7,
-          "power": 0.824640559859006,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.824640559859006,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "uppercut_right",
-          "timestamp_ms": 4394,
-          "count": 3,
-          "power": 0.873507086409022,
+          "power": 0.930621827561827,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.873507086409022,
+            "score": 0.930621827561827,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 4700,
+          "timestamp_ms": 4453,
           "count": 3,
-          "power": 0.877735312279796,
+          "power": 0.825687120237183,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.877735312279796,
+            "score": 0.825687120237183,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 5002,
+          "timestamp_ms": 4761,
           "count": 4,
-          "power": 0.859766395556094,
+          "power": 0.846892008274338,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.859766395556094,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 5311,
-          "count": 1,
-          "power": 0.892621272881013,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.892621272881013,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 5623,
-          "count": 2,
-          "power": 0.844077158774922,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.844077158774922,
+            "score": 0.846892008274338,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 6153,
+          "timestamp_ms": 5046,
           "count": 5,
-          "power": 0.754783161167684,
+          "power": 0.872047259330259,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.754783161167684,
+            "score": 0.872047259330259,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 6437,
+          "name": "hook_right",
+          "timestamp_ms": 5363,
+          "count": 1,
+          "power": 0.918902860615099,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.918902860615099,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 5679,
+          "count": 7,
+          "power": 0.923527151341164,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.923527151341164,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 6211,
+          "count": 6,
+          "power": 0.763926157400083,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.763926157400083,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 6489,
+          "count": 7,
+          "power": 0.811907203201247,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.811907203201247,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 6780,
           "count": 8,
-          "power": 0.781749304115287,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.781749304115287,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6731,
-          "count": 9,
-          "power": 0.806688888323923,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.806688888323923,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 7083,
-          "count": 10,
-          "power": 0.886405447834088,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.886405447834088,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 7300,
-          "count": 11,
-          "power": 0.891607356529256,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.891607356529256,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_right",
-          "timestamp_ms": 7602,
-          "count": 3,
-          "power": 0.874321990240386,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_right",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.874321990240386,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "uppercut_right",
-          "timestamp_ms": 7921,
-          "count": 4,
-          "power": 0.908255288489003,
+          "power": 0.919879272520938,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.908255288489003,
+            "score": 0.919879272520938,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 7132,
+          "count": 9,
+          "power": 0.931877105729986,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.931877105729986,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 7441,
+          "count": 10,
+          "power": 0.923927817089211,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.923927817089211,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 7763,
+          "count": 11,
+          "power": 0.899615693728236,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "uppercut_right",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.899615693728236,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 8204,
-          "count": 6,
-          "power": 0.819624376062205,
+          "timestamp_ms": 8176,
+          "count": 8,
+          "power": 0.790871339191749,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.819624376062205,
+            "score": 0.790871339191749,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 8508,
+          "timestamp_ms": 8456,
+          "count": 2,
+          "power": 0.749402415657336,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.749402415657336,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "uppercut_right",
+          "timestamp_ms": 8759,
           "count": 12,
-          "power": 0.785070005315019,
+          "power": 0.905058231413219,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.785070005315019,
+            "score": 0.905058231413219,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 8810,
+          "name": "uppercut_right",
+          "timestamp_ms": 9064,
           "count": 13,
-          "power": 0.814753672714624,
+          "power": 0.999999999999997,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.814753672714624,
+            "score": 0.999999999999997,
             "threshold": 0.7
           }
         },
         {
-          "name": "punch_left",
-          "timestamp_ms": 9117,
+          "name": "uppercut_right",
+          "timestamp_ms": 9370,
           "count": 14,
-          "power": 0.811611754644433,
+          "power": 0.932634209477567,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "straight_left",
+            "class_name": "uppercut_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.811611754644433,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 9417,
-          "count": 15,
-          "power": 0.814324041676769,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.814324041676769,
+            "score": 0.932634209477567,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 10070,
-          "count": 7,
-          "power": 0.84271917306153,
+          "timestamp_ms": 9980,
+          "count": 9,
+          "power": 0.723370315936499,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.84271917306153,
+            "score": 0.723370315936499,
             "threshold": 0.7
           }
         }
       ],
       "max_best_score_by_class": {
-        "straight_left": 0.891607356529256,
-        "straight_right": 0.0,
-        "hook_left": 0.895254779480259,
-        "hook_right": 0.892621272881013,
-        "uppercut_left": 0.0,
-        "uppercut_right": 0.908255288489003
+        "straight_left": 0.83334598141826,
+        "straight_right": 0.900143080365392,
+        "hook_left": 0.876627019754371,
+        "hook_right": 0.932219458799067,
+        "uppercut_left": 0.794675438329738,
+        "uppercut_right": 0.999999999999997
       },
       "max_class_score_by_class": {
-        "straight_left": 0.891607356529256,
-        "straight_right": 0.468977555023129,
-        "hook_left": 0.895254779480259,
-        "hook_right": 0.892621272881013,
-        "uppercut_left": 0.71973359829015,
-        "uppercut_right": 0.908255288489003
+        "straight_left": 0.859732326200977,
+        "straight_right": 0.900143080365392,
+        "hook_left": 0.876627019754371,
+        "hook_right": 0.932219458799067,
+        "uppercut_left": 0.883549478774083,
+        "uppercut_right": 0.999999999999997
       },
       "best_class_snapshot_counts": {
-        "straight_left": 41,
-        "straight_right": 0,
-        "hook_left": 24,
-        "hook_right": 11,
-        "uppercut_left": 0,
-        "uppercut_right": 12
+        "straight_left": 5,
+        "straight_right": 1,
+        "hook_left": 31,
+        "hook_right": 4,
+        "uppercut_left": 2,
+        "uppercut_right": 43
       },
       "matcher_reason_counts": {
-        "below_threshold": 7,
-        "emit_cooldown_active": 54,
+        "below_threshold": 11,
+        "emit_cooldown_active": 48,
         "emitted": 27,
         "idle": 8,
         "pose_invalid": 3,
@@ -2994,17 +2951,17 @@
         "active_backend": "prototype_matcher",
         "active_event_class": "hook_left",
         "best_class": "hook_left",
-        "best_score": 0.84271917306153,
+        "best_score": 0.723370315936499,
         "class_scores": {
-          "hook_left": 0.84271917306153,
-          "hook_right": 0.509409138464811,
-          "straight_left": 0.742338892987208,
-          "straight_right": 0.0,
-          "uppercut_left": 0.55349938058469,
-          "uppercut_right": 0.568681424763059
+          "hook_left": 0.723370315936499,
+          "hook_right": 0.374746782760678,
+          "straight_left": 0.634169852094355,
+          "straight_right": 0.035087504701846,
+          "uppercut_left": 0.554455195676569,
+          "uppercut_right": 0.340395425327514
         },
         "cooldown_ms_remaining": 250,
-        "current_timestamp_ms": 3033,
+        "current_timestamp_ms": 2933,
         "emit_cooldown_ms": 250,
         "emit_hold_ms": 100,
         "emitted": true,
@@ -3013,8 +2970,8 @@
         "evaluated_window_sample_count": 5,
         "evaluated_window_span_ms": 200,
         "hold_ms_remaining": 100,
-        "last_emit_timestamp_ms": 2433,
-        "last_eval_timestamp_ms": 3033,
+        "last_emit_timestamp_ms": 2333,
+        "last_eval_timestamp_ms": 2933,
         "library_error": "",
         "library_id": "boxing_side_aware_fixture_derived_v1",
         "library_loaded": true,
@@ -3028,7 +2985,7 @@
         "show_scores": true,
         "window_ms": 250,
         "window_ready_sample_count": 5,
-        "window_sample_count": 7,
+        "window_sample_count": 8,
         "window_span_ms": 300,
         "window_step_ms": 33
       },
@@ -3038,9 +2995,9 @@
         "negative_control_clean": null
       },
       "findings": [
-        "emitted expected uppercut_right 4 time(s)",
-        "also emitted other attack events: hook_left, punch_left, punch_left, punch_left, punch_left, hook_left, punch_left, punch_left, punch_left, hook_left, hook_left, hook_right, hook_right, hook_left, punch_left, punch_left, punch_left, punch_left, hook_right, hook_left, punch_left, punch_left, punch_left, punch_left, hook_left",
-        "peak expected-class score 0.908",
+        "emitted expected uppercut_right 14 time(s)",
+        "also emitted other attack events: uppercut_left, hook_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_right, hook_left, hook_left, hook_left, punch_left, hook_left",
+        "peak expected-class score 1.000",
         "latest matcher reason emitted"
       ]
     },
@@ -3052,502 +3009,495 @@
       "expected_event": null,
       "expected_class": null,
       "expect_no_attack": true,
-      "capture_elapsed_ms": 11371,
+      "capture_elapsed_ms": 11299,
       "event_count": 30,
       "expected_event_count": 0,
       "wrong_event_count": 30,
       "attack_events": [
         {
           "name": "punch_left",
-          "timestamp_ms": 1090,
+          "timestamp_ms": 1098,
           "count": 1,
-          "power": 0.859713669091172,
+          "power": 0.865826812039385,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.859713669091172,
+            "score": 0.865826812039385,
             "threshold": 0.7
           }
         },
         {
-          "name": "hook_left",
-          "timestamp_ms": 1309,
-          "count": 1,
-          "power": 0.834615568669211,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.834615568669211,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 1620,
+          "name": "punch_left",
+          "timestamp_ms": 1369,
           "count": 2,
-          "power": 0.807966519061823,
+          "power": 0.821852337970052,
           "backend": "prototype_matcher",
           "prototype_match": {
-            "class_name": "hook_left",
+            "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.807966519061823,
+            "score": 0.821852337970052,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 1923,
+          "timestamp_ms": 1678,
+          "count": 1,
+          "power": 0.785420073568135,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.785420073568135,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 1984,
+          "count": 2,
+          "power": 0.820007859653418,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.820007859653418,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 2293,
           "count": 3,
-          "power": 0.865914952230922,
+          "power": 0.86333930102948,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.865914952230922,
+            "score": 0.86333930102948,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 2241,
+          "timestamp_ms": 2597,
           "count": 4,
-          "power": 0.912182878244637,
+          "power": 0.874516633696156,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.912182878244637,
+            "score": 0.874516633696156,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 2540,
+          "timestamp_ms": 2913,
           "count": 5,
-          "power": 0.908301812266989,
+          "power": 0.884465484811712,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.908301812266989,
+            "score": 0.884465484811712,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 2841,
+          "timestamp_ms": 3221,
           "count": 6,
-          "power": 0.900903887559926,
+          "power": 0.87271169396015,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.900903887559926,
+            "score": 0.87271169396015,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 3144,
+          "timestamp_ms": 3529,
           "count": 7,
-          "power": 0.896482945963171,
+          "power": 0.907429361670463,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.896482945963171,
+            "score": 0.907429361670463,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 3450,
+          "timestamp_ms": 3835,
           "count": 8,
-          "power": 0.889195027071253,
+          "power": 0.888384638654862,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.889195027071253,
+            "score": 0.888384638654862,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 3760,
+          "timestamp_ms": 4138,
           "count": 9,
-          "power": 0.890506135728505,
+          "power": 0.879905698022384,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.890506135728505,
+            "score": 0.879905698022384,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 4051,
+          "timestamp_ms": 4448,
           "count": 10,
-          "power": 0.863845905639382,
+          "power": 0.844915116120078,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.863845905639382,
+            "score": 0.844915116120078,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 4363,
+          "timestamp_ms": 4744,
           "count": 11,
-          "power": 0.875314275173577,
+          "power": 0.844934683926878,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.875314275173577,
+            "score": 0.844934683926878,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 4659,
+          "timestamp_ms": 5037,
           "count": 12,
-          "power": 0.845768296632131,
+          "power": 0.889310216903054,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.845768296632131,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 4957,
-          "count": 13,
-          "power": 0.878873059651765,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.878873059651765,
+            "score": 0.889310216903054,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 5275,
+          "timestamp_ms": 5348,
           "count": 1,
-          "power": 0.891847425679164,
+          "power": 0.88773388669306,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.891847425679164,
+            "score": 0.88773388669306,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_right",
-          "timestamp_ms": 5578,
+          "timestamp_ms": 5553,
           "count": 2,
-          "power": 0.874311601722764,
+          "power": 0.862099420446864,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_right",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.874311601722764,
+            "score": 0.862099420446864,
             "threshold": 0.7
           }
         },
         {
           "name": "punch_left",
-          "timestamp_ms": 5887,
-          "count": 2,
-          "power": 0.8301337849368,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "straight_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.8301337849368,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "punch_left",
-          "timestamp_ms": 6204,
+          "timestamp_ms": 5862,
           "count": 3,
-          "power": 0.83315558431841,
+          "power": 0.865461584013811,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "straight_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.83315558431841,
+            "score": 0.865461584013811,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "punch_left",
+          "timestamp_ms": 6164,
+          "count": 4,
+          "power": 0.851246968078081,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "straight_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.851246968078081,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 6513,
+          "timestamp_ms": 6470,
+          "count": 13,
+          "power": 0.746729399571581,
+          "backend": "prototype_matcher",
+          "prototype_match": {
+            "class_name": "hook_left",
+            "library_id": "boxing_side_aware_fixture_derived_v1",
+            "reason": "emitted",
+            "score": 0.746729399571581,
+            "threshold": 0.7
+          }
+        },
+        {
+          "name": "hook_left",
+          "timestamp_ms": 6784,
           "count": 14,
-          "power": 0.766991115790844,
+          "power": 0.810454986875485,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.766991115790844,
+            "score": 0.810454986875485,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 6823,
+          "timestamp_ms": 7087,
           "count": 15,
-          "power": 0.849913840716479,
+          "power": 0.839972065747858,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.849913840716479,
+            "score": 0.839972065747858,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 7130,
+          "timestamp_ms": 7392,
           "count": 16,
-          "power": 0.89475473657644,
+          "power": 0.862385770797324,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.89475473657644,
+            "score": 0.862385770797324,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 7436,
+          "timestamp_ms": 7692,
           "count": 17,
-          "power": 0.920534148104522,
+          "power": 0.869845108829404,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.920534148104522,
+            "score": 0.869845108829404,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 7742,
+          "timestamp_ms": 7998,
           "count": 18,
-          "power": 0.914391648004247,
+          "power": 0.855654071281113,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.914391648004247,
+            "score": 0.855654071281113,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 8040,
+          "timestamp_ms": 8304,
           "count": 19,
-          "power": 0.864611486835835,
+          "power": 0.88016230744591,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.864611486835835,
+            "score": 0.88016230744591,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 8346,
+          "timestamp_ms": 8604,
           "count": 20,
-          "power": 0.896727916875916,
+          "power": 0.883728350716481,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.896727916875916,
+            "score": 0.883728350716481,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 8649,
+          "timestamp_ms": 8911,
           "count": 21,
-          "power": 0.890554426964472,
+          "power": 0.880848312957123,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.890554426964472,
+            "score": 0.880848312957123,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 8950,
+          "timestamp_ms": 9211,
           "count": 22,
-          "power": 0.871559198525094,
+          "power": 0.85068752447565,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.871559198525094,
+            "score": 0.85068752447565,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 9251,
+          "timestamp_ms": 9519,
           "count": 23,
-          "power": 0.839667443145553,
+          "power": 0.856543614929131,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.839667443145553,
+            "score": 0.856543614929131,
             "threshold": 0.7
           }
         },
         {
           "name": "hook_left",
-          "timestamp_ms": 9554,
+          "timestamp_ms": 9815,
           "count": 24,
-          "power": 0.845811815042459,
+          "power": 0.873674898050722,
           "backend": "prototype_matcher",
           "prototype_match": {
             "class_name": "hook_left",
             "library_id": "boxing_side_aware_fixture_derived_v1",
             "reason": "emitted",
-            "score": 0.845811815042459,
-            "threshold": 0.7
-          }
-        },
-        {
-          "name": "hook_left",
-          "timestamp_ms": 9848,
-          "count": 25,
-          "power": 0.886290769825703,
-          "backend": "prototype_matcher",
-          "prototype_match": {
-            "class_name": "hook_left",
-            "library_id": "boxing_side_aware_fixture_derived_v1",
-            "reason": "emitted",
-            "score": 0.886290769825703,
+            "score": 0.873674898050722,
             "threshold": 0.7
           }
         }
       ],
       "max_best_score_by_class": {
-        "straight_left": 0.862468943139401,
+        "straight_left": 0.884652422991136,
         "straight_right": 0.0,
-        "hook_left": 0.920534148104522,
-        "hook_right": 0.90450634172923,
+        "hook_left": 0.907429361670463,
+        "hook_right": 0.887866838247811,
         "uppercut_left": 0.0,
         "uppercut_right": 0.0
       },
       "max_class_score_by_class": {
-        "straight_left": 0.862468943139401,
-        "straight_right": 0.251797019817035,
-        "hook_left": 0.920534148104522,
-        "hook_right": 0.90450634172923,
-        "uppercut_left": 0.703919232980155,
-        "uppercut_right": 0.683472037512016
+        "straight_left": 0.884652422991136,
+        "straight_right": 0.655235649800836,
+        "hook_left": 0.907429361670463,
+        "hook_right": 0.887866838247811,
+        "uppercut_left": 0.842340940616998,
+        "uppercut_right": 0.828705975762017
       },
       "best_class_snapshot_counts": {
-        "straight_left": 6,
+        "straight_left": 9,
         "straight_right": 0,
-        "hook_left": 77,
-        "hook_right": 6,
+        "hook_left": 74,
+        "hook_right": 5,
         "uppercut_left": 0,
         "uppercut_right": 0
       },
       "matcher_reason_counts": {
-        "emit_cooldown_active": 60,
+        "emit_cooldown_active": 59,
         "emitted": 29,
         "idle": 8,
-        "step_wait": 174,
+        "step_wait": 181,
         "window_not_full": 9
       },
       "latest_matcher_debug": {
         "active_backend": "prototype_matcher",
         "active_event_class": "no_punch",
-        "best_class": "hook_left",
-        "best_score": 0.853859378753485,
-        "class_scores": {
-          "hook_left": 0.853859378753485,
-          "hook_right": 0.700493988458272,
-          "straight_left": 0.790988159337891,
-          "straight_right": 0.0,
-          "uppercut_left": 0.537992159695934,
-          "uppercut_right": 0.535016112148252
-        },
-        "cooldown_ms_remaining": 50,
-        "current_timestamp_ms": 4833,
+        "best_class": "no_punch",
+        "best_score": 0.0,
+        "class_scores": {},
+        "cooldown_ms_remaining": 150,
+        "current_timestamp_ms": 4633,
         "emit_cooldown_ms": 250,
         "emit_hold_ms": 100,
         "emitted": false,
         "emitted_event_name": "",
         "enabled": true,
-        "evaluated_window_sample_count": 5,
-        "evaluated_window_span_ms": 200,
+        "evaluated_window_sample_count": 0,
+        "evaluated_window_span_ms": 0,
         "hold_ms_remaining": 0,
-        "last_emit_timestamp_ms": 4633,
-        "last_eval_timestamp_ms": 4833,
+        "last_emit_timestamp_ms": 4533,
+        "last_eval_timestamp_ms": 4633,
         "library_error": "",
         "library_id": "boxing_side_aware_fixture_derived_v1",
         "library_loaded": true,
         "library_path": "res://addons/aerobeat-input-camera-tracking/assets/prototype_libraries/boxing_side_aware_fixture_derived_v1/library.json",
         "match_score_min": 0.7,
-        "reason": "emit_cooldown_active",
+        "reason": "step_wait",
         "required_score": 0.7,
-        "result_class": "hook_left",
+        "result_class": "no_punch",
         "selected_backend": "prototype_matcher",
         "show_event_gate_state": true,
         "show_scores": true,
         "window_ms": 250,
         "window_ready_sample_count": 5,
-        "window_sample_count": 6,
+        "window_sample_count": 9,
         "window_span_ms": 300,
         "window_step_ms": 33
       },
@@ -3557,8 +3507,8 @@
         "negative_control_clean": false
       },
       "findings": [
-        "negative control still emitted attack events: punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_right, hook_right, punch_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left",
-        "latest matcher reason emit_cooldown_active"
+        "negative control still emitted attack events: punch_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_right, hook_right, punch_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left",
+        "latest matcher reason step_wait"
       ]
     }
   ],
@@ -3569,37 +3519,37 @@
         "fixture_count": 1,
         "fixtures_with_expected_event": 1,
         "fixtures_with_wrong_events": 1,
-        "max_expected_class_score": 0.999999999999996
+        "max_expected_class_score": 0.999999999999997
       },
       "straight_right": {
         "fixture_count": 1,
         "fixtures_with_expected_event": 1,
         "fixtures_with_wrong_events": 1,
-        "max_expected_class_score": 0.852484544541631
+        "max_expected_class_score": 0.981652133537262
       },
       "hook_left": {
         "fixture_count": 1,
         "fixtures_with_expected_event": 1,
         "fixtures_with_wrong_events": 1,
-        "max_expected_class_score": 0.991240138051593
+        "max_expected_class_score": 0.979966185560837
       },
       "hook_right": {
         "fixture_count": 1,
         "fixtures_with_expected_event": 1,
         "fixtures_with_wrong_events": 1,
-        "max_expected_class_score": 0.927142720558815
+        "max_expected_class_score": 0.985452914238191
       },
       "uppercut_left": {
         "fixture_count": 1,
         "fixtures_with_expected_event": 1,
         "fixtures_with_wrong_events": 1,
-        "max_expected_class_score": 0.894617339003756
+        "max_expected_class_score": 0.993480988897701
       },
       "uppercut_right": {
         "fixture_count": 1,
         "fixtures_with_expected_event": 1,
         "fixtures_with_wrong_events": 1,
-        "max_expected_class_score": 0.908255288489003
+        "max_expected_class_score": 0.999999999999997
       }
     },
     "negative_controls": {

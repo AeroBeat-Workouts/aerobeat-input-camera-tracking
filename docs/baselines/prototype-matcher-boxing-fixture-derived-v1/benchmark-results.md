@@ -3,7 +3,7 @@
 - Benchmark ID: `prototype_matcher_boxing_fixture_derived_v1`
 - Library ID: `boxing_side_aware_fixture_derived_v1`
 - Profile: `boxing`
-- Generated At: `2026-06-13T19:25:54-04:00`
+- Generated At: `2026-06-13T20:42:12-04:00`
 - Runner: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/scripts/run_prototype_matcher_fixture_benchmark.py`
 
 ## Aggregate
@@ -19,41 +19,42 @@
 - Source: `.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4`
 - Expected event: `punch_left`
 - Expected class: `straight_left`
-- Attack events emitted: **28**
-- emitted expected punch_left 17 time(s)
-- also emitted other attack events: hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right
+- Attack events emitted: **29**
+- emitted expected punch_left 10 time(s)
+- also emitted other attack events: uppercut_left, uppercut_left, hook_right, uppercut_right, uppercut_right, hook_right, hook_right, hook_right, hook_right, hook_right, uppercut_right, uppercut_left, uppercut_left, uppercut_left, uppercut_left, uppercut_right, uppercut_right, uppercut_right, uppercut_right
 - peak expected-class score 1.000
-- latest matcher reason emit_cooldown_active
+- latest matcher reason step_wait
 
 Emitted attack events:
-- `punch_left` at `1144ms` score=`0.950` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `1359ms` score=`0.935` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `1674ms` score=`0.724` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `2074ms` score=`0.847` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `2390ms` score=`0.904` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `2702ms` score=`0.801` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `3012ms` score=`0.701` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `3318ms` score=`0.887` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `3622ms` score=`0.869` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `3942ms` score=`0.801` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `4233ms` score=`0.773` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `4545ms` score=`0.894` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4873ms` score=`0.891` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `5174ms` score=`0.845` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `5499ms` score=`0.799` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `5794ms` score=`0.842` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6094ms` score=`0.874` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6513ms` score=`0.896` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6814ms` score=`0.922` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7117ms` score=`0.945` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7422ms` score=`0.965` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `7734ms` score=`0.792` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `8182ms` score=`0.748` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8539ms` score=`0.885` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8901ms` score=`0.965` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `9234ms` score=`0.747` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `9587ms` score=`0.751` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `9944ms` score=`0.889` class=`straight_left` backend=`prototype_matcher`
+- `uppercut_left` at `1128ms` score=`0.903` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `1348ms` score=`0.885` class=`uppercut_left` backend=`prototype_matcher`
+- `hook_right` at `1664ms` score=`0.750` class=`hook_right` backend=`prototype_matcher`
+- `punch_left` at `1962ms` score=`0.802` class=`straight_left` backend=`prototype_matcher`
+- `punch_left` at `2272ms` score=`0.924` class=`straight_left` backend=`prototype_matcher`
+- `uppercut_right` at `2579ms` score=`0.905` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `2888ms` score=`0.788` class=`uppercut_right` backend=`prototype_matcher`
+- `punch_left` at `3193ms` score=`0.867` class=`straight_left` backend=`prototype_matcher`
+- `hook_right` at `3505ms` score=`0.948` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `3814ms` score=`0.879` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `4127ms` score=`0.858` class=`hook_right` backend=`prototype_matcher`
+- `punch_left` at `4429ms` score=`0.857` class=`straight_left` backend=`prototype_matcher`
+- `punch_left` at `4731ms` score=`0.976` class=`straight_left` backend=`prototype_matcher`
+- `hook_right` at `5040ms` score=`0.872` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `5349ms` score=`0.840` class=`hook_right` backend=`prototype_matcher`
+- `uppercut_right` at `5656ms` score=`0.852` class=`uppercut_right` backend=`prototype_matcher`
+- `punch_left` at `5954ms` score=`0.924` class=`straight_left` backend=`prototype_matcher`
+- `punch_left` at `6255ms` score=`0.925` class=`straight_left` backend=`prototype_matcher`
+- `uppercut_left` at `6472ms` score=`0.895` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `6769ms` score=`0.888` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `7075ms` score=`0.906` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `7382ms` score=`0.925` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_right` at `7682ms` score=`0.839` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `8009ms` score=`0.760` class=`uppercut_right` backend=`prototype_matcher`
+- `punch_left` at `8354ms` score=`0.887` class=`straight_left` backend=`prototype_matcher`
+- `punch_left` at `8701ms` score=`0.937` class=`straight_left` backend=`prototype_matcher`
+- `uppercut_right` at `9030ms` score=`0.813` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `9363ms` score=`0.771` class=`uppercut_right` backend=`prototype_matcher`
+- `punch_left` at `9707ms` score=`0.945` class=`straight_left` backend=`prototype_matcher`
 
 ### straight right
 
@@ -61,48 +62,46 @@ Emitted attack events:
 - Source: `.testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.mp4`
 - Expected event: `punch_right`
 - Expected class: `straight_right`
-- Attack events emitted: **35**
-- emitted expected punch_right 2 time(s)
-- also emitted other attack events: punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left
-- peak expected-class score 0.852
-- latest matcher reason emit_cooldown_active
+- Attack events emitted: **33**
+- emitted expected punch_right 27 time(s)
+- also emitted other attack events: uppercut_left, uppercut_left, uppercut_left, uppercut_left, uppercut_left, uppercut_left
+- peak expected-class score 0.982
+- latest matcher reason step_wait
 
 Emitted attack events:
-- `punch_left` at `1116ms` score=`0.746` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `1260ms` score=`0.736` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `1496ms` score=`0.718` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `1747ms` score=`0.774` class=`straight_left` backend=`prototype_matcher`
-- `punch_right` at `2011ms` score=`0.852` class=`straight_right` backend=`prototype_matcher`
-- `punch_left` at `2248ms` score=`0.784` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `2498ms` score=`0.820` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `2750ms` score=`0.830` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `3002ms` score=`0.845` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `3259ms` score=`0.736` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `3622ms` score=`0.784` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `3875ms` score=`0.792` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4124ms` score=`0.840` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4375ms` score=`0.754` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4636ms` score=`0.720` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4887ms` score=`0.734` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `5126ms` score=`0.787` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `5374ms` score=`0.878` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `5625ms` score=`0.827` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `5876ms` score=`0.794` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6106ms` score=`0.706` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6345ms` score=`0.712` class=`straight_left` backend=`prototype_matcher`
-- `punch_right` at `6595ms` score=`0.708` class=`straight_right` backend=`prototype_matcher`
-- `punch_left` at `6846ms` score=`0.760` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7096ms` score=`0.737` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7347ms` score=`0.735` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7601ms` score=`0.726` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7846ms` score=`0.741` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8223ms` score=`0.823` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8471ms` score=`0.820` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8721ms` score=`0.830` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8972ms` score=`0.845` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `9232ms` score=`0.736` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `9599ms` score=`0.749` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `9850ms` score=`0.792` class=`straight_left` backend=`prototype_matcher`
+- `punch_right` at `1099ms` score=`0.847` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `1271ms` score=`0.873` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `1499ms` score=`0.930` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `1750ms` score=`0.940` class=`straight_right` backend=`prototype_matcher`
+- `uppercut_left` at `2251ms` score=`0.829` class=`uppercut_left` backend=`prototype_matcher`
+- `punch_right` at `2500ms` score=`0.901` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `2751ms` score=`0.879` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `3002ms` score=`0.966` class=`straight_right` backend=`prototype_matcher`
+- `uppercut_left` at `3263ms` score=`0.759` class=`uppercut_left` backend=`prototype_matcher`
+- `punch_right` at `3626ms` score=`0.814` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `3876ms` score=`0.917` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `4128ms` score=`0.924` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `4376ms` score=`0.932` class=`straight_right` backend=`prototype_matcher`
+- `uppercut_left` at `4636ms` score=`0.742` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `4888ms` score=`0.759` class=`uppercut_left` backend=`prototype_matcher`
+- `punch_right` at `5127ms` score=`0.914` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `5377ms` score=`0.949` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `5625ms` score=`0.939` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `5877ms` score=`0.945` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `6105ms` score=`0.922` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `6346ms` score=`0.856` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `6850ms` score=`0.800` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `7100ms` score=`0.847` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `7349ms` score=`0.898` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `7600ms` score=`0.982` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `7848ms` score=`0.768` class=`straight_right` backend=`prototype_matcher`
+- `uppercut_left` at `8222ms` score=`0.829` class=`uppercut_left` backend=`prototype_matcher`
+- `punch_right` at `8473ms` score=`0.901` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `8723ms` score=`0.879` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `8972ms` score=`0.966` class=`straight_right` backend=`prototype_matcher`
+- `uppercut_left` at `9236ms` score=`0.759` class=`uppercut_left` backend=`prototype_matcher`
+- `punch_right` at `9601ms` score=`0.814` class=`straight_right` backend=`prototype_matcher`
+- `punch_right` at `9851ms` score=`0.917` class=`straight_right` backend=`prototype_matcher`
 
 ### hook left
 
@@ -110,41 +109,40 @@ Emitted attack events:
 - Source: `.testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4`
 - Expected event: `hook_left`
 - Expected class: `hook_left`
-- Attack events emitted: **28**
+- Attack events emitted: **27**
 - emitted expected hook_left 10 time(s)
-- also emitted other attack events: punch_left, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, punch_left, punch_left, punch_left, punch_left, hook_right
-- peak expected-class score 0.991
+- also emitted other attack events: uppercut_right, uppercut_left, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, hook_right, uppercut_left, uppercut_left, uppercut_right, uppercut_left, uppercut_right, uppercut_left, hook_right, hook_right
+- peak expected-class score 0.980
 - latest matcher reason emit_cooldown_active
 
 Emitted attack events:
-- `punch_left` at `1105ms` score=`0.879` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `1317ms` score=`0.820` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `1625ms` score=`0.715` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `2045ms` score=`0.742` class=`hook_right` backend=`prototype_matcher`
-- `hook_left` at `2348ms` score=`0.906` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `2654ms` score=`0.900` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `2961ms` score=`0.952` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `3270ms` score=`0.703` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `3674ms` score=`0.710` class=`hook_right` backend=`prototype_matcher`
-- `hook_left` at `3981ms` score=`0.886` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `4294ms` score=`0.900` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `4597ms` score=`0.755` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `5023ms` score=`0.710` class=`hook_right` backend=`prototype_matcher`
-- `hook_left` at `5317ms` score=`0.776` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `5621ms` score=`0.924` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `5941ms` score=`0.881` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `6256ms` score=`0.705` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `6589ms` score=`0.760` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `6898ms` score=`0.871` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `7196ms` score=`0.840` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `7490ms` score=`0.813` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `7844ms` score=`0.859` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8146ms` score=`0.873` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8442ms` score=`0.904` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8747ms` score=`0.867` class=`straight_left` backend=`prototype_matcher`
-- `hook_left` at `9059ms` score=`0.945` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `9574ms` score=`0.742` class=`hook_right` backend=`prototype_matcher`
-- `hook_left` at `9864ms` score=`0.896` class=`hook_left` backend=`prototype_matcher`
+- `uppercut_right` at `1094ms` score=`0.900` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_left` at `1333ms` score=`0.885` class=`uppercut_left` backend=`prototype_matcher`
+- `hook_right` at `1945ms` score=`0.701` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `2255ms` score=`0.899` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `2561ms` score=`0.945` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `2876ms` score=`0.893` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `3179ms` score=`0.731` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `3692ms` score=`0.774` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `4025ms` score=`0.931` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `4338ms` score=`0.889` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `4641ms` score=`0.783` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `5149ms` score=`0.763` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `5459ms` score=`0.952` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `5761ms` score=`0.905` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `6073ms` score=`0.714` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `6377ms` score=`0.705` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `6694ms` score=`0.770` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `6990ms` score=`0.941` class=`hook_left` backend=`prototype_matcher`
+- `uppercut_left` at `7289ms` score=`0.837` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `7579ms` score=`0.863` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_right` at `7834ms` score=`0.897` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_left` at `8134ms` score=`0.904` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_right` at `8442ms` score=`0.920` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_left` at `8745ms` score=`0.898` class=`uppercut_left` backend=`prototype_matcher`
+- `hook_right` at `9061ms` score=`0.809` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `9451ms` score=`0.701` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `9758ms` score=`0.899` class=`hook_left` backend=`prototype_matcher`
 
 ### hook right
 
@@ -152,39 +150,40 @@ Emitted attack events:
 - Source: `.testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4`
 - Expected event: `hook_right`
 - Expected class: `hook_right`
-- Attack events emitted: **26**
-- emitted expected hook_right 14 time(s)
-- also emitted other attack events: punch_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, punch_left, punch_left, punch_left
-- peak expected-class score 0.927
-- latest matcher reason emitted
+- Attack events emitted: **27**
+- emitted expected hook_right 19 time(s)
+- also emitted other attack events: punch_left, hook_left, punch_left, hook_left, hook_left, hook_left, hook_left, uppercut_left
+- peak expected-class score 0.985
+- latest matcher reason emit_cooldown_active
 
 Emitted attack events:
-- `hook_right` at `1094ms` score=`0.844` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `1416ms` score=`0.758` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `1924ms` score=`0.716` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `2236ms` score=`0.885` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `2539ms` score=`0.885` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `2842ms` score=`0.831` class=`straight_left` backend=`prototype_matcher`
-- `hook_left` at `3473ms` score=`0.789` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `3771ms` score=`0.877` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `4074ms` score=`0.891` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `4402ms` score=`0.927` class=`hook_right` backend=`prototype_matcher`
-- `hook_left` at `4906ms` score=`0.769` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `5217ms` score=`0.837` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `5527ms` score=`0.904` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `5834ms` score=`0.924` class=`hook_right` backend=`prototype_matcher`
-- `hook_left` at `6139ms` score=`0.762` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `6657ms` score=`0.719` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `6956ms` score=`0.836` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `7262ms` score=`0.893` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `7560ms` score=`0.904` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `7858ms` score=`0.887` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `8038ms` score=`0.865` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `8344ms` score=`0.845` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `8647ms` score=`0.836` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8965ms` score=`0.818` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `9659ms` score=`0.716` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `9962ms` score=`0.884` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `1091ms` score=`0.916` class=`hook_right` backend=`prototype_matcher`
+- `punch_left` at `1332ms` score=`0.834` class=`straight_left` backend=`prototype_matcher`
+- `hook_right` at `1849ms` score=`0.740` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `2144ms` score=`0.919` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `2446ms` score=`0.972` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `2761ms` score=`0.843` class=`hook_left` backend=`prototype_matcher`
+- `punch_left` at `3054ms` score=`0.711` class=`straight_left` backend=`prototype_matcher`
+- `hook_right` at `3471ms` score=`0.771` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `3757ms` score=`0.930` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `4057ms` score=`0.882` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `4385ms` score=`0.824` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `4882ms` score=`0.748` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `5185ms` score=`0.875` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `5492ms` score=`0.944` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `5810ms` score=`0.886` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `6117ms` score=`0.733` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `6643ms` score=`0.780` class=`hook_right` backend=`prototype_matcher`
+- `hook_left` at `6940ms` score=`0.872` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `7238ms` score=`0.944` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `7533ms` score=`0.914` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `7836ms` score=`0.912` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `8055ms` score=`0.899` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `8345ms` score=`0.929` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `8645ms` score=`0.904` class=`hook_right` backend=`prototype_matcher`
+- `uppercut_left` at `8956ms` score=`0.857` class=`uppercut_left` backend=`prototype_matcher`
+- `hook_right` at `9559ms` score=`0.705` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `9848ms` score=`0.919` class=`hook_right` backend=`prototype_matcher`
 
 ### uppercut left
 
@@ -192,41 +191,42 @@ Emitted attack events:
 - Source: `.testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4`
 - Expected event: `uppercut_left`
 - Expected class: `uppercut_left`
-- Attack events emitted: **28**
-- emitted expected uppercut_left 4 time(s)
-- also emitted other attack events: punch_left, punch_left, hook_right, hook_right, punch_left, hook_right, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, punch_left, hook_right, hook_right, punch_left, punch_left, punch_left, punch_left, hook_right, hook_right, punch_left, punch_left
-- peak expected-class score 0.895
-- latest matcher reason emit_cooldown_active
+- Attack events emitted: **29**
+- emitted expected uppercut_left 18 time(s)
+- also emitted other attack events: uppercut_right, hook_right, punch_left, hook_right, hook_right, hook_right, hook_left, hook_right, uppercut_right, hook_right, hook_right
+- peak expected-class score 0.993
+- latest matcher reason emitted
 
 Emitted attack events:
-- `uppercut_left` at `1101ms` score=`0.798` class=`uppercut_left` backend=`prototype_matcher`
-- `punch_left` at `1514ms` score=`0.837` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `1821ms` score=`0.809` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `2124ms` score=`0.799` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `2434ms` score=`0.852` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `2736ms` score=`0.824` class=`straight_left` backend=`prototype_matcher`
-- `uppercut_left` at `3042ms` score=`0.826` class=`uppercut_left` backend=`prototype_matcher`
-- `hook_right` at `3349ms` score=`0.735` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `3760ms` score=`0.817` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4064ms` score=`0.928` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4382ms` score=`0.922` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4695ms` score=`0.891` class=`straight_left` backend=`prototype_matcher`
-- `uppercut_left` at `4999ms` score=`0.744` class=`uppercut_left` backend=`prototype_matcher`
-- `punch_left` at `5508ms` score=`0.840` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `5817ms` score=`0.913` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6120ms` score=`0.902` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6439ms` score=`0.926` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `6738ms` score=`0.884` class=`hook_right` backend=`prototype_matcher`
-- `uppercut_left` at `7049ms` score=`0.726` class=`uppercut_left` backend=`prototype_matcher`
-- `hook_right` at `7361ms` score=`0.720` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `7661ms` score=`0.812` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7963ms` score=`0.876` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8252ms` score=`0.926` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8559ms` score=`0.932` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `8871ms` score=`0.834` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `9168ms` score=`0.739` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `9470ms` score=`0.760` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `9781ms` score=`0.803` class=`straight_left` backend=`prototype_matcher`
+- `uppercut_right` at `1075ms` score=`0.756` class=`uppercut_right` backend=`prototype_matcher`
+- `hook_right` at `1333ms` score=`0.750` class=`hook_right` backend=`prototype_matcher`
+- `uppercut_left` at `1625ms` score=`0.851` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `1935ms` score=`0.924` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `2246ms` score=`0.992` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `2546ms` score=`0.928` class=`uppercut_left` backend=`prototype_matcher`
+- `punch_left` at `2845ms` score=`0.859` class=`straight_left` backend=`prototype_matcher`
+- `hook_right` at `3144ms` score=`0.721` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `3449ms` score=`0.808` class=`hook_right` backend=`prototype_matcher`
+- `uppercut_left` at `3756ms` score=`0.882` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `4061ms` score=`0.981` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `4371ms` score=`0.951` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `4675ms` score=`0.902` class=`uppercut_left` backend=`prototype_matcher`
+- `hook_right` at `5299ms` score=`0.719` class=`hook_right` backend=`prototype_matcher`
+- `uppercut_left` at `5592ms` score=`0.894` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `5901ms` score=`0.965` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `6210ms` score=`0.956` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `6512ms` score=`0.946` class=`uppercut_left` backend=`prototype_matcher`
+- `hook_left` at `6841ms` score=`0.804` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `7236ms` score=`0.738` class=`hook_right` backend=`prototype_matcher`
+- `uppercut_left` at `7536ms` score=`0.837` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `7832ms` score=`0.905` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `8218ms` score=`0.926` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `8426ms` score=`0.929` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_right` at `8729ms` score=`0.892` class=`uppercut_right` backend=`prototype_matcher`
+- `hook_right` at `9028ms` score=`0.752` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `9337ms` score=`0.769` class=`hook_right` backend=`prototype_matcher`
+- `uppercut_left` at `9650ms` score=`0.865` class=`uppercut_left` backend=`prototype_matcher`
+- `uppercut_left` at `9949ms` score=`0.947` class=`uppercut_left` backend=`prototype_matcher`
 
 ### uppercut right
 
@@ -234,42 +234,40 @@ Emitted attack events:
 - Source: `.testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4`
 - Expected event: `uppercut_right`
 - Expected class: `uppercut_right`
-- Attack events emitted: **29**
-- emitted expected uppercut_right 4 time(s)
-- also emitted other attack events: hook_left, punch_left, punch_left, punch_left, punch_left, hook_left, punch_left, punch_left, punch_left, hook_left, hook_left, hook_right, hook_right, hook_left, punch_left, punch_left, punch_left, punch_left, hook_right, hook_left, punch_left, punch_left, punch_left, punch_left, hook_left
-- peak expected-class score 0.908
+- Attack events emitted: **27**
+- emitted expected uppercut_right 14 time(s)
+- also emitted other attack events: uppercut_left, hook_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_right, hook_left, hook_left, hook_left, punch_left, hook_left
+- peak expected-class score 1.000
 - latest matcher reason emitted
 
 Emitted attack events:
-- `uppercut_right` at `1121ms` score=`1.000` class=`uppercut_right` backend=`prototype_matcher`
-- `hook_left` at `1348ms` score=`0.803` class=`hook_left` backend=`prototype_matcher`
-- `punch_left` at `1633ms` score=`0.753` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `1943ms` score=`0.810` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `2248ms` score=`0.802` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `2556ms` score=`0.839` class=`straight_left` backend=`prototype_matcher`
-- `uppercut_right` at `2867ms` score=`0.859` class=`uppercut_right` backend=`prototype_matcher`
-- `hook_left` at `3160ms` score=`0.806` class=`hook_left` backend=`prototype_matcher`
-- `punch_left` at `3469ms` score=`0.785` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `3773ms` score=`0.823` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `4082ms` score=`0.825` class=`straight_left` backend=`prototype_matcher`
-- `uppercut_right` at `4394ms` score=`0.874` class=`uppercut_right` backend=`prototype_matcher`
-- `hook_left` at `4700ms` score=`0.878` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `5002ms` score=`0.860` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `5311ms` score=`0.893` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `5623ms` score=`0.844` class=`hook_right` backend=`prototype_matcher`
-- `hook_left` at `6153ms` score=`0.755` class=`hook_left` backend=`prototype_matcher`
-- `punch_left` at `6437ms` score=`0.782` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6731ms` score=`0.807` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7083ms` score=`0.886` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `7300ms` score=`0.892` class=`straight_left` backend=`prototype_matcher`
-- `hook_right` at `7602ms` score=`0.874` class=`hook_right` backend=`prototype_matcher`
-- `uppercut_right` at `7921ms` score=`0.908` class=`uppercut_right` backend=`prototype_matcher`
-- `hook_left` at `8204ms` score=`0.820` class=`hook_left` backend=`prototype_matcher`
-- `punch_left` at `8508ms` score=`0.785` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `8810ms` score=`0.815` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `9117ms` score=`0.812` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `9417ms` score=`0.814` class=`straight_left` backend=`prototype_matcher`
-- `hook_left` at `10070ms` score=`0.843` class=`hook_left` backend=`prototype_matcher`
+- `uppercut_left` at `1077ms` score=`0.769` class=`uppercut_left` backend=`prototype_matcher`
+- `hook_left` at `1399ms` score=`0.791` class=`hook_left` backend=`prototype_matcher`
+- `punch_left` at `1681ms` score=`0.749` class=`straight_left` backend=`prototype_matcher`
+- `uppercut_right` at `1991ms` score=`0.905` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `2294ms` score=`1.000` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `2601ms` score=`0.933` class=`uppercut_right` backend=`prototype_matcher`
+- `hook_left` at `3209ms` score=`0.799` class=`hook_left` backend=`prototype_matcher`
+- `uppercut_right` at `3517ms` score=`0.856` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `3825ms` score=`0.929` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `4128ms` score=`0.931` class=`uppercut_right` backend=`prototype_matcher`
+- `hook_left` at `4453ms` score=`0.826` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `4761ms` score=`0.847` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `5046ms` score=`0.872` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `5363ms` score=`0.919` class=`hook_right` backend=`prototype_matcher`
+- `uppercut_right` at `5679ms` score=`0.924` class=`uppercut_right` backend=`prototype_matcher`
+- `hook_left` at `6211ms` score=`0.764` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `6489ms` score=`0.812` class=`hook_left` backend=`prototype_matcher`
+- `uppercut_right` at `6780ms` score=`0.920` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `7132ms` score=`0.932` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `7441ms` score=`0.924` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `7763ms` score=`0.900` class=`uppercut_right` backend=`prototype_matcher`
+- `hook_left` at `8176ms` score=`0.791` class=`hook_left` backend=`prototype_matcher`
+- `punch_left` at `8456ms` score=`0.749` class=`straight_left` backend=`prototype_matcher`
+- `uppercut_right` at `8759ms` score=`0.905` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `9064ms` score=`1.000` class=`uppercut_right` backend=`prototype_matcher`
+- `uppercut_right` at `9370ms` score=`0.933` class=`uppercut_right` backend=`prototype_matcher`
+- `hook_left` at `9980ms` score=`0.723` class=`hook_left` backend=`prototype_matcher`
 
 ### negative control - running in place
 
@@ -278,37 +276,37 @@ Emitted attack events:
 - Expected event: `None`
 - Expected class: `None`
 - Attack events emitted: **30**
-- negative control still emitted attack events: punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_right, hook_right, punch_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left
-- latest matcher reason emit_cooldown_active
+- negative control still emitted attack events: punch_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_right, hook_right, punch_left, punch_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left, hook_left
+- latest matcher reason step_wait
 
 Emitted attack events:
-- `punch_left` at `1090ms` score=`0.860` class=`straight_left` backend=`prototype_matcher`
-- `hook_left` at `1309ms` score=`0.835` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `1620ms` score=`0.808` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `1923ms` score=`0.866` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `2241ms` score=`0.912` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `2540ms` score=`0.908` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `2841ms` score=`0.901` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `3144ms` score=`0.896` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `3450ms` score=`0.889` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `3760ms` score=`0.891` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `4051ms` score=`0.864` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `4363ms` score=`0.875` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `4659ms` score=`0.846` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `4957ms` score=`0.879` class=`hook_left` backend=`prototype_matcher`
-- `hook_right` at `5275ms` score=`0.892` class=`hook_right` backend=`prototype_matcher`
-- `hook_right` at `5578ms` score=`0.874` class=`hook_right` backend=`prototype_matcher`
-- `punch_left` at `5887ms` score=`0.830` class=`straight_left` backend=`prototype_matcher`
-- `punch_left` at `6204ms` score=`0.833` class=`straight_left` backend=`prototype_matcher`
-- `hook_left` at `6513ms` score=`0.767` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `6823ms` score=`0.850` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `7130ms` score=`0.895` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `7436ms` score=`0.921` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `7742ms` score=`0.914` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `8040ms` score=`0.865` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `8346ms` score=`0.897` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `8649ms` score=`0.891` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `8950ms` score=`0.872` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `9251ms` score=`0.840` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `9554ms` score=`0.846` class=`hook_left` backend=`prototype_matcher`
-- `hook_left` at `9848ms` score=`0.886` class=`hook_left` backend=`prototype_matcher`
+- `punch_left` at `1098ms` score=`0.866` class=`straight_left` backend=`prototype_matcher`
+- `punch_left` at `1369ms` score=`0.822` class=`straight_left` backend=`prototype_matcher`
+- `hook_left` at `1678ms` score=`0.785` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `1984ms` score=`0.820` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `2293ms` score=`0.863` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `2597ms` score=`0.875` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `2913ms` score=`0.884` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `3221ms` score=`0.873` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `3529ms` score=`0.907` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `3835ms` score=`0.888` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `4138ms` score=`0.880` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `4448ms` score=`0.845` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `4744ms` score=`0.845` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `5037ms` score=`0.889` class=`hook_left` backend=`prototype_matcher`
+- `hook_right` at `5348ms` score=`0.888` class=`hook_right` backend=`prototype_matcher`
+- `hook_right` at `5553ms` score=`0.862` class=`hook_right` backend=`prototype_matcher`
+- `punch_left` at `5862ms` score=`0.865` class=`straight_left` backend=`prototype_matcher`
+- `punch_left` at `6164ms` score=`0.851` class=`straight_left` backend=`prototype_matcher`
+- `hook_left` at `6470ms` score=`0.747` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `6784ms` score=`0.810` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `7087ms` score=`0.840` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `7392ms` score=`0.862` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `7692ms` score=`0.870` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `7998ms` score=`0.856` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `8304ms` score=`0.880` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `8604ms` score=`0.884` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `8911ms` score=`0.881` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `9211ms` score=`0.851` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `9519ms` score=`0.857` class=`hook_left` backend=`prototype_matcher`
+- `hook_left` at `9815ms` score=`0.874` class=`hook_left` backend=`prototype_matcher`
