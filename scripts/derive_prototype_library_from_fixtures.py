@@ -224,6 +224,28 @@ def _windows_for_event(fixture_yaml: dict, event_name: str) -> list[dict]:
     return []
 
 
+def _capture_window_range_ms(capture_report: dict, start_ms: int, end_ms: int) -> tuple[int, int, dict]:
+    fixture_capture = capture_report.get("fixture_capture", {}) if isinstance(capture_report.get("fixture_capture", {}), dict) else {}
+    time_basis = str(fixture_capture.get("time_basis", ""))
+    time_origin_reason = str(fixture_capture.get("time_origin_reason", ""))
+    time_origin_offset_ms = int(fixture_capture.get("time_origin_offset_ms", 0) or 0)
+    alignment = {
+        "fixture_window_start_ms": start_ms,
+        "fixture_window_end_ms": end_ms,
+        "capture_window_start_ms": start_ms,
+        "capture_window_end_ms": end_ms,
+        "capture_time_basis": time_basis,
+        "capture_time_origin_reason": time_origin_reason,
+        "capture_time_origin_offset_ms": time_origin_offset_ms,
+        "window_alignment_strategy": "fixture_window_direct",
+    }
+    if time_basis == "provider_tracking_ms_since_first_pose" and time_origin_offset_ms > 0:
+        alignment["capture_window_start_ms"] = start_ms + time_origin_offset_ms
+        alignment["capture_window_end_ms"] = end_ms + time_origin_offset_ms
+        alignment["window_alignment_strategy"] = "fixture_window_plus_capture_time_origin_offset"
+    return int(alignment["capture_window_start_ms"]), int(alignment["capture_window_end_ms"]), alignment
+
+
 def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_count: int, library_id: str) -> tuple[dict, dict]:
     prototypes = []
     fixture_summaries = []
@@ -247,7 +269,8 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
         for window_index, window in enumerate(windows, start=1):
             start_ms = int(window.get("start_ms", 0))
             end_ms = int(window.get("end_ms", 0))
-            matched_snapshots = [s for s in snapshots if start_ms <= int(s["timestamp_ms"]) <= end_ms]
+            capture_start_ms, capture_end_ms, alignment = _capture_window_range_ms(capture_report, start_ms, end_ms)
+            matched_snapshots = [s for s in snapshots if capture_start_ms <= int(s["timestamp_ms"]) <= capture_end_ms]
             extracted_samples = []
             rejected_samples = 0
             source_timestamps = []
@@ -277,6 +300,7 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
                         "reason": "no_valid_pose_samples",
                         "pose_samples_in_window": len(matched_snapshots),
                         "pose_samples_rejected": rejected_samples,
+                        **alignment,
                     }
                 )
                 window_summaries.append(
@@ -289,6 +313,7 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
                         "pose_samples_used": 0,
                         "pose_samples_rejected": rejected_samples,
                         "status": "skipped_no_valid_pose_samples",
+                        **alignment,
                     }
                 )
                 continue
@@ -313,6 +338,7 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
                         "pose_samples_used": len(extracted_samples),
                         "pose_samples_rejected": rejected_samples,
                         "pose_sample_timestamps_ms": source_timestamps,
+                        **alignment,
                     },
                     "samples": resampled,
                 }
@@ -327,6 +353,7 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
                     "pose_samples_used": len(extracted_samples),
                     "pose_samples_rejected": rejected_samples,
                     "status": "derived",
+                    **alignment,
                 }
             )
         fixture_summaries.append(
