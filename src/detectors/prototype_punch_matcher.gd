@@ -125,8 +125,9 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	})
 	_prune_sample_history(timestamp_ms)
 	debug_state["window_sample_count"] = _sample_history.size()
-	debug_state["window_span_ms"] = _resolve_window_span_ms()
-	if _sample_history.is_empty() or int(debug_state.get("window_span_ms", 0)) < _get_window_ms():
+	debug_state["window_span_ms"] = _resolve_window_span_ms(_sample_history)
+	debug_state["window_ready_sample_count"] = _get_library_sample_count()
+	if _sample_history.size() < _get_library_sample_count():
 		debug_state["reason"] = "window_not_full"
 		_last_debug_state = debug_state
 		return events
@@ -138,12 +139,30 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	_last_eval_timestamp_ms = timestamp_ms
 	debug_state["last_eval_timestamp_ms"] = _last_eval_timestamp_ms
 	var score_result := _score_current_window()
+	debug_state["evaluated_window_sample_count"] = int(score_result.get("window_sample_count", _sample_history.size()))
+	debug_state["evaluated_window_span_ms"] = int(score_result.get("window_span_ms", int(debug_state.get("window_span_ms", 0))))
 	var class_scores: Dictionary = score_result.get("class_scores", {}) if score_result.get("class_scores", {}) is Dictionary else {}
 	var best_class := String(score_result.get("best_class", OUTCOME_NO_PUNCH))
 	var best_score := float(score_result.get("best_score", 0.0))
+	var best_prototype_id := String(score_result.get("best_prototype_id", ""))
+	var best_prototype_side := String(score_result.get("best_prototype_side", ""))
+	var runner_up_class := String(score_result.get("runner_up_class", OUTCOME_NO_PUNCH))
+	var runner_up_score := float(score_result.get("runner_up_score", 0.0))
+	var runner_up_prototype_id := String(score_result.get("runner_up_prototype_id", ""))
+	var best_class_margin := float(score_result.get("best_class_margin", 0.0))
+	var class_winner_by_class: Dictionary = score_result.get("class_winner_by_class", {}) if score_result.get("class_winner_by_class", {}) is Dictionary else {}
+	var top_matches: Array = score_result.get("top_matches", []) if score_result.get("top_matches", []) is Array else []
 	debug_state["class_scores"] = class_scores.duplicate(true)
 	debug_state["best_class"] = best_class
 	debug_state["best_score"] = best_score
+	debug_state["best_prototype_id"] = best_prototype_id
+	debug_state["best_prototype_side"] = best_prototype_side
+	debug_state["runner_up_class"] = runner_up_class
+	debug_state["runner_up_score"] = runner_up_score
+	debug_state["runner_up_prototype_id"] = runner_up_prototype_id
+	debug_state["best_class_margin"] = best_class_margin
+	debug_state["class_winner_by_class"] = class_winner_by_class.duplicate(true)
+	debug_state["top_matches"] = top_matches.duplicate(true)
 	debug_state["required_score"] = _get_match_score_min()
 	if best_score + 0.000001 < _get_match_score_min() or best_class == OUTCOME_NO_PUNCH:
 		debug_state["result_class"] = OUTCOME_NO_PUNCH
@@ -181,6 +200,12 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 		"prototype_match": {
 			"class_name": best_class,
 			"score": best_score,
+			"prototype_id": best_prototype_id,
+			"prototype_side": best_prototype_side,
+			"runner_up_class": runner_up_class,
+			"runner_up_score": runner_up_score,
+			"runner_up_prototype_id": runner_up_prototype_id,
+			"class_margin": best_class_margin,
 			"library_id": _library_id,
 			"threshold": _get_match_score_min(),
 		},
@@ -211,10 +236,21 @@ func _build_debug_state() -> Dictionary:
 		"emit_hold_ms": _get_emit_hold_ms(),
 		"window_sample_count": 0,
 		"window_span_ms": 0,
+		"window_ready_sample_count": _get_library_sample_count(),
+		"evaluated_window_sample_count": 0,
+		"evaluated_window_span_ms": 0,
 		"last_eval_timestamp_ms": _last_eval_timestamp_ms,
 		"last_emit_timestamp_ms": _last_emit_timestamp_ms,
 		"best_class": OUTCOME_NO_PUNCH,
 		"best_score": 0.0,
+		"best_prototype_id": "",
+		"best_prototype_side": "",
+		"runner_up_class": OUTCOME_NO_PUNCH,
+		"runner_up_score": 0.0,
+		"runner_up_prototype_id": "",
+		"best_class_margin": 0.0,
+		"class_winner_by_class": {},
+		"top_matches": [],
 		"required_score": _get_match_score_min(),
 		"result_class": OUTCOME_NO_PUNCH,
 		"reason": "idle",
@@ -273,10 +309,10 @@ func _prune_sample_history(timestamp_ms: int) -> void:
 	while _sample_history.size() > 1 and int((_sample_history[1] as Dictionary).get("timestamp_ms", 0)) <= min_timestamp:
 		_sample_history.remove_at(0)
 
-func _resolve_window_span_ms() -> int:
-	if _sample_history.size() < 2:
+func _resolve_window_span_ms(samples: Array = _sample_history) -> int:
+	if samples.size() < 2:
 		return 0
-	return int((_sample_history[_sample_history.size() - 1] as Dictionary).get("timestamp_ms", 0)) - int((_sample_history[0] as Dictionary).get("timestamp_ms", 0))
+	return int((samples[samples.size() - 1] as Dictionary).get("timestamp_ms", 0)) - int((samples[0] as Dictionary).get("timestamp_ms", 0))
 
 func _extract_runtime_sample(landmarks_by_id: Dictionary, metrics: Dictionary) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if metrics.get("measurements", {}) is Dictionary else {}
@@ -309,37 +345,102 @@ func _extract_side_features(shoulder: Dictionary, elbow: Dictionary, wrist: Dict
 
 func _score_current_window() -> Dictionary:
 	var prototypes: Array = (_library.get("prototypes", []) as Array).duplicate(true)
-	var runtime_by_side := {
-		"left": _resample_side_window("left", _get_library_sample_count()),
-		"right": _resample_side_window("right", _get_library_sample_count()),
-	}
+	var candidate_windows := _build_candidate_windows()
 	var class_scores: Dictionary = {}
+	var class_winner_by_class: Dictionary = {}
 	for gesture_class in SUPPORTED_CLASSES:
 		class_scores[String(gesture_class)] = 0.0
 	var best_class := OUTCOME_NO_PUNCH
 	var best_score := 0.0
-	for prototype_variant in prototypes:
-		if not prototype_variant is Dictionary:
+	var best_prototype_id := ""
+	var best_prototype_side := ""
+	var best_window_sample_count := _sample_history.size()
+	var best_window_span_ms := _resolve_window_span_ms(_sample_history)
+	var top_matches: Array = []
+	for candidate_variant in candidate_windows:
+		if not candidate_variant is Dictionary:
 			continue
-		var prototype: Dictionary = prototype_variant
-		var gesture_class := String(prototype.get("class_name", ""))
-		var side := String(prototype.get("side", ""))
-		if not class_scores.has(gesture_class):
+		var candidate: Dictionary = candidate_variant
+		var samples: Array = candidate.get("samples", []) if candidate.get("samples", []) is Array else []
+		var runtime_by_side := {
+			"left": _resample_side_window("left", _get_library_sample_count(), samples),
+			"right": _resample_side_window("right", _get_library_sample_count(), samples),
+		}
+		for prototype_variant in prototypes:
+			if not prototype_variant is Dictionary:
+				continue
+			var prototype: Dictionary = prototype_variant
+			var gesture_class := String(prototype.get("class_name", ""))
+			var side := String(prototype.get("side", ""))
+			if not class_scores.has(gesture_class):
+				continue
+			var runtime_series: Array = runtime_by_side.get(side, []) if runtime_by_side.get(side, []) is Array else []
+			var prototype_series: Array = prototype.get("samples", []) if prototype.get("samples", []) is Array else []
+			if runtime_series.is_empty() or prototype_series.is_empty():
+				continue
+			var score := _score_series(runtime_series, prototype_series)
+			var prototype_id := String(prototype.get("id", ""))
+			class_scores[gesture_class] = maxf(float(class_scores.get(gesture_class, 0.0)), score)
+			var class_winner: Dictionary = class_winner_by_class.get(gesture_class, {}) if class_winner_by_class.get(gesture_class, {}) is Dictionary else {}
+			if class_winner.is_empty() or score > float(class_winner.get("score", 0.0)):
+				class_winner_by_class[gesture_class] = {
+					"class_name": gesture_class,
+					"prototype_id": prototype_id,
+					"prototype_side": side,
+					"score": score,
+					"window_sample_count": int(candidate.get("sample_count", samples.size())),
+					"window_span_ms": int(candidate.get("span_ms", _resolve_window_span_ms(samples))),
+				}
+			_append_top_match(top_matches, {
+				"class_name": gesture_class,
+				"prototype_id": prototype_id,
+				"prototype_side": side,
+				"score": score,
+				"window_sample_count": int(candidate.get("sample_count", samples.size())),
+				"window_span_ms": int(candidate.get("span_ms", _resolve_window_span_ms(samples))),
+			})
+			if score > best_score:
+				best_score = score
+				best_class = gesture_class
+				best_prototype_id = prototype_id
+				best_prototype_side = side
+				best_window_sample_count = int(candidate.get("sample_count", samples.size()))
+				best_window_span_ms = int(candidate.get("span_ms", _resolve_window_span_ms(samples)))
+	var runner_up_class := OUTCOME_NO_PUNCH
+	var runner_up_score := 0.0
+	var runner_up_prototype_id := ""
+	for gesture_class in SUPPORTED_CLASSES:
+		var class_winner: Dictionary = class_winner_by_class.get(gesture_class, {}) if class_winner_by_class.get(gesture_class, {}) is Dictionary else {}
+		var class_score := float(class_winner.get("score", 0.0))
+		if gesture_class == best_class:
 			continue
-		var runtime_series: Array = runtime_by_side.get(side, []) if runtime_by_side.get(side, []) is Array else []
-		var prototype_series: Array = prototype.get("samples", []) if prototype.get("samples", []) is Array else []
-		if runtime_series.is_empty() or prototype_series.is_empty():
-			continue
-		var score := _score_series(runtime_series, prototype_series)
-		class_scores[gesture_class] = maxf(float(class_scores.get(gesture_class, 0.0)), score)
-		if score > best_score:
-			best_score = score
-			best_class = gesture_class
+		if class_score > runner_up_score:
+			runner_up_class = gesture_class
+			runner_up_score = class_score
+			runner_up_prototype_id = String(class_winner.get("prototype_id", ""))
 	return {
 		"class_scores": class_scores,
 		"best_class": best_class,
 		"best_score": best_score,
+		"best_prototype_id": best_prototype_id,
+		"best_prototype_side": best_prototype_side,
+		"runner_up_class": runner_up_class,
+		"runner_up_score": runner_up_score,
+		"runner_up_prototype_id": runner_up_prototype_id,
+		"best_class_margin": maxf(0.0, best_score - runner_up_score),
+		"class_winner_by_class": class_winner_by_class,
+		"top_matches": top_matches,
+		"window_sample_count": best_window_sample_count,
+		"window_span_ms": best_window_span_ms,
 	}
+
+func _append_top_match(top_matches: Array, match: Dictionary, limit: int = 5) -> void:
+	top_matches.append(match.duplicate(true))
+	top_matches.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("score", 0.0)) > float(b.get("score", 0.0))
+	)
+	while top_matches.size() > limit:
+		top_matches.pop_back()
 
 func _score_series(runtime_series: Array, prototype_series: Array) -> float:
 	var sample_count := mini(runtime_series.size(), prototype_series.size())
@@ -364,9 +465,27 @@ func _score_series(runtime_series: Array, prototype_series: Array) -> float:
 	var score := 1.0 - (average_distance / _get_distance_scale())
 	return clampf(score, 0.0, 1.0)
 
-func _resample_side_window(side: String, target_count: int) -> Array:
+func _build_candidate_windows() -> Array:
+	var minimum_sample_count := _get_library_sample_count()
+	if _sample_history.size() <= minimum_sample_count:
+		return [{
+			"samples": _sample_history.duplicate(true),
+			"sample_count": _sample_history.size(),
+			"span_ms": _resolve_window_span_ms(_sample_history),
+		}]
+	var windows: Array = []
+	for start_idx in range(0, _sample_history.size() - minimum_sample_count + 1):
+		var samples := _sample_history.slice(start_idx, _sample_history.size())
+		windows.append({
+			"samples": samples,
+			"sample_count": samples.size(),
+			"span_ms": _resolve_window_span_ms(samples),
+		})
+	return windows
+
+func _resample_side_window(side: String, target_count: int, samples: Array = _sample_history) -> Array:
 	var series: Array = []
-	for sample_variant in _sample_history:
+	for sample_variant in samples:
 		if not sample_variant is Dictionary:
 			continue
 		var sample: Dictionary = sample_variant

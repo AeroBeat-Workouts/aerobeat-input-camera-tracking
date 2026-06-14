@@ -1293,6 +1293,12 @@ func _prototype_match_payload_for_signal(signal_name: String) -> Dictionary:
 	return {
 		"class_name": String(matcher_debug.get("result_class", "")),
 		"score": float(matcher_debug.get("best_score", 0.0)),
+		"prototype_id": String(matcher_debug.get("best_prototype_id", "")),
+		"prototype_side": String(matcher_debug.get("best_prototype_side", "")),
+		"runner_up_class": String(matcher_debug.get("runner_up_class", "")),
+		"runner_up_score": float(matcher_debug.get("runner_up_score", 0.0)),
+		"runner_up_prototype_id": String(matcher_debug.get("runner_up_prototype_id", "")),
+		"class_margin": float(matcher_debug.get("best_class_margin", 0.0)),
 		"threshold": float(matcher_debug.get("required_score", matcher_debug.get("match_score_min", 0.0))),
 		"library_id": String(matcher_debug.get("library_id", "")),
 		"reason": String(matcher_debug.get("reason", "")),

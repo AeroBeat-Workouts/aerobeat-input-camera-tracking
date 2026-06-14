@@ -5,7 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -91,10 +91,58 @@ def run_capture(repo_root: Path, fixture: dict, output_dir: Path, godot_bin: str
     return load_json(report_path)
 
 
-def _payload_class_name(event: dict) -> str:
-    payload = event.get("payload", {}) if isinstance(event.get("payload", {}), dict) else {}
-    prototype_match = payload.get("prototype_match", {}) if isinstance(payload.get("prototype_match", {}), dict) else {}
-    return str(prototype_match.get("class_name", "")).strip()
+def _sorted_counts(counter: Counter, *, top_n: int | None = None) -> list[dict]:
+    items = sorted(counter.items(), key=lambda item: (-item[1], item[0]))
+    if top_n is not None:
+        items = items[:top_n]
+    return [{"key": key, "count": count} for key, count in items]
+
+
+def _clone_match_dict(match: dict | None) -> dict:
+    if not isinstance(match, dict):
+        return {}
+    return {
+        "class_name": str(match.get("class_name", "")).strip(),
+        "score": float(match.get("score", 0.0)),
+        "prototype_id": str(match.get("prototype_id", "")).strip(),
+        "prototype_side": str(match.get("prototype_side", "")).strip(),
+        "runner_up_class": str(match.get("runner_up_class", "")).strip(),
+        "runner_up_score": float(match.get("runner_up_score", 0.0)),
+        "runner_up_prototype_id": str(match.get("runner_up_prototype_id", "")).strip(),
+        "class_margin": float(match.get("class_margin", 0.0)),
+        "library_id": str(match.get("library_id", "")).strip(),
+        "threshold": float(match.get("threshold", 0.0)),
+        "reason": str(match.get("reason", "")).strip(),
+    }
+
+
+def _event_match_summary(event: dict) -> dict:
+    summary = {
+        "name": str(event.get("name", "")),
+        "timestamp_ms": int(event.get("timestamp_ms", 0)),
+        "count": int(event.get("count", 0)),
+        "power": float(event.get("power", 0.0)),
+        "backend": str(event.get("backend", "threshold_gates") or "threshold_gates"),
+        "prototype_match": _clone_match_dict(event.get("prototype_match", {})),
+    }
+    if not summary["prototype_match"].get("score"):
+        summary["prototype_match"]["score"] = summary["power"]
+    return summary
+
+
+def _snapshot_summary(entry: dict) -> dict:
+    return {
+        "timestamp_ms": int(entry.get("timestamp_ms", 0)),
+        "reason": str(entry.get("reason", "")).strip(),
+        "best_class": str(entry.get("best_class", "")).strip(),
+        "best_score": float(entry.get("best_score", 0.0)),
+        "best_prototype_id": str(entry.get("best_prototype_id", "")).strip(),
+        "best_prototype_side": str(entry.get("best_prototype_side", "")).strip(),
+        "runner_up_class": str(entry.get("runner_up_class", "")).strip(),
+        "runner_up_score": float(entry.get("runner_up_score", 0.0)),
+        "runner_up_prototype_id": str(entry.get("runner_up_prototype_id", "")).strip(),
+        "class_margin": float(entry.get("best_class_margin", 0.0)),
+    }
 
 
 def analyze_fixture(fixture: dict, report: dict) -> dict:
@@ -116,19 +164,22 @@ def analyze_fixture(fixture: dict, report: dict) -> dict:
         if name not in ATTACK_EVENTS:
             continue
         payload = entry.get("payload", {}) if isinstance(entry.get("payload", {}), dict) else {}
-        attack_events.append({
+        attack_events.append(_event_match_summary({
             "name": name,
             "timestamp_ms": int(entry.get("timestamp_ms", 0)),
             "count": int(entry.get("count", 0)),
             "power": float(payload.get("power", 0.0)),
             "backend": str(payload.get("backend", "threshold_gates") or "threshold_gates"),
             "prototype_match": payload.get("prototype_match", {}) if isinstance(payload.get("prototype_match", {}), dict) else {},
-        })
+        }))
 
     max_best_score = {class_name: 0.0 for class_name in CLASS_ORDER}
     max_class_score = {class_name: 0.0 for class_name in CLASS_ORDER}
     best_class_counts = {class_name: 0 for class_name in CLASS_ORDER}
     reasons = defaultdict(int)
+    best_prototype_snapshot_counts: Counter = Counter()
+    best_prototype_snapshot_counts_by_class: defaultdict[str, Counter] = defaultdict(Counter)
+    peak_snapshot = None
     for entry in state_timeline:
         if not isinstance(entry, dict):
             continue
@@ -146,12 +197,37 @@ def analyze_fixture(fixture: dict, report: dict) -> dict:
             if class_name in max_class_score:
                 max_class_score[class_name] = max(max_class_score[class_name], float(score))
         reasons[str(matcher.get("reason", "idle"))] += 1
+        prototype_id = str(matcher.get("best_prototype_id", "")).strip()
+        if prototype_id:
+            best_prototype_snapshot_counts[prototype_id] += 1
+            if best_class:
+                best_prototype_snapshot_counts_by_class[best_class][prototype_id] += 1
+        snapshot = _snapshot_summary({
+            **matcher,
+            "timestamp_ms": entry.get("timestamp_ms", 0),
+        })
+        if peak_snapshot is None or snapshot["best_score"] > peak_snapshot["best_score"]:
+            peak_snapshot = snapshot
 
     expected_event = fixture.get("expected_event")
     expected_class = fixture.get("expected_class")
     expected_events = [event for event in attack_events if event["name"] == expected_event] if expected_event else []
     wrong_events = [event for event in attack_events if expected_event is None or event["name"] != expected_event]
     no_attack_expected = bool(fixture.get("expect_no_attack", False))
+
+    strongest_expected_emit = max(expected_events, key=lambda event: event["prototype_match"].get("score", event["power"]), default=None)
+    strongest_wrong_emit = max(wrong_events, key=lambda event: event["prototype_match"].get("score", event["power"]), default=None)
+
+    emitted_attack_class_counts: Counter = Counter()
+    emitted_attack_prototype_counts: Counter = Counter()
+    for event in attack_events:
+        match = event.get("prototype_match", {})
+        class_name = str(match.get("class_name", "")).strip()
+        prototype_id = str(match.get("prototype_id", "")).strip()
+        if class_name:
+            emitted_attack_class_counts[class_name] += 1
+        if prototype_id:
+            emitted_attack_prototype_counts[prototype_id] += 1
 
     findings = []
     if expected_event:
@@ -174,6 +250,41 @@ def analyze_fixture(fixture: dict, report: dict) -> dict:
                 max_class_score.get(expected_class, 0.0),
             )
         )
+    if peak_snapshot:
+        findings.append(
+            "peak winner %s via %s scored %.3f; runner-up %s via %s scored %.3f (margin %.3f)" % (
+                peak_snapshot.get("best_class", "no_punch") or "no_punch",
+                peak_snapshot.get("best_prototype_id", "none") or "none",
+                float(peak_snapshot.get("best_score", 0.0)),
+                peak_snapshot.get("runner_up_class", "no_punch") or "no_punch",
+                peak_snapshot.get("runner_up_prototype_id", "none") or "none",
+                float(peak_snapshot.get("runner_up_score", 0.0)),
+                float(peak_snapshot.get("class_margin", 0.0)),
+            )
+        )
+    if strongest_expected_emit:
+        match = strongest_expected_emit["prototype_match"]
+        findings.append(
+            "strongest expected emit used %s at %.3f over runner-up %s at %.3f (margin %.3f)" % (
+                match.get("prototype_id", "unknown") or "unknown",
+                float(match.get("score", strongest_expected_emit.get("power", 0.0))),
+                match.get("runner_up_prototype_id", "unknown") or "unknown",
+                float(match.get("runner_up_score", 0.0)),
+                float(match.get("class_margin", 0.0)),
+            )
+        )
+    if strongest_wrong_emit:
+        match = strongest_wrong_emit["prototype_match"]
+        findings.append(
+            "strongest wrong emit was %s via %s at %.3f over runner-up %s at %.3f (margin %.3f)" % (
+                strongest_wrong_emit.get("name", "unknown"),
+                match.get("prototype_id", "unknown") or "unknown",
+                float(match.get("score", strongest_wrong_emit.get("power", 0.0))),
+                match.get("runner_up_prototype_id", "unknown") or "unknown",
+                float(match.get("runner_up_score", 0.0)),
+                float(match.get("class_margin", 0.0)),
+            )
+        )
     findings.append("latest matcher reason %s" % str(matcher_latest.get("reason", "unknown")))
 
     return {
@@ -192,7 +303,17 @@ def analyze_fixture(fixture: dict, report: dict) -> dict:
         "max_best_score_by_class": max_best_score,
         "max_class_score_by_class": max_class_score,
         "best_class_snapshot_counts": best_class_counts,
+        "best_prototype_snapshot_counts": _sorted_counts(best_prototype_snapshot_counts),
+        "best_prototype_snapshot_counts_by_class": {
+            class_name: _sorted_counts(counter)
+            for class_name, counter in sorted(best_prototype_snapshot_counts_by_class.items())
+        },
+        "emitted_attack_class_counts": _sorted_counts(emitted_attack_class_counts),
+        "emitted_attack_prototype_counts": _sorted_counts(emitted_attack_prototype_counts),
         "matcher_reason_counts": dict(sorted(reasons.items())),
+        "peak_snapshot": peak_snapshot,
+        "strongest_expected_emit": strongest_expected_emit,
+        "strongest_wrong_emit": strongest_wrong_emit,
         "latest_matcher_debug": matcher_latest,
         "status": {
             "expected_event_emitted": bool(expected_events) if expected_event else len(attack_events) == 0,
@@ -213,13 +334,22 @@ def build_aggregate(manifest: dict, fixture_results: list) -> dict:
                 "fixtures_with_expected_event": 0,
                 "fixtures_with_wrong_events": 0,
                 "max_expected_class_score": 0.0,
+                "winning_prototype_counts": [],
+                "strongest_expected_emit_prototype_counts": [],
             }
 
     negative_controls = {
         "fixture_count": 0,
         "clean_fixture_count": 0,
         "fixtures_with_attack_events": 0,
+        "top_false_positive_classes": [],
+        "top_false_positive_prototypes": [],
     }
+
+    winning_prototype_counters: defaultdict[str, Counter] = defaultdict(Counter)
+    strongest_expected_emit_counters: defaultdict[str, Counter] = defaultdict(Counter)
+    negative_control_class_counts: Counter = Counter()
+    negative_control_prototype_counts: Counter = Counter()
 
     for result in fixture_results:
         expected_class = result.get("expected_class")
@@ -235,18 +365,50 @@ def build_aggregate(manifest: dict, fixture_results: list) -> dict:
                 float(result.get("max_class_score_by_class", {}).get(expected_class, 0.0)),
             )
             bucket["max_expected_class_score"] = max(bucket["max_expected_class_score"], peak)
+            peak_snapshot = result.get("peak_snapshot") or {}
+            if peak_snapshot.get("best_class") == expected_class and peak_snapshot.get("best_prototype_id"):
+                winning_prototype_counters[expected_class][peak_snapshot["best_prototype_id"]] += 1
+            strongest_expected_emit = result.get("strongest_expected_emit") or {}
+            strongest_expected_match = strongest_expected_emit.get("prototype_match", {}) if isinstance(strongest_expected_emit, dict) else {}
+            if strongest_expected_match.get("prototype_id"):
+                strongest_expected_emit_counters[expected_class][strongest_expected_match["prototype_id"]] += 1
         if result.get("expect_no_attack"):
             negative_controls["fixture_count"] += 1
             if result.get("event_count", 0) == 0:
                 negative_controls["clean_fixture_count"] += 1
             else:
                 negative_controls["fixtures_with_attack_events"] += 1
+            for item in result.get("emitted_attack_class_counts", []):
+                negative_control_class_counts[item["key"]] += int(item["count"])
+            for item in result.get("emitted_attack_prototype_counts", []):
+                negative_control_prototype_counts[item["key"]] += int(item["count"])
+
+    for expected_class, bucket in by_expected_class.items():
+        bucket["winning_prototype_counts"] = _sorted_counts(winning_prototype_counters[expected_class])
+        bucket["strongest_expected_emit_prototype_counts"] = _sorted_counts(strongest_expected_emit_counters[expected_class])
+
+    negative_controls["top_false_positive_classes"] = _sorted_counts(negative_control_class_counts)
+    negative_controls["top_false_positive_prototypes"] = _sorted_counts(negative_control_prototype_counts)
 
     return {
         "fixture_count": len(fixture_results),
         "expected_class_summary": by_expected_class,
         "negative_controls": negative_controls,
     }
+
+
+def _format_match(match: dict | None) -> str:
+    if not isinstance(match, dict) or not match:
+        return "none"
+    return "%s via %s score=%.3f runner-up=%s/%s %.3f margin=%.3f" % (
+        str(match.get("class_name") or match.get("best_class") or "no_punch"),
+        str(match.get("prototype_id") or match.get("best_prototype_id") or "none"),
+        float(match.get("score", match.get("best_score", 0.0))),
+        str(match.get("runner_up_class") or "no_punch"),
+        str(match.get("runner_up_prototype_id") or "none"),
+        float(match.get("runner_up_score", 0.0)),
+        float(match.get("class_margin", 0.0)),
+    )
 
 
 def render_markdown(result: dict) -> str:
@@ -263,10 +425,18 @@ def render_markdown(result: dict) -> str:
         "",
         f"- Fixture count: **{result['aggregate']['fixture_count']}**",
         f"- Negative controls clean: **{result['aggregate']['negative_controls']['clean_fixture_count']} / {result['aggregate']['negative_controls']['fixture_count']}**",
+    ]
+    top_false_positive_classes = result["aggregate"]["negative_controls"].get("top_false_positive_classes", [])
+    top_false_positive_prototypes = result["aggregate"]["negative_controls"].get("top_false_positive_prototypes", [])
+    if top_false_positive_classes:
+        lines.append("- Negative-control false-positive classes: " + ", ".join(f"`{item['key']}` x{item['count']}" for item in top_false_positive_classes[:5]))
+    if top_false_positive_prototypes:
+        lines.append("- Negative-control false-positive prototypes: " + ", ".join(f"`{item['key']}` x{item['count']}" for item in top_false_positive_prototypes[:5]))
+    lines.extend([
         "",
         "## Per Fixture",
         "",
-    ]
+    ])
     for fixture in result["fixtures"]:
         lines.append(f"### {fixture['label']}")
         lines.append("")
@@ -275,6 +445,18 @@ def render_markdown(result: dict) -> str:
         lines.append(f"- Expected event: `{fixture['expected_event']}`")
         lines.append(f"- Expected class: `{fixture['expected_class']}`")
         lines.append(f"- Attack events emitted: **{fixture['event_count']}**")
+        if fixture.get("peak_snapshot"):
+            lines.append(f"- Peak snapshot: {_format_match(fixture['peak_snapshot'])}")
+        if fixture.get("strongest_expected_emit"):
+            lines.append(f"- Strongest expected emit: `{fixture['strongest_expected_emit']['name']}` {_format_match(fixture['strongest_expected_emit']['prototype_match'])}")
+        if fixture.get("strongest_wrong_emit"):
+            lines.append(f"- Strongest wrong emit: `{fixture['strongest_wrong_emit']['name']}` {_format_match(fixture['strongest_wrong_emit']['prototype_match'])}")
+        emitted_prototypes = fixture.get("emitted_attack_prototype_counts", [])
+        if emitted_prototypes:
+            lines.append("- Emitted prototype counts: " + ", ".join(f"`{item['key']}` x{item['count']}" for item in emitted_prototypes[:5]))
+        best_prototypes = fixture.get("best_prototype_snapshot_counts", [])
+        if best_prototypes:
+            lines.append("- Best-snapshot prototype counts: " + ", ".join(f"`{item['key']}` x{item['count']}" for item in best_prototypes[:5]))
         for finding in fixture.get("findings", []):
             lines.append(f"- {finding}")
         if fixture.get("attack_events"):
@@ -283,11 +465,16 @@ def render_markdown(result: dict) -> str:
             for event in fixture["attack_events"]:
                 proto = event.get("prototype_match", {})
                 lines.append(
-                    "- `%s` at `%dms` score=`%.3f` class=`%s` backend=`%s`" % (
+                    "- `%s` at `%dms` score=`%.3f` prototype=`%s` class=`%s` runner-up=`%s/%s %.3f` margin=`%.3f` backend=`%s`" % (
                         event["name"],
                         int(event.get("timestamp_ms", 0)),
                         float(proto.get("score", event.get("power", 0.0))),
+                        str(proto.get("prototype_id", "")),
                         str(proto.get("class_name", "")),
+                        str(proto.get("runner_up_class", "")),
+                        str(proto.get("runner_up_prototype_id", "")),
+                        float(proto.get("runner_up_score", 0.0)),
+                        float(proto.get("class_margin", 0.0)),
                         str(event.get("backend", "")),
                     )
                 )
