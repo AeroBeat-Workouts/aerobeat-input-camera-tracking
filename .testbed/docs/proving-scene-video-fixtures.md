@@ -17,12 +17,12 @@ Each fixture should declare only the fields this slice actually consumes:
 
 ```yaml
 schema_version: 1
-fixture_id: boxing_punch_left_x4_while_guarding_take_01
+fixture_id: boxing_straight_left_x4_while_guarding_take_01
 family: boxing
 video:
-  path: ./boxing_punch_left_x4_while_guarding_take_01.mp4
+  path: ./boxing_straight_left_x4_while_guarding_take_01.mp4
 expected_gestures:
-  - name: punch_left
+  - name: straight_left
     windows:
       - start_ms: 900
         end_ms: 1300
@@ -34,7 +34,7 @@ expected_gestures:
       - start_ms: 0
         end_ms: 850
 forbidden_gestures:
-  - name: punch_right
+  - name: straight_right
 ```
 
 ### Required fields

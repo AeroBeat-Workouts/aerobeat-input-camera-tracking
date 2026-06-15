@@ -15,8 +15,8 @@
 
 ### Straight left fixture
 
-- Fixture: `.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml`
-- Source: `.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4`
+- Fixture: `.testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml`
+- Source: `.testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4`
 - Expected event: `punch_left`
 - Expected class: `straight_left`
 - Attack events emitted: **0**
@@ -26,8 +26,8 @@
 
 ### Straight right fixture
 
-- Fixture: `.testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.yaml`
-- Source: `.testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.mp4`
+- Fixture: `.testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml`
+- Source: `.testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4`
 - Expected event: `punch_right`
 - Expected class: `straight_right`
 - Attack events emitted: **0**

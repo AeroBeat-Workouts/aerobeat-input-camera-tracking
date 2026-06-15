@@ -10,12 +10,28 @@ from pathlib import Path
 import yaml
 
 SUPPORTED_EVENT_TO_CLASS = {
-    "punch_left": ("straight_left", "left"),
-    "punch_right": ("straight_right", "right"),
-    "hook_left": ("hook_left", "left"),
-    "hook_right": ("hook_right", "right"),
-    "uppercut_left": ("uppercut_left", "left"),
-    "uppercut_right": ("uppercut_right", "right"),
+    "punch_left": "straight_left",
+    "punch_right": "straight_right",
+    "hook_left": "hook_left",
+    "hook_right": "hook_right",
+    "uppercut_left": "uppercut_left",
+    "uppercut_right": "uppercut_right",
+}
+CLASS_TO_SIDE = {
+    "straight_left": "left",
+    "straight_right": "right",
+    "hook_left": "left",
+    "hook_right": "right",
+    "uppercut_left": "left",
+    "uppercut_right": "right",
+}
+CLASS_TO_FIXTURE_GESTURE = {
+    "straight_left": "straight_left",
+    "straight_right": "straight_right",
+    "hook_left": "hook_left",
+    "hook_right": "hook_right",
+    "uppercut_left": "uppercut_left",
+    "uppercut_right": "uppercut_right",
 }
 FEATURE_NAMES = [
     "elbow_x_from_shoulder_over_shoulder_width",
@@ -213,11 +229,11 @@ def _pose_snapshots(report: dict) -> list[dict]:
     return snapshots
 
 
-def _windows_for_event(fixture_yaml: dict, event_name: str) -> list[dict]:
+def _windows_for_gesture_name(fixture_yaml: dict, gesture_name: str) -> list[dict]:
     for gesture in fixture_yaml.get("expected_gestures", []) or []:
         if not isinstance(gesture, dict):
             continue
-        if str(gesture.get("name", "")) != event_name:
+        if str(gesture.get("name", "")) != gesture_name:
             continue
         windows = gesture.get("windows", []) or []
         return [window for window in windows if isinstance(window, dict)]
@@ -251,20 +267,23 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
     fixture_summaries = []
     classes_in_order = []
     skipped_windows = []
+    class_window_counts: dict[str, int] = {}
     for fixture in manifest.get("fixtures", []):
         expected_event = str(fixture.get("expected_event") or "")
         if expected_event not in SUPPORTED_EVENT_TO_CLASS:
             continue
-        class_name, side = SUPPORTED_EVENT_TO_CLASS[expected_event]
+        class_name = SUPPORTED_EVENT_TO_CLASS[expected_event]
+        side = CLASS_TO_SIDE[class_name]
+        fixture_gesture_name = CLASS_TO_FIXTURE_GESTURE[class_name]
         if class_name not in classes_in_order:
             classes_in_order.append(class_name)
         fixture_path = (repo_root / fixture["fixture_path"]).resolve()
         fixture_yaml = load_yaml(fixture_path)
         capture_report = load_json(captures_dir / "captures" / fixture["id"] / "report.json")
         snapshots = _pose_snapshots(capture_report)
-        windows = _windows_for_event(fixture_yaml, expected_event)
+        windows = _windows_for_gesture_name(fixture_yaml, fixture_gesture_name)
         if not windows:
-            raise ValueError(f"fixture {fixture['id']} has no verified windows for {expected_event}")
+            raise ValueError(f"fixture {fixture['id']} has no verified windows for {fixture_gesture_name}")
         window_summaries = []
         for window_index, window in enumerate(windows, start=1):
             start_ms = int(window.get("start_ms", 0))
@@ -318,19 +337,29 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
                 )
                 continue
             resampled = _resample_series(extracted_samples, sample_count)
-            prototype_id = f"{class_name}_{fixture['id']}_window_{window_index:02d}"
+            class_window_counts[class_name] = class_window_counts.get(class_name, 0) + 1
+            class_window_index = class_window_counts[class_name]
+            prototype_id = f"boxing_{class_name}_window_{class_window_index:02d}"
+            fixture_id = str(fixture_yaml.get("fixture_id", fixture["id"]))
+            source_ref = f"{relative_fixture_path}#gesture={fixture_gesture_name}&window={window_index}"
             prototypes.append(
                 {
                     "id": prototype_id,
                     "class_name": class_name,
                     "side": side,
-                    "source_ref": f"{relative_fixture_path}#window={window_index}",
+                    "source_ref": source_ref,
                     "provenance": {
-                        "fixture_id": str(fixture_yaml.get("fixture_id", fixture["id"])),
+                        "fixture_id": fixture_id,
                         "fixture_path": relative_fixture_path,
                         "video_path": str(fixture.get("source_path", "")),
                         "capture_report_path": report_path,
                         "expected_event": expected_event,
+                        "expected_class": class_name,
+                        "fixture_gesture_name": fixture_gesture_name,
+                        "class_window_index": class_window_index,
+                        "source_window_index": window_index,
+                        "source_fixture_id": fixture["id"],
+                        "source_ref": source_ref,
                         "window_index": window_index,
                         "window_start_ms": start_ms,
                         "window_end_ms": end_ms,
@@ -362,6 +391,8 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
                 "fixture_path": fixture["fixture_path"],
                 "source_path": fixture["source_path"],
                 "expected_event": expected_event,
+                "expected_class": class_name,
+                "fixture_gesture_name": fixture_gesture_name,
                 "class_name": class_name,
                 "side": side,
                 "window_count": len(window_summaries),

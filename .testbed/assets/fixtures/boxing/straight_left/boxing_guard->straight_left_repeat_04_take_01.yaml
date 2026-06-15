@@ -1,13 +1,13 @@
 schema_version: 1
-fixture_id: boxing_guard->punch_left_repeat_04_take_01
+fixture_id: boxing_guard->straight_left_repeat_04_take_01
 family: boxing
 video:
-  path: ./boxing_guard->punch_left_repeat_04_take_01.mp4
+  path: ./boxing_guard->straight_left_repeat_04_take_01.mp4
 notes:
 - Boxing clip of Derrick
 - starts in guard, ends in guard, with four repeated left punches
 expected_gestures:
-- name: punch_left
+- name: straight_left
   windows:
   - start_ms: 1150
     end_ms: 1300

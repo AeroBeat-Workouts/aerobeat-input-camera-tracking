@@ -3,53 +3,53 @@
   "library_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/prototype_libraries/boxing_side_aware_fixture_derived_v1/library.json",
   "winning_prototypes": {
     "straight_left": {
-      "peak_snapshot": "straight_left_straight_left_fixture_window_01",
-      "strongest_expected_emit": "straight_left_straight_left_fixture_window_03"
+      "peak_snapshot": "boxing_straight_left_window_01",
+      "strongest_expected_emit": "boxing_straight_left_window_03"
     },
     "straight_right": {
-      "peak_snapshot": "straight_right_straight_right_fixture_window_01",
-      "strongest_expected_emit": "straight_right_straight_right_fixture_window_01"
+      "peak_snapshot": "boxing_straight_right_window_01",
+      "strongest_expected_emit": "boxing_straight_right_window_01"
     },
     "hook_left": {
-      "peak_snapshot": "hook_left_hook_left_fixture_window_04",
-      "strongest_expected_emit": "hook_left_hook_left_fixture_window_04"
+      "peak_snapshot": "boxing_hook_left_window_04",
+      "strongest_expected_emit": "boxing_hook_left_window_04"
     },
     "hook_right": {
-      "peak_snapshot": "hook_right_hook_right_fixture_window_01",
-      "strongest_expected_emit": "hook_right_hook_right_fixture_window_01"
+      "peak_snapshot": "boxing_hook_right_window_01",
+      "strongest_expected_emit": "boxing_hook_right_window_01"
     },
     "uppercut_left": {
-      "peak_snapshot": "uppercut_left_uppercut_left_fixture_window_02",
-      "strongest_expected_emit": "uppercut_left_uppercut_left_fixture_window_01"
+      "peak_snapshot": "boxing_uppercut_left_window_02",
+      "strongest_expected_emit": "boxing_uppercut_left_window_01"
     },
     "uppercut_right": {
-      "peak_snapshot": "uppercut_right_uppercut_right_fixture_window_01",
-      "strongest_expected_emit": "uppercut_right_uppercut_right_fixture_window_01"
+      "peak_snapshot": "boxing_uppercut_right_window_01",
+      "strongest_expected_emit": "boxing_uppercut_right_window_01"
     }
   },
   "closest_wrong_emit_margins": [
     {
       "fixture_id": "uppercut_left_fixture",
       "wrong_event": "uppercut_right",
-      "prototype_id": "uppercut_right_uppercut_right_fixture_window_04",
+      "prototype_id": "boxing_uppercut_right_window_04",
       "margin": 0.000183574631549721
     },
     {
       "fixture_id": "hook_right_fixture",
       "wrong_event": "uppercut_right",
-      "prototype_id": "uppercut_right_uppercut_right_fixture_window_01",
+      "prototype_id": "boxing_uppercut_right_window_01",
       "margin": 0.00748017084342956
     },
     {
       "fixture_id": "straight_left_fixture",
       "wrong_event": "hook_right",
-      "prototype_id": "hook_right_hook_right_fixture_window_01",
+      "prototype_id": "boxing_hook_right_window_01",
       "margin": 0.0144975731351885
     },
     {
       "fixture_id": "uppercut_right_fixture",
       "wrong_event": "hook_right",
-      "prototype_id": "hook_right_hook_right_fixture_window_01",
+      "prototype_id": "boxing_hook_right_window_01",
       "margin": 0.0153197555132983
     }
   ],
@@ -72,35 +72,35 @@
     ],
     "prototypes": [
       {
-        "prototype_id": "hook_left_hook_left_fixture_window_01",
+        "prototype_id": "boxing_hook_left_window_01",
         "count": 21
       },
       {
-        "prototype_id": "hook_left_hook_left_fixture_window_03",
+        "prototype_id": "boxing_hook_left_window_03",
         "count": 4
       },
       {
-        "prototype_id": "hook_right_hook_right_fixture_window_03",
+        "prototype_id": "boxing_hook_right_window_03",
         "count": 2
       },
       {
-        "prototype_id": "straight_left_straight_left_fixture_window_01",
+        "prototype_id": "boxing_straight_left_window_01",
         "count": 2
       },
       {
-        "prototype_id": "straight_left_straight_left_fixture_window_02",
+        "prototype_id": "boxing_straight_left_window_02",
         "count": 1
       }
     ],
     "strongest_false_positive": {
       "event": "hook_left",
-      "prototype_id": "hook_left_hook_left_fixture_window_01",
+      "prototype_id": "boxing_hook_left_window_01",
       "score": 0.907429361670463,
       "runner_up_class": "straight_left",
-      "runner_up_prototype_id": "straight_left_straight_left_fixture_window_03",
+      "runner_up_prototype_id": "boxing_straight_left_window_03",
       "runner_up_score": 0.849876673883624,
       "margin": 0.0575526877868389
     }
   },
-  "recommended_next_move": "Hypothesis: prune or re-segment hook_left_hook_left_fixture_window_01 first, then hook_left_hook_left_fixture_window_03, before broader class-wide tuning; keep class-margin gating as the secondary fallback experiment."
+  "recommended_next_move": "Hypothesis: prune or re-segment boxing_hook_left_window_01 first, then boxing_hook_left_window_03, before broader class-wide tuning; keep class-margin gating as the secondary fallback experiment."
 }

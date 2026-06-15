@@ -54,7 +54,7 @@ func _run() -> void:
 		"timestamp_ms": 200,
 		"backend": "proof",
 		"source_kind": "video_file",
-		"source_id": "res://assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+		"source_id": "res://assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
 		"tracking_state": "tracked",
 		"preview_transform": {"flip_horizontal": false, "space": "gameplay_normalized"},
 		"frame_size": {"x": PREVIEW_IMAGE_WIDTH, "y": PREVIEW_IMAGE_HEIGHT},

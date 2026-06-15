@@ -10,12 +10,12 @@
 # approximate windows over fake millisecond precision.
 
 schema_version: 1
-fixture_id: boxing_punch_left_x4_while_guarding_take_01
+fixture_id: boxing_straight_left_x4_while_guarding_take_01
 family: boxing
 
 video:
   # Relative to this YAML file unless absolute.
-  path: ./boxing_punch_left_x4_while_guarding_take_01.mp4
+  path: ./boxing_straight_left_x4_while_guarding_take_01.mp4
 
 # Optional human notes for authoring/audit context.
 notes:
@@ -23,7 +23,7 @@ notes:
   - windows below are approximate human-authored timing, not frame-exact labels
 
 expected_gestures:
-  - name: punch_left
+  - name: straight_left
     windows:
       - start_ms: 900
         end_ms: 1300
@@ -36,5 +36,5 @@ expected_gestures:
 
 # Optional. Omit entirely when false-positive bans are not important for the clip.
 forbidden_gestures:
-  - name: punch_right
+  - name: straight_right
   - name: uppercut_right

@@ -2,7 +2,7 @@
 	"captured_at": "2026-06-13 23:27:24",
 	"elapsed_ms": 9345,
 	"fixture_capture": {
-		"camera_source": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+		"camera_source": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
 		"event_timeline": [
 			{
 				"count": 1,
@@ -143631,7 +143631,7 @@
 		"time_origin_offset_ms": 1132,
 		"time_origin_reason": "first_tracking_pose"
 	},
-	"fixture_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml",
+	"fixture_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
 	"scene_path": "res://scenes/boxing_proving.tscn",
 	"screenshot_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-library-derivation-boxing-side-aware-fixture-derived-v1/captures/straight_left_fixture/proving.png",
 	"status": {
@@ -143651,7 +143651,7 @@
 		"signal_status": "",
 		"summary": ""
 	},
-	"video_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+	"video_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
 	"viewport_size": {
 		"height": 64,
 		"width": 64

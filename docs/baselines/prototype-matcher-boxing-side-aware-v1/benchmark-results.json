@@ -10,8 +10,8 @@
     {
       "fixture_id": "straight_left_fixture",
       "label": "Straight left fixture",
-      "fixture_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/punch_left/boxing_guard->punch_left_repeat_04_take_01.mp4",
+      "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
+      "source_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
       "expected_event": "punch_left",
       "expected_class": "straight_left",
       "expect_no_attack": false,
@@ -96,8 +96,8 @@
     {
       "fixture_id": "straight_right_fixture",
       "label": "Straight right fixture",
-      "fixture_path": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/punch_right/boxing_guard->punch_right_repeat_04_take_01.mp4",
+      "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
+      "source_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
       "expected_event": "punch_right",
       "expected_class": "straight_right",
       "expect_no_attack": false,
