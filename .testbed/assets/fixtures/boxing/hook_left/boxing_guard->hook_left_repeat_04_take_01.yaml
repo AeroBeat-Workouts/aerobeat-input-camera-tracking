@@ -9,8 +9,8 @@ notes:
 expected_gestures:
 - name: hook_left
   windows:
-  - start_ms: 1000
-    end_ms: 1600
+  - start_ms: 1150
+    end_ms: 1400
   - start_ms: 2500
     end_ms: 3000
   - start_ms: 4000
