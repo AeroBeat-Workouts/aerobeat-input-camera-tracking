@@ -3,8 +3,8 @@
 - Fixture: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml`
 - Video: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4`
 - Scene: `res://scenes/boxing_proving.tscn`
-- Captured: `2026-06-15 19:44:34`
-- Elapsed: `13557ms`
+- Captured: `2026-06-15 19:51:16`
+- Elapsed: `12213ms`
 - Screenshot: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-hook-left-window-01-tighten-2026-06-15/captures/uppercut_left_fixture/proving.png`
 
 ## Status
@@ -22,14 +22,14 @@
 ```text
 Detected events
 
-0022: Right Hook
-0023: Left Uppercut
-0024: Left Uppercut
-0025: Left Uppercut
-0026: Right Uppercut
-0027: Guard Deactivated
 0028: Squat Activated
-0029: Left Punch
+0029: Left Hook
+0030: Squat Deactivated
+0031: Guard Activated
+0032: Left Uppercut
+0033: Left Uppercut
+0034: Right Uppercut
+0035: Guard Activated
 
 Profile bundle
 --------------
@@ -84,11 +84,11 @@ Prototype matcher truth
 Active backend: prototype_matcher
 Selected backend: prototype_matcher
 Prototype library ID: boxing_side_aware_fixture_derived_v1 (loaded=true)
-Best class / score / threshold: hook_right / 0.737 / 0.700
-Result class / emitted event: hook_right / none
+Best class / score / threshold: no_punch / 0.000 / 0.700
+Result class / emitted event: no_punch / none
 Debug flags: show_scores=true show_event_gate_state=true
-Class scores: {hook_left=0.734, hook_right=0.737, straight_left=0.586, straight_right=0.516, uppercut_left=0.668, uppercut_right=0.728}
-Gate reason / hold / cooldown / active event: emit_cooldown_active / 0ms / 50ms / no_punch
+Class scores: {}
+Gate reason / hold / cooldown / active event: window_not_full / 0ms / 0ms / no_punch
 
 Guard tuning
 ------------
@@ -96,21 +96,21 @@ Enabled: true
 Wrist separation X <= 0.200
 Wrist separation Y <= 0.120
 Wrist nose distance <= 0.200
-Guard candidate: false
-Live wrist separation: x=0.159 y=0.219
-Wrists above elbows: L=false R=true
-Wrist-to-nose distances: L=0.395 R=0.171
+Guard candidate: true
+Live wrist separation: x=0.102 y=0.006
+Wrists above elbows: L=true R=true
+Wrist-to-nose distances: L=0.101 R=0.086
 
 Squat tuning
 ------------
 Enabled: true
 Enter height ratio <= 0.820
 Exit height ratio >= 0.920
-Current state: active
+Current state: inactive
 Calibration ready / frames: true / 5
-Live height ratio: 0.849 (transition)
-Squat depth: 0.151
-Torso height live / baseline: 0.311 / 0.366
+Live height ratio: 0.990 (standing)
+Squat depth: 0.010
+Torso height live / baseline: 0.362 / 0.366
 
 Weave tuning
 ------------
@@ -121,13 +121,13 @@ Enter head drop ratio >= 0.050
 Exit head lateral offset <= 0.120
 Exit head-vs-hip offset <= 0.080
 Current state: inactive
-Candidates: left=false right=false neutral=true
-Live offsets: head=0.041 hip=0.049 relative=-0.008
-Head drop ratio: 0.623 (ready=true)
+Candidates: left=false right=false neutral=false
+Live offsets: head=-0.173 hip=0.029 relative=-0.201
+Head drop ratio: 0.000 (ready=false)
 
 Tracker hand truth
 ------------------
-Frame: 2126  source=video_file  playback=paused 0:00/0:08
+Frame: 2424  source=video_file  playback=paused 0:00/0:08
 L: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 R: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 ```

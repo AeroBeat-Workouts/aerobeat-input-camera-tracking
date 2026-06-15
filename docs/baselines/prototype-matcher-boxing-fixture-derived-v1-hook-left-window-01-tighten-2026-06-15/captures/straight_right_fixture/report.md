@@ -3,8 +3,8 @@
 - Fixture: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml`
 - Video: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4`
 - Scene: `res://scenes/boxing_proving.tscn`
-- Captured: `2026-06-15 19:43:47`
-- Elapsed: `12672ms`
+- Captured: `2026-06-15 19:50:33`
+- Elapsed: `11411ms`
 - Screenshot: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-hook-left-window-01-tighten-2026-06-15/captures/straight_right_fixture/proving.png`
 
 ## Status
@@ -22,14 +22,14 @@
 ```text
 Detected events
 
-0032: Right Punch
-0033: Right Punch
-0034: Right Punch
-0035: Right Punch
-0036: Left Uppercut
-0037: Guard Deactivated
-0038: Guard Activated
-0039: Left Uppercut
+0046: Guard Deactivated
+0047: Left Uppercut
+0048: Weave Left
+0049: Guard Activated
+0050: Weave Left Ended
+0051: Left Uppercut
+0052: Right Punch
+0053: Right Punch
 
 Profile bundle
 --------------
@@ -88,7 +88,7 @@ Best class / score / threshold: no_punch / 0.000 / 0.700
 Result class / emitted event: no_punch / none
 Debug flags: show_scores=true show_event_gate_state=true
 Class scores: {}
-Gate reason / hold / cooldown / active event: window_not_full / 0ms / 125ms / no_punch
+Gate reason / hold / cooldown / active event: step_wait / 100ms / 250ms / straight_right
 
 Guard tuning
 ------------
@@ -97,9 +97,9 @@ Wrist separation X <= 0.200
 Wrist separation Y <= 0.120
 Wrist nose distance <= 0.200
 Guard candidate: true
-Live wrist separation: x=0.122 y=0.005
+Live wrist separation: x=0.116 y=0.012
 Wrists above elbows: L=true R=true
-Wrist-to-nose distances: L=0.082 R=0.088
+Wrist-to-nose distances: L=0.097 R=0.083
 
 Squat tuning
 ------------
@@ -108,9 +108,9 @@ Enter height ratio <= 0.820
 Exit height ratio >= 0.920
 Current state: inactive
 Calibration ready / frames: true / 5
-Live height ratio: 0.951 (standing)
-Squat depth: 0.049
-Torso height live / baseline: 0.430 / 0.452
+Live height ratio: 0.946 (transition)
+Squat depth: 0.054
+Torso height live / baseline: 0.424 / 0.448
 
 Weave tuning
 ------------
@@ -121,13 +121,13 @@ Enter head drop ratio >= 0.050
 Exit head lateral offset <= 0.120
 Exit head-vs-hip offset <= 0.080
 Current state: inactive
-Candidates: left=false right=false neutral=false
-Live offsets: head=0.094 hip=-0.004 relative=0.098
-Head drop ratio: 0.004 (ready=false)
+Candidates: left=false right=false neutral=true
+Live offsets: head=-0.007 hip=-0.011 relative=0.003
+Head drop ratio: 0.000 (ready=false)
 
 Tracker hand truth
 ------------------
-Frame: 2089  source=video_file  playback=paused 0:00/0:06
+Frame: 3685  source=video_file  playback=paused 0:00/0:06
 L: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 R: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 ```

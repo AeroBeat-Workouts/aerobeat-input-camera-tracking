@@ -3,8 +3,8 @@
 - Fixture: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml`
 - Video: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4`
 - Scene: `res://scenes/boxing_proving.tscn`
-- Captured: `2026-06-15 19:44:50`
-- Elapsed: `13753ms`
+- Captured: `2026-06-15 19:51:30`
+- Elapsed: `12227ms`
 - Screenshot: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-hook-left-window-01-tighten-2026-06-15/captures/uppercut_right_fixture/proving.png`
 
 ## Status
@@ -22,14 +22,14 @@
 ```text
 Detected events
 
-0039: Squat Deactivated
-0040: Weave Right Ended
-0041: Guard Activated
-0042: Left Hook
-0043: Right Uppercut
-0044: Right Uppercut
-0045: Guard Activated
-0046: Right Uppercut
+0047: Right Hook
+0048: Weave Right
+0049: Right Hook
+0050: Guard Deactivated
+0051: Guard Activated
+0052: Squat Activated
+0053: Guard Deactivated
+0054: Left Hook
 
 Profile bundle
 --------------
@@ -84,11 +84,11 @@ Prototype matcher truth
 Active backend: prototype_matcher
 Selected backend: prototype_matcher
 Prototype library ID: boxing_side_aware_fixture_derived_v1 (loaded=true)
-Best class / score / threshold: no_punch / 0.000 / 0.700
-Result class / emitted event: no_punch / none
+Best class / score / threshold: hook_left / 0.787 / 0.700
+Result class / emitted event: hook_left / hook_left
 Debug flags: show_scores=true show_event_gate_state=true
-Class scores: {}
-Gate reason / hold / cooldown / active event: step_wait / 0ms / 50ms / no_punch
+Class scores: {hook_left=0.787, hook_right=0.522, straight_left=0.734, straight_right=0.316, uppercut_left=0.657, uppercut_right=0.713}
+Gate reason / hold / cooldown / active event: emitted / 100ms / 250ms / hook_left
 
 Guard tuning
 ------------
@@ -96,21 +96,21 @@ Enabled: true
 Wrist separation X <= 0.200
 Wrist separation Y <= 0.120
 Wrist nose distance <= 0.200
-Guard candidate: true
-Live wrist separation: x=0.095 y=0.007
-Wrists above elbows: L=true R=true
-Wrist-to-nose distances: L=0.107 R=0.099
+Guard candidate: false
+Live wrist separation: x=0.119 y=0.258
+Wrists above elbows: L=true R=false
+Wrist-to-nose distances: L=0.136 R=0.372
 
 Squat tuning
 ------------
 Enabled: true
 Enter height ratio <= 0.820
 Exit height ratio >= 0.920
-Current state: inactive
+Current state: active
 Calibration ready / frames: true / 5
-Live height ratio: 1.048 (standing)
-Squat depth: 0.000
-Torso height live / baseline: 0.386 / 0.368
+Live height ratio: 0.832 (transition)
+Squat depth: 0.168
+Torso height live / baseline: 0.306 / 0.368
 
 Weave tuning
 ------------
@@ -120,14 +120,14 @@ Enter head-vs-hip offset >= 0.120
 Enter head drop ratio >= 0.050
 Exit head lateral offset <= 0.120
 Exit head-vs-hip offset <= 0.080
-Current state: inactive
-Candidates: left=false right=false neutral=false
-Live offsets: head=-0.064 hip=0.022 relative=-0.086
-Head drop ratio: 0.000 (ready=false)
+Current state: right
+Candidates: left=false right=true neutral=false
+Live offsets: head=-0.477 hip=0.209 relative=-0.685
+Head drop ratio: 0.665 (ready=true)
 
 Tracker hand truth
 ------------------
-Frame: 2176  source=video_file  playback=paused 0:00/0:07
+Frame: 2500  source=video_file  playback=paused 0:00/0:07
 L: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 R: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 ```

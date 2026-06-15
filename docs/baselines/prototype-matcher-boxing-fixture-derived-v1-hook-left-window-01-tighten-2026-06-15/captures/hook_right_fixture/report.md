@@ -3,8 +3,8 @@
 - Fixture: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml`
 - Video: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4`
 - Scene: `res://scenes/boxing_proving.tscn`
-- Captured: `2026-06-15 19:44:18`
-- Elapsed: `13665ms`
+- Captured: `2026-06-15 19:51:02`
+- Elapsed: `12150ms`
 - Screenshot: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-hook-left-window-01-tighten-2026-06-15/captures/hook_right_fixture/proving.png`
 
 ## Status
@@ -22,14 +22,14 @@
 ```text
 Detected events
 
-0030: Guard Deactivated
-0031: Weave Left
-0032: Left Punch
-0033: Guard Activated
-0034: Right Hook
-0035: Weave Left Ended
-0036: Left Punch
-0037: Right Hook
+0034: Left Punch
+0035: Right Hook
+0036: Weave Left Ended
+0037: Left Hook
+0038: Right Hook
+0039: Right Hook
+0040: Right Hook
+0041: Guard Activated
 
 Profile bundle
 --------------
@@ -84,11 +84,11 @@ Prototype matcher truth
 Active backend: prototype_matcher
 Selected backend: prototype_matcher
 Prototype library ID: boxing_side_aware_fixture_derived_v1 (loaded=true)
-Best class / score / threshold: hook_right / 0.928 / 0.700
-Result class / emitted event: hook_right / hook_right
+Best class / score / threshold: no_punch / 0.000 / 0.700
+Result class / emitted event: no_punch / none
 Debug flags: show_scores=true show_event_gate_state=true
-Class scores: {hook_left=0.768, hook_right=0.928, straight_left=0.821, straight_right=0.803, uppercut_left=0.885, uppercut_right=0.877}
-Gate reason / hold / cooldown / active event: emitted / 100ms / 250ms / hook_right
+Class scores: {}
+Gate reason / hold / cooldown / active event: window_not_full / 0ms / 0ms / no_punch
 
 Guard tuning
 ------------
@@ -97,9 +97,9 @@ Wrist separation X <= 0.200
 Wrist separation Y <= 0.120
 Wrist nose distance <= 0.200
 Guard candidate: true
-Live wrist separation: x=0.086 y=0.005
+Live wrist separation: x=0.081 y=0.009
 Wrists above elbows: L=true R=true
-Wrist-to-nose distances: L=0.114 R=0.101
+Wrist-to-nose distances: L=0.091 R=0.094
 
 Squat tuning
 ------------
@@ -108,9 +108,9 @@ Enter height ratio <= 0.820
 Exit height ratio >= 0.920
 Current state: inactive
 Calibration ready / frames: true / 5
-Live height ratio: 1.025 (standing)
+Live height ratio: 1.038 (standing)
 Squat depth: 0.000
-Torso height live / baseline: 0.336 / 0.328
+Torso height live / baseline: 0.340 / 0.328
 
 Weave tuning
 ------------
@@ -122,12 +122,12 @@ Exit head lateral offset <= 0.120
 Exit head-vs-hip offset <= 0.080
 Current state: inactive
 Candidates: left=false right=false neutral=false
-Live offsets: head=-0.179 hip=0.034 relative=-0.213
-Head drop ratio: 0.012 (ready=false)
+Live offsets: head=-0.131 hip=0.047 relative=-0.179
+Head drop ratio: 0.000 (ready=false)
 
 Tracker hand truth
 ------------------
-Frame: 2143  source=video_file  playback=paused 0:00/0:08
+Frame: 2360  source=video_file  playback=paused 0:00/0:08
 L: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 R: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 ```

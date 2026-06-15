@@ -4,7 +4,7 @@
   "library_id": "boxing_side_aware_fixture_derived_v1",
   "profile": "boxing",
   "sample_count": 5,
-  "distance_scale": 0.553,
+  "distance_scale": 0.4752,
   "feature_names": [
     "elbow_x_from_shoulder_over_shoulder_width",
     "elbow_y_from_shoulder_over_shoulder_width",
@@ -36,7 +36,7 @@
         "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/straight_left_fixture/report.json",
         "expected_event": "punch_left",
         "expected_class": "straight_left",
         "fixture_gesture_name": "straight_left",
@@ -47,62 +47,63 @@
         "window_index": 1,
         "window_start_ms": 1150,
         "window_end_ms": 1300,
-        "pose_samples_in_window": 2,
-        "pose_samples_used": 2,
+        "pose_samples_in_window": 3,
+        "pose_samples_used": 3,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          3152,
-          3252
+          2497,
+          2516,
+          2575
         ],
         "fixture_window_start_ms": 1150,
         "fixture_window_end_ms": 1300,
-        "capture_window_start_ms": 3136,
-        "capture_window_end_ms": 3286,
+        "capture_window_start_ms": 2468,
+        "capture_window_end_ms": 2618,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1986,
+        "capture_time_origin_offset_ms": 1318,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.18720582973721436,
-          -1.4118959395952213,
-          -0.17915230884935843,
-          0.25041314004972937,
-          -0.238538920879364,
-          -0.469638854265213
+          0.4027429409736986,
+          -0.38524558367283745,
+          -0.3239671432488408,
+          0.6261122920114256,
+          -0.22456704825162901,
+          -0.42400258034467697
         ],
         [
-          0.18720582973721436,
-          -1.4118959395952213,
-          -0.17915230884935843,
-          0.25041314004972937,
-          -0.238538920879364,
-          -0.469638854265213
+          0.4027429409736986,
+          -0.38524558367283745,
+          -0.3239671432488408,
+          0.6261122920114256,
+          -0.22456704825162901,
+          -0.42400258034467697
         ],
         [
-          0.18720582973721436,
-          -1.4118959395952213,
-          -0.17915230884935843,
-          0.25041314004972937,
-          -0.238538920879364,
-          -0.469638854265213
+          0.3752408155248377,
+          -1.281074934715649,
+          -0.24191521258381568,
+          0.35197722531766634,
+          -0.22528967261314398,
+          -0.43811684846878096
         ],
         [
-          0.18720582973721436,
-          -1.4118959395952213,
-          -0.17915230884935843,
-          0.25041314004972937,
-          -0.238538920879364,
-          -0.469638854265213
+          0.3752408155248377,
+          -1.281074934715649,
+          -0.24191521258381568,
+          0.35197722531766634,
+          -0.22528967261314398,
+          -0.43811684846878096
         ],
         [
-          0.18720582973721436,
-          -1.4118959395952213,
-          -0.17915230884935843,
-          0.25041314004972937,
-          -0.238538920879364,
-          -0.469638854265213
+          0.3752408155248377,
+          -1.281074934715649,
+          -0.24191521258381568,
+          0.35197722531766634,
+          -0.22528967261314398,
+          -0.43811684846878096
         ]
       ]
     },
@@ -115,7 +116,7 @@
         "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/straight_left_fixture/report.json",
         "expected_event": "punch_left",
         "expected_class": "straight_left",
         "fixture_gesture_name": "straight_left",
@@ -126,37 +127,30 @@
         "window_index": 2,
         "window_start_ms": 2150,
         "window_end_ms": 2650,
-        "pose_samples_in_window": 8,
-        "pose_samples_used": 8,
+        "pose_samples_in_window": 9,
+        "pose_samples_used": 9,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          4156,
-          4206,
-          4289,
-          4353,
-          4402,
-          4478,
-          4562,
-          4610
+          3525,
+          3577,
+          3614,
+          3705,
+          3733,
+          3785,
+          3833,
+          3869,
+          3910
         ],
         "fixture_window_start_ms": 2150,
         "fixture_window_end_ms": 2650,
-        "capture_window_start_ms": 4136,
-        "capture_window_end_ms": 4636,
+        "capture_window_start_ms": 3468,
+        "capture_window_end_ms": 3968,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1986,
+        "capture_time_origin_offset_ms": 1318,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
-        [
-          0.2628431839171847,
-          -1.4085703304072237,
-          -0.07692715911848903,
-          -0.03843512402097192,
-          -0.222487658262253,
-          -0.48724636435508695
-        ],
         [
           0.4145910496265755,
           -1.262896414368845,
@@ -174,12 +168,12 @@
           -0.441460624337196
         ],
         [
-          0.47814240101724476,
-          0.14798780737326,
-          -0.25441029546359556,
-          1.224748906346529,
-          -0.24534775316715202,
-          -0.441460624337196
+          0.20433845620207933,
+          0.22001523561540803,
+          -0.323061153224868,
+          1.2912294884986248,
+          -0.26106636226177193,
+          -0.475388422608376
         ],
         [
           0.20433845620207933,
@@ -188,6 +182,14 @@
           1.2912294884986248,
           -0.26106636226177193,
           -0.475388422608376
+        ],
+        [
+          0.3349413751142653,
+          0.26791690681272523,
+          -0.36107555456602725,
+          1.2307857834994855,
+          -0.25244539976119995,
+          -0.454774647951126
         ]
       ]
     },
@@ -200,7 +202,7 @@
         "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/straight_left_fixture/report.json",
         "expected_event": "punch_left",
         "expected_class": "straight_left",
         "fixture_gesture_name": "straight_left",
@@ -211,47 +213,32 @@
         "window_index": 3,
         "window_start_ms": 3333,
         "window_end_ms": 3833,
-        "pose_samples_in_window": 10,
-        "pose_samples_used": 10,
+        "pose_samples_in_window": 11,
+        "pose_samples_used": 11,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          5338,
-          5386,
-          5427,
-          5457,
-          5538,
-          5576,
-          5611,
-          5669,
-          5715,
-          5729
+          4684,
+          4702,
+          4761,
+          4808,
+          4837,
+          4909,
+          4957,
+          4973,
+          5038,
+          5089,
+          5106
         ],
         "fixture_window_start_ms": 3333,
         "fixture_window_end_ms": 3833,
-        "capture_window_start_ms": 5319,
-        "capture_window_end_ms": 5819,
+        "capture_window_start_ms": 4651,
+        "capture_window_end_ms": 5151,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1986,
+        "capture_time_origin_offset_ms": 1318,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
-        [
-          0.23910158856295022,
-          -1.397264433132671,
-          -0.13142232651044736,
-          0.1557963680708121,
-          -0.18999271094799103,
-          -0.44544903934002
-        ],
-        [
-          0.22813915621599595,
-          -1.4843965818153124,
-          -0.07766210913601082,
-          0.07729491190673782,
-          -0.19263292849063898,
-          -0.44339500367641405
-        ],
         [
           0.22813915621599595,
           -1.4843965818153124,
@@ -275,6 +262,22 @@
           -0.2538069881062828,
           -0.18456564843654696,
           -0.444808885455132
+        ],
+        [
+          0.3345919319201803,
+          -1.6557677759967813,
+          -0.04045193167330161,
+          -0.4185653651302531,
+          -0.19127511978149503,
+          -0.436640977859498
+        ],
+        [
+          0.6011532199002096,
+          -0.9440482471441509,
+          -0.10358281075229415,
+          -0.0842992228530914,
+          -0.21559876203536998,
+          -0.43035989999771096
         ]
       ]
     },
@@ -287,7 +290,7 @@
         "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/straight_left_fixture/report.json",
         "expected_event": "punch_left",
         "expected_class": "straight_left",
         "fixture_gesture_name": "straight_left",
@@ -302,54 +305,30 @@
         "pose_samples_used": 6,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          6860,
-          6906,
-          6939,
-          6993,
-          7037,
-          7053
+          6159,
+          6206,
+          6224,
+          6287,
+          6356,
+          6370
         ],
         "fixture_window_start_ms": 4833,
         "fixture_window_end_ms": 5088,
-        "capture_window_start_ms": 6819,
-        "capture_window_end_ms": 7074,
+        "capture_window_start_ms": 6151,
+        "capture_window_end_ms": 6406,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1986,
+        "capture_time_origin_offset_ms": 1318,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.16923681636419105,
-          -1.5022908032097495,
-          -0.22237331659184503,
-          0.07925574153721092,
-          -0.24032002687454196,
-          -0.493590116500854
-        ],
-        [
-          0.15484431828112846,
-          -1.5357073829067789,
-          -0.26046939811360365,
-          -0.2506666011200041,
-          -0.21329247951507496,
-          -0.458949446678161
-        ],
-        [
-          0.15484431828112846,
-          -1.5357073829067789,
-          -0.26046939811360365,
-          -0.2506666011200041,
-          -0.21329247951507496,
-          -0.458949446678161
-        ],
-        [
-          0.15484431828112846,
-          -1.5357073829067789,
-          -0.26046939811360365,
-          -0.2506666011200041,
-          -0.21329247951507496,
-          -0.458949446678161
+          0.19393330441821519,
+          -1.4524029331728283,
+          -0.19417084878456747,
+          0.02504426087080638,
+          -0.23083809018135099,
+          -0.48875290155410805
         ],
         [
           0.19393330441821519,
@@ -358,6 +337,30 @@
           0.02504426087080638,
           -0.23083809018135099,
           -0.48875290155410805
+        ],
+        [
+          0.16368901570607494,
+          -1.4340307138181818,
+          -0.22052790143514467,
+          -0.19292649920171878,
+          -0.212893337011337,
+          -0.460843831300735
+        ],
+        [
+          0.16368901570607494,
+          -1.4340307138181818,
+          -0.22052790143514467,
+          -0.19292649920171878,
+          -0.212893337011337,
+          -0.460843831300735
+        ],
+        [
+          0.17685620184328457,
+          -1.512276245264215,
+          -0.19632271788921798,
+          -0.16797507730481506,
+          -0.221513062715531,
+          -0.48019757866859497
         ]
       ]
     },
@@ -370,7 +373,7 @@
         "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/straight_right_fixture/report.json",
         "expected_event": "punch_right",
         "expected_class": "straight_right",
         "fixture_gesture_name": "straight_right",
@@ -381,62 +384,64 @@
         "window_index": 1,
         "window_start_ms": 400,
         "window_end_ms": 600,
-        "pose_samples_in_window": 2,
-        "pose_samples_used": 2,
+        "pose_samples_in_window": 4,
+        "pose_samples_used": 4,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          2441,
-          2522
+          1675,
+          1720,
+          1755,
+          1784
         ],
         "fixture_window_start_ms": 400,
         "fixture_window_end_ms": 600,
-        "capture_window_start_ms": 2380,
-        "capture_window_end_ms": 2580,
+        "capture_window_start_ms": 1623,
+        "capture_window_end_ms": 1823,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1980,
+        "capture_time_origin_offset_ms": 1223,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.1546874084443515,
-          -1.1407454646592186,
-          0.045307253735873,
-          0.3493703379361642,
-          -0.300408259034157,
-          -0.665667459368706
+          -0.2189150078719699,
+          -1.1255635504409292,
+          -0.08967732364296355,
+          0.48818393358284257,
+          -0.2969956621527668,
+          -0.6884185597300527
         ],
         [
-          -0.1546874084443515,
-          -1.1407454646592186,
-          0.045307253735873,
-          0.3493703379361642,
-          -0.300408259034157,
-          -0.665667459368706
+          -0.2189150078719699,
+          -1.1255635504409292,
+          -0.08967732364296355,
+          0.48818393358284257,
+          -0.2969956621527668,
+          -0.6884185597300527
         ],
         [
-          -0.1546874084443515,
-          -1.1407454646592186,
-          0.045307253735873,
-          0.3493703379361642,
-          -0.300408259034157,
-          -0.665667459368706
+          -0.17772230159374064,
+          -1.0675795073454517,
+          -0.034299165152994374,
+          0.47239525257891996,
+          -0.30749385058879897,
+          -0.6838040798902509
         ],
         [
-          -0.1546874084443515,
-          -1.1407454646592186,
-          0.045307253735873,
-          0.3493703379361642,
-          -0.300408259034157,
-          -0.665667459368706
+          -0.17772230159374064,
+          -1.0675795073454517,
+          -0.034299165152994374,
+          0.47239525257891996,
+          -0.30749385058879897,
+          -0.6838040798902509
         ],
         [
-          -0.1546874084443515,
-          -1.1407454646592186,
-          0.045307253735873,
-          0.3493703379361642,
-          -0.300408259034157,
-          -0.665667459368706
+          -0.17772230159374064,
+          -1.0675795073454517,
+          -0.034299165152994374,
+          0.47239525257891996,
+          -0.30749385058879897,
+          -0.6838040798902509
         ]
       ]
     },
@@ -449,7 +454,7 @@
         "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/straight_right_fixture/report.json",
         "expected_event": "punch_right",
         "expected_class": "straight_right",
         "fixture_gesture_name": "straight_right",
@@ -460,26 +465,52 @@
         "window_index": 2,
         "window_start_ms": 1700,
         "window_end_ms": 2000,
-        "pose_samples_in_window": 5,
-        "pose_samples_used": 5,
+        "pose_samples_in_window": 7,
+        "pose_samples_used": 7,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          3741,
-          3780,
-          3875,
-          3940,
-          3958
+          2950,
+          2998,
+          3048,
+          3078,
+          3130,
+          3208,
+          3218
         ],
         "fixture_window_start_ms": 1700,
         "fixture_window_end_ms": 2000,
-        "capture_window_start_ms": 3680,
-        "capture_window_end_ms": 3980,
+        "capture_window_start_ms": 2923,
+        "capture_window_end_ms": 3223,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1980,
+        "capture_time_origin_offset_ms": 1223,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
+        [
+          -0.11917449724641802,
+          -0.9936404814063013,
+          0.11171064595597205,
+          0.3797169273904403,
+          -0.291735641658306,
+          -0.6379736587405199
+        ],
+        [
+          -0.11917449724641802,
+          -0.9936404814063013,
+          0.11171064595597205,
+          0.3797169273904403,
+          -0.291735641658306,
+          -0.6379736587405199
+        ],
+        [
+          -0.05533112915039881,
+          -1.0126371058090586,
+          0.1274607592971694,
+          0.4520542061831006,
+          -0.324060030281544,
+          -0.687909223139286
+        ],
         [
           -0.05533112915039881,
           -1.0126371058090586,
@@ -495,30 +526,6 @@
           0.39114503943325885,
           -0.313815921545029,
           -0.64850252866745
-        ],
-        [
-          -0.045817883175562873,
-          -1.0476609640859869,
-          0.19112493660042162,
-          0.39114503943325885,
-          -0.313815921545029,
-          -0.64850252866745
-        ],
-        [
-          -0.045817883175562873,
-          -1.0476609640859869,
-          0.19112493660042162,
-          0.39114503943325885,
-          -0.313815921545029,
-          -0.64850252866745
-        ],
-        [
-          -0.04627251997488328,
-          -0.9824874515385406,
-          0.1804319601560735,
-          0.46903815780227176,
-          -0.29847365617752003,
-          -0.604911625385284
         ]
       ]
     },
@@ -531,7 +538,7 @@
         "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/straight_right_fixture/report.json",
         "expected_event": "punch_right",
         "expected_class": "straight_right",
         "fixture_gesture_name": "straight_right",
@@ -542,33 +549,35 @@
         "window_index": 3,
         "window_start_ms": 3100,
         "window_end_ms": 3400,
-        "pose_samples_in_window": 5,
-        "pose_samples_used": 5,
+        "pose_samples_in_window": 7,
+        "pose_samples_used": 7,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          5118,
-          5186,
-          5245,
-          5257,
-          5334
+          4338,
+          4403,
+          4442,
+          4489,
+          4537,
+          4568,
+          4618
         ],
         "fixture_window_start_ms": 3100,
         "fixture_window_end_ms": 3400,
-        "capture_window_start_ms": 5080,
-        "capture_window_end_ms": 5380,
+        "capture_window_start_ms": 4323,
+        "capture_window_end_ms": 4623,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1980,
+        "capture_time_origin_offset_ms": 1223,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.21335302703145623,
-          -1.0523282728673264,
-          0.06620890798908984,
-          0.3887132245088265,
-          -0.33716449886560396,
-          -0.7348576858639719
+          -0.24290359366993175,
+          -1.07628145037005,
+          0.017368786331803963,
+          0.3629036203744192,
+          -0.301710233092308,
+          -0.66715507209301
         ],
         [
           -0.21335302703145623,
@@ -613,7 +622,7 @@
         "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/straight_right_fixture/report.json",
         "expected_event": "punch_right",
         "expected_class": "straight_right",
         "fixture_gesture_name": "straight_right",
@@ -628,35 +637,35 @@
         "pose_samples_used": 11,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          6398,
-          6430,
-          6529,
-          6565,
-          6598,
-          6666,
-          6706,
-          6743,
-          6816,
-          6825,
-          6879
+          5636,
+          5688,
+          5743,
+          5754,
+          5822,
+          5870,
+          5881,
+          5976,
+          6009,
+          6046,
+          6100
         ],
         "fixture_window_start_ms": 4400,
         "fixture_window_end_ms": 4900,
-        "capture_window_start_ms": 6380,
-        "capture_window_end_ms": 6880,
+        "capture_window_start_ms": 5623,
+        "capture_window_end_ms": 6123,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1980,
+        "capture_time_origin_offset_ms": 1223,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.5422511374958136,
-          -0.25973769841558336,
-          0.03818864918460798,
-          0.6244140434195359,
-          -0.390976801514626,
-          -0.7179407030344009
+          -0.42666939497122214,
+          -0.9212139557778186,
+          0.14171074118951332,
+          0.4610185313483982,
+          -0.306846991181373,
+          -0.593411818146705
         ],
         [
           -0.42666939497122214,
@@ -675,12 +684,12 @@
           -0.661550611257553
         ],
         [
-          -0.22698766594350578,
-          -0.9738214749935725,
-          0.05672507732428131,
-          0.5131547799879991,
-          -0.33915744721889496,
-          -0.750667944550514
+          -0.2288747429029748,
+          -1.032966251122259,
+          0.05913302037988005,
+          0.44132229685945373,
+          -0.288571283221245,
+          -0.635851576924324
         ],
         [
           -0.2288747429029748,
@@ -701,7 +710,7 @@
         "fixture_id": "boxing_guard->hook_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/hook_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/hook_left_fixture/report.json",
         "expected_event": "hook_left",
         "expected_class": "hook_left",
         "fixture_gesture_name": "hook_left",
@@ -710,70 +719,66 @@
         "source_fixture_id": "hook_left_fixture",
         "source_ref": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml#gesture=hook_left&window=1",
         "window_index": 1,
-        "window_start_ms": 1100,
-        "window_end_ms": 1500,
-        "pose_samples_in_window": 8,
-        "pose_samples_used": 8,
+        "window_start_ms": 1200,
+        "window_end_ms": 1400,
+        "pose_samples_in_window": 4,
+        "pose_samples_used": 4,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          3108,
-          3160,
-          3231,
-          3258,
-          3315,
-          3360,
-          3382,
-          3435
+          2450,
+          2501,
+          2567,
+          2594
         ],
-        "fixture_window_start_ms": 1100,
-        "fixture_window_end_ms": 1500,
-        "capture_window_start_ms": 3096,
-        "capture_window_end_ms": 3496,
+        "fixture_window_start_ms": 1200,
+        "fixture_window_end_ms": 1400,
+        "capture_window_start_ms": 2431,
+        "capture_window_end_ms": 2631,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1996,
+        "capture_time_origin_offset_ms": 1231,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.42169005850313845,
-          -1.2473233751676402,
-          -0.30778782357337553,
-          -0.561927599784698,
-          -0.20557972788810702,
-          -0.42663058638572704
+          0.37745019212722386,
+          -0.6215871716776548,
+          -0.43869189481524445,
+          -0.3917449296093539,
+          -0.18574453890323697,
+          -0.343477800488472
         ],
         [
-          0.42169005850313845,
-          -1.2473233751676402,
-          -0.30778782357337553,
-          -0.561927599784698,
-          -0.20557972788810702,
-          -0.42663058638572704
+          0.37745019212722386,
+          -0.6215871716776548,
+          -0.43869189481524445,
+          -0.3917449296093539,
+          -0.18574453890323697,
+          -0.343477800488472
         ],
         [
-          0.3159960485513802,
-          -1.4782470195386426,
-          -0.36109476253058803,
-          -0.3745487298356866,
-          -0.19697003066539803,
-          -0.38091121613979306
+          0.4738068173829342,
+          -1.0487915227899476,
+          -0.3826404707410307,
+          -0.5921543233969615,
+          -0.17971773445606198,
+          -0.333917394280433
         ],
         [
-          0.3159960485513802,
-          -1.4782470195386426,
-          -0.36109476253058803,
-          -0.3745487298356866,
-          -0.19697003066539803,
-          -0.38091121613979306
+          0.4738068173829342,
+          -1.0487915227899476,
+          -0.3826404707410307,
+          -0.5921543233969615,
+          -0.17971773445606198,
+          -0.333917394280433
         ],
         [
-          0.24474691840722285,
-          -1.4164710633081885,
-          -0.3291525024291441,
-          -0.3169979401814168,
-          -0.190413534641266,
-          -0.41335421800613403
+          0.4738068173829342,
+          -1.0487915227899476,
+          -0.3826404707410307,
+          -0.5921543233969615,
+          -0.17971773445606198,
+          -0.333917394280433
         ]
       ]
     },
@@ -786,7 +791,7 @@
         "fixture_id": "boxing_guard->hook_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/hook_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/hook_left_fixture/report.json",
         "expected_event": "hook_left",
         "expected_class": "hook_left",
         "fixture_gesture_name": "hook_left",
@@ -797,31 +802,48 @@
         "window_index": 2,
         "window_start_ms": 2500,
         "window_end_ms": 3000,
-        "pose_samples_in_window": 10,
-        "pose_samples_used": 10,
+        "pose_samples_in_window": 11,
+        "pose_samples_used": 11,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          4505,
-          4526,
-          4585,
-          4634,
-          4712,
-          4789,
-          4811,
-          4879,
-          4929,
-          4944
+          3746,
+          3769,
+          3820,
+          3869,
+          3903,
+          3976,
+          4026,
+          4043,
+          4112,
+          4160,
+          4204
         ],
         "fixture_window_start_ms": 2500,
         "fixture_window_end_ms": 3000,
-        "capture_window_start_ms": 4496,
-        "capture_window_end_ms": 4996,
+        "capture_window_start_ms": 3731,
+        "capture_window_end_ms": 4231,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1996,
+        "capture_time_origin_offset_ms": 1231,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
+        [
+          0.14357876929693647,
+          -1.4521563592357396,
+          -0.19476573303888747,
+          -0.21276141443989743,
+          -0.21778039634227697,
+          -0.47041340172290796
+        ],
+        [
+          0.22267820852347267,
+          -1.3500364937843299,
+          -0.10472293182358405,
+          -0.28944634911493883,
+          -0.18889373540878301,
+          -0.451452404260635
+        ],
         [
           0.1659974146183363,
           -1.3402963361556504,
@@ -845,22 +867,6 @@
           -1.115060125494977,
           -0.12876580655574799,
           -0.39953874051570903
-        ],
-        [
-          0.6054071965627152,
-          -0.36405970141816435,
-          0.44323774760324197,
-          -0.953693290490908,
-          -0.017587959766387995,
-          -0.064147889614105
-        ],
-        [
-          0.5811392929185089,
-          -0.10181764686949411,
-          -0.2194836280491202,
-          -0.3250979723973405,
-          -0.207330942153931,
-          -0.412054121494294
         ]
       ]
     },
@@ -873,7 +879,7 @@
         "fixture_id": "boxing_guard->hook_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/hook_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/hook_left_fixture/report.json",
         "expected_event": "hook_left",
         "expected_class": "hook_left",
         "fixture_gesture_name": "hook_left",
@@ -884,35 +890,50 @@
         "window_index": 3,
         "window_start_ms": 4000,
         "window_end_ms": 4600,
-        "pose_samples_in_window": 14,
-        "pose_samples_used": 14,
+        "pose_samples_in_window": 13,
+        "pose_samples_used": 13,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          6025,
-          6061,
-          6105,
-          6142,
-          6164,
-          6206,
-          6258,
-          6298,
-          6339,
-          6389,
-          6427,
-          6465,
-          6500,
-          6583
+          5238,
+          5305,
+          5353,
+          5370,
+          5436,
+          5502,
+          5542,
+          5597,
+          5639,
+          5666,
+          5714,
+          5759,
+          5772
         ],
         "fixture_window_start_ms": 4000,
         "fixture_window_end_ms": 4600,
-        "capture_window_start_ms": 5996,
-        "capture_window_end_ms": 6596,
+        "capture_window_start_ms": 5231,
+        "capture_window_end_ms": 5831,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1996,
+        "capture_time_origin_offset_ms": 1231,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
+        [
+          0.27340114317868447,
+          -1.3338648535920095,
+          -0.07076027493049299,
+          -0.28798473027602944,
+          -0.19207629561424203,
+          -0.449539750814438
+        ],
+        [
+          0.2732063057363435,
+          -1.3630758666762839,
+          -0.06503470868658674,
+          -0.283485922774687,
+          -0.200757004320621,
+          -0.475319780409336
+        ],
         [
           0.26392637462481183,
           -1.3904134636039867,
@@ -936,22 +957,6 @@
           -0.36430454023917175,
           -0.18009313941001903,
           -0.42736756801605297
-        ],
-        [
-          0.41997108789930476,
-          -1.3642805125919757,
-          -0.010626610001854213,
-          -0.8896777279001769,
-          -0.15455314517021201,
-          -0.43598887324333196
-        ],
-        [
-          0.5234583785128526,
-          -1.2555460345261602,
-          0.37750434833230634,
-          -1.2769985052542296,
-          -0.12734848260879503,
-          -0.35569098591804504
         ]
       ]
     },
@@ -964,7 +969,7 @@
         "fixture_id": "boxing_guard->hook_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/hook_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/hook_left_fixture/report.json",
         "expected_event": "hook_left",
         "expected_class": "hook_left",
         "fixture_gesture_name": "hook_left",
@@ -975,25 +980,43 @@
         "window_index": 4,
         "window_start_ms": 5500,
         "window_end_ms": 5800,
-        "pose_samples_in_window": 3,
-        "pose_samples_used": 3,
+        "pose_samples_in_window": 5,
+        "pose_samples_used": 5,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          7576,
-          7686,
-          7742
+          6822,
+          6837,
+          6905,
+          6953,
+          6990
         ],
         "fixture_window_start_ms": 5500,
         "fixture_window_end_ms": 5800,
-        "capture_window_start_ms": 7496,
-        "capture_window_end_ms": 7796,
+        "capture_window_start_ms": 6731,
+        "capture_window_end_ms": 7031,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1996,
+        "capture_time_origin_offset_ms": 1231,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
+          0.5695868312228292,
+          -1.0640436483949687,
+          -0.32171635728153847,
+          -0.6455921962339165,
+          -0.20404925942420898,
+          -0.401575565338134
+        ],
+        [
+          0.4833932501219931,
+          -1.3365953209159402,
+          -0.32378144025568156,
+          -0.6614077076901859,
+          -0.18148258328437797,
+          -0.392029166221618
+        ],
+        [
           0.4833932501219931,
           -1.3365953209159402,
           -0.32378144025568156,
@@ -1008,22 +1031,6 @@
           -0.6614077076901859,
           -0.18148258328437797,
           -0.392029166221618
-        ],
-        [
-          0.4255580903891099,
-          -1.5030891567478937,
-          -0.309725011493859,
-          -0.5933130143837336,
-          -0.1702751070261,
-          -0.38742400705814395
-        ],
-        [
-          0.4255580903891099,
-          -1.5030891567478937,
-          -0.309725011493859,
-          -0.5933130143837336,
-          -0.1702751070261,
-          -0.38742400705814395
         ],
         [
           0.4255580903891099,
@@ -1044,7 +1051,7 @@
         "fixture_id": "boxing_guard->hook_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/hook_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/hook_right_fixture/report.json",
         "expected_event": "hook_right",
         "expected_class": "hook_right",
         "fixture_gesture_name": "hook_right",
@@ -1055,71 +1062,70 @@
         "window_index": 1,
         "window_start_ms": 900,
         "window_end_ms": 1400,
-        "pose_samples_in_window": 11,
-        "pose_samples_used": 11,
+        "pose_samples_in_window": 10,
+        "pose_samples_used": 10,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          3009,
-          3023,
-          3091,
-          3140,
-          3162,
-          3223,
-          3300,
-          3312,
-          3375,
-          3425,
-          3454
+          2190,
+          2223,
+          2278,
+          2322,
+          2358,
+          2405,
+          2454,
+          2509,
+          2554,
+          2607
         ],
         "fixture_window_start_ms": 900,
         "fixture_window_end_ms": 1400,
-        "capture_window_start_ms": 2959,
-        "capture_window_end_ms": 3459,
+        "capture_window_start_ms": 2136,
+        "capture_window_end_ms": 2636,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 2059,
+        "capture_time_origin_offset_ms": 1236,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.19146682127512551,
-          -1.1722836775544458,
-          0.07074948182670629,
-          0.04842820325430325,
-          -0.165371984243393,
-          -0.40619051456451405
+          -0.44379254118034245,
+          -0.4637578217623482,
+          0.487238857320071,
+          -0.35262035095767635,
+          -0.183488100767136,
+          -0.28746894001960793
         ],
         [
-          -0.20913884859413948,
-          -1.1939149298283465,
-          -0.05539349473767986,
-          0.12704529521474744,
-          -0.177902474999428,
-          -0.436147376894951
+          -0.44379254118034245,
+          -0.4637578217623482,
+          0.487238857320071,
+          -0.35262035095767635,
+          -0.183488100767136,
+          -0.28746894001960793
         ],
         [
-          -0.16794927200295817,
-          -1.2645381082965015,
-          -0.01390125820968439,
-          0.13214243620555063,
-          -0.18113509565591773,
-          -0.4348215535283087
+          -0.6153270811477914,
+          -0.7146357212875497,
+          0.2785760296156928,
+          -0.4135806106063113,
+          -0.19826486706733704,
+          -0.326306402683258
         ],
         [
-          -0.178496056746108,
-          -1.2156175326872893,
-          -0.0028704355615600486,
-          0.18947237938708228,
-          -0.187778890132904,
-          -0.445690423250198
+          -0.45584970523656715,
+          -1.0874136870425755,
+          0.24709289059381104,
+          -0.3482264118527347,
+          -0.21505030989646903,
+          -0.35526794195175204
         ],
         [
-          -0.18512404177144468,
-          -1.2254930615557444,
-          0.014601346557833343,
-          0.17865040565123128,
-          -0.19690397381782498,
-          -0.462376058101654
+          -0.3185092385138537,
+          -1.2517439033627111,
+          0.0860926302827129,
+          -0.21210364629527026,
+          -0.199994713068008,
+          -0.428409963846207
         ]
       ]
     },
@@ -1132,7 +1138,7 @@
         "fixture_id": "boxing_guard->hook_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/hook_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/hook_right_fixture/report.json",
         "expected_event": "hook_right",
         "expected_class": "hook_right",
         "fixture_gesture_name": "hook_right",
@@ -1143,74 +1149,70 @@
         "window_index": 2,
         "window_start_ms": 2400,
         "window_end_ms": 2900,
-        "pose_samples_in_window": 14,
-        "pose_samples_used": 14,
+        "pose_samples_in_window": 10,
+        "pose_samples_used": 10,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          4479,
-          4498,
-          4535,
-          4568,
-          4605,
-          4643,
-          4680,
-          4704,
-          4743,
-          4801,
-          4817,
-          4861,
-          4899,
-          4944
+          3641,
+          3655,
+          3742,
+          3804,
+          3841,
+          3893,
+          3922,
+          3976,
+          4064,
+          4105
         ],
         "fixture_window_start_ms": 2400,
         "fixture_window_end_ms": 2900,
-        "capture_window_start_ms": 4459,
-        "capture_window_end_ms": 4959,
+        "capture_window_start_ms": 3636,
+        "capture_window_end_ms": 4136,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 2059,
+        "capture_time_origin_offset_ms": 1236,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.5159655818537897,
-          -0.2789992603352406,
-          0.42368204599730913,
-          -0.1413916227140058,
-          -0.22098371386528004,
-          -0.3421650826931
+          -0.20736627868294819,
+          -1.2629443270353216,
+          -0.025319950888748086,
+          0.1531956259470381,
+          -0.1917594447731974,
+          -0.45183021575212445
         ],
         [
-          -0.5159655818537897,
-          -0.2789992603352406,
-          0.42368204599730913,
-          -0.1413916227140058,
-          -0.22098371386528004,
-          -0.3421650826931
+          -0.2368600943121726,
+          -1.3254211148564892,
+          -0.05289992912759958,
+          0.09660312985875963,
+          -0.17963910102844302,
+          -0.450756996870041
         ],
         [
-          -0.5122007805017527,
-          -0.8554239648492823,
-          0.3987012826635497,
-          -0.6613411131128337,
-          -0.15157064795494102,
-          -0.28733703494072005
+          -0.3157603176825883,
+          -1.1277317633175337,
+          -0.6349645612684861,
+          -1.033755517344384,
+          -0.05739429593086198,
+          -0.304547399282455
         ],
         [
-          -0.43736978021454487,
-          -1.2030215334859906,
-          0.18431078751245886,
-          -0.45013240534792326,
-          -0.190020143985749,
-          -0.36305311322212197
+          -0.39762520545759655,
+          -0.950916845149944,
+          -0.38793341371016776,
+          -1.0436771232861488,
+          -0.07374309003353102,
+          -0.28540389239788
         ],
         [
-          -0.2731153984104019,
-          -1.4317277705129892,
-          0.13140724927415037,
-          -0.38611851104880784,
-          -0.204610437154769,
-          -0.467061012983322
+          -0.8049652378797074,
+          -0.5059375846596771,
+          -0.29633351455587675,
+          -0.599996390588381,
+          -0.13902494311332697,
+          -0.24677425622940097
         ]
       ]
     },
@@ -1223,7 +1225,7 @@
         "fixture_id": "boxing_guard->hook_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/hook_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/hook_right_fixture/report.json",
         "expected_event": "hook_right",
         "expected_class": "hook_right",
         "fixture_gesture_name": "hook_right",
@@ -1234,28 +1236,64 @@
         "window_index": 3,
         "window_start_ms": 4000,
         "window_end_ms": 4500,
-        "pose_samples_in_window": 7,
-        "pose_samples_used": 7,
+        "pose_samples_in_window": 11,
+        "pose_samples_used": 11,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          6075,
-          6213,
-          6249,
-          6325,
-          6391,
-          6441,
-          6524
+          5256,
+          5267,
+          5359,
+          5396,
+          5435,
+          5490,
+          5526,
+          5571,
+          5649,
+          5662,
+          5734
         ],
         "fixture_window_start_ms": 4000,
         "fixture_window_end_ms": 4500,
-        "capture_window_start_ms": 6059,
-        "capture_window_end_ms": 6559,
+        "capture_window_start_ms": 5236,
+        "capture_window_end_ms": 5736,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 2059,
+        "capture_time_origin_offset_ms": 1236,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
+        [
+          -0.20762258722481808,
+          -1.3071548148632468,
+          -0.06522189012470618,
+          0.09367962409466904,
+          -0.1747734174132347,
+          -0.4457395300269127
+        ],
+        [
+          -0.22102515805176937,
+          -1.2068094461633825,
+          -0.08400157008433647,
+          0.1723509428909816,
+          -0.17507212609052603,
+          -0.44335993379354405
+        ],
+        [
+          -0.1876907034361903,
+          -1.327824334130061,
+          -0.05249846960687258,
+          0.003917579465558337,
+          -0.1707363128662112,
+          -0.4420284628868102
+        ],
+        [
+          -0.2205027180849783,
+          -1.3098492692056258,
+          -0.058022455765290394,
+          -0.0017186097865760602,
+          -0.171937927603722,
+          -0.462764397263527
+        ],
         [
           -0.27564357152450253,
           -1.2065518905925843,
@@ -1263,38 +1301,6 @@
           -0.5787163307964713,
           -0.172879502177239,
           -0.48584775626659404
-        ],
-        [
-          -0.40013730397989883,
-          -1.1891344113091857,
-          -0.24723558386615127,
-          -1.1759357475646302,
-          -0.13034611940383897,
-          -0.412461459636688
-        ],
-        [
-          -0.40013730397989883,
-          -1.1891344113091857,
-          -0.24723558386615127,
-          -1.1759357475646302,
-          -0.13034611940383897,
-          -0.412461459636688
-        ],
-        [
-          -0.7072680941808608,
-          -0.5970780171501896,
-          -0.44352562346187496,
-          -1.047862667697904,
-          -0.10544815659522999,
-          -0.264850288629532
-        ],
-        [
-          -0.43338787056228567,
-          -0.7923435966681783,
-          0.3058712257364894,
-          -0.3067169136720992,
-          -0.197459995746612,
-          -0.323449790477752
         ]
       ]
     },
@@ -1307,7 +1313,7 @@
         "fixture_id": "boxing_guard->hook_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/hook_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/hook_right_fixture/report.json",
         "expected_event": "hook_right",
         "expected_class": "hook_right",
         "fixture_gesture_name": "hook_right",
@@ -1322,29 +1328,53 @@
         "pose_samples_used": 12,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          7383,
-          7471,
-          7496,
-          7554,
-          7608,
-          7644,
-          7696,
-          7781,
-          7794,
-          7865,
-          7918,
-          7931
+          6599,
+          6627,
+          6676,
+          6723,
+          6752,
+          6816,
+          6866,
+          6880,
+          6975,
+          7007,
+          7059,
+          7116
         ],
         "fixture_window_start_ms": 5300,
         "fixture_window_end_ms": 5900,
-        "capture_window_start_ms": 7359,
-        "capture_window_end_ms": 7959,
+        "capture_window_start_ms": 6536,
+        "capture_window_end_ms": 7136,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 2059,
+        "capture_time_origin_offset_ms": 1236,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
+        [
+          -0.33921286293423153,
+          -1.3116258867490225,
+          0.19686866648847612,
+          -0.4394558268841827,
+          -0.196090325713158,
+          -0.40326677262783
+        ],
+        [
+          -0.33921286293423153,
+          -1.3116258867490225,
+          0.19686866648847612,
+          -0.4394558268841827,
+          -0.196090325713158,
+          -0.40326677262783
+        ],
+        [
+          -0.3018984089437819,
+          -1.3650501609038002,
+          0.0821707941636849,
+          -0.28057258947249825,
+          -0.20425595343112998,
+          -0.477676525712013
+        ],
         [
           -0.2531857474354582,
           -1.4152964973200501,
@@ -1360,30 +1390,6 @@
           -0.10493539973938808,
           -0.173351481556892,
           -0.457947924733162
-        ],
-        [
-          -0.21592762865193538,
-          -1.3199440579082127,
-          -0.0398187866530072,
-          0.037991743195294816,
-          -0.18474271893501298,
-          -0.483851402997971
-        ],
-        [
-          -0.2106972576367278,
-          -1.303586055211703,
-          -0.01862659524743904,
-          0.034678381168358405,
-          -0.176725395023823,
-          -0.44613040238618895
-        ],
-        [
-          -0.1962244772308466,
-          -1.1596238723653072,
-          0.010295635349020496,
-          0.09615981614384944,
-          -0.17269810289144502,
-          -0.43175768107175805
         ]
       ]
     },
@@ -1396,7 +1402,7 @@
         "fixture_id": "boxing_guard->uppercut_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/uppercut_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/uppercut_left_fixture/report.json",
         "expected_event": "uppercut_left",
         "expected_class": "uppercut_left",
         "fixture_gesture_name": "uppercut_left",
@@ -1407,66 +1413,67 @@
         "window_index": 1,
         "window_start_ms": 900,
         "window_end_ms": 1200,
-        "pose_samples_in_window": 6,
-        "pose_samples_used": 6,
+        "pose_samples_in_window": 7,
+        "pose_samples_used": 7,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          2891,
-          2943,
-          2993,
-          3023,
-          3113,
-          3153
+          2190,
+          2216,
+          2268,
+          2309,
+          2329,
+          2388,
+          2437
         ],
         "fixture_window_start_ms": 900,
         "fixture_window_end_ms": 1200,
-        "capture_window_start_ms": 2886,
-        "capture_window_end_ms": 3186,
+        "capture_window_start_ms": 2138,
+        "capture_window_end_ms": 2438,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1986,
+        "capture_time_origin_offset_ms": 1238,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.03130224084755658,
-          -1.383009431356587,
-          -0.34343582026202135,
-          0.05561278913378342,
-          -0.237919896841049,
-          -0.4867327511310581
+          -0.09364029935319422,
+          -1.2630658221156519,
+          -0.4995439217203851,
+          0.30268503130355195,
+          -0.269698649644852,
+          -0.48365753889083896
         ],
         [
-          0.03130224084755658,
-          -1.383009431356587,
-          -0.34343582026202135,
-          0.05561278913378342,
-          -0.237919896841049,
-          -0.4867327511310581
+          -0.09364029935319422,
+          -1.2630658221156519,
+          -0.4995439217203851,
+          0.30268503130355195,
+          -0.269698649644852,
+          -0.48365753889083896
         ],
         [
-          0.03130224084755658,
-          -1.383009431356587,
-          -0.34343582026202135,
-          0.05561278913378342,
-          -0.237919896841049,
-          -0.4867327511310581
+          -0.09364029935319422,
+          -1.2630658221156519,
+          -0.4995439217203851,
+          0.30268503130355195,
+          -0.269698649644852,
+          -0.48365753889083896
         ],
         [
-          0.09609676006371812,
-          -1.3319651624177953,
-          -0.3121803526071668,
-          0.17545795750679305,
-          -0.24199429154396,
-          -0.49308180809020996
+          -0.005201757548182184,
+          -1.2909260346599565,
+          -0.5113300795364,
+          0.24273840571880564,
+          -0.2892008051276207,
+          -0.5248713716864587
         ],
         [
-          0.05221272639281376,
-          -1.3559371194782615,
-          -0.32728208306902457,
-          0.1667697057558122,
-          -0.22466011345386502,
-          -0.47058741748333
+          -0.005201757548182184,
+          -1.2909260346599565,
+          -0.5113300795364,
+          0.24273840571880564,
+          -0.2892008051276207,
+          -0.5248713716864587
         ]
       ]
     },
@@ -1479,7 +1486,7 @@
         "fixture_id": "boxing_guard->uppercut_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/uppercut_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/uppercut_left_fixture/report.json",
         "expected_event": "uppercut_left",
         "expected_class": "uppercut_left",
         "fixture_gesture_name": "uppercut_left",
@@ -1490,65 +1497,67 @@
         "window_index": 2,
         "window_start_ms": 2900,
         "window_end_ms": 3200,
-        "pose_samples_in_window": 5,
-        "pose_samples_used": 5,
+        "pose_samples_in_window": 7,
+        "pose_samples_used": 7,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          4982,
-          5010,
-          5078,
-          5137,
-          5161
+          4161,
+          4191,
+          4241,
+          4290,
+          4326,
+          4359,
+          4437
         ],
         "fixture_window_start_ms": 2900,
         "fixture_window_end_ms": 3200,
-        "capture_window_start_ms": 4886,
-        "capture_window_end_ms": 5186,
+        "capture_window_start_ms": 4138,
+        "capture_window_end_ms": 4438,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1986,
+        "capture_time_origin_offset_ms": 1238,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.1719904117720176,
-          -0.7264073791099732,
-          -0.5998953388486133,
-          0.6345597367726514,
-          -0.296631969511509,
-          -0.547883100807667
+          0.17652610348666323,
+          -1.4044941316240647,
+          -0.004584485922719381,
+          -1.1835716383133303,
+          -0.156764328479767,
+          -0.43624073266982993
         ],
         [
-          -0.13074029832178866,
-          -0.8074348851194862,
-          -0.5369347605577962,
-          0.5591820886800211,
-          -0.31021586060523954,
-          -0.5557042956352235
+          0.24171351104162866,
+          -1.068433437197898,
+          0.09783246256681263,
+          -1.6471429275040117,
+          0.01291269063949596,
+          -0.15048816800117504
         ],
         [
-          -0.13074029832178866,
-          -0.8074348851194862,
-          -0.5369347605577962,
-          0.5591820886800211,
-          -0.31021586060523954,
-          -0.5557042956352235
+          0.24171351104162866,
+          -1.068433437197898,
+          0.09783246256681263,
+          -1.6471429275040117,
+          0.01291269063949596,
+          -0.15048816800117504
         ],
         [
-          -0.13074029832178866,
-          -0.8074348851194862,
-          -0.5369347605577962,
-          0.5591820886800211,
-          -0.31021586060523954,
-          -0.5557042956352235
+          0.19218849943569793,
+          -1.4136483220880647,
+          -0.18682656077340618,
+          -1.6165700619542813,
+          -0.08309215307235696,
+          -0.27755343914032
         ],
         [
-          -0.04334810040229381,
-          -1.1260844225610112,
-          -0.3785785815420683,
-          0.3975181593409072,
-          -0.2911259904503825,
-          -0.5366403535008435
+          0.19218849943569793,
+          -1.4136483220880647,
+          -0.18682656077340618,
+          -1.6165700619542813,
+          -0.08309215307235696,
+          -0.27755343914032
         ]
       ]
     },
@@ -1561,7 +1570,7 @@
         "fixture_id": "boxing_guard->uppercut_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/uppercut_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/uppercut_left_fixture/report.json",
         "expected_event": "uppercut_left",
         "expected_class": "uppercut_left",
         "fixture_gesture_name": "uppercut_left",
@@ -1576,33 +1585,49 @@
         "pose_samples_used": 16,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          6599,
-          6647,
-          6660,
-          6729,
-          6783,
-          6798,
-          6901,
-          6961,
-          7008,
-          7064,
-          7077,
-          7147,
-          7216,
-          7263,
-          7320,
-          7371
+          5841,
+          5898,
+          5938,
+          6009,
+          6063,
+          6074,
+          6147,
+          6199,
+          6210,
+          6312,
+          6336,
+          6396,
+          6446,
+          6469,
+          6533,
+          6614
         ],
         "fixture_window_start_ms": 4600,
         "fixture_window_end_ms": 5400,
-        "capture_window_start_ms": 6586,
-        "capture_window_end_ms": 7386,
+        "capture_window_start_ms": 5838,
+        "capture_window_end_ms": 6638,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1986,
+        "capture_time_origin_offset_ms": 1238,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
+        [
+          0.032586664390177274,
+          -1.293452788208232,
+          -0.2871836036456438,
+          0.25553578362527507,
+          -0.25695948302745797,
+          -0.5264312773942941
+        ],
+        [
+          0.03399958034837175,
+          -1.3051471188787105,
+          -0.26818668658905503,
+          0.33432281327198937,
+          -0.256064265966416,
+          -0.5178633630275731
+        ],
         [
           0.03454243761199634,
           -1.2591260137682707,
@@ -1626,22 +1651,6 @@
           -1.0348210905010113,
           -0.153019547462464,
           -0.432244062423706
-        ],
-        [
-          0.1529890529520035,
-          -1.0730819389549022,
-          0.06383665874189451,
-          -1.4609844519719395,
-          -0.037394791841507014,
-          -0.21801781654357905
-        ],
-        [
-          0.14492579646561693,
-          -1.3353265146148756,
-          -0.2898682027752396,
-          -0.9630202585360014,
-          -0.08892011642456099,
-          -0.25449687242508
         ]
       ]
     },
@@ -1654,7 +1663,7 @@
         "fixture_id": "boxing_guard->uppercut_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/uppercut_left_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/uppercut_left_fixture/report.json",
         "expected_event": "uppercut_left",
         "expected_class": "uppercut_left",
         "fixture_gesture_name": "uppercut_left",
@@ -1665,47 +1674,56 @@
         "window_index": 4,
         "window_start_ms": 6000,
         "window_end_ms": 7000,
-        "pose_samples_in_window": 19,
-        "pose_samples_used": 19,
+        "pose_samples_in_window": 20,
+        "pose_samples_used": 20,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          8002,
-          8056,
-          8101,
-          8115,
-          8245,
-          8277,
-          8335,
-          8389,
-          8413,
-          8478,
-          8557,
-          8569,
-          8643,
-          8709,
-          8750,
-          8837,
-          8862,
-          8927,
-          8984
+          7272,
+          7311,
+          7373,
+          7405,
+          7457,
+          7509,
+          7538,
+          7617,
+          7669,
+          7681,
+          7754,
+          7810,
+          7840,
+          7923,
+          7942,
+          8004,
+          8055,
+          8076,
+          8141,
+          8217
         ],
         "fixture_window_start_ms": 6000,
         "fixture_window_end_ms": 7000,
-        "capture_window_start_ms": 7986,
-        "capture_window_end_ms": 8986,
+        "capture_window_start_ms": 7238,
+        "capture_window_end_ms": 8238,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1986,
+        "capture_time_origin_offset_ms": 1238,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.017758156541790103,
-          -1.1304155497645112,
-          -0.34977755289694146,
-          0.3493636152118018,
-          -0.29358224570751196,
-          -0.5417152792215351
+          -0.0743331075583648,
+          -1.2645177591730368,
+          -0.4911057572182868,
+          0.2996270278373876,
+          -0.2740573734045024,
+          -0.5073910504579544
+        ],
+        [
+          0.004970509329499479,
+          -1.2163521999939704,
+          -0.4066959396320449,
+          0.22082533685680775,
+          -0.26800109446048764,
+          -0.5049639195203786
         ],
         [
           0.013200162376275817,
@@ -1730,14 +1748,6 @@
           0.36868859985463814,
           -0.281110860407352,
           -0.53242639452219
-        ],
-        [
-          -0.0014916920221280593,
-          -1.1357553641958131,
-          -0.33186477322463614,
-          0.42389850081998803,
-          -0.283947490155696,
-          -0.534170947968959
         ]
       ]
     },
@@ -1750,7 +1760,7 @@
         "fixture_id": "boxing_guard->uppercut_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/uppercut_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/uppercut_right_fixture/report.json",
         "expected_event": "uppercut_right",
         "expected_class": "uppercut_right",
         "fixture_gesture_name": "uppercut_right",
@@ -1761,27 +1771,53 @@
         "window_index": 1,
         "window_start_ms": 900,
         "window_end_ms": 1150,
-        "pose_samples_in_window": 6,
-        "pose_samples_used": 6,
+        "pose_samples_in_window": 8,
+        "pose_samples_used": 8,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          2950,
-          2980,
-          3017,
-          3065,
-          3116,
-          3139
+          2043,
+          2089,
+          2123,
+          2141,
+          2174,
+          2208,
+          2237,
+          2247
         ],
         "fixture_window_start_ms": 900,
         "fixture_window_end_ms": 1150,
-        "capture_window_start_ms": 2893,
-        "capture_window_end_ms": 3143,
+        "capture_window_start_ms": 2034,
+        "capture_window_end_ms": 2284,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1993,
+        "capture_time_origin_offset_ms": 1134,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
+        [
+          -0.140976926651316,
+          -1.25135265831158,
+          0.034038712368434476,
+          0.2177484497485436,
+          -0.255735456943512,
+          -0.558910757303238
+        ],
+        [
+          -0.140976926651316,
+          -1.25135265831158,
+          0.034038712368434476,
+          0.2177484497485436,
+          -0.255735456943512,
+          -0.558910757303238
+        ],
+        [
+          -0.12957893226024086,
+          -1.1411625502835911,
+          0.06790775832904924,
+          0.31439807482316423,
+          -0.268230095505714,
+          -0.552478745579719
+        ],
         [
           -0.12957893226024086,
           -1.1411625502835911,
@@ -1797,30 +1833,6 @@
           0.2734242817244449,
           -0.255434483289718,
           -0.572275012731552
-        ],
-        [
-          -0.14432888681459743,
-          -1.18564894227499,
-          0.029878525539009642,
-          0.2734242817244449,
-          -0.255434483289718,
-          -0.572275012731552
-        ],
-        [
-          -0.168456984212938,
-          -1.2226906519157255,
-          0.03636300176608507,
-          0.28222077957045677,
-          -0.262612171471119,
-          -0.57595456391573
-        ],
-        [
-          -0.168456984212938,
-          -1.2226906519157255,
-          0.03636300176608507,
-          0.28222077957045677,
-          -0.262612171471119,
-          -0.57595456391573
         ]
       ]
     },
@@ -1833,7 +1845,7 @@
         "fixture_id": "boxing_guard->uppercut_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/uppercut_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/uppercut_right_fixture/report.json",
         "expected_event": "uppercut_right",
         "expected_class": "uppercut_right",
         "fixture_gesture_name": "uppercut_right",
@@ -1844,68 +1856,67 @@
         "window_index": 2,
         "window_start_ms": 2000,
         "window_end_ms": 3000,
-        "pose_samples_in_window": 24,
-        "pose_samples_used": 24,
+        "pose_samples_in_window": 31,
+        "pose_samples_used": 31,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          4031,
-          4079,
-          4091,
-          4153,
-          4225,
-          4252,
-          4308,
-          4417,
-          4443,
-          4489,
-          4548,
-          4598,
-          4622,
-          4666,
-          4703,
-          4733,
-          4753,
-          4789,
-          4841,
-          4866,
-          4903,
-          4932,
-          4949,
-          4991
+          3165,
+          3194,
+          3217,
+          3258,
+          3329,
+          3355,
+          3390,
+          3408,
+          3442,
+          3477,
+          3506,
+          3515,
+          3559,
+          3593,
+          3616,
+          3664,
+          3698,
+          3722,
+          3749,
+          3781,
+          3811,
+          3826,
+          3868,
+          3903,
+          3927,
+          3973,
+          4008,
+          4033,
+          4069,
+          4109,
+          4132
         ],
         "fixture_window_start_ms": 2000,
         "fixture_window_end_ms": 3000,
-        "capture_window_start_ms": 3993,
-        "capture_window_end_ms": 4993,
+        "capture_window_start_ms": 3134,
+        "capture_window_end_ms": 4134,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1993,
+        "capture_time_origin_offset_ms": 1134,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.010598469800171813,
-          -1.9049270553622852,
-          -0.45466329264499117,
-          -1.4618358830986071,
-          -0.12462224811315561,
-          -0.38186018913984265
+          -0.00351088414274218,
+          -1.3526221107766798,
+          -0.03719489233806994,
+          -1.0982395778271938,
+          -0.14917188882827803,
+          -0.488103032112122
         ],
         [
-          -0.038359541185212585,
-          -1.4615599405353483,
-          0.022291633188648113,
-          -0.8534725528450912,
-          -0.18322104215621998,
-          -0.495634377002716
-        ],
-        [
-          -0.14527936697413565,
-          -1.1850426515998806,
-          0.20117003823306637,
-          0.3912964158791501,
-          -0.27359367907047305,
-          -0.507252588868141
+          -0.1881510681450801,
+          -1.2650035823380115,
+          0.14793136356578224,
+          0.4008240345772772,
+          -0.2795916125178335,
+          -0.5283235833048825
         ],
         [
           -0.1841786995571242,
@@ -1922,6 +1933,14 @@
           0.38252782302068256,
           -0.271678283810615,
           -0.586452916264534
+        ],
+        [
+          -0.1787127932237355,
+          -1.1373346876896029,
+          0.026196828308923625,
+          0.3124792884346659,
+          -0.24963745474815402,
+          -0.55301222205162
         ]
       ]
     },
@@ -1934,7 +1953,7 @@
         "fixture_id": "boxing_guard->uppercut_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/uppercut_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/uppercut_right_fixture/report.json",
         "expected_event": "uppercut_right",
         "expected_class": "uppercut_right",
         "fixture_gesture_name": "uppercut_right",
@@ -1945,65 +1964,58 @@
         "window_index": 3,
         "window_start_ms": 3900,
         "window_end_ms": 4650,
-        "pose_samples_in_window": 21,
-        "pose_samples_used": 21,
+        "pose_samples_in_window": 22,
+        "pose_samples_used": 22,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          5913,
-          5935,
-          5992,
-          6023,
-          6071,
-          6110,
-          6129,
-          6172,
-          6209,
-          6234,
-          6266,
-          6309,
-          6342,
-          6389,
-          6427,
-          6458,
-          6483,
-          6517,
-          6549,
-          6568,
-          6610
+          5052,
+          5071,
+          5110,
+          5160,
+          5173,
+          5217,
+          5253,
+          5279,
+          5309,
+          5341,
+          5372,
+          5387,
+          5448,
+          5484,
+          5493,
+          5540,
+          5575,
+          5592,
+          5633,
+          5668,
+          5707,
+          5753
         ],
         "fixture_window_start_ms": 3900,
         "fixture_window_end_ms": 4650,
-        "capture_window_start_ms": 5893,
-        "capture_window_end_ms": 6643,
+        "capture_window_start_ms": 5034,
+        "capture_window_end_ms": 5784,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1993,
+        "capture_time_origin_offset_ms": 1134,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.08218819952476514,
-          -1.482323377368057,
-          0.05725862272062323,
-          -0.7860680974537233,
-          -0.18346574902534502,
-          -0.498864740133286
+          -0.040234798450199664,
+          -1.4163901688191785,
+          0.07864850829953089,
+          -0.20180675994109623,
+          -0.17399004101753202,
+          -0.422821074724197
         ],
         [
-          -0.08767649432738762,
-          -1.5291691858556036,
-          0.18468959331720314,
-          -0.23107338553429554,
-          -0.206884831190109,
-          -0.46616867184639
-        ],
-        [
-          -0.1724979041290543,
-          -1.2337556787735304,
-          -0.01855181212539575,
-          0.14999951211539167,
-          -0.22301214933395402,
-          -0.524898707866669
+          -0.1786293693319471,
+          -1.261027651484409,
+          -0.02776027298342993,
+          0.10978749331930142,
+          -0.202218301594257,
+          -0.47437620908021905
         ],
         [
           -0.15254332889870575,
@@ -2014,12 +2026,20 @@
           -0.5070652738213535
         ],
         [
-          -0.1597869832090343,
-          -1.291873298337461,
-          0.027336867899747277,
-          0.0927137074989094,
-          -0.22428214550018402,
-          -0.534248858690262
+          -0.17482015982186563,
+          -1.2625490504534587,
+          0.018754400491391446,
+          0.16024694712958437,
+          -0.22200807929038988,
+          -0.5313098430633548
+        ],
+        [
+          -0.16063643413079134,
+          -1.3308825641172943,
+          -0.15896629060935974,
+          -0.01973112903352373,
+          -0.20535066723823522,
+          -0.5208973288536072
         ]
       ]
     },
@@ -2032,7 +2052,7 @@
         "fixture_id": "boxing_guard->uppercut_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/uppercut_right_fixture/report.json",
+        "capture_report_path": ".temp/hook-left-window01-1200-1400-captures/captures/uppercut_right_fixture/report.json",
         "expected_event": "uppercut_right",
         "expected_class": "uppercut_right",
         "fixture_gesture_name": "uppercut_right",
@@ -2047,55 +2067,39 @@
         "pose_samples_used": 22,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          7700,
-          7711,
-          7755,
-          7790,
-          7808,
-          7863,
-          7900,
-          7908,
-          7953,
-          7989,
-          8003,
-          8047,
-          8084,
-          8107,
-          8160,
-          8202,
-          8233,
-          8267,
-          8301,
-          8335,
-          8365,
-          8393
+          6846,
+          6883,
+          6920,
+          6958,
+          6998,
+          7026,
+          7055,
+          7091,
+          7122,
+          7155,
+          7184,
+          7209,
+          7265,
+          7285,
+          7323,
+          7359,
+          7386,
+          7413,
+          7448,
+          7477,
+          7490,
+          7558
         ],
         "fixture_window_start_ms": 5700,
         "fixture_window_end_ms": 6450,
-        "capture_window_start_ms": 7693,
-        "capture_window_end_ms": 8443,
+        "capture_window_start_ms": 6834,
+        "capture_window_end_ms": 7584,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1993,
+        "capture_time_origin_offset_ms": 1134,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
-        [
-          -0.07664249230679487,
-          -1.4056365295215214,
-          0.2507529035706593,
-          -0.06150307388172187,
-          -0.253371581435203,
-          -0.5038519054651259
-        ],
-        [
-          -0.11079988983380626,
-          -1.2218725931168526,
-          0.17432178936799916,
-          0.2342588841509588,
-          -0.305469125509262,
-          -0.551194161176682
-        ],
         [
           -0.11079944951515786,
           -1.177183434425453,
@@ -2105,12 +2109,12 @@
           -0.563570037484169
         ],
         [
-          -0.20269126913197333,
-          -1.2235384656002326,
-          -0.01576159096641585,
-          0.2643609345236882,
-          -0.224484771490097,
-          -0.51461386680603
+          -0.15794403464457848,
+          -1.1841725794581632,
+          0.03277528768393962,
+          0.25087281348682683,
+          -0.243107981979847,
+          -0.5286242738366129
         ],
         [
           -0.2100597014096657,
@@ -2119,6 +2123,22 @@
           0.24114635776053703,
           -0.21049965173006052,
           -0.48808247596025456
+        ],
+        [
+          -0.18624182398496222,
+          -1.2001106422495456,
+          0.0018473501346861004,
+          0.2126329818804018,
+          -0.22558608651161202,
+          -0.516469657421112
+        ],
+        [
+          -0.21297516931756935,
+          -1.2752935517887682,
+          -0.05150142807756231,
+          0.14949716955511866,
+          -0.219656400382519,
+          -0.525721959769726
         ]
       ]
     }

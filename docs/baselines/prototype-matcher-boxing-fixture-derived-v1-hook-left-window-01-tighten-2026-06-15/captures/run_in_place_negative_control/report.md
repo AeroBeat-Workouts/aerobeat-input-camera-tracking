@@ -3,8 +3,8 @@
 - Fixture: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/run_in_place/boxing_guard->run_in_place_repeat_01_take_01.yaml`
 - Video: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/fixtures/boxing/run_in_place/boxing_guard->run_in_place_repeat_01_take_01.mp4`
 - Scene: `res://scenes/boxing_proving.tscn`
-- Captured: `2026-06-15 19:45:06`
-- Elapsed: `13525ms`
+- Captured: `2026-06-15 19:51:43`
+- Elapsed: `12076ms`
 - Screenshot: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-hook-left-window-01-tighten-2026-06-15/captures/run_in_place_negative_control/proving.png`
 
 ## Status
@@ -22,14 +22,14 @@
 ```text
 Detected events
 
-0015: Left Punch
-0016: Guard Activated
-0017: Right Hook
 0018: Right Hook
-0019: Right Hook
-0020: Left Punch
+0019: Left Punch
+0020: Left Hook
 0021: Left Hook
 0022: Left Hook
+0023: Left Hook
+0024: Left Hook
+0025: Left Hook
 
 Profile bundle
 --------------
@@ -97,9 +97,9 @@ Wrist separation X <= 0.200
 Wrist separation Y <= 0.120
 Wrist nose distance <= 0.200
 Guard candidate: true
-Live wrist separation: x=0.127 y=0.008
+Live wrist separation: x=0.135 y=0.038
 Wrists above elbows: L=true R=true
-Wrist-to-nose distances: L=0.163 R=0.171
+Wrist-to-nose distances: L=0.137 R=0.165
 
 Squat tuning
 ------------
@@ -108,9 +108,9 @@ Enter height ratio <= 0.820
 Exit height ratio >= 0.920
 Current state: inactive
 Calibration ready / frames: true / 5
-Live height ratio: 0.958 (standing)
-Squat depth: 0.042
-Torso height live / baseline: 0.335 / 0.350
+Live height ratio: 0.921 (transition)
+Squat depth: 0.079
+Torso height live / baseline: 0.322 / 0.350
 
 Weave tuning
 ------------
@@ -122,12 +122,12 @@ Exit head lateral offset <= 0.120
 Exit head-vs-hip offset <= 0.080
 Current state: inactive
 Candidates: left=false right=false neutral=false
-Live offsets: head=-0.113 hip=-0.030 relative=-0.083
-Head drop ratio: 0.001 (ready=false)
+Live offsets: head=-0.188 hip=-0.099 relative=-0.088
+Head drop ratio: 0.038 (ready=false)
 
 Tracker hand truth
 ------------------
-Frame: 2090  source=video_file  playback=paused 0:00/0:05
+Frame: 2410  source=video_file  playback=paused 0:00/0:05
 L: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 R: state=tracking_lost tracking=disabled valid=false source=none wrist_xyz_vel=0.000 wrist_forward_vel=0.000 depth_spike=0.000 elbow_shoulder_xy=0.000<=0.140(false) bbox_area=0.000 bbox_growth=0.000 grace=0ms hook=tracking_lost/0.000 dir=0.000 uppercut=tracking_lost/0.000 dir=0.000 hand_grace=0ms hand_stable=0ms stale=0ms
 ```
