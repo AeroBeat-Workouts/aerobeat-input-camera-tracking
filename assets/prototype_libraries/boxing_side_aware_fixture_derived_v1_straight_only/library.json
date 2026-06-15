@@ -1,0 +1,730 @@
+{
+  "schema": "aerobeat.prototype_library",
+  "version": 1,
+  "library_id": "boxing_side_aware_fixture_derived_v1_straight_only",
+  "profile": "boxing",
+  "sample_count": 5,
+  "distance_scale": 0.45,
+  "feature_names": [
+    "elbow_x_from_shoulder_over_shoulder_width",
+    "elbow_y_from_shoulder_over_shoulder_width",
+    "wrist_x_from_shoulder_over_shoulder_width",
+    "wrist_y_from_shoulder_over_shoulder_width",
+    "elbow_z_from_shoulder",
+    "wrist_z_from_shoulder"
+  ],
+  "classes": [
+    "straight_left",
+    "straight_right"
+  ],
+  "notes": [
+    "Derived from verified boxing fixture videos via capture_fixture_proving.gd pose snapshots.",
+    "Gesture truth comes from the human-verified YAML expected_gestures windows.",
+    "Each prototype corresponds to one verified gesture window resampled to the matcher sample_count."
+  ],
+  "prototypes": [
+    {
+      "id": "boxing_straight_left_window_01",
+      "class_name": "straight_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml#gesture=straight_left&window=1",
+      "provenance": {
+        "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
+        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_left_fixture/report.json",
+        "expected_event": "punch_left",
+        "expected_class": "straight_left",
+        "fixture_gesture_name": "straight_left",
+        "class_window_index": 1,
+        "source_window_index": 1,
+        "source_fixture_id": "straight_left_fixture",
+        "source_ref": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml#gesture=straight_left&window=1",
+        "window_index": 1,
+        "window_start_ms": 1150,
+        "window_end_ms": 1300,
+        "pose_samples_in_window": 4,
+        "pose_samples_used": 4,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          2292,
+          2355,
+          2391,
+          2401
+        ],
+        "fixture_window_start_ms": 1150,
+        "fixture_window_end_ms": 1300,
+        "capture_window_start_ms": 2289,
+        "capture_window_end_ms": 2439,
+        "capture_time_basis": "provider_tracking_ms_since_first_pose",
+        "capture_time_origin_reason": "first_tracking_pose",
+        "capture_time_origin_offset_ms": 1139,
+        "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
+      },
+      "samples": [
+        [
+          0.19110138401009835,
+          -1.3478056538669547,
+          -0.13508185750637705,
+          0.15543184398133172,
+          -0.20718775689601898,
+          -0.44891084730625197
+        ],
+        [
+          0.19110138401009835,
+          -1.3478056538669547,
+          -0.13508185750637705,
+          0.15543184398133172,
+          -0.20718775689601898,
+          -0.44891084730625197
+        ],
+        [
+          0.19110138401009835,
+          -1.3478056538669547,
+          -0.13508185750637705,
+          0.15543184398133172,
+          -0.20718775689601898,
+          -0.44891084730625197
+        ],
+        [
+          0.19110138401009835,
+          -1.3478056538669547,
+          -0.13508185750637705,
+          0.15543184398133172,
+          -0.20718775689601898,
+          -0.44891084730625197
+        ],
+        [
+          0.15244229828766875,
+          -1.437939666699719,
+          -0.12094232735654316,
+          0.06059556135412891,
+          -0.21885842084884605,
+          -0.47815966606140103
+        ]
+      ]
+    },
+    {
+      "id": "boxing_straight_left_window_02",
+      "class_name": "straight_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml#gesture=straight_left&window=2",
+      "provenance": {
+        "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
+        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_left_fixture/report.json",
+        "expected_event": "punch_left",
+        "expected_class": "straight_left",
+        "fixture_gesture_name": "straight_left",
+        "class_window_index": 2,
+        "source_window_index": 2,
+        "source_fixture_id": "straight_left_fixture",
+        "source_ref": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml#gesture=straight_left&window=2",
+        "window_index": 2,
+        "window_start_ms": 2150,
+        "window_end_ms": 2650,
+        "pose_samples_in_window": 17,
+        "pose_samples_used": 17,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          3307,
+          3343,
+          3365,
+          3395,
+          3430,
+          3460,
+          3470,
+          3536,
+          3570,
+          3586,
+          3621,
+          3652,
+          3668,
+          3708,
+          3745,
+          3771,
+          3781
+        ],
+        "fixture_window_start_ms": 2150,
+        "fixture_window_end_ms": 2650,
+        "capture_window_start_ms": 3289,
+        "capture_window_end_ms": 3789,
+        "capture_time_basis": "provider_tracking_ms_since_first_pose",
+        "capture_time_origin_reason": "first_tracking_pose",
+        "capture_time_origin_offset_ms": 1139,
+        "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
+      },
+      "samples": [
+        [
+          0.15484175749339824,
+          -1.3796376338115761,
+          -0.1787416880632237,
+          0.15860652929922614,
+          -0.20994517207145696,
+          -0.461790680885315
+        ],
+        [
+          0.23910158856295022,
+          -1.397264433132671,
+          -0.13142232651044736,
+          0.1557963680708121,
+          -0.18999271094799103,
+          -0.44544903934002
+        ],
+        [
+          0.22810025589550087,
+          -1.47515804599815,
+          -0.08304236786455695,
+          -0.03472882578700041,
+          -0.20725814998149902,
+          -0.455589160323143
+        ],
+        [
+          0.2633020967799138,
+          -1.5653186614409325,
+          -0.07247171828913386,
+          -0.2538069881062828,
+          -0.18456564843654696,
+          -0.444808885455132
+        ],
+        [
+          0.3345919319201803,
+          -1.6557677759967813,
+          -0.04045193167330161,
+          -0.4185653651302531,
+          -0.19127511978149503,
+          -0.436640977859498
+        ]
+      ]
+    },
+    {
+      "id": "boxing_straight_left_window_03",
+      "class_name": "straight_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml#gesture=straight_left&window=3",
+      "provenance": {
+        "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
+        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_left_fixture/report.json",
+        "expected_event": "punch_left",
+        "expected_class": "straight_left",
+        "fixture_gesture_name": "straight_left",
+        "class_window_index": 3,
+        "source_window_index": 3,
+        "source_fixture_id": "straight_left_fixture",
+        "source_ref": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml#gesture=straight_left&window=3",
+        "window_index": 3,
+        "window_start_ms": 3333,
+        "window_end_ms": 3833,
+        "pose_samples_in_window": 16,
+        "pose_samples_used": 16,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          4478,
+          4503,
+          4531,
+          4566,
+          4598,
+          4607,
+          4653,
+          4691,
+          4710,
+          4763,
+          4797,
+          4819,
+          4849,
+          4882,
+          4912,
+          4930
+        ],
+        "fixture_window_start_ms": 3333,
+        "fixture_window_end_ms": 3833,
+        "capture_window_start_ms": 4472,
+        "capture_window_end_ms": 4972,
+        "capture_time_basis": "provider_tracking_ms_since_first_pose",
+        "capture_time_origin_reason": "first_tracking_pose",
+        "capture_time_origin_offset_ms": 1139,
+        "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
+      },
+      "samples": [
+        [
+          0.16923681636419105,
+          -1.5022908032097495,
+          -0.22237331659184503,
+          0.07925574153721092,
+          -0.24032002687454196,
+          -0.493590116500854
+        ],
+        [
+          0.15484431828112846,
+          -1.5357073829067789,
+          -0.26046939811360365,
+          -0.2506666011200041,
+          -0.21329247951507496,
+          -0.458949446678161
+        ],
+        [
+          0.16368901570607494,
+          -1.4340307138181818,
+          -0.22052790143514467,
+          -0.19292649920171878,
+          -0.212893337011337,
+          -0.460843831300735
+        ],
+        [
+          0.17685620184328457,
+          -1.512276245264215,
+          -0.19632271788921798,
+          -0.16797507730481506,
+          -0.221513062715531,
+          -0.48019757866859497
+        ],
+        [
+          0.10707722288432264,
+          -1.5462977319615063,
+          -0.2288536098604637,
+          -0.16546234755141043,
+          -0.20919290184974704,
+          -0.478226214647294
+        ]
+      ]
+    },
+    {
+      "id": "boxing_straight_left_window_04",
+      "class_name": "straight_left",
+      "side": "left",
+      "source_ref": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml#gesture=straight_left&window=4",
+      "provenance": {
+        "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
+        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_left_fixture/report.json",
+        "expected_event": "punch_left",
+        "expected_class": "straight_left",
+        "fixture_gesture_name": "straight_left",
+        "class_window_index": 4,
+        "source_window_index": 4,
+        "source_fixture_id": "straight_left_fixture",
+        "source_ref": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml#gesture=straight_left&window=4",
+        "window_index": 4,
+        "window_start_ms": 4833,
+        "window_end_ms": 5088,
+        "pose_samples_in_window": 7,
+        "pose_samples_used": 7,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          6017,
+          6053,
+          6062,
+          6108,
+          6145,
+          6157,
+          6200
+        ],
+        "fixture_window_start_ms": 4833,
+        "fixture_window_end_ms": 5088,
+        "capture_window_start_ms": 5972,
+        "capture_window_end_ms": 6227,
+        "capture_time_basis": "provider_tracking_ms_since_first_pose",
+        "capture_time_origin_reason": "first_tracking_pose",
+        "capture_time_origin_offset_ms": 1139,
+        "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
+      },
+      "samples": [
+        [
+          0.22677097119066442,
+          -1.3445075023169215,
+          -0.16504563453749788,
+          0.07168753856080641,
+          -0.21892914175987196,
+          -0.43873170018196106
+        ],
+        [
+          0.21872423038282232,
+          -1.3859024323546252,
+          -0.15746908070566606,
+          0.09431669272467266,
+          -0.21439515054226,
+          -0.452284500002861
+        ],
+        [
+          0.21872423038282232,
+          -1.3859024323546252,
+          -0.15746908070566606,
+          0.09431669272467266,
+          -0.21439515054226,
+          -0.452284500002861
+        ],
+        [
+          0.21872423038282232,
+          -1.3859024323546252,
+          -0.15746908070566606,
+          0.09431669272467266,
+          -0.21439515054226,
+          -0.452284500002861
+        ],
+        [
+          0.1925143257382043,
+          -1.4694264508027446,
+          -0.15796206805761656,
+          -0.010500553539239305,
+          -0.20181065797805803,
+          -0.43975660204887307
+        ]
+      ]
+    },
+    {
+      "id": "boxing_straight_right_window_01",
+      "class_name": "straight_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml#gesture=straight_right&window=1",
+      "provenance": {
+        "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
+        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_right_fixture/report.json",
+        "expected_event": "punch_right",
+        "expected_class": "straight_right",
+        "fixture_gesture_name": "straight_right",
+        "class_window_index": 1,
+        "source_window_index": 1,
+        "source_fixture_id": "straight_right_fixture",
+        "source_ref": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml#gesture=straight_right&window=1",
+        "window_index": 1,
+        "window_start_ms": 400,
+        "window_end_ms": 600,
+        "pose_samples_in_window": 8,
+        "pose_samples_used": 8,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          1538,
+          1566,
+          1591,
+          1627,
+          1657,
+          1684,
+          1709,
+          1718
+        ],
+        "fixture_window_start_ms": 400,
+        "fixture_window_end_ms": 600,
+        "capture_window_start_ms": 1533,
+        "capture_window_end_ms": 1733,
+        "capture_time_basis": "provider_tracking_ms_since_first_pose",
+        "capture_time_origin_reason": "first_tracking_pose",
+        "capture_time_origin_offset_ms": 1133,
+        "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
+      },
+      "samples": [
+        [
+          -0.14916629751219115,
+          -1.0977292097311973,
+          0.04660568117422718,
+          0.444391659405087,
+          -0.336735874414444,
+          -0.732178926467895
+        ],
+        [
+          -0.1546874084443515,
+          -1.1407454646592186,
+          0.045307253735873,
+          0.3493703379361642,
+          -0.300408259034157,
+          -0.665667459368706
+        ],
+        [
+          -0.1546874084443515,
+          -1.1407454646592186,
+          0.045307253735873,
+          0.3493703379361642,
+          -0.300408259034157,
+          -0.665667459368706
+        ],
+        [
+          -0.1546874084443515,
+          -1.1407454646592186,
+          0.045307253735873,
+          0.3493703379361642,
+          -0.300408259034157,
+          -0.665667459368706
+        ],
+        [
+          -0.3345050829694551,
+          -1.1442993007097837,
+          0.0253867265279454,
+          0.4260697725581598,
+          -0.306497558951378,
+          -0.634674474596977
+        ]
+      ]
+    },
+    {
+      "id": "boxing_straight_right_window_02",
+      "class_name": "straight_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml#gesture=straight_right&window=2",
+      "provenance": {
+        "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
+        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_right_fixture/report.json",
+        "expected_event": "punch_right",
+        "expected_class": "straight_right",
+        "fixture_gesture_name": "straight_right",
+        "class_window_index": 2,
+        "source_window_index": 2,
+        "source_fixture_id": "straight_right_fixture",
+        "source_ref": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml#gesture=straight_right&window=2",
+        "window_index": 2,
+        "window_start_ms": 1700,
+        "window_end_ms": 2000,
+        "pose_samples_in_window": 11,
+        "pose_samples_used": 11,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          2842,
+          2873,
+          2906,
+          2934,
+          2960,
+          2969,
+          3012,
+          3059,
+          3082,
+          3092,
+          3131
+        ],
+        "fixture_window_start_ms": 1700,
+        "fixture_window_end_ms": 2000,
+        "capture_window_start_ms": 2833,
+        "capture_window_end_ms": 3133,
+        "capture_time_basis": "provider_tracking_ms_since_first_pose",
+        "capture_time_origin_reason": "first_tracking_pose",
+        "capture_time_origin_offset_ms": 1133,
+        "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
+      },
+      "samples": [
+        [
+          -0.08776021983754398,
+          -0.9561614339371387,
+          0.12881809101670988,
+          0.5079631929275108,
+          -0.32124266028404197,
+          -0.673807740211486
+        ],
+        [
+          -0.08776021983754398,
+          -0.9561614339371387,
+          0.12881809101670988,
+          0.5079631929275108,
+          -0.32124266028404197,
+          -0.673807740211486
+        ],
+        [
+          -0.18461604453039235,
+          -0.9228315532949543,
+          0.09545701049422287,
+          0.513158671113332,
+          -0.313132219016552,
+          -0.63949041813612
+        ],
+        [
+          -0.18461604453039235,
+          -0.9228315532949543,
+          0.09545701049422287,
+          0.513158671113332,
+          -0.313132219016552,
+          -0.63949041813612
+        ],
+        [
+          -0.48423663289156815,
+          -0.8530115155300847,
+          0.08662988821001415,
+          0.529057041218411,
+          -0.33497647941112496,
+          -0.651962742209435
+        ]
+      ]
+    },
+    {
+      "id": "boxing_straight_right_window_03",
+      "class_name": "straight_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml#gesture=straight_right&window=3",
+      "provenance": {
+        "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
+        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_right_fixture/report.json",
+        "expected_event": "punch_right",
+        "expected_class": "straight_right",
+        "fixture_gesture_name": "straight_right",
+        "class_window_index": 3,
+        "source_window_index": 3,
+        "source_fixture_id": "straight_right_fixture",
+        "source_ref": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml#gesture=straight_right&window=3",
+        "window_index": 3,
+        "window_start_ms": 3100,
+        "window_end_ms": 3400,
+        "pose_samples_in_window": 9,
+        "pose_samples_used": 9,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          4258,
+          4295,
+          4326,
+          4343,
+          4382,
+          4420,
+          4451,
+          4469,
+          4505
+        ],
+        "fixture_window_start_ms": 3100,
+        "fixture_window_end_ms": 3400,
+        "capture_window_start_ms": 4233,
+        "capture_window_end_ms": 4533,
+        "capture_time_basis": "provider_tracking_ms_since_first_pose",
+        "capture_time_origin_reason": "first_tracking_pose",
+        "capture_time_origin_offset_ms": 1133,
+        "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
+      },
+      "samples": [
+        [
+          -0.21203209886837085,
+          -1.0194068878729166,
+          0.06972649658758028,
+          0.48761182468960873,
+          -0.3484030216932299,
+          -0.7245908826589589
+        ],
+        [
+          -0.21203209886837085,
+          -1.0194068878729166,
+          0.06972649658758028,
+          0.48761182468960873,
+          -0.3484030216932299,
+          -0.7245908826589589
+        ],
+        [
+          -0.33465713470932473,
+          -1.1017555404602175,
+          -0.016983655382010767,
+          0.3138086148088501,
+          -0.27316427230835,
+          -0.6145502328872681
+        ],
+        [
+          -0.33465713470932473,
+          -1.1017555404602175,
+          -0.016983655382010767,
+          0.3138086148088501,
+          -0.27316427230835,
+          -0.6145502328872681
+        ],
+        [
+          -0.5771020589007974,
+          -0.4902415341094685,
+          0.03909532875157489,
+          0.5785926379154117,
+          -0.3286985158920289,
+          -0.612570583820343
+        ]
+      ]
+    },
+    {
+      "id": "boxing_straight_right_window_04",
+      "class_name": "straight_right",
+      "side": "right",
+      "source_ref": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml#gesture=straight_right&window=4",
+      "provenance": {
+        "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
+        "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
+        "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
+        "capture_report_path": ".temp/hook-left-window01-final-captures/captures/straight_right_fixture/report.json",
+        "expected_event": "punch_right",
+        "expected_class": "straight_right",
+        "fixture_gesture_name": "straight_right",
+        "class_window_index": 4,
+        "source_window_index": 4,
+        "source_fixture_id": "straight_right_fixture",
+        "source_ref": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml#gesture=straight_right&window=4",
+        "window_index": 4,
+        "window_start_ms": 4400,
+        "window_end_ms": 4900,
+        "pose_samples_in_window": 15,
+        "pose_samples_used": 15,
+        "pose_samples_rejected": 0,
+        "pose_sample_timestamps_ms": [
+          5559,
+          5586,
+          5596,
+          5644,
+          5681,
+          5719,
+          5752,
+          5789,
+          5824,
+          5845,
+          5875,
+          5917,
+          5951,
+          5983,
+          6032
+        ],
+        "fixture_window_start_ms": 4400,
+        "fixture_window_end_ms": 4900,
+        "capture_window_start_ms": 5533,
+        "capture_window_end_ms": 6033,
+        "capture_time_basis": "provider_tracking_ms_since_first_pose",
+        "capture_time_origin_reason": "first_tracking_pose",
+        "capture_time_origin_offset_ms": 1133,
+        "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
+      },
+      "samples": [
+        [
+          -0.20772956897909958,
+          -1.0106846280251591,
+          0.08666170124657734,
+          0.45224343825588265,
+          -0.305714309215546,
+          -0.669936299324036
+        ],
+        [
+          -0.2242530665397993,
+          -1.0509042241992277,
+          0.0649210604718728,
+          0.4070543415465994,
+          -0.292448729276657,
+          -0.603407204151154
+        ],
+        [
+          -0.2340359649652906,
+          -1.0123713901088973,
+          0.05176251085256713,
+          0.49860901955389486,
+          -0.29526986181736004,
+          -0.623773202300072
+        ],
+        [
+          -0.23359623090560877,
+          -0.9958225222818582,
+          0.044152609466448334,
+          0.42005449644218484,
+          -0.29792889952659596,
+          -0.6421869099140171
+        ],
+        [
+          -0.1373595542685263,
+          -1.0393778840281167,
+          0.043945650823063384,
+          0.43529387666753844,
+          -0.3153178915381434,
+          -0.6891029104590415
+        ]
+      ]
+    }
+  ]
+}
