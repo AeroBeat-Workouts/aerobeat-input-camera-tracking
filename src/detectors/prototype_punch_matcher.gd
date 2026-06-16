@@ -15,8 +15,19 @@ const DEFAULT_EMIT_HOLD_MS := 100
 const DEFAULT_SHOW_SCORES := true
 const DEFAULT_SHOW_EVENT_GATE_STATE := true
 const DEFAULT_LIBRARY_ID := "boxing_side_aware_v1"
-const FEATURE_COUNT := 4
 const DEFAULT_DISTANCE_SCALE := 0.45
+const FEATURE_NAME_SHOULDER_X := "shoulder_x"
+const FEATURE_NAME_SHOULDER_Y := "shoulder_y"
+const FEATURE_NAME_ELBOW_X := "elbow_x"
+const FEATURE_NAME_ELBOW_Y := "elbow_y"
+const FEATURE_NAME_WRIST_X := "wrist_x"
+const FEATURE_NAME_WRIST_Y := "wrist_y"
+const FEATURE_NAME_ELBOW_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "elbow_x_from_shoulder_over_shoulder_width"
+const FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "elbow_y_from_shoulder_over_shoulder_width"
+const FEATURE_NAME_WRIST_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "wrist_x_from_shoulder_over_shoulder_width"
+const FEATURE_NAME_WRIST_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "wrist_y_from_shoulder_over_shoulder_width"
+const FEATURE_NAME_ELBOW_Z_FROM_SHOULDER := "elbow_z_from_shoulder"
+const FEATURE_NAME_WRIST_Z_FROM_SHOULDER := "wrist_z_from_shoulder"
 const SUPPORTED_CLASSES := [
 	"straight_left",
 	"straight_right",
@@ -334,12 +345,41 @@ func _extract_runtime_sample(landmarks_by_id: Dictionary, metrics: Dictionary) -
 	}
 
 func _extract_side_features(shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float) -> Array:
-	return [
-		(float(elbow.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width,
-		(float(elbow.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width,
-		(float(wrist.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width,
-		(float(wrist.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width,
-	]
+	var feature_names := _get_feature_names()
+	var features: Array = []
+	for feature_name_variant in feature_names:
+		var feature_name := String(feature_name_variant)
+		features.append(_resolve_feature_value(feature_name, shoulder, elbow, wrist, shoulder_width))
+	return features
+
+func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float) -> float:
+	match feature_name:
+		FEATURE_NAME_SHOULDER_X:
+			return float(shoulder.get("x", 0.0))
+		FEATURE_NAME_SHOULDER_Y:
+			return float(shoulder.get("y", 0.0))
+		FEATURE_NAME_ELBOW_X:
+			return float(elbow.get("x", 0.0))
+		FEATURE_NAME_ELBOW_Y:
+			return float(elbow.get("y", 0.0))
+		FEATURE_NAME_WRIST_X:
+			return float(wrist.get("x", 0.0))
+		FEATURE_NAME_WRIST_Y:
+			return float(wrist.get("y", 0.0))
+		FEATURE_NAME_ELBOW_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
+			return (float(elbow.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width
+		FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
+			return (float(elbow.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width
+		FEATURE_NAME_WRIST_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
+			return (float(wrist.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width
+		FEATURE_NAME_WRIST_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
+			return (float(wrist.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width
+		FEATURE_NAME_ELBOW_Z_FROM_SHOULDER:
+			return float(elbow.get("z", 0.0)) - float(shoulder.get("z", 0.0))
+		FEATURE_NAME_WRIST_Z_FROM_SHOULDER:
+			return float(wrist.get("z", 0.0)) - float(shoulder.get("z", 0.0))
+		_:
+			return 0.0
 
 func _score_current_window() -> Dictionary:
 	var prototypes: Array = (_library.get("prototypes", []) as Array).duplicate(true)
@@ -488,7 +528,7 @@ func _resample_side_window(side: String, target_count: int, samples: Array = _sa
 			continue
 		var sample: Dictionary = sample_variant
 		var features: Variant = sample.get(side, [])
-		if features is Array and (features as Array).size() == FEATURE_COUNT:
+		if features is Array and (features as Array).size() == _get_feature_count():
 			series.append((features as Array).duplicate(true))
 	if series.is_empty() or target_count <= 0:
 		return []
@@ -589,6 +629,24 @@ func _get_show_event_gate_state() -> bool:
 	var matcher_config: Dictionary = gesture_profile_document.get("prototype_matcher", {}) if gesture_profile_document.get("prototype_matcher", {}) is Dictionary else {}
 	var debug_config: Dictionary = matcher_config.get("debug", {}) if matcher_config.get("debug", {}) is Dictionary else {}
 	return bool(debug_config.get("show_event_gate_state", DEFAULT_SHOW_EVENT_GATE_STATE))
+
+func _get_feature_names() -> Array:
+	var feature_names_variant: Variant = _library.get("feature_names", [])
+	var feature_names: Array = feature_names_variant if feature_names_variant is Array else []
+	var result: Array = []
+	for feature_name_variant in feature_names:
+		result.append(String(feature_name_variant))
+	if result.is_empty():
+		return [
+			FEATURE_NAME_ELBOW_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH,
+			FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH,
+			FEATURE_NAME_WRIST_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH,
+			FEATURE_NAME_WRIST_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH,
+		]
+	return result
+
+func _get_feature_count() -> int:
+	return max(1, _get_feature_names().size())
 
 func _get_library_sample_count() -> int:
 	return max(1, int(_library.get("sample_count", 5)))

@@ -34,10 +34,12 @@ CLASS_TO_FIXTURE_GESTURE = {
     "uppercut_right": "uppercut_right",
 }
 FEATURE_NAMES = [
-    "elbow_x_from_shoulder_over_shoulder_width",
-    "elbow_y_from_shoulder_over_shoulder_width",
-    "wrist_x_from_shoulder_over_shoulder_width",
-    "wrist_y_from_shoulder_over_shoulder_width",
+    "shoulder_x",
+    "shoulder_y",
+    "elbow_x",
+    "elbow_y",
+    "wrist_x",
+    "wrist_y",
 ]
 LANDMARK_IDS = {
     "left_shoulder": "11",
@@ -124,8 +126,7 @@ def _landmark(landmarks_by_id: dict, key: str) -> dict:
 
 
 def _extract_side_features(landmarks_by_id: dict, metrics: dict, side: str):
-    measurements = metrics.get("measurements", {}) if isinstance(metrics.get("measurements", {}), dict) else {}
-    shoulder_width = max(float(measurements.get("shoulder_width", 0.0)), 0.000001)
+    _ = metrics
     shoulder = _landmark(landmarks_by_id, f"{side}_shoulder")
     elbow = _landmark(landmarks_by_id, f"{side}_elbow")
     wrist = _landmark(landmarks_by_id, f"{side}_wrist")
@@ -139,10 +140,12 @@ def _extract_side_features(landmarks_by_id: dict, metrics: dict, side: str):
     if min_visibility < 0.5:
         return None
     return [
-        (float(elbow.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width,
-        (float(elbow.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width,
-        (float(wrist.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width,
-        (float(wrist.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width,
+        float(shoulder.get("x", 0.0)),
+        float(shoulder.get("y", 0.0)),
+        float(elbow.get("x", 0.0)),
+        float(elbow.get("y", 0.0)),
+        float(wrist.get("x", 0.0)),
+        float(wrist.get("y", 0.0)),
     ]
 
 

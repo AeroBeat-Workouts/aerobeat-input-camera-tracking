@@ -6,10 +6,12 @@
   "sample_count": 5,
   "distance_scale": 0.45,
   "feature_names": [
-    "elbow_x_from_shoulder_over_shoulder_width",
-    "elbow_y_from_shoulder_over_shoulder_width",
-    "wrist_x_from_shoulder_over_shoulder_width",
-    "wrist_y_from_shoulder_over_shoulder_width"
+    "shoulder_x",
+    "shoulder_y",
+    "elbow_x",
+    "elbow_y",
+    "wrist_x",
+    "wrist_y"
   ],
   "classes": [
     "straight_left",
@@ -30,7 +32,7 @@
         "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/xy-only-derived-prototype-library-from-fixtures/captures/straight_left_fixture/report.json",
+        "capture_report_path": ".temp/raw-xy-shoulder-elbow-wrist-derived-prototype-library-from-fixtures/captures/straight_left_fixture/report.json",
         "expected_event": "punch_left",
         "expected_class": "straight_left",
         "fixture_gesture_name": "straight_left",
@@ -41,55 +43,64 @@
         "window_index": 1,
         "window_start_ms": 1150,
         "window_end_ms": 1300,
-        "pose_samples_in_window": 5,
-        "pose_samples_used": 5,
+        "pose_samples_in_window": 4,
+        "pose_samples_used": 4,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          2330,
-          2361,
-          2377,
-          2421,
-          2457
+          2291,
+          2322,
+          2360,
+          2394
         ],
         "fixture_window_start_ms": 1150,
         "fixture_window_end_ms": 1300,
-        "capture_window_start_ms": 2311,
-        "capture_window_end_ms": 2461,
+        "capture_window_start_ms": 2261,
+        "capture_window_end_ms": 2411,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1161,
+        "capture_time_origin_offset_ms": 1111,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.19110138401009835,
-          -1.3478056538669547,
-          -0.13508185750637705,
-          0.15543184398133172
+          0.566246688365936,
+          0.585603833198547,
+          0.592761218547821,
+          0.404990971088409,
+          0.546142399311066,
+          0.616740643978119
         ],
         [
-          0.19110138401009835,
-          -1.3478056538669547,
-          -0.13508185750637705,
-          0.15543184398133172
+          0.565404534339905,
+          0.586748391389847,
+          0.592501699924469,
+          0.395636677742004,
+          0.546250641345978,
+          0.608787804841995
         ],
         [
-          0.15244229828766875,
-          -1.437939666699719,
-          -0.12094232735654316,
-          0.06059556135412891
+          0.565404534339905,
+          0.586748391389847,
+          0.592501699924469,
+          0.395636677742004,
+          0.546250641345978,
+          0.608787804841995
         ],
         [
-          0.15244229828766875,
-          -1.437939666699719,
-          -0.12094232735654316,
-          0.06059556135412891
+          0.565404534339905,
+          0.586748391389847,
+          0.592501699924469,
+          0.395636677742004,
+          0.546250641345978,
+          0.608787804841995
         ],
         [
-          0.15244229828766875,
-          -1.437939666699719,
-          -0.12094232735654316,
-          0.06059556135412891
+          0.565404534339905,
+          0.586748391389847,
+          0.592501699924469,
+          0.395636677742004,
+          0.546250641345978,
+          0.608787804841995
         ]
       ]
     },
@@ -102,7 +113,7 @@
         "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/xy-only-derived-prototype-library-from-fixtures/captures/straight_left_fixture/report.json",
+        "capture_report_path": ".temp/raw-xy-shoulder-elbow-wrist-derived-prototype-library-from-fixtures/captures/straight_left_fixture/report.json",
         "expected_event": "punch_left",
         "expected_class": "straight_left",
         "fixture_gesture_name": "straight_left",
@@ -117,61 +128,71 @@
         "pose_samples_used": 15,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          3340,
-          3374,
-          3403,
-          3445,
-          3484,
-          3512,
-          3537,
-          3570,
-          3598,
-          3611,
-          3655,
-          3692,
-          3717,
-          3764,
-          3800
+          3303,
+          3337,
+          3360,
+          3388,
+          3422,
+          3453,
+          3463,
+          3534,
+          3564,
+          3592,
+          3631,
+          3661,
+          3683,
+          3718,
+          3747
         ],
         "fixture_window_start_ms": 2150,
         "fixture_window_end_ms": 2650,
-        "capture_window_start_ms": 3311,
-        "capture_window_end_ms": 3811,
+        "capture_window_start_ms": 3261,
+        "capture_window_end_ms": 3761,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1161,
+        "capture_time_origin_offset_ms": 1111,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.23910158856295022,
-          -1.397264433132671,
-          -0.13142232651044736,
-          0.1557963680708121
+          0.567111611366272,
+          0.581866651773453,
+          0.589676320552826,
+          0.380815446376801,
+          0.541064023971558,
+          0.604979991912842
         ],
         [
-          0.22813915621599595,
-          -1.4843965818153124,
-          -0.07766210913601082,
-          0.07729491190673782
+          0.55835086107254,
+          0.571586787700653,
+          0.592569410800934,
+          0.371620059013367,
+          0.539542615413666,
+          0.593883275985718
         ],
         [
-          0.22810025589550087,
-          -1.47515804599815,
-          -0.08304236786455695,
-          -0.03472882578700041
+          0.555465042591095,
+          0.589019596576691,
+          0.587886810302734,
+          0.378066062927246,
+          0.544428169727325,
+          0.600004285573959
         ],
         [
-          0.2633020967799138,
-          -1.5653186614409325,
-          -0.07247171828913386,
-          -0.2538069881062828
+          0.554227471351624,
+          0.593398332595825,
+          0.586575925350189,
+          0.384196102619171,
+          0.542450666427612,
+          0.588473200798035
         ],
         [
-          0.3345919319201803,
-          -1.6557677759967813,
-          -0.04045193167330161,
-          -0.4185653651302531
+          0.554532408714294,
+          0.587321877479553,
+          0.591510057449341,
+          0.367491483688354,
+          0.544354617595673,
+          0.551677703857422
         ]
       ]
     },
@@ -184,7 +205,7 @@
         "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/xy-only-derived-prototype-library-from-fixtures/captures/straight_left_fixture/report.json",
+        "capture_report_path": ".temp/raw-xy-shoulder-elbow-wrist-derived-prototype-library-from-fixtures/captures/straight_left_fixture/report.json",
         "expected_event": "punch_left",
         "expected_class": "straight_left",
         "fixture_gesture_name": "straight_left",
@@ -199,62 +220,72 @@
         "pose_samples_used": 16,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          4511,
-          4541,
-          4550,
-          4618,
-          4648,
-          4657,
-          4704,
-          4739,
-          4757,
-          4797,
-          4832,
-          4863,
-          4903,
-          4939,
-          4966,
-          4989
+          4462,
+          4487,
+          4518,
+          4553,
+          4583,
+          4593,
+          4640,
+          4691,
+          4715,
+          4751,
+          4779,
+          4796,
+          4836,
+          4872,
+          4904,
+          4921
         ],
         "fixture_window_start_ms": 3333,
         "fixture_window_end_ms": 3833,
-        "capture_window_start_ms": 4494,
-        "capture_window_end_ms": 4994,
+        "capture_window_start_ms": 4444,
+        "capture_window_end_ms": 4944,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1161,
+        "capture_time_origin_offset_ms": 1111,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.15484431828112846,
-          -1.5357073829067789,
-          -0.26046939811360365,
-          -0.2506666011200041
+          0.570367574691772,
+          0.596721947193146,
+          0.594754099845886,
+          0.38024628162384,
+          0.538324236869812,
+          0.608142465353012
         ],
         [
-          0.19393330441821519,
-          -1.4524029331728283,
-          -0.19417084878456747,
-          0.02504426087080638
+          0.570414125919342,
+          0.597992897033691,
+          0.592380046844482,
+          0.380140364170074,
+          0.533464431762695,
+          0.562433809041977
         ],
         [
-          0.17685620184328457,
-          -1.512276245264215,
-          -0.19632271788921798,
-          -0.16797507730481506
+          0.567211389541626,
+          0.614796936511993,
+          0.591214120388031,
+          0.404516160488129,
+          0.534874022006989,
+          0.586506932973862
         ],
         [
-          0.10707722288432264,
-          -1.5462977319615063,
-          -0.2288536098604637,
-          -0.16546234755141043
+          0.561952471733093,
+          0.60233536362648,
+          0.58700305223465,
+          0.388130843639374,
+          0.534144580364227,
+          0.578542739152908
         ],
         [
-          0.13520400600427424,
-          -1.6087099857100422,
-          -0.22648619492134225,
-          -0.24558261891450114
+          0.566181242465973,
+          0.596863716840744,
+          0.581534802913666,
+          0.375143587589264,
+          0.533366441726685,
+          0.573138445615768
         ]
       ]
     },
@@ -267,7 +298,7 @@
         "fixture_id": "boxing_guard->straight_left_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/xy-only-derived-prototype-library-from-fixtures/captures/straight_left_fixture/report.json",
+        "capture_report_path": ".temp/raw-xy-shoulder-elbow-wrist-derived-prototype-library-from-fixtures/captures/straight_left_fixture/report.json",
         "expected_event": "punch_left",
         "expected_class": "straight_left",
         "fixture_gesture_name": "straight_left",
@@ -278,58 +309,67 @@
         "window_index": 4,
         "window_start_ms": 4833,
         "window_end_ms": 5088,
-        "pose_samples_in_window": 8,
-        "pose_samples_used": 8,
+        "pose_samples_in_window": 7,
+        "pose_samples_used": 7,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          6011,
-          6048,
-          6087,
+          5972,
+          6008,
+          6026,
+          6066,
+          6104,
           6126,
-          6161,
-          6190,
-          6209,
-          6244
+          6177
         ],
         "fixture_window_start_ms": 4833,
         "fixture_window_end_ms": 5088,
-        "capture_window_start_ms": 5994,
-        "capture_window_end_ms": 6249,
+        "capture_window_start_ms": 5944,
+        "capture_window_end_ms": 6199,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1161,
+        "capture_time_origin_offset_ms": 1111,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          0.21872423038282232,
-          -1.3859024323546252,
-          -0.15746908070566606,
-          0.09431669272467266
+          0.563747942447662,
+          0.601268619298935,
+          0.59603476524353,
+          0.409842550754547,
+          0.540249347686768,
+          0.611475229263306
         ],
         [
-          0.1925143257382043,
-          -1.4694264508027446,
-          -0.15796206805761656,
-          -0.010500553539239305
+          0.559685707092285,
+          0.597786068916321,
+          0.59038782119751,
+          0.403248250484467,
+          0.537581920623779,
+          0.611025214195251
         ],
         [
-          0.1925143257382043,
-          -1.4694264508027446,
-          -0.15796206805761656,
-          -0.010500553539239305
+          0.559685707092285,
+          0.597786068916321,
+          0.59038782119751,
+          0.403248250484467,
+          0.537581920623779,
+          0.611025214195251
         ],
         [
-          0.20127496278509205,
-          -1.2692003910863245,
-          -0.160856274953035,
-          0.18946126451725123
+          0.559685707092285,
+          0.597786068916321,
+          0.59038782119751,
+          0.403248250484467,
+          0.537581920623779,
+          0.611025214195251
         ],
         [
-          0.20127496278509205,
-          -1.2692003910863245,
-          -0.160856274953035,
-          0.18946126451725123
+          0.559362351894379,
+          0.594285279512405,
+          0.585914611816406,
+          0.391616761684418,
+          0.537575662136078,
+          0.592837005853653
         ]
       ]
     },
@@ -342,7 +382,7 @@
         "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/xy-only-derived-prototype-library-from-fixtures/captures/straight_right_fixture/report.json",
+        "capture_report_path": ".temp/raw-xy-shoulder-elbow-wrist-derived-prototype-library-from-fixtures/captures/straight_right_fixture/report.json",
         "expected_event": "punch_right",
         "expected_class": "straight_right",
         "fixture_gesture_name": "straight_right",
@@ -353,58 +393,67 @@
         "window_index": 1,
         "window_start_ms": 400,
         "window_end_ms": 600,
-        "pose_samples_in_window": 8,
-        "pose_samples_used": 8,
+        "pose_samples_in_window": 7,
+        "pose_samples_used": 7,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          1538,
-          1568,
-          1590,
-          1615,
-          1647,
-          1687,
-          1716,
-          1736
+          1592,
+          1622,
+          1654,
+          1683,
+          1706,
+          1717,
+          1755
         ],
         "fixture_window_start_ms": 400,
         "fixture_window_end_ms": 600,
-        "capture_window_start_ms": 1536,
-        "capture_window_end_ms": 1736,
+        "capture_window_start_ms": 1570,
+        "capture_window_end_ms": 1770,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1136,
+        "capture_time_origin_offset_ms": 1170,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.14916629751219115,
-          -1.0977292097311973,
-          0.04660568117422718,
-          0.444391659405087
+          0.43411985039711,
+          0.588365375995636,
+          0.411146581172943,
+          0.418948531150818,
+          0.440848618745804,
+          0.640251815319061
         ],
         [
-          -0.1546874084443515,
-          -1.1407454646592186,
-          0.045307253735873,
-          0.3493703379361642
+          0.43411985039711,
+          0.588365375995636,
+          0.411146581172943,
+          0.418948531150818,
+          0.440848618745804,
+          0.640251815319061
         ],
         [
-          -0.1546874084443515,
-          -1.1407454646592186,
-          0.045307253735873,
-          0.3493703379361642
+          0.43411985039711,
+          0.588365375995636,
+          0.411146581172943,
+          0.418948531150818,
+          0.440848618745804,
+          0.640251815319061
         ],
         [
-          -0.1546874084443515,
-          -1.1407454646592186,
-          0.045307253735873,
-          0.3493703379361642
+          0.43411985039711,
+          0.588365375995636,
+          0.411146581172943,
+          0.418948531150818,
+          0.440848618745804,
+          0.640251815319061
         ],
         [
-          -0.3345050829694551,
-          -1.1442993007097837,
-          0.0253867265279454,
-          0.4260697725581598
+          0.445505619049072,
+          0.618336498737335,
+          0.396317690610886,
+          0.450070858001709,
+          0.449238657951355,
+          0.680988729000092
         ]
       ]
     },
@@ -417,7 +466,7 @@
         "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/xy-only-derived-prototype-library-from-fixtures/captures/straight_right_fixture/report.json",
+        "capture_report_path": ".temp/raw-xy-shoulder-elbow-wrist-derived-prototype-library-from-fixtures/captures/straight_right_fixture/report.json",
         "expected_event": "punch_right",
         "expected_class": "straight_right",
         "fixture_gesture_name": "straight_right",
@@ -428,61 +477,70 @@
         "window_index": 2,
         "window_start_ms": 1700,
         "window_end_ms": 2000,
-        "pose_samples_in_window": 11,
-        "pose_samples_used": 11,
+        "pose_samples_in_window": 10,
+        "pose_samples_used": 10,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          2842,
-          2880,
-          2911,
-          2939,
-          2969,
-          2986,
-          3022,
-          3051,
-          3075,
-          3091,
-          3123
+          2895,
+          2919,
+          2948,
+          2968,
+          2994,
+          3046,
+          3077,
+          3094,
+          3123,
+          3157
         ],
         "fixture_window_start_ms": 1700,
         "fixture_window_end_ms": 2000,
-        "capture_window_start_ms": 2836,
-        "capture_window_end_ms": 3136,
+        "capture_window_start_ms": 2870,
+        "capture_window_end_ms": 3170,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1136,
+        "capture_time_origin_offset_ms": 1170,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.08776021983754398,
-          -0.9561614339371387,
-          0.12881809101670988,
-          0.5079631929275108
+          0.429995208978653,
+          0.577857345342636,
+          0.416648417711258,
+          0.43244194984436,
+          0.449586182832718,
+          0.655109643936157
         ],
         [
-          -0.08776021983754398,
-          -0.9561614339371387,
-          0.12881809101670988,
-          0.5079631929275108
+          0.429995208978653,
+          0.577857345342636,
+          0.416648417711258,
+          0.43244194984436,
+          0.449586182832718,
+          0.655109643936157
         ],
         [
-          -0.18461604453039235,
-          -0.9228315532949543,
-          0.09545701049422287,
-          0.513158671113332
+          0.43759474158287,
+          0.567460924386978,
+          0.409760594367981,
+          0.428327679634094,
+          0.451986581087112,
+          0.644828706979752
         ],
         [
-          -0.18461604453039235,
-          -0.9228315532949543,
-          0.09545701049422287,
-          0.513158671113332
+          0.447998046875,
+          0.620590388774872,
+          0.373639464378357,
+          0.489603340625763,
+          0.461300790309906,
+          0.701831519603729
         ],
         [
-          -0.48423663289156815,
-          -0.8530115155300847,
-          0.08662988821001415,
-          0.529057041218411
+          0.447998046875,
+          0.620590388774872,
+          0.373639464378357,
+          0.489603340625763,
+          0.461300790309906,
+          0.701831519603729
         ]
       ]
     },
@@ -495,7 +553,7 @@
         "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/xy-only-derived-prototype-library-from-fixtures/captures/straight_right_fixture/report.json",
+        "capture_report_path": ".temp/raw-xy-shoulder-elbow-wrist-derived-prototype-library-from-fixtures/captures/straight_right_fixture/report.json",
         "expected_event": "punch_right",
         "expected_class": "straight_right",
         "fixture_gesture_name": "straight_right",
@@ -506,60 +564,71 @@
         "window_index": 3,
         "window_start_ms": 3100,
         "window_end_ms": 3400,
-        "pose_samples_in_window": 10,
-        "pose_samples_used": 10,
+        "pose_samples_in_window": 11,
+        "pose_samples_used": 11,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          4241,
-          4291,
-          4323,
-          4342,
-          4374,
-          4408,
-          4436,
-          4462,
-          4471,
-          4513
+          4278,
+          4308,
+          4332,
+          4345,
+          4382,
+          4414,
+          4442,
+          4469,
+          4508,
+          4540,
+          4569
         ],
         "fixture_window_start_ms": 3100,
         "fixture_window_end_ms": 3400,
-        "capture_window_start_ms": 4236,
-        "capture_window_end_ms": 4536,
+        "capture_window_start_ms": 4270,
+        "capture_window_end_ms": 4570,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1136,
+        "capture_time_origin_offset_ms": 1170,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.21203209886837085,
-          -1.0194068878729166,
-          0.06972649658758028,
-          0.48761182468960873
+          0.440287500619888,
+          0.57433295249939,
+          0.408989191055298,
+          0.423857092857361,
+          0.450579911470413,
+          0.646309912204742
         ],
         [
-          -0.21203209886837085,
-          -1.0194068878729166,
-          0.06972649658758028,
-          0.48761182468960873
+          0.440287500619888,
+          0.57433295249939,
+          0.408989191055298,
+          0.423857092857361,
+          0.450579911470413,
+          0.646309912204742
         ],
         [
-          -0.33465713470932473,
-          -1.1017555404602175,
-          -0.016983655382010767,
-          0.3138086148088501
+          0.448359876871109,
+          0.602658003568649,
+          0.398557424545288,
+          0.438698768615723,
+          0.445832431316376,
+          0.649357855319977
         ],
         [
-          -0.33465713470932473,
-          -1.1017555404602175,
-          -0.016983655382010767,
-          0.3138086148088501
+          0.461015701293945,
+          0.642520636320114,
+          0.371754199266434,
+          0.566694021224976,
+          0.467062652111053,
+          0.732012689113617
         ],
         [
-          -0.5771020589007974,
-          -0.4902415341094685,
-          0.03909532875157489,
-          0.5785926379154117
+          0.461015701293945,
+          0.642520636320114,
+          0.371754199266434,
+          0.566694021224976,
+          0.467062652111053,
+          0.732012689113617
         ]
       ]
     },
@@ -572,7 +641,7 @@
         "fixture_id": "boxing_guard->straight_right_repeat_04_take_01",
         "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
         "video_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
-        "capture_report_path": ".temp/xy-only-derived-prototype-library-from-fixtures/captures/straight_right_fixture/report.json",
+        "capture_report_path": ".temp/raw-xy-shoulder-elbow-wrist-derived-prototype-library-from-fixtures/captures/straight_right_fixture/report.json",
         "expected_event": "punch_right",
         "expected_class": "straight_right",
         "fixture_gesture_name": "straight_right",
@@ -583,67 +652,76 @@
         "window_index": 4,
         "window_start_ms": 4400,
         "window_end_ms": 4900,
-        "pose_samples_in_window": 17,
-        "pose_samples_used": 17,
+        "pose_samples_in_window": 16,
+        "pose_samples_used": 16,
         "pose_samples_rejected": 0,
         "pose_sample_timestamps_ms": [
-          5538,
-          5565,
-          5593,
-          5614,
-          5646,
-          5689,
-          5718,
-          5736,
-          5773,
-          5803,
-          5829,
+          5589,
+          5597,
+          5640,
+          5688,
+          5714,
+          5723,
+          5766,
+          5796,
+          5825,
           5845,
-          5877,
-          5916,
-          5950,
-          5999,
-          6036
+          5872,
+          5913,
+          5952,
+          5995,
+          6032,
+          6063
         ],
         "fixture_window_start_ms": 4400,
         "fixture_window_end_ms": 4900,
-        "capture_window_start_ms": 5536,
-        "capture_window_end_ms": 6036,
+        "capture_window_start_ms": 5570,
+        "capture_window_end_ms": 6070,
         "capture_time_basis": "provider_tracking_ms_since_first_pose",
         "capture_time_origin_reason": "first_tracking_pose",
-        "capture_time_origin_offset_ms": 1136,
+        "capture_time_origin_offset_ms": 1170,
         "window_alignment_strategy": "fixture_window_plus_capture_time_origin_offset"
       },
       "samples": [
         [
-          -0.20772956897909958,
-          -1.0106846280251591,
-          0.08666170124657734,
-          0.45224343825588265
+          0.436577022075653,
+          0.587938159704208,
+          0.404846280813217,
+          0.433555841445923,
+          0.44981461763382,
+          0.657018452882767
         ],
         [
-          -0.2242530665397993,
-          -1.0509042241992277,
-          0.0649210604718728,
-          0.4070543415465994
+          0.441600620746613,
+          0.595656335353851,
+          0.408827126026154,
+          0.442071795463562,
+          0.451088517904282,
+          0.655145347118378
         ],
         [
-          -0.2340359649652906,
-          -1.0123713901088973,
-          0.05176251085256713,
-          0.49860901955389486
+          0.437753468751907,
+          0.580799162387848,
+          0.403301358222961,
+          0.431769371032715,
+          0.445373356342316,
+          0.654198706150055
         ],
         [
-          -0.23359623090560877,
-          -0.9958225222818582,
-          0.044152609466448334,
-          0.42005449644218484
+          0.440684169530869,
+          0.589791148900986,
+          0.404851377010345,
+          0.4370356798172,
+          0.447457015514374,
+          0.654225945472717
         ],
         [
-          -0.1373595542685263,
-          -1.0393778840281167,
-          0.043945650823063384,
-          0.43529387666753844
+          0.428473472595215,
+          0.581346124410629,
+          0.407688796520233,
+          0.424071788787842,
+          0.435123145580292,
+          0.647212982177734
         ]
       ]
     }

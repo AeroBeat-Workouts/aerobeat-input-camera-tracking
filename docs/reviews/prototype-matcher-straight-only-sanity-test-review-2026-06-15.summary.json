@@ -1,28 +1,30 @@
 {
   "straight_only_library_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/prototype_libraries/boxing_side_aware_fixture_derived_v1_straight_only/library.json",
   "benchmark_manifest_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/assets/benchmarks/prototype_matcher_boxing_fixture_derived_v1_straight_only.benchmark.json",
-  "benchmark_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-straight-only-xy-only-2026-06-15/benchmark-results.json",
-  "benchmark_markdown_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-straight-only-xy-only-2026-06-15/benchmark-results.md",
+  "benchmark_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-straight-only-raw-xy-2026-06-15/benchmark-results.json",
+  "benchmark_markdown_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/prototype-matcher-boxing-fixture-derived-v1-straight-only-raw-xy-2026-06-15/benchmark-results.md",
   "primary_answer": {
     "viable": false,
-    "summary": "No. Removing MediaPipe pose depth and switching the prototype matcher to XY-only shoulder/elbow/wrist features did not make the straight-only branch viable. Straight-right still isolates cleanly, but straight-left remains evenly split against punch_right and the no-punch negative control still produces 27 confident straight_left false positives.",
+    "summary": "No. Switching to raw XY shoulder/elbow/wrist features did not make the straight-only branch viable. The no-punch negative control still emitted 29 false positives, straight-left stayed badly confused with straight-right, and straight-right also lost its earlier class cleanliness.",
     "reasoning": [
-      "The matcher and regenerated libraries now use only four per-side XY features: shoulder-relative elbow XY plus shoulder-relative wrist XY, normalized by shoulder width.",
+      "The regenerated libraries now use six per-side raw XY features: shoulder_x, shoulder_y, elbow_x, elbow_y, wrist_x, wrist_y.",
       "The straight-only library still isolates the same two classes only: straight_left and straight_right, with 8 retained prototypes total.",
-      "The straight-left fixture stayed non-viable: 12 expected punch_left emits and 12 wrong punch_right emits, with the strongest wrong emit scoring 0.838.",
-      "The straight-right fixture remained clean: 29 expected punch_right emits and 0 wrong emits.",
-      "The no-punch negative control remained unsafe: 27 false-positive punch_left emits, with peak straight_left score 0.880 and strongest false-positive emit score 0.873."
+      "The straight-left fixture remained non-viable: 12 expected punch_left emits and 17 wrong punch_right emits, with the strongest wrong emit scoring 0.978.",
+      "The straight-right fixture regressed: 24 expected punch_right emits and 12 wrong punch_left emits.",
+      "The no-punch negative control remained unsafe: 29 false-positive emits, mostly straight_left, with strongest false-positive emit score 0.971."
     ]
   },
-  "xy_only_feature_validation": {
-    "feature_count_per_side": 4,
+  "raw_xy_feature_validation": {
+    "feature_count_per_side": 6,
     "feature_names": [
-      "elbow_x_from_shoulder_over_shoulder_width",
-      "elbow_y_from_shoulder_over_shoulder_width",
-      "wrist_x_from_shoulder_over_shoulder_width",
-      "wrist_y_from_shoulder_over_shoulder_width"
+      "shoulder_x",
+      "shoulder_y",
+      "elbow_x",
+      "elbow_y",
+      "wrist_x",
+      "wrist_y"
     ],
-    "matcher_uses_pose_z": false
+    "matcher_uses_pose_z_for_raw_xy_library": false
   },
   "library_filter_validation": {
     "library_id": "boxing_side_aware_fixture_derived_v1_straight_only",
@@ -36,74 +38,99 @@
       "straight_right": 4
     }
   },
-  "comparison_to_prior_straight_only": {
-    "prior_positive_fixture_totals": {
-      "expected_emits": 47,
-      "wrong_emits": 11
+  "comparison_to_prior_results": {
+    "prior_straight_only": {
+      "positive_fixture_totals": {
+        "expected_emits": 47,
+        "wrong_emits": 11
+      },
+      "negative_control_false_positive_emits": 30
     },
-    "prior_negative_control_false_positive_emits": 30,
-    "xy_only_positive_fixture_totals": {
-      "expected_emits": 41,
-      "wrong_emits": 12
+    "xy_only": {
+      "positive_fixture_totals": {
+        "expected_emits": 41,
+        "wrong_emits": 12
+      },
+      "negative_control_false_positive_emits": 27
     },
-    "xy_only_negative_control_false_positive_emits": 27
+    "raw_xy": {
+      "positive_fixture_totals": {
+        "expected_emits": 36,
+        "wrong_emits": 29
+      },
+      "negative_control_false_positive_emits": 29
+    }
   },
   "positive_fixture_totals": {
-    "expected_emits": 41,
-    "wrong_emits": 12
+    "expected_emits": 36,
+    "wrong_emits": 29
   },
   "straight_left_fixture": {
     "expected_event_count": 12,
-    "wrong_event_count": 12,
+    "wrong_event_count": 17,
     "wrong_event_names": [
       "punch_right"
     ],
-    "peak_expected_score": 0.9685759916072,
+    "peak_expected_score": 0.994057297706604,
     "strongest_wrong_emit": {
       "event": "punch_right",
-      "score": 0.838182011544961,
+      "score": 0.977725293901232,
       "prototype_id": "boxing_straight_right_window_01",
-      "runner_up_score": 0.586078821769868,
-      "class_margin": 0.252103189775093
+      "runner_up_score": 0.968692973808006,
+      "class_margin": 0.00903232009322574
     }
   },
   "straight_right_fixture": {
-    "expected_event_count": 29,
-    "wrong_event_count": 0,
-    "peak_expected_score": 0.999999999999996
+    "expected_event_count": 24,
+    "wrong_event_count": 12,
+    "wrong_event_names": [
+      "punch_left"
+    ],
+    "peak_expected_score": 1.0,
+    "strongest_wrong_emit": {
+      "event": "punch_left",
+      "score": 0.979454705008754,
+      "prototype_id": "boxing_straight_left_window_01",
+      "runner_up_score": 0.976310023555049,
+      "class_margin": 0.00314468145370483
+    }
   },
   "negative_control": {
-    "false_positive_emits": 27,
+    "false_positive_emits": 29,
     "false_positive_class_counts": [
       {
         "key": "straight_left",
-        "count": 27
+        "count": 28
+      },
+      {
+        "key": "straight_right",
+        "count": 1
       }
     ],
     "false_positive_prototype_counts": [
       {
-        "key": "boxing_straight_left_window_03",
+        "key": "boxing_straight_left_window_02",
         "count": 21
       },
       {
-        "key": "boxing_straight_left_window_01",
+        "key": "boxing_straight_left_window_03",
         "count": 4
       },
       {
-        "key": "boxing_straight_left_window_02",
-        "count": 1
+        "key": "boxing_straight_left_window_01",
+        "count": 3
       },
       {
-        "key": "boxing_straight_left_window_04",
+        "key": "boxing_straight_right_window_01",
         "count": 1
       }
     ],
     "strongest_false_positive": {
       "event": "punch_left",
-      "score": 0.87308804974745,
-      "prototype_id": "boxing_straight_left_window_01",
-      "runner_up_score": 0.557363759994283,
-      "class_margin": 0.315724289753167
+      "score": 0.971077503981414,
+      "prototype_id": "boxing_straight_left_window_02",
+      "runner_up_score": 0.900841275850932,
+      "class_margin": 0.0702362281304817
     }
   }
 }
