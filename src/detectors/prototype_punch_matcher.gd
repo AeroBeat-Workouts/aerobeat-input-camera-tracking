@@ -22,6 +22,8 @@ const FEATURE_NAME_ELBOW_X := "elbow_x"
 const FEATURE_NAME_ELBOW_Y := "elbow_y"
 const FEATURE_NAME_WRIST_X := "wrist_x"
 const FEATURE_NAME_WRIST_Y := "wrist_y"
+const FEATURE_NAME_COMBINED_ELBOW_WRIST_VELOCITY_XY_MAGNITUDE := "combined_elbow_wrist_velocity_xy_magnitude"
+const FEATURE_NAME_ELBOW_SHOULDER_XY_DISTANCE_OVER_SHOULDER_WIDTH := "elbow_shoulder_xy_distance_over_shoulder_width"
 const FEATURE_NAME_ELBOW_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "elbow_x_from_shoulder_over_shoulder_width"
 const FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "elbow_y_from_shoulder_over_shoulder_width"
 const FEATURE_NAME_WRIST_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "wrist_x_from_shoulder_over_shoulder_width"
@@ -124,15 +126,19 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 		_last_debug_state = debug_state
 		return events
 
-	var sample := _extract_runtime_sample(landmarks_by_id, metrics)
+	var sample := _extract_runtime_sample(landmarks_by_id, metrics, timestamp_ms)
 	if sample.is_empty():
 		debug_state["reason"] = "pose_invalid"
 		_last_debug_state = debug_state
 		return events
+	var left_sample: Dictionary = sample.get("left", {}) if sample.get("left", {}) is Dictionary else {}
+	var right_sample: Dictionary = sample.get("right", {}) if sample.get("right", {}) is Dictionary else {}
 	_sample_history.append({
 		"timestamp_ms": timestamp_ms,
-		"left": (sample.get("left", {}) as Array).duplicate(true),
-		"right": (sample.get("right", {}) as Array).duplicate(true),
+		"left": (left_sample.get("features", []) as Array).duplicate(true),
+		"right": (right_sample.get("features", []) as Array).duplicate(true),
+		"left_signal_position": left_sample.get("signal_position", Vector2.ZERO),
+		"right_signal_position": right_sample.get("signal_position", Vector2.ZERO),
 	})
 	_prune_sample_history(timestamp_ms)
 	debug_state["window_sample_count"] = _sample_history.size()
@@ -325,7 +331,7 @@ func _resolve_window_span_ms(samples: Array = _sample_history) -> int:
 		return 0
 	return int((samples[samples.size() - 1] as Dictionary).get("timestamp_ms", 0)) - int((samples[0] as Dictionary).get("timestamp_ms", 0))
 
-func _extract_runtime_sample(landmarks_by_id: Dictionary, metrics: Dictionary) -> Dictionary:
+func _extract_runtime_sample(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_ms: int) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if metrics.get("measurements", {}) is Dictionary else {}
 	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
 	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
@@ -340,19 +346,25 @@ func _extract_runtime_sample(landmarks_by_id: Dictionary, metrics: Dictionary) -
 	if min_visibility < 0.5:
 		return {}
 	return {
-		"left": _extract_side_features(left_shoulder, left_elbow, left_wrist, shoulder_width),
-		"right": _extract_side_features(right_shoulder, right_elbow, right_wrist, shoulder_width),
+		"left": _extract_side_features("left", left_shoulder, left_elbow, left_wrist, shoulder_width, timestamp_ms),
+		"right": _extract_side_features("right", right_shoulder, right_elbow, right_wrist, shoulder_width, timestamp_ms),
 	}
 
-func _extract_side_features(shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float) -> Array:
+func _extract_side_features(side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float, timestamp_ms: int) -> Dictionary:
 	var feature_names := _get_feature_names()
+	var signal_position := _resolve_combined_elbow_wrist_signal_position(elbow, wrist)
+	var combined_velocity_magnitude := _resolve_recent_combined_velocity_magnitude(side, signal_position, timestamp_ms)
+	var elbow_shoulder_xy_distance_over_shoulder_width := PoseMetrics.distance_2d(elbow, shoulder) / shoulder_width
 	var features: Array = []
 	for feature_name_variant in feature_names:
 		var feature_name := String(feature_name_variant)
-		features.append(_resolve_feature_value(feature_name, shoulder, elbow, wrist, shoulder_width))
-	return features
+		features.append(_resolve_feature_value(feature_name, shoulder, elbow, wrist, shoulder_width, combined_velocity_magnitude, elbow_shoulder_xy_distance_over_shoulder_width))
+	return {
+		"features": features,
+		"signal_position": signal_position,
+	}
 
-func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float) -> float:
+func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float, combined_velocity_magnitude: float, elbow_shoulder_xy_distance_over_shoulder_width: float) -> float:
 	match feature_name:
 		FEATURE_NAME_SHOULDER_X:
 			return float(shoulder.get("x", 0.0))
@@ -366,6 +378,10 @@ func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: D
 			return float(wrist.get("x", 0.0))
 		FEATURE_NAME_WRIST_Y:
 			return float(wrist.get("y", 0.0))
+		FEATURE_NAME_COMBINED_ELBOW_WRIST_VELOCITY_XY_MAGNITUDE:
+			return combined_velocity_magnitude
+		FEATURE_NAME_ELBOW_SHOULDER_XY_DISTANCE_OVER_SHOULDER_WIDTH:
+			return elbow_shoulder_xy_distance_over_shoulder_width
 		FEATURE_NAME_ELBOW_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
 			return (float(elbow.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width
 		FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
@@ -380,6 +396,49 @@ func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: D
 			return float(wrist.get("z", 0.0)) - float(shoulder.get("z", 0.0))
 		_:
 			return 0.0
+
+func _resolve_combined_elbow_wrist_signal_position(elbow: Dictionary, wrist: Dictionary) -> Vector2:
+	return Vector2(
+		(float(elbow.get("x", 0.0)) + float(wrist.get("x", 0.0))) * 0.5,
+		(float(elbow.get("y", 0.0)) + float(wrist.get("y", 0.0))) * 0.5
+	)
+
+func _resolve_recent_combined_velocity_magnitude(side: String, signal_position: Vector2, timestamp_ms: int) -> float:
+	var previous_entries: Array = []
+	for sample_variant in _sample_history:
+		if not sample_variant is Dictionary:
+			continue
+		var sample: Dictionary = sample_variant
+		var previous_signal := sample.get("%s_signal_position" % side, null)
+		if previous_signal == null or not previous_signal is Vector2:
+			continue
+		previous_entries.append({
+			"timestamp_ms": int(sample.get("timestamp_ms", timestamp_ms)),
+			"signal_position": previous_signal,
+		})
+	previous_entries.append({
+		"timestamp_ms": timestamp_ms,
+		"signal_position": signal_position,
+	})
+	if previous_entries.size() < 2:
+		return 0.0
+	var velocity_sum := Vector2.ZERO
+	var velocity_sample_count := 0
+	for index in range(1, previous_entries.size()):
+		var previous_entry: Dictionary = previous_entries[index - 1] as Dictionary
+		var current_entry: Dictionary = previous_entries[index] as Dictionary
+		var previous_timestamp_ms := int(previous_entry.get("timestamp_ms", timestamp_ms))
+		var current_timestamp_ms := int(current_entry.get("timestamp_ms", timestamp_ms))
+		var segment_dt_ms := current_timestamp_ms - previous_timestamp_ms
+		if segment_dt_ms <= 0:
+			continue
+		var previous_signal: Vector2 = previous_entry.get("signal_position", signal_position)
+		var current_signal: Vector2 = current_entry.get("signal_position", signal_position)
+		velocity_sum += (current_signal - previous_signal) / (float(segment_dt_ms) / 1000.0)
+		velocity_sample_count += 1
+	if velocity_sample_count <= 0:
+		return 0.0
+	return (velocity_sum / float(velocity_sample_count)).length()
 
 func _score_current_window() -> Dictionary:
 	var prototypes: Array = (_library.get("prototypes", []) as Array).duplicate(true)

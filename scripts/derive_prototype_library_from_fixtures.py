@@ -40,6 +40,8 @@ FEATURE_NAMES = [
     "elbow_y",
     "wrist_x",
     "wrist_y",
+    "combined_elbow_wrist_velocity_xy_magnitude",
+    "elbow_shoulder_xy_distance_over_shoulder_width",
 ]
 LANDMARK_IDS = {
     "left_shoulder": "11",
@@ -125,8 +127,45 @@ def _landmark(landmarks_by_id: dict, key: str) -> dict:
     return landmark if isinstance(landmark, dict) else {}
 
 
-def _extract_side_features(landmarks_by_id: dict, metrics: dict, side: str):
-    _ = metrics
+def _distance_2d(a: dict, b: dict) -> float:
+    return math.hypot(float(a.get("x", 0.0)) - float(b.get("x", 0.0)), float(a.get("y", 0.0)) - float(b.get("y", 0.0)))
+
+
+def _resolve_combined_elbow_wrist_signal_position(elbow: dict, wrist: dict) -> tuple[float, float]:
+    return (
+        (float(elbow.get("x", 0.0)) + float(wrist.get("x", 0.0))) * 0.5,
+        (float(elbow.get("y", 0.0)) + float(wrist.get("y", 0.0))) * 0.5,
+    )
+
+
+def _resolve_recent_combined_velocity_magnitude(history: list[dict], timestamp_ms: int, signal_position: tuple[float, float]) -> float:
+    entries = list(history)
+    entries.append({"timestamp_ms": timestamp_ms, "signal_position": signal_position})
+    if len(entries) < 2:
+        return 0.0
+    velocity_sum_x = 0.0
+    velocity_sum_y = 0.0
+    velocity_sample_count = 0
+    for index in range(1, len(entries)):
+        previous_entry = entries[index - 1]
+        current_entry = entries[index]
+        segment_dt_ms = int(current_entry.get("timestamp_ms", timestamp_ms)) - int(previous_entry.get("timestamp_ms", timestamp_ms))
+        if segment_dt_ms <= 0:
+            continue
+        previous_x, previous_y = previous_entry.get("signal_position", signal_position)
+        current_x, current_y = current_entry.get("signal_position", signal_position)
+        seconds = float(segment_dt_ms) / 1000.0
+        velocity_sum_x += (float(current_x) - float(previous_x)) / seconds
+        velocity_sum_y += (float(current_y) - float(previous_y)) / seconds
+        velocity_sample_count += 1
+    if velocity_sample_count <= 0:
+        return 0.0
+    average_velocity_x = velocity_sum_x / float(velocity_sample_count)
+    average_velocity_y = velocity_sum_y / float(velocity_sample_count)
+    return math.hypot(average_velocity_x, average_velocity_y)
+
+
+def _extract_side_features(landmarks_by_id: dict, metrics: dict, side: str, timestamp_ms: int, signal_history_by_side: dict[str, list[dict]]):
     shoulder = _landmark(landmarks_by_id, f"{side}_shoulder")
     elbow = _landmark(landmarks_by_id, f"{side}_elbow")
     wrist = _landmark(landmarks_by_id, f"{side}_wrist")
@@ -139,14 +178,25 @@ def _extract_side_features(landmarks_by_id: dict, metrics: dict, side: str):
     )
     if min_visibility < 0.5:
         return None
-    return [
-        float(shoulder.get("x", 0.0)),
-        float(shoulder.get("y", 0.0)),
-        float(elbow.get("x", 0.0)),
-        float(elbow.get("y", 0.0)),
-        float(wrist.get("x", 0.0)),
-        float(wrist.get("y", 0.0)),
-    ]
+    measurements = metrics.get("measurements", {}) if isinstance(metrics.get("measurements", {}), dict) else {}
+    shoulder_width = max(float(measurements.get("shoulder_width", 0.0)), 0.000001)
+    signal_position = _resolve_combined_elbow_wrist_signal_position(elbow, wrist)
+    side_history = signal_history_by_side.setdefault(side, [])
+    combined_velocity_magnitude = _resolve_recent_combined_velocity_magnitude(side_history, timestamp_ms, signal_position)
+    elbow_shoulder_xy_distance_over_shoulder_width = _distance_2d(elbow, shoulder) / shoulder_width
+    return {
+        "features": [
+            float(shoulder.get("x", 0.0)),
+            float(shoulder.get("y", 0.0)),
+            float(elbow.get("x", 0.0)),
+            float(elbow.get("y", 0.0)),
+            float(wrist.get("x", 0.0)),
+            float(wrist.get("y", 0.0)),
+            combined_velocity_magnitude,
+            elbow_shoulder_xy_distance_over_shoulder_width,
+        ],
+        "signal_position": signal_position,
+    }
 
 
 def _resample_series(series: list[list[float]], target_count: int) -> list[list[float]]:
@@ -280,6 +330,25 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
         fixture_yaml = load_yaml(fixture_path)
         capture_report = load_json(captures_dir / "captures" / fixture["id"] / "report.json")
         snapshots = _pose_snapshots(capture_report)
+        signal_history_by_side: dict[str, list[dict]] = {"left": [], "right": []}
+        feature_snapshots = []
+        for snapshot in snapshots:
+            pose_snapshot = snapshot["pose_snapshot"]
+            landmarks_by_id = pose_snapshot.get("landmarks_by_id", {}) if isinstance(pose_snapshot.get("landmarks_by_id", {}), dict) else {}
+            metrics = pose_snapshot.get("metrics", {}) if isinstance(pose_snapshot.get("metrics", {}), dict) else {}
+            timestamp_ms = int(snapshot["timestamp_ms"])
+            feature_snapshot = {"timestamp_ms": timestamp_ms}
+            for feature_side in ("left", "right"):
+                side_features = _extract_side_features(landmarks_by_id, metrics, feature_side, timestamp_ms, signal_history_by_side)
+                feature_snapshot[feature_side] = side_features
+                if side_features is not None:
+                    signal_history_by_side[feature_side].append(
+                        {
+                            "timestamp_ms": timestamp_ms,
+                            "signal_position": side_features["signal_position"],
+                        }
+                    )
+            feature_snapshots.append(feature_snapshot)
         windows = _windows_for_gesture_name(fixture_yaml, fixture_gesture_name)
         if not windows:
             raise ValueError(f"fixture {fixture['id']} has no verified windows for {fixture_gesture_name}")
@@ -288,16 +357,17 @@ def derive_library(repo_root: Path, manifest: dict, captures_dir: Path, sample_c
             start_ms = int(window.get("start_ms", 0))
             end_ms = int(window.get("end_ms", 0))
             capture_start_ms, capture_end_ms, alignment = _capture_window_range_ms(capture_report, start_ms, end_ms)
-            matched_snapshots = [s for s in snapshots if capture_start_ms <= int(s["timestamp_ms"]) <= capture_end_ms]
+            matched_snapshots = [s for s in feature_snapshots if capture_start_ms <= int(s["timestamp_ms"]) <= capture_end_ms]
             extracted_samples = []
             rejected_samples = 0
             source_timestamps = []
             for snapshot in matched_snapshots:
-                pose_snapshot = snapshot["pose_snapshot"]
-                landmarks_by_id = pose_snapshot.get("landmarks_by_id", {}) if isinstance(pose_snapshot.get("landmarks_by_id", {}), dict) else {}
-                metrics = pose_snapshot.get("metrics", {}) if isinstance(pose_snapshot.get("metrics", {}), dict) else {}
-                features = _extract_side_features(landmarks_by_id, metrics, side)
-                if features is None:
+                side_features = snapshot.get(side)
+                if not isinstance(side_features, dict):
+                    rejected_samples += 1
+                    continue
+                features = side_features.get("features")
+                if not isinstance(features, list):
                     rejected_samples += 1
                     continue
                 extracted_samples.append(features)
