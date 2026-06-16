@@ -282,12 +282,14 @@ def _render_markdown(summary: dict) -> str:
     cnn_metrics = summary["temporal_cnn"]["test_metrics"]
     mlp_metrics = summary["mlp_baseline"]["test_metrics"]
     threshold_metrics = summary["threshold_baseline"]["test_metrics"]
+    split_strategy = str(summary.get("split_strategy", "unknown"))
     lines = [
         "# Boxing Punch Classifier 1D Temporal CNN Baseline",
         "",
         f"- Trained at: `{summary['trained_at']}`",
         f"- Dataset: `{summary['dataset_path']}`",
         f"- MLP baseline: `{summary['mlp_baseline_path']}`",
+        f"- Split strategy: `{split_strategy}`",
         f"- Model shape: `{summary['temporal_cnn']['model_shape']}`",
         f"- Epochs: **{summary['temporal_cnn']['epochs']}**",
         f"- Learning rate: **{summary['temporal_cnn']['learning_rate']}**",
@@ -317,8 +319,12 @@ def _render_markdown(summary: dict) -> str:
         "## Notes",
         "",
         "- This is only a fixture-local same-harness directional comparison. Do not read it as real-world punch generalization.",
-        "- The current split policy still has same-clip leakage between train and test windows.",
-        "- Capture/window alignment can drift on recapture, so compare models fairly inside this committed export protocol.",
+        (
+            "- This run uses the hardened `chronological_holdout_v1` split rather than the earlier same-clip interleaved split."
+            if split_strategy == "chronological_holdout_v1"
+            else "- If you compare against older first-pass artifacts, remember those earlier runs used a leakier same-clip interleaved split."
+        ),
+        "- Compare models fairly inside the committed export protocol used for this dataset/snapshot.",
     ]
     return "\n".join(lines).rstrip() + "\n"
 
@@ -396,6 +402,7 @@ def main() -> int:
         "dataset_path": dataset_path.as_posix(),
         "mlp_baseline_path": mlp_result_path.as_posix(),
         "class_order": list(PUNCH_CLASS_ORDER),
+        "split_strategy": str(dataset.get("split_strategy", "unknown")),
         "dataset_window_shape": {
             "frame_count": frame_count,
             "frame_feature_count": frame_feature_count,

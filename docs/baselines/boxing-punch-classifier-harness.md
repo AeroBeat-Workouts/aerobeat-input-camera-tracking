@@ -91,8 +91,9 @@ The CNN script writes:
 - `docs/baselines/boxing-punch-classifier-mlp-baseline-2026-06-16/`
 - `docs/baselines/boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/`
 - `docs/baselines/boxing-punch-classifier-mlp-hardened-baseline-2026-06-16/`
+- `docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/`
 
-Those directories are the committed audit trail for the first feasibility push, the immediate same-harness CNN follow-up, and the first benchmark-hardening rerun around the MLP baseline.
+Those directories are the committed audit trail for the first feasibility push, the immediate same-harness CNN follow-up, the first benchmark-hardening rerun around the MLP baseline, and the explicit frozen-benchmark MLP-vs-CNN rerun on the reproducible snapshot path.
 
 The named reproducibility anchor for the hardened benchmark snapshot is:
 
