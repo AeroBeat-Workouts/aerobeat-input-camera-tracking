@@ -48,6 +48,15 @@ python3 scripts/train_boxing_punch_mlp_baseline.py \
   --output-dir .temp/boxing-punch-classifier-export/run-YYYY-MM-DD/mlp
 ```
 
+Train the first tiny 1D temporal CNN comparison model:
+
+```bash
+python3 scripts/train_boxing_punch_temporal_cnn.py \
+  --dataset docs/baselines/boxing-punch-classifier-mlp-baseline-2026-06-16/dataset.json \
+  --mlp-result docs/baselines/boxing-punch-classifier-mlp-baseline-2026-06-16/mlp-result.json \
+  --output-dir .temp/boxing-punch-classifier-export/run-YYYY-MM-DD/cnn
+```
+
 ## Output contract
 
 The export script writes:
@@ -61,8 +70,14 @@ The MLP script writes:
 - `mlp-result.json` / `.md` — metrics and confusion matrices
 - `mlp-model.json` — saved baseline weights and standardization parameters
 
-## Current first-pass artifact set
+The CNN script writes:
+
+- `cnn-result.json` / `.md` — metrics, confusion matrices, and direct comparison versus the MLP and threshold baselines
+- `cnn-model.json` — saved CNN weights and standardization parameters
+
+## Current first-pass artifact sets
 
 - `docs/baselines/boxing-punch-classifier-mlp-baseline-2026-06-16/`
+- `docs/baselines/boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/`
 
-That directory is the committed audit trail for the first feasibility push.
+Those directories are the committed audit trail for the first feasibility push and the immediate same-harness CNN follow-up.

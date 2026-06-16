@@ -8,7 +8,16 @@ import random
 from datetime import datetime, timezone
 from pathlib import Path
 
-from boxing_classifier_harness import PUNCH_CLASS_ORDER, classification_metrics, format_confusion_markdown, load_json, write_json
+from boxing_classifier_harness import (
+    PUNCH_CLASS_ORDER,
+    apply_standardization,
+    classification_metrics,
+    compute_standardization,
+    flatten_frames,
+    format_confusion_markdown,
+    load_json,
+    write_json,
+)
 
 
 class TinyTemporalMLP:
@@ -108,36 +117,6 @@ class TinyTemporalMLP:
             "b2": self.b2,
         }
 
-
-def flatten_frames(frames: list[list[float]]) -> list[float]:
-    flat = []
-    for frame in frames:
-        flat.extend(float(value) for value in frame)
-    return flat
-
-
-def compute_standardization(train_vectors: list[list[float]]) -> tuple[list[float], list[float]]:
-    dimension = len(train_vectors[0]) if train_vectors else 0
-    means = [0.0 for _ in range(dimension)]
-    stds = [0.0 for _ in range(dimension)]
-    if not train_vectors:
-        return means, stds
-    for vector in train_vectors:
-        for idx, value in enumerate(vector):
-            means[idx] += value
-    sample_count = float(len(train_vectors))
-    means = [value / sample_count for value in means]
-    for vector in train_vectors:
-        for idx, value in enumerate(vector):
-            delta = value - means[idx]
-            stds[idx] += delta * delta
-    stds = [math.sqrt(value / sample_count) if value > 0.0 else 1.0 for value in stds]
-    stds = [std if std > 1e-8 else 1.0 for std in stds]
-    return means, stds
-
-
-def apply_standardization(vectors: list[list[float]], means: list[float], stds: list[float]) -> list[list[float]]:
-    return [[(value - means[idx]) / stds[idx] for idx, value in enumerate(vector)] for vector in vectors]
 
 
 def _records_from_predictions(samples: list[dict], predicted_labels: list[str]) -> list[dict]:

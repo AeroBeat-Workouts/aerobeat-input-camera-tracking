@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-16
 **Status:** In Progress
-**Last Updated:** 2026-06-16 16:16 EDT
+**Last Updated:** 2026-06-16 16:22 EDT
 **Blocked Reason:** None.
 **Agent:** `pico`
 
@@ -78,13 +78,15 @@ The first-pass runtime shape should stay aligned with the prior classifier plann
 
 **Folders Created/Deleted/Modified:**
 - relevant owning repo paths
+- `.temp/qa-boxing-punch-classifier-2026-06-16/`
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.plans/2026-06-16-boxing-punch-classifier-feasibility-mlp-then-temporal-cnn.md`
+- QA rerun artifacts under `.temp/qa-boxing-punch-classifier-2026-06-16/`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified that the harness is genuinely exporting punch/no-punch windows from the committed fixture YAML truth set and attaching threshold-detector predictions for those same exported capture windows. The committed artifact set is internally consistent: YAML punch windows account for all 24 positive samples (4 per punch class), `no_punch` contributes 36 derived negatives, deterministic per-label split counts are 45 train / 15 test, dataset shape is `8 frames x 16 features/frame`, and the saved MLP artifact matches the documented `8x16 -> flatten(128) -> hidden(12) -> logits(7)` baseline with the reported **0.867 accuracy / 0.887 macro-F1** against the threshold baseline’s **0.400 / 0.095** on the same committed windows. A fresh full recapture + retrain reproduced the harness flow and overall class/split structure, but not the exact committed metrics: small fixture-capture time-origin offset drift (~65 ms observed on straight-left recapture) changed some capture-aligned windows and shifted results to **0.733 / 0.587** for the MLP and **0.533 / 0.114** for threshold on that rerun. So the tooling direction is real and still strong enough to justify the immediate 1D temporal CNN follow-up, but the current benchmark should be read as a fixture-local directional signal with same-clip leakage and imperfect recapture determinism, not a stable generalization benchmark.
 
 ---
 
@@ -100,11 +102,14 @@ The first-pass runtime shape should stay aligned with the prior classifier plann
 - relevant owning repo paths
 
 **Files Created/Deleted/Modified:**
-- audit notes/artifacts as needed
+- `.plans/2026-06-16-boxing-punch-classifier-feasibility-mlp-then-temporal-cnn.md`
+- `.temp/audit-mlp-rerun-committed/`
+- `.temp/audit-mlp-rerun-committed-2/`
+- `.temp/audit-mlp-rerun-committed-exact/`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit confirms the harness is useful enough to justify the immediate 1D temporal CNN follow-up, but only as a **scientifically weak, fixture-local comparison harness** rather than a trustworthy generalization benchmark. I verified directly that the committed artifact set is internally reproducible on the committed `dataset.json` when retrained with the exact recorded hyperparameters (`--hidden-dim 12 --epochs 300 --learning-rate 0.04 --weight-decay 0.001 --seed 42`), reproducing the documented **0.867 accuracy / 0.887 macro-F1** versus the threshold baseline’s **0.400 / 0.095** on the same 15 test windows. QA’s caveats hold up: the deterministic split is by window within the same fixture clips, not by held-out clip, so every punch class leaks from train into test (`3 train + 1 test` windows from the same source clip for each positive class), and 13 fixtures appear in both train and test overall. The harness also aligns fixture YAML windows to capture time by adding per-capture offsets (committed sample offsets span **928–990 ms**), so QA’s recapture-drift warning remains material when results are regenerated from fresh captures. Auditor recommendation: proceed with Task 4 now because the harness can still answer the narrow question “does a small temporal CNN beat the tiny temporal MLP and threshold baseline on this exact exported-window protocol?”, but read any CNN gain only as a same-harness directional improvement. Do **not** interpret the CNN result as proof of real-world punch generalization unless the next seam adds clip-held-out or session-held-out evaluation and tighter capture-time alignment/replay determinism.
 
 ---
 
@@ -122,9 +127,9 @@ The first-pass runtime shape should stay aligned with the prior classifier plann
 **Files Created/Deleted/Modified:**
 - model/training/eval/docs artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Added `scripts/train_boxing_punch_temporal_cnn.py` as the first small 1D temporal-CNN follow-up in the exact same exported-window harness used by Task 1. The committed CNN artifact set lives under `docs/baselines/boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/` and reuses the committed `dataset.json` / `mlp-result.json` for an apples-to-apples comparison rather than widening the protocol. The chosen model is intentionally small: **`8x16 -> conv1d(16->12, k=5, same) -> relu -> conv1d(12->8, k=5, same) -> relu -> flatten(64) -> logits(7)`** trained with **1000 epochs, lr 0.01, weight decay 0.0, seed 42**. On this exact fixture-local split it reached **0.667 accuracy / 0.492 macro-F1**, which is **better than the threshold baseline (0.400 / 0.095)** but **materially worse than the tiny temporal MLP baseline (0.867 / 0.887)**. That means the first disciplined CNN pass did not win the same-harness comparison. Carry forward the audit constraints explicitly: treat this only as a fixture-local directional comparison, do not claim real-world generalization, same-clip leakage still exists in the split policy, and recapture alignment drift still exists so comparisons should stay inside the committed export protocol.
 
 ---
 
