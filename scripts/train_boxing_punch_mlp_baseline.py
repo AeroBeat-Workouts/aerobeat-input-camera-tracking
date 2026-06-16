@@ -139,6 +139,7 @@ def _render_markdown(summary: dict) -> str:
         "",
         f"- Trained at: `{summary['trained_at']}`",
         f"- Dataset: `{summary['dataset_path']}`",
+        f"- Split strategy: `{summary.get('split_strategy', 'unknown')}`",
         f"- Model shape: `{summary['mlp']['model_shape']}`",
         f"- Epochs: **{summary['mlp']['epochs']}**",
         f"- Learning rate: **{summary['mlp']['learning_rate']}**",
@@ -161,7 +162,7 @@ def _render_markdown(summary: dict) -> str:
         "",
         "## Notes",
         "",
-        "- This split is intentionally tiny and clip-local; it is useful for sanity-checking the export/training/eval path, not for claiming production-ready generalization.",
+        "- This benchmark is still small, but it now uses chronological holdout instead of interleaving nearby windows across train/test.",
         "- The threshold comparison reuses the same exported windows and reads the threshold detector's emitted events from the capture reports attached to the dataset export.",
     ]
     return "\n".join(lines).rstrip() + "\n"
@@ -230,6 +231,7 @@ def main() -> int:
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "dataset_path": dataset_path.as_posix(),
         "class_order": list(PUNCH_CLASS_ORDER),
+        "split_strategy": str(dataset.get("split_strategy", "unknown")),
         "dataset_window_shape": {
             "frame_count": int(dataset.get("window_frame_count", 0)),
             "frame_feature_count": int(dataset.get("frame_feature_count", 0)),

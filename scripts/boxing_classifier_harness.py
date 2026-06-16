@@ -64,7 +64,8 @@ FRAME_FEATURE_NAMES = [
 DEFAULT_WINDOW_FRAME_COUNT = 8
 DEFAULT_THRESHOLD_WINDOW_MS = 250
 DEFAULT_NO_PUNCH_STRIDE_MS = 250
-DEFAULT_MAX_NO_PUNCH_SAMPLES = 36
+DEFAULT_MAX_NO_PUNCH_SAMPLES = 48
+DEFAULT_MAX_TRANSITION_NO_PUNCH_SAMPLES = 24
 DEFAULT_GODOT_BIN = "godot"
 
 
@@ -444,6 +445,7 @@ def extract_window_sample(
     sample_kind: str,
     source_window_index: int,
     source_gesture_name: str,
+    extra_metadata: dict | None = None,
 ) -> dict | None:
     capture_start_ms, capture_end_ms, alignment = capture_window_range_ms(capture_report, start_ms, end_ms)
     matched = [snapshot for snapshot in feature_snapshots if capture_start_ms <= int(snapshot["timestamp_ms"]) <= capture_end_ms]
@@ -453,7 +455,9 @@ def extract_window_sample(
     frames = resample_series(series, frame_count)
     gesture_windows = _gesture_windows_by_name(fixture_yaml)
     threshold_prediction = threshold_window_prediction(capture_report, capture_start_ms, capture_end_ms)
-    return {
+    matched_pose_start_ms = int(matched[0]["timestamp_ms"])
+    matched_pose_end_ms = int(matched[-1]["timestamp_ms"])
+    sample = {
         "sample_id": sample_id,
         "label": label,
         "sample_kind": sample_kind,
@@ -468,6 +472,11 @@ def extract_window_sample(
         "capture_window_end_ms": capture_end_ms,
         "pose_samples_in_window": len(matched),
         "pose_sample_timestamps_ms": [int(snapshot["timestamp_ms"]) for snapshot in matched],
+        "matched_pose_start_ms": matched_pose_start_ms,
+        "matched_pose_end_ms": matched_pose_end_ms,
+        "start_alignment_error_ms": matched_pose_start_ms - capture_start_ms,
+        "end_alignment_error_ms": capture_end_ms - matched_pose_end_ms,
+        "matched_pose_duration_ms": max(0, matched_pose_end_ms - matched_pose_start_ms),
         "frame_count": frame_count,
         "frame_feature_count": len(FRAME_FEATURE_NAMES),
         "feature_names": list(FRAME_FEATURE_NAMES),
@@ -476,6 +485,9 @@ def extract_window_sample(
         "threshold_baseline": threshold_prediction,
         **alignment,
     }
+    if extra_metadata:
+        sample.update(extra_metadata)
+    return sample
 
 
 def threshold_window_prediction(capture_report: dict, capture_start_ms: int, capture_end_ms: int) -> dict:
@@ -523,6 +535,33 @@ def assign_deterministic_splits(samples: list[dict]) -> None:
             test_indexes = {count - 1}
         for idx, sample in enumerate(group):
             sample["split"] = "test" if idx in test_indexes else "train"
+            sample["split_group"] = f"{label}::{sample.get('source_fixture_id', '')}"
+            sample["split_strategy"] = "label_cycled_deterministic_v1"
+
+
+def assign_chronological_holdout_splits(samples: list[dict], holdout_ratio: float = 0.25) -> None:
+    positive_groups: dict[str, list[dict]] = {}
+    negative_groups: dict[str, list[dict]] = {}
+    for sample in samples:
+        if sample["label"] == "no_punch":
+            group_key = str(sample.get("source_fixture_id", "unknown_fixture"))
+            negative_groups.setdefault(group_key, []).append(sample)
+        else:
+            group_key = f"{sample['label']}::{sample.get('source_fixture_id', 'unknown_fixture')}"
+            positive_groups.setdefault(group_key, []).append(sample)
+
+    grouped = {**positive_groups, **negative_groups}
+    for group_key, group in grouped.items():
+        group.sort(key=lambda item: (int(item.get("window_start_ms", 0)), int(item.get("window_end_ms", 0)), str(item.get("sample_id", ""))))
+        count = len(group)
+        test_count = max(1, int(math.ceil(count * holdout_ratio))) if count > 1 else 0
+        if test_count >= count and count > 1:
+            test_count = count - 1
+        split_index = count - test_count
+        for idx, sample in enumerate(group):
+            sample["split"] = "test" if idx >= split_index and test_count > 0 else "train"
+            sample["split_group"] = group_key
+            sample["split_strategy"] = "chronological_holdout_v1"
 
 
 def confusion_from_predictions(records: list[dict], labels: list[str]) -> dict:

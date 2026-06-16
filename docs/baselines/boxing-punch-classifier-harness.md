@@ -25,10 +25,11 @@ The exporter:
 - retains full pose timelines from capture reports
 - extracts per-frame left+right punch features
 - builds punch-class windows directly from verified YAML punch windows
-- builds `no_punch` windows from non-punch intervals in the same fixtures
+- builds `no_punch` windows from both background non-punch intervals and explicit pre/post-punch transition windows
 - keeps guard / weave / squat / sidestep / knee / stance-transition context as metadata instead of primary classifier labels
-- assigns deterministic train/test splits so later models can compare fairly
+- assigns chronological holdout train/test splits so later models compare on a harder, less leaky seam than the original interleaved same-clip split
 - records what the current threshold detector predicted on each exported window
+- reports capture time-origin offsets plus observed pose/window alignment error so replay/capture drift is visible instead of implicit
 
 ## Scripts
 
@@ -61,8 +62,8 @@ python3 scripts/train_boxing_punch_temporal_cnn.py \
 
 The export script writes:
 
-- `dataset.json` — samples, labels, windows, splits, metadata, threshold predictions
-- `export-summary.json` / `.md` — counts and fixture summary
+- `dataset.json` — samples, labels, windows, chronological splits, metadata, threshold predictions, and alignment fields
+- `export-summary.json` / `.md` — counts, fixture summary, no-punch context mix, and alignment summary
 - `threshold-baseline.json` — threshold comparison on exported windows
 
 The MLP script writes:
@@ -75,9 +76,10 @@ The CNN script writes:
 - `cnn-result.json` / `.md` — metrics, confusion matrices, and direct comparison versus the MLP and threshold baselines
 - `cnn-model.json` — saved CNN weights and standardization parameters
 
-## Current first-pass artifact sets
+## Current artifact sets
 
 - `docs/baselines/boxing-punch-classifier-mlp-baseline-2026-06-16/`
 - `docs/baselines/boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/`
+- `docs/baselines/boxing-punch-classifier-mlp-hardened-baseline-2026-06-16/`
 
-Those directories are the committed audit trail for the first feasibility push and the immediate same-harness CNN follow-up.
+Those directories are the committed audit trail for the first feasibility push, the immediate same-harness CNN follow-up, and the first benchmark-hardening rerun around the MLP baseline.
