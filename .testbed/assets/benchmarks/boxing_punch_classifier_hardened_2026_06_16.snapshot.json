@@ -1,0 +1,1222 @@
+{
+  "schema": "aerobeat.boxing_punch_classifier_snapshot",
+  "version": 1,
+  "snapshot_id": "boxing-punch-classifier-hardened-2026-06-16",
+  "description": "Frozen hardened boxing punch-classifier benchmark snapshot anchored to the 2026-06-16 archived dataset and capture reports.",
+  "benchmark_manifest": {
+    "path": ".testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json",
+    "sha256": "fd6e625ac4beeed041f930a08a6627bc6d4828ca21fe314f48fdad8970386c86",
+    "benchmark_id": "boxing_punch_classifier_v1",
+    "capture_delay_ms": 7000
+  },
+  "capture_report_source": {
+    "package_id": "boxing-punch-classifier-hardened-2026-06-16.capture_reports",
+    "root_dir": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16",
+    "alignment_basis": "fixture_window_plus_capture_time_origin_offset_from_provider_tracking_ms_since_first_pose",
+    "reports": [
+      {
+        "fixture_id": "straight_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/straight_left_fixture/report.json",
+        "report_sha256": "c5e41e97afa72a5ad03d19b03d3d873a4f16d92bb9e778bf796ec60a82e8569e",
+        "pose_snapshot_count": 238,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1056
+      },
+      {
+        "fixture_id": "straight_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/straight_right_fixture/report.json",
+        "report_sha256": "16495685be76429e8b027932d0a95e42463e1108213b0518bbf9538132d5d87d",
+        "pose_snapshot_count": 240,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1131
+      },
+      {
+        "fixture_id": "hook_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/hook_left_fixture/report.json",
+        "report_sha256": "401130af5e2d6c211baee989d8d5b5e831c0bfeacecd29730d8162d7c3288074",
+        "pose_snapshot_count": 220,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1080
+      },
+      {
+        "fixture_id": "hook_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/hook_right_fixture/report.json",
+        "report_sha256": "d51a91bf848c7cc9c836ab6d059b85a4d2066b4e7b5d70f6759fc30f2208fda1",
+        "pose_snapshot_count": 221,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1131
+      },
+      {
+        "fixture_id": "uppercut_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/uppercut_left_fixture/report.json",
+        "report_sha256": "80b8021fe2436741a74326ccc486f3b322d2a20f10ce9cd5634fa6aebc18ac8b",
+        "pose_snapshot_count": 225,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1136
+      },
+      {
+        "fixture_id": "uppercut_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/uppercut_right_fixture/report.json",
+        "report_sha256": "d1415293a9738fb24c402b4897729694ecdaba840e51d226d921c2c00bd0aba8",
+        "pose_snapshot_count": 222,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1130
+      },
+      {
+        "fixture_id": "run_in_place_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/run_in_place_fixture/report.json",
+        "report_sha256": "7f8921a007a1e43f37155e9e0a84b4ec14ae7e94ad48dc174713f16ccb277bd3",
+        "pose_snapshot_count": 237,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1129
+      },
+      {
+        "fixture_id": "weave_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/weave_left_fixture/report.json",
+        "report_sha256": "f24501a05b0a90882ab169348bed0e67e421f6413bbf8b631bc3111a087e478e",
+        "pose_snapshot_count": 227,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1088
+      },
+      {
+        "fixture_id": "weave_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/weave_right_fixture/report.json",
+        "report_sha256": "fd05da6aaf18872003ea66e2686b3ef0d694bc544fb4e7a1d17fa786bc8cad46",
+        "pose_snapshot_count": 228,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1084
+      },
+      {
+        "fixture_id": "squat_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/squat_fixture/report.json",
+        "report_sha256": "abac6603ee891eddab66a2792f39b7f97cd7898fecc3a2b4e62d5dda0ba2b3df",
+        "pose_snapshot_count": 232,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1079
+      },
+      {
+        "fixture_id": "sidestep_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/sidestep_left_fixture/report.json",
+        "report_sha256": "c83133490864378d51b5d32b2d0295f625697e1bbca5052313a63bfbe8d743e6",
+        "pose_snapshot_count": 231,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1083
+      },
+      {
+        "fixture_id": "sidestep_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/sidestep_right_fixture/report.json",
+        "report_sha256": "c57dd86f3d8888c73ab8c57299a37d02f57d202232958d48dc554fa0ca9a678a",
+        "pose_snapshot_count": 225,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1087
+      },
+      {
+        "fixture_id": "leg_lift_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/leg_lift_left_fixture/report.json",
+        "report_sha256": "d8f41b7bc09f9081beb0ac537e531c4105ea75da68d5f1066c91d3ed39a34333",
+        "pose_snapshot_count": 233,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1081
+      },
+      {
+        "fixture_id": "leg_lift_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/leg_lift_right_fixture/report.json",
+        "report_sha256": "41a2cba0dcf36d5c1e066efaa503347814d8c9d14fc1a74ba9cf5350779ca49c",
+        "pose_snapshot_count": 229,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1082
+      },
+      {
+        "fixture_id": "knee_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/knee_left_fixture/report.json",
+        "report_sha256": "a9e5bf9b610736ed0e9010506ab324768685a119c78b9edb084f1ddb8dba10cd",
+        "pose_snapshot_count": 225,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1133
+      },
+      {
+        "fixture_id": "knee_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/knee_right_fixture/report.json",
+        "report_sha256": "10adeda9acf4b209f4cdbd90853ebc837a47c2b439fdd890fc5bf63b7d5ba300",
+        "pose_snapshot_count": 224,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1130
+      },
+      {
+        "fixture_id": "stance_transition_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/stance_transition_fixture/report.json",
+        "report_sha256": "0edcaa9ef926d218ddf4d7af0b766946c85d2b7c68badaa661315730c704df9f",
+        "pose_snapshot_count": 232,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1133
+      }
+    ]
+  },
+  "export_parameters": {
+    "frame_count": 8,
+    "no_punch_window_ms": 250,
+    "no_punch_stride_ms": 250,
+    "max_no_punch_samples": 48,
+    "max_transition_no_punch_samples": 24
+  },
+  "split_strategy": {
+    "name": "chronological_holdout_v1",
+    "holdout_ratio": 0.25,
+    "grouping_basis": "positive=label+fixture, negatives=fixture"
+  },
+  "negative_sampling_policy": {
+    "background_windows": "complement_intervals iter_fixed_windows evenly_pick",
+    "transition_windows": "before_and_after_each_punch_window clamped_to_non_punch_intervals evenly_pick"
+  },
+  "dataset_anchor": {
+    "dataset_path": ".temp/boxing-punch-classifier-export/hardened-2026-06-16/dataset.json",
+    "dataset_sha256": "7d62c6d2581e6cb81d923a39bfad4a19c892de4e01b044a7e1dbdb8d877615be",
+    "export_summary_path": ".temp/boxing-punch-classifier-export/hardened-2026-06-16/export-summary.json",
+    "export_summary_sha256": "2d4e9aa05c7ed2e0276e01f10cec120cfb614a172eea61315aabca10f6f92c92",
+    "threshold_baseline_path": ".temp/boxing-punch-classifier-export/hardened-2026-06-16/threshold-baseline.json",
+    "threshold_baseline_sha256": "a89539077c750103eb406c67364fed1bdf9c44cbf1a378028af5debc7de5198a"
+  },
+  "fixtures": [
+    {
+      "fixture_id": "straight_left_fixture",
+      "label": "Straight left fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.yaml",
+      "fixture_sha256": "975f8e18feabb3217d7e4f04a5e1eaa2537d4a1f0698028085722fa8f61f653f",
+      "source_path": ".testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4",
+      "source_sha256": "082b0e99030b2e2e0d058f4be1e11a6d5f645925f4e55725bbebcd3cb887d7b8",
+      "truth_windows": [
+        {
+          "gesture_name": "straight_left",
+          "window_index": 1,
+          "start_ms": 1150,
+          "end_ms": 1300
+        },
+        {
+          "gesture_name": "straight_left",
+          "window_index": 2,
+          "start_ms": 2150,
+          "end_ms": 2650
+        },
+        {
+          "gesture_name": "straight_left",
+          "window_index": 3,
+          "start_ms": 3333,
+          "end_ms": 3833
+        },
+        {
+          "gesture_name": "straight_left",
+          "window_index": 4,
+          "start_ms": 4833,
+          "end_ms": 5088
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 1150
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 2,
+          "start_ms": 1650,
+          "end_ms": 2150
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 3,
+          "start_ms": 2900,
+          "end_ms": 3400
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 4,
+          "start_ms": 3900,
+          "end_ms": 4650
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 5,
+          "start_ms": 5287,
+          "end_ms": 6000
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "straight_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/straight_left_fixture/report.json",
+        "report_sha256": "c5e41e97afa72a5ad03d19b03d3d873a4f16d92bb9e778bf796ec60a82e8569e",
+        "pose_snapshot_count": 238,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1056
+      }
+    },
+    {
+      "fixture_id": "straight_right_fixture",
+      "label": "Straight right fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml",
+      "fixture_sha256": "5e8835b59185f6ee914b5ecabcef958d8804492c04c5ca4df37587550c99f8c5",
+      "source_path": ".testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4",
+      "source_sha256": "07e2558fbdde81792c3b2ea8d222ba15712b99c55c31fe25743a3d0ead354b17",
+      "truth_windows": [
+        {
+          "gesture_name": "straight_right",
+          "window_index": 1,
+          "start_ms": 400,
+          "end_ms": 600
+        },
+        {
+          "gesture_name": "straight_right",
+          "window_index": 2,
+          "start_ms": 1700,
+          "end_ms": 2000
+        },
+        {
+          "gesture_name": "straight_right",
+          "window_index": 3,
+          "start_ms": 3100,
+          "end_ms": 3400
+        },
+        {
+          "gesture_name": "straight_right",
+          "window_index": 4,
+          "start_ms": 4400,
+          "end_ms": 4900
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 400
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 2,
+          "start_ms": 600,
+          "end_ms": 1700
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 3,
+          "start_ms": 2000,
+          "end_ms": 3100
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 4,
+          "start_ms": 3400,
+          "end_ms": 4400
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 5,
+          "start_ms": 4900,
+          "end_ms": 6000
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "straight_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/straight_right_fixture/report.json",
+        "report_sha256": "16495685be76429e8b027932d0a95e42463e1108213b0518bbf9538132d5d87d",
+        "pose_snapshot_count": 240,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1131
+      }
+    },
+    {
+      "fixture_id": "hook_left_fixture",
+      "label": "Hook left fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml",
+      "fixture_sha256": "fe2b339cb6aeeedf6ce7bd4b819a5aa4b6887e4f659e367f1a9ec552657a0607",
+      "source_path": ".testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.mp4",
+      "source_sha256": "765d80aed5f249c2cc251b9e6d4a8318dddf49c0958c28ebcb318ec15b76ae7c",
+      "truth_windows": [
+        {
+          "gesture_name": "hook_left",
+          "window_index": 1,
+          "start_ms": 1200,
+          "end_ms": 1450
+        },
+        {
+          "gesture_name": "hook_left",
+          "window_index": 2,
+          "start_ms": 2500,
+          "end_ms": 3000
+        },
+        {
+          "gesture_name": "hook_left",
+          "window_index": 3,
+          "start_ms": 4000,
+          "end_ms": 4600
+        },
+        {
+          "gesture_name": "hook_left",
+          "window_index": 4,
+          "start_ms": 5500,
+          "end_ms": 5800
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 1000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 2,
+          "start_ms": 1600,
+          "end_ms": 2500
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 3,
+          "start_ms": 3000,
+          "end_ms": 4000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 4,
+          "start_ms": 4600,
+          "end_ms": 5500
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 5,
+          "start_ms": 5800,
+          "end_ms": 7047
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "hook_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/hook_left_fixture/report.json",
+        "report_sha256": "401130af5e2d6c211baee989d8d5b5e831c0bfeacecd29730d8162d7c3288074",
+        "pose_snapshot_count": 220,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1080
+      }
+    },
+    {
+      "fixture_id": "hook_right_fixture",
+      "label": "Hook right fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml",
+      "fixture_sha256": "4892becec6442dbe5fbde01a87ead940d60c6b297efafa017a5d0de50156b769",
+      "source_path": ".testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4",
+      "source_sha256": "537f0d76edcc10851b90cff0403c5880670279418bb45b96c084ec07ba331250",
+      "truth_windows": [
+        {
+          "gesture_name": "hook_right",
+          "window_index": 1,
+          "start_ms": 900,
+          "end_ms": 1400
+        },
+        {
+          "gesture_name": "hook_right",
+          "window_index": 2,
+          "start_ms": 2400,
+          "end_ms": 2900
+        },
+        {
+          "gesture_name": "hook_right",
+          "window_index": 3,
+          "start_ms": 4000,
+          "end_ms": 4500
+        },
+        {
+          "gesture_name": "hook_right",
+          "window_index": 4,
+          "start_ms": 5300,
+          "end_ms": 5900
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 650
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 2,
+          "start_ms": 1150,
+          "end_ms": 2300
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 3,
+          "start_ms": 3000,
+          "end_ms": 3500
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 4,
+          "start_ms": 4800,
+          "end_ms": 5000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 5,
+          "start_ms": 6300,
+          "end_ms": 7412
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "hook_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/hook_right_fixture/report.json",
+        "report_sha256": "d51a91bf848c7cc9c836ab6d059b85a4d2066b4e7b5d70f6759fc30f2208fda1",
+        "pose_snapshot_count": 221,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1131
+      }
+    },
+    {
+      "fixture_id": "uppercut_left_fixture",
+      "label": "Uppercut left fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.yaml",
+      "fixture_sha256": "e42a4f44fd7cc008b178387306efa5bdaa79badecac67ccc16ee7c5e85fdee10",
+      "source_path": ".testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4",
+      "source_sha256": "51985d51a6854963421db281d9e32702726e6dec614e8e402c2f78a8a103e185",
+      "truth_windows": [
+        {
+          "gesture_name": "uppercut_left",
+          "window_index": 1,
+          "start_ms": 900,
+          "end_ms": 1200
+        },
+        {
+          "gesture_name": "uppercut_left",
+          "window_index": 2,
+          "start_ms": 2900,
+          "end_ms": 3200
+        },
+        {
+          "gesture_name": "uppercut_left",
+          "window_index": 3,
+          "start_ms": 4600,
+          "end_ms": 5400
+        },
+        {
+          "gesture_name": "uppercut_left",
+          "window_index": 4,
+          "start_ms": 6000,
+          "end_ms": 7000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 650
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 2,
+          "start_ms": 1650,
+          "end_ms": 2500
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 3,
+          "start_ms": 3500,
+          "end_ms": 4500
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 4,
+          "start_ms": 5300,
+          "end_ms": 6500
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 5,
+          "start_ms": 7200,
+          "end_ms": 7428
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "uppercut_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/uppercut_left_fixture/report.json",
+        "report_sha256": "80b8021fe2436741a74326ccc486f3b322d2a20f10ce9cd5634fa6aebc18ac8b",
+        "pose_snapshot_count": 225,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1136
+      }
+    },
+    {
+      "fixture_id": "uppercut_right_fixture",
+      "label": "Uppercut right fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml",
+      "fixture_sha256": "9d3ab719277c27ed3f946a7716610673a55a47d4c8ac1340fb502fc20c5c93ee",
+      "source_path": ".testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4",
+      "source_sha256": "7a774cf11f260b6239f3dfda6db10ab1b13acc488310f328ec733c1946dd52b0",
+      "truth_windows": [
+        {
+          "gesture_name": "uppercut_right",
+          "window_index": 1,
+          "start_ms": 900,
+          "end_ms": 1150
+        },
+        {
+          "gesture_name": "uppercut_right",
+          "window_index": 2,
+          "start_ms": 2000,
+          "end_ms": 3000
+        },
+        {
+          "gesture_name": "uppercut_right",
+          "window_index": 3,
+          "start_ms": 3900,
+          "end_ms": 4650
+        },
+        {
+          "gesture_name": "uppercut_right",
+          "window_index": 4,
+          "start_ms": 5700,
+          "end_ms": 6450
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 650
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 2,
+          "start_ms": 1150,
+          "end_ms": 2150
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 3,
+          "start_ms": 3150,
+          "end_ms": 3700
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 4,
+          "start_ms": 4100,
+          "end_ms": 5400
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 5,
+          "start_ms": 5900,
+          "end_ms": 6500
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "uppercut_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/uppercut_right_fixture/report.json",
+        "report_sha256": "d1415293a9738fb24c402b4897729694ecdaba840e51d226d921c2c00bd0aba8",
+        "pose_snapshot_count": 222,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1130
+      }
+    },
+    {
+      "fixture_id": "run_in_place_fixture",
+      "label": "Run-in-place fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/run_in_place/boxing_guard->run_in_place_repeat_01_take_01.yaml",
+      "fixture_sha256": "d33932a1dfa830a3da8a6c874cd3c8e7bbe2dee801b58436d75cd73c573c42f0",
+      "source_path": ".testbed/assets/fixtures/boxing/run_in_place/boxing_guard->run_in_place_repeat_01_take_01.mp4",
+      "source_sha256": "427c228232b75cf00ab99f62450b7bacea7f82e11b28ff2b4c859c6f75d31415",
+      "truth_windows": [
+        {
+          "gesture_name": "run_in_place_start",
+          "window_index": 1,
+          "start_ms": 650,
+          "end_ms": 4300
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 4500
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "run_in_place_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/run_in_place_fixture/report.json",
+        "report_sha256": "7f8921a007a1e43f37155e9e0a84b4ec14ae7e94ad48dc174713f16ccb277bd3",
+        "pose_snapshot_count": 237,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1129
+      }
+    },
+    {
+      "fixture_id": "weave_left_fixture",
+      "label": "Weave left fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.yaml",
+      "fixture_sha256": "2a72c7814ee0363dd9ddb07ea3f024e2044702dd8cbd0a3d47e1bd4b1115800c",
+      "source_path": ".testbed/assets/fixtures/boxing/weave_left/boxing_guard->weave_left_repeat_04_take_01.mp4",
+      "source_sha256": "9100978cf5e933f686c0f3043558efe1f6c3da7058ddef01a723103119466afe",
+      "truth_windows": [
+        {
+          "gesture_name": "weave_left",
+          "window_index": 1,
+          "start_ms": 1100,
+          "end_ms": 2000
+        },
+        {
+          "gesture_name": "weave_left",
+          "window_index": 2,
+          "start_ms": 3100,
+          "end_ms": 4100
+        },
+        {
+          "gesture_name": "weave_left",
+          "window_index": 3,
+          "start_ms": 4500,
+          "end_ms": 5600
+        },
+        {
+          "gesture_name": "weave_left",
+          "window_index": 4,
+          "start_ms": 6200,
+          "end_ms": 7500
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 8000
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "weave_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/weave_left_fixture/report.json",
+        "report_sha256": "f24501a05b0a90882ab169348bed0e67e421f6413bbf8b631bc3111a087e478e",
+        "pose_snapshot_count": 227,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1088
+      }
+    },
+    {
+      "fixture_id": "weave_right_fixture",
+      "label": "Weave right fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.yaml",
+      "fixture_sha256": "709241c43cdbd0fa3c9849c9ad123b4ae817c12526faa71fc3d358827dc34a89",
+      "source_path": ".testbed/assets/fixtures/boxing/weave_right/boxing_guard->weave_right_repeat_04_take_01.mp4",
+      "source_sha256": "c53e905fefcb3358d976f4d52059afada0152d2bb6f3e16c981d8343e2bb3485",
+      "truth_windows": [
+        {
+          "gesture_name": "weave_right",
+          "window_index": 1,
+          "start_ms": 650,
+          "end_ms": 1100
+        },
+        {
+          "gesture_name": "weave_right",
+          "window_index": 2,
+          "start_ms": 2100,
+          "end_ms": 2600
+        },
+        {
+          "gesture_name": "weave_right",
+          "window_index": 3,
+          "start_ms": 3600,
+          "end_ms": 4400
+        },
+        {
+          "gesture_name": "weave_right",
+          "window_index": 4,
+          "start_ms": 5150,
+          "end_ms": 6000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 6500
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "weave_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/weave_right_fixture/report.json",
+        "report_sha256": "fd05da6aaf18872003ea66e2686b3ef0d694bc544fb4e7a1d17fa786bc8cad46",
+        "pose_snapshot_count": 228,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1084
+      }
+    },
+    {
+      "fixture_id": "squat_fixture",
+      "label": "Squat fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/squat/boxing_guard->squat_repeat_04_take_01.yaml",
+      "fixture_sha256": "739063522394fa9d64d4681901eb84cd70cd90b2d3a5f448bd3d6251439e642b",
+      "source_path": ".testbed/assets/fixtures/boxing/squat/boxing_guard->squat_repeat_04_take_01.mp4",
+      "source_sha256": "cb2c56cd84e1552e9327619320f039c1359287081270ef2071e0e139789f9580",
+      "truth_windows": [
+        {
+          "gesture_name": "squat",
+          "window_index": 1,
+          "start_ms": 900,
+          "end_ms": 1900
+        },
+        {
+          "gesture_name": "squat",
+          "window_index": 2,
+          "start_ms": 2900,
+          "end_ms": 4000
+        },
+        {
+          "gesture_name": "squat",
+          "window_index": 3,
+          "start_ms": 4800,
+          "end_ms": 6600
+        },
+        {
+          "gesture_name": "squat",
+          "window_index": 4,
+          "start_ms": 7400,
+          "end_ms": 8600
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 9100
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "squat_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/squat_fixture/report.json",
+        "report_sha256": "abac6603ee891eddab66a2792f39b7f97cd7898fecc3a2b4e62d5dda0ba2b3df",
+        "pose_snapshot_count": 232,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1079
+      }
+    },
+    {
+      "fixture_id": "sidestep_left_fixture",
+      "label": "Sidestep left fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/sidestep_left/boxing_guard->sidestep_left_repeat_04_take_01.yaml",
+      "fixture_sha256": "e2c78310d16f62ca16b8655ef17bf6716a6ef68cd91ef229fc0c15cb54e77c72",
+      "source_path": ".testbed/assets/fixtures/boxing/sidestep_left/boxing_guard->sidestep_left_repeat_04_take_01.mp4",
+      "source_sha256": "33dcc2aca0d830c560b8735314bbf2a58f4e3d88eedbe6688a2d6cefb4e774a1",
+      "truth_windows": [
+        {
+          "gesture_name": "sidestep_left",
+          "window_index": 1,
+          "start_ms": 150,
+          "end_ms": 3100
+        },
+        {
+          "gesture_name": "sidestep_left",
+          "window_index": 2,
+          "start_ms": 4900,
+          "end_ms": 7400
+        },
+        {
+          "gesture_name": "sidestep_left",
+          "window_index": 3,
+          "start_ms": 8650,
+          "end_ms": 11400
+        },
+        {
+          "gesture_name": "sidestep_left",
+          "window_index": 4,
+          "start_ms": 12650,
+          "end_ms": 15000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 16000
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "sidestep_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/sidestep_left_fixture/report.json",
+        "report_sha256": "c83133490864378d51b5d32b2d0295f625697e1bbca5052313a63bfbe8d743e6",
+        "pose_snapshot_count": 231,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1083
+      }
+    },
+    {
+      "fixture_id": "sidestep_right_fixture",
+      "label": "Sidestep right fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/sidestep_right/boxing_guard->sidestep_right_repeat_03_take_01.yaml",
+      "fixture_sha256": "8b231e22f916355eabc6ba5034f6778b0d816d2b1b461f1a486a1360b64120b3",
+      "source_path": ".testbed/assets/fixtures/boxing/sidestep_right/boxing_guard->sidestep_right_repeat_03_take_01.mp4",
+      "source_sha256": "001c25fe91e95079f81060e5edc64d357749f393674ffecc317a18adcf989cda",
+      "truth_windows": [
+        {
+          "gesture_name": "sidestep_right",
+          "window_index": 1,
+          "start_ms": 900,
+          "end_ms": 2650
+        },
+        {
+          "gesture_name": "sidestep_right",
+          "window_index": 2,
+          "start_ms": 4400,
+          "end_ms": 6650
+        },
+        {
+          "gesture_name": "sidestep_right",
+          "window_index": 3,
+          "start_ms": 7800,
+          "end_ms": 10000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 11000
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "sidestep_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/sidestep_right_fixture/report.json",
+        "report_sha256": "c57dd86f3d8888c73ab8c57299a37d02f57d202232958d48dc554fa0ca9a678a",
+        "pose_snapshot_count": 225,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1087
+      }
+    },
+    {
+      "fixture_id": "leg_lift_left_fixture",
+      "label": "Leg lift left fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/leg_lift_left/boxing_guard->leg_lift_left_repeat_04_take_01.yaml",
+      "fixture_sha256": "624cdab1bb9db222ff42cd25f2071fb3cbf3e41dd642030fa90c6b1ccb254a94",
+      "source_path": ".testbed/assets/fixtures/boxing/leg_lift_left/boxing_guard->leg_lift_left_repeat_04_take_01.mp4",
+      "source_sha256": "b67e692b95ded92c86e4bc1fcfdde6a10a51f47cafe5f2abf8a7cc8cd48670ce",
+      "truth_windows": [
+        {
+          "gesture_name": "leg_lift_left",
+          "window_index": 1,
+          "start_ms": 650,
+          "end_ms": 1800
+        },
+        {
+          "gesture_name": "leg_lift_left",
+          "window_index": 2,
+          "start_ms": 3000,
+          "end_ms": 3800
+        },
+        {
+          "gesture_name": "leg_lift_left",
+          "window_index": 3,
+          "start_ms": 5000,
+          "end_ms": 5800
+        },
+        {
+          "gesture_name": "leg_lift_left",
+          "window_index": 4,
+          "start_ms": 7000,
+          "end_ms": 8000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 9000
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "leg_lift_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/leg_lift_left_fixture/report.json",
+        "report_sha256": "d8f41b7bc09f9081beb0ac537e531c4105ea75da68d5f1066c91d3ed39a34333",
+        "pose_snapshot_count": 233,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1081
+      }
+    },
+    {
+      "fixture_id": "leg_lift_right_fixture",
+      "label": "Leg lift right fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/leg_lift_right/boxing_guard->leg_lift_right_repeat_04_take_01.yaml",
+      "fixture_sha256": "904f3e2537a61538d55bc4ca141fdf0f6746a41316b13dedbd1ac5d77fc0e4a1",
+      "source_path": ".testbed/assets/fixtures/boxing/leg_lift_right/boxing_guard->leg_lift_right_repeat_04_take_01.mp4",
+      "source_sha256": "2ca2efa1c0437a0ad865f9c831ef5a66beac5c14165ce99190d14a2949cda54e",
+      "truth_windows": [
+        {
+          "gesture_name": "leg_lift_right",
+          "window_index": 1,
+          "start_ms": 650,
+          "end_ms": 1650
+        },
+        {
+          "gesture_name": "leg_lift_right",
+          "window_index": 2,
+          "start_ms": 3150,
+          "end_ms": 4100
+        },
+        {
+          "gesture_name": "leg_lift_right",
+          "window_index": 3,
+          "start_ms": 5000,
+          "end_ms": 6000
+        },
+        {
+          "gesture_name": "leg_lift_right",
+          "window_index": 4,
+          "start_ms": 7300,
+          "end_ms": 8400
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 9000
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "leg_lift_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/leg_lift_right_fixture/report.json",
+        "report_sha256": "41a2cba0dcf36d5c1e066efaa503347814d8c9d14fc1a74ba9cf5350779ca49c",
+        "pose_snapshot_count": 229,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1082
+      }
+    },
+    {
+      "fixture_id": "knee_left_fixture",
+      "label": "Knee left fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/knee_left/boxing_guard->knee_left_repeat_04_take_01.yaml",
+      "fixture_sha256": "3b9c7eb5772fb4556a5c008e8cd973838f19c4a02b590bbb569e9165c8322592",
+      "source_path": ".testbed/assets/fixtures/boxing/knee_left/boxing_guard->knee_left_repeat_04_take_01.mp4",
+      "source_sha256": "e386dff5735fc31e09d3ce1b2613c280398264c9230c846e10af5d34089eee71",
+      "truth_windows": [
+        {
+          "gesture_name": "knee_left",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 650
+        },
+        {
+          "gesture_name": "knee_left",
+          "window_index": 2,
+          "start_ms": 1150,
+          "end_ms": 2150
+        },
+        {
+          "gesture_name": "knee_left",
+          "window_index": 3,
+          "start_ms": 2650,
+          "end_ms": 3400
+        },
+        {
+          "gesture_name": "knee_left",
+          "window_index": 4,
+          "start_ms": 4650,
+          "end_ms": 5250
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 6083
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "knee_left_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/knee_left_fixture/report.json",
+        "report_sha256": "a9e5bf9b610736ed0e9010506ab324768685a119c78b9edb084f1ddb8dba10cd",
+        "pose_snapshot_count": 225,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1133
+      }
+    },
+    {
+      "fixture_id": "knee_right_fixture",
+      "label": "Knee right fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/knee_right/boxing_guard->knee_right_repeat_04_take_01.yaml",
+      "fixture_sha256": "e13484a9fece067ad1d2218d61a0e4570cce302c2f24fcaf7b6c0ced401e653d",
+      "source_path": ".testbed/assets/fixtures/boxing/knee_right/boxing_guard->knee_right_repeat_04_take_01.mp4",
+      "source_sha256": "e31891e1096586b7df13dc3c36d585dcbad005fbe5a402c5aaf5938ede2cf96c",
+      "truth_windows": [
+        {
+          "gesture_name": "knee_right",
+          "window_index": 1,
+          "start_ms": 150,
+          "end_ms": 400
+        },
+        {
+          "gesture_name": "knee_right",
+          "window_index": 2,
+          "start_ms": 1900,
+          "end_ms": 2400
+        },
+        {
+          "gesture_name": "knee_right",
+          "window_index": 3,
+          "start_ms": 3600,
+          "end_ms": 3900
+        },
+        {
+          "gesture_name": "knee_right",
+          "window_index": 4,
+          "start_ms": 5400,
+          "end_ms": 6000
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 6500
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "knee_right_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/knee_right_fixture/report.json",
+        "report_sha256": "10adeda9acf4b209f4cdbd90853ebc837a47c2b439fdd890fc5bf63b7d5ba300",
+        "pose_snapshot_count": 224,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1130
+      }
+    },
+    {
+      "fixture_id": "stance_transition_fixture",
+      "label": "Stance transition fixture",
+      "scene_path": "res://scenes/boxing_proving.tscn",
+      "fixture_path": ".testbed/assets/fixtures/boxing/stance_transition/boxing_guard->orthodox->center->southpaw_repeat_04_take_01.yaml",
+      "fixture_sha256": "44eab94787a461e31ee1484738a3b2fe4f1611419a62b27041bcb47f1f18ab2b",
+      "source_path": ".testbed/assets/fixtures/boxing/stance_transition/boxing_guard->orthodox->center->southpaw_repeat_04_take_01.mp4",
+      "source_sha256": "dc087715fad56819f1de13c0b88f68f10291b71ab9423664c87906ce4919801d",
+      "truth_windows": [
+        {
+          "gesture_name": "stance_change_orthodox",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 900
+        },
+        {
+          "gesture_name": "stance_change_orthodox",
+          "window_index": 2,
+          "start_ms": 5100,
+          "end_ms": 7600
+        },
+        {
+          "gesture_name": "stance_change_orthodox",
+          "window_index": 3,
+          "start_ms": 10900,
+          "end_ms": 13658
+        },
+        {
+          "gesture_name": "stance_change_orthodox",
+          "window_index": 4,
+          "start_ms": 16900,
+          "end_ms": 18743
+        },
+        {
+          "gesture_name": "stance_change_center",
+          "window_index": 1,
+          "start_ms": 900,
+          "end_ms": 1150
+        },
+        {
+          "gesture_name": "stance_change_center",
+          "window_index": 2,
+          "start_ms": 4650,
+          "end_ms": 5150
+        },
+        {
+          "gesture_name": "stance_change_center",
+          "window_index": 3,
+          "start_ms": 7600,
+          "end_ms": 8100
+        },
+        {
+          "gesture_name": "stance_change_center",
+          "window_index": 4,
+          "start_ms": 10000,
+          "end_ms": 10900
+        },
+        {
+          "gesture_name": "stance_change_center",
+          "window_index": 5,
+          "start_ms": 13658,
+          "end_ms": 13900
+        },
+        {
+          "gesture_name": "stance_change_center",
+          "window_index": 6,
+          "start_ms": 16400,
+          "end_ms": 16900
+        },
+        {
+          "gesture_name": "stance_change_southpaw",
+          "window_index": 1,
+          "start_ms": 1150,
+          "end_ms": 4650
+        },
+        {
+          "gesture_name": "stance_change_southpaw",
+          "window_index": 2,
+          "start_ms": 8100,
+          "end_ms": 10000
+        },
+        {
+          "gesture_name": "stance_change_southpaw",
+          "window_index": 3,
+          "start_ms": 13900,
+          "end_ms": 16400
+        },
+        {
+          "gesture_name": "guard",
+          "window_index": 1,
+          "start_ms": 0,
+          "end_ms": 18743
+        }
+      ],
+      "capture_report": {
+        "fixture_id": "stance_transition_fixture",
+        "report_path": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16/captures/stance_transition_fixture/report.json",
+        "report_sha256": "0edcaa9ef926d218ddf4d7af0b766946c85d2b7c68badaa661315730c704df9f",
+        "pose_snapshot_count": 232,
+        "time_basis": "provider_tracking_ms_since_first_pose",
+        "time_origin_reason": "first_tracking_pose",
+        "time_origin_offset_ms": 1133
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import statistics
 from collections import Counter
@@ -42,6 +43,87 @@ def _load_manifest(repo_root: Path, manifest_path: str) -> dict:
     manifest = load_json(manifest_file)
     manifest["_manifest_path"] = manifest_path
     return manifest
+
+
+def _load_snapshot_manifest(repo_root: Path, snapshot_manifest_path: str) -> dict:
+    snapshot_file = (repo_root / snapshot_manifest_path).resolve()
+    snapshot = load_json(snapshot_file)
+    snapshot["_snapshot_manifest_path"] = snapshot_manifest_path
+    return snapshot
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _verify_snapshot_inputs(repo_root: Path, snapshot: dict, manifest_path: str, captures_dir: Path) -> dict:
+    benchmark_manifest = snapshot.get("benchmark_manifest", {}) if isinstance(snapshot.get("benchmark_manifest", {}), dict) else {}
+    expected_manifest_path = str(benchmark_manifest.get("path", "")).strip()
+    if expected_manifest_path and expected_manifest_path != manifest_path:
+        raise ValueError(
+            f"snapshot manifest expects benchmark manifest {expected_manifest_path}, got {manifest_path}"
+        )
+    manifest_file = (repo_root / manifest_path).resolve()
+    if benchmark_manifest.get("sha256") and _sha256_file(manifest_file) != str(benchmark_manifest.get("sha256")):
+        raise ValueError(f"benchmark manifest hash mismatch for {manifest_path}")
+
+    capture_source = snapshot.get("capture_report_source", {}) if isinstance(snapshot.get("capture_report_source", {}), dict) else {}
+    expected_capture_dir = str(capture_source.get("root_dir", "")).strip()
+    expected_capture_dir_rel = Path(expected_capture_dir).as_posix() if expected_capture_dir else ""
+    actual_capture_dir_rel = captures_dir.relative_to(repo_root).as_posix()
+    if expected_capture_dir_rel and expected_capture_dir_rel != actual_capture_dir_rel:
+        raise ValueError(
+            f"snapshot manifest expects captures dir {expected_capture_dir_rel}, got {actual_capture_dir_rel}"
+        )
+
+    file_verification = {
+        "manifest_sha256": _sha256_file(manifest_file),
+        "fixtures": [],
+        "capture_reports": [],
+    }
+    for fixture_entry in snapshot.get("fixtures", []) or []:
+        if not isinstance(fixture_entry, dict):
+            continue
+        fixture_path = str(fixture_entry.get("fixture_path", "")).strip()
+        source_path = str(fixture_entry.get("source_path", "")).strip()
+        fixture_file = (repo_root / fixture_path).resolve()
+        source_file = (repo_root / source_path).resolve()
+        actual_fixture_sha = _sha256_file(fixture_file)
+        actual_source_sha = _sha256_file(source_file)
+        if fixture_entry.get("fixture_sha256") and actual_fixture_sha != str(fixture_entry.get("fixture_sha256")):
+            raise ValueError(f"fixture YAML hash mismatch for {fixture_path}")
+        if fixture_entry.get("source_sha256") and actual_source_sha != str(fixture_entry.get("source_sha256")):
+            raise ValueError(f"fixture video hash mismatch for {source_path}")
+        file_verification["fixtures"].append(
+            {
+                "fixture_id": fixture_entry.get("fixture_id", ""),
+                "fixture_path": fixture_path,
+                "fixture_sha256": actual_fixture_sha,
+                "source_path": source_path,
+                "source_sha256": actual_source_sha,
+            }
+        )
+
+    for report_entry in capture_source.get("reports", []) or []:
+        if not isinstance(report_entry, dict):
+            continue
+        report_path = str(report_entry.get("report_path", "")).strip()
+        report_file = (repo_root / report_path).resolve()
+        actual_report_sha = _sha256_file(report_file)
+        if report_entry.get("report_sha256") and actual_report_sha != str(report_entry.get("report_sha256")):
+            raise ValueError(f"capture report hash mismatch for {report_path}")
+        file_verification["capture_reports"].append(
+            {
+                "fixture_id": report_entry.get("fixture_id", ""),
+                "report_path": report_path,
+                "report_sha256": actual_report_sha,
+            }
+        )
+    return file_verification
 
 
 def _window_dicts_for_name(fixture_yaml: dict, gesture_name: str) -> list[dict]:
@@ -129,6 +211,8 @@ def _export_dataset(
     no_punch_stride_ms: int,
     max_no_punch_samples: int,
     max_transition_no_punch_samples: int,
+    snapshot: dict | None = None,
+    snapshot_verification: dict | None = None,
 ) -> tuple[dict, dict]:
     samples = []
     fixture_summaries = []
@@ -295,7 +379,7 @@ def _export_dataset(
     negative_context_counts = dict(Counter(sample.get("negative_context", "n/a") for sample in samples if sample["label"] == "no_punch"))
     export_summary = {
         "schema": "aerobeat.boxing_punch_classifier_export",
-        "version": 2,
+        "version": 3,
         "exported_at": datetime.now(timezone.utc).isoformat(),
         "manifest_path": manifest["_manifest_path"],
         "capture_dir": captures_dir.relative_to(repo_root).as_posix(),
@@ -314,6 +398,14 @@ def _export_dataset(
         "sample_kind_counts": sample_kind_counts,
         "negative_context_counts": negative_context_counts,
         "alignment_summary": _summarize_alignment(samples),
+        "source_snapshot": {
+            "snapshot_id": snapshot.get("snapshot_id", "") if snapshot else "",
+            "snapshot_manifest_path": snapshot.get("_snapshot_manifest_path", "") if snapshot else "",
+            "dataset_anchor": snapshot.get("dataset_anchor", {}) if snapshot else {},
+            "capture_report_source": snapshot.get("capture_report_source", {}) if snapshot else {},
+            "export_parameters": snapshot.get("export_parameters", {}) if snapshot else {},
+            "file_verification": snapshot_verification or {},
+        },
         "fixtures": fixture_summaries,
         "samples": samples,
     }
@@ -344,12 +436,15 @@ def _export_dataset(
 
 def _render_markdown(export_summary: dict, threshold_summary: dict) -> str:
     alignment_summary = export_summary.get("alignment_summary", {})
+    source_snapshot = export_summary.get("source_snapshot", {}) if isinstance(export_summary.get("source_snapshot", {}), dict) else {}
     lines = [
         "# Boxing Punch Classifier Export",
         "",
         f"- Exported at: `{export_summary['exported_at']}`",
         f"- Manifest: `{export_summary['manifest_path']}`",
         f"- Capture dir: `{export_summary['capture_dir']}`",
+        f"- Snapshot ID: `{source_snapshot.get('snapshot_id', '') or 'none'}`",
+        f"- Snapshot manifest: `{source_snapshot.get('snapshot_manifest_path', '') or 'none'}`",
         f"- Class order: `{', '.join(export_summary['class_order'])}`",
         f"- Split strategy: `{export_summary.get('split_strategy', 'unknown')}`",
         f"- Window shape: `{export_summary['window_frame_count']} frames x {export_summary['frame_feature_count']} features/frame`",
@@ -359,9 +454,30 @@ def _render_markdown(export_summary: dict, threshold_summary: dict) -> str:
         f"- Sample kinds: `{json.dumps(export_summary.get('sample_kind_counts', {}), sort_keys=True)}`",
         f"- No-punch contexts: `{json.dumps(export_summary.get('negative_context_counts', {}), sort_keys=True)}`",
         "",
-        "## Alignment summary",
+        "## Frozen source snapshot",
         "",
     ]
+    if source_snapshot.get("snapshot_id"):
+        dataset_anchor = source_snapshot.get("dataset_anchor", {}) if isinstance(source_snapshot.get("dataset_anchor", {}), dict) else {}
+        capture_report_source = source_snapshot.get("capture_report_source", {}) if isinstance(source_snapshot.get("capture_report_source", {}), dict) else {}
+        export_parameters = source_snapshot.get("export_parameters", {}) if isinstance(source_snapshot.get("export_parameters", {}), dict) else {}
+        lines.extend(
+            [
+                f"- Capture package: `{capture_report_source.get('package_id', '')}`",
+                f"- Capture source root: `{capture_report_source.get('root_dir', '')}`",
+                f"- Alignment basis: `{capture_report_source.get('alignment_basis', '')}`",
+                f"- Dataset anchor: `{dataset_anchor.get('dataset_path', '')}` sha256=`{dataset_anchor.get('dataset_sha256', '')}`",
+                f"- Threshold anchor: `{dataset_anchor.get('threshold_baseline_path', '')}` sha256=`{dataset_anchor.get('threshold_baseline_sha256', '')}`",
+                f"- Export parameters: `{json.dumps(export_parameters, sort_keys=True)}`",
+                "",
+            ]
+        )
+    else:
+        lines.extend(["- No explicit frozen snapshot manifest supplied.", ""])
+    lines.extend([
+        "## Alignment summary",
+        "",
+    ])
     if alignment_summary:
         offset_summary = alignment_summary.get("capture_time_origin_offset_ms", {})
         lines.extend(
@@ -415,6 +531,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Export a reusable boxing punch-classifier dataset from committed fixture captures.")
     parser.add_argument("--manifest", default=".testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json")
     parser.add_argument("--captures-dir", default=".temp/boxing-punch-classifier-export/captures")
+    parser.add_argument("--snapshot-manifest", help="Frozen snapshot manifest JSON relative to the repo root. When set, manifest/captures/export parameters are resolved from the snapshot unless explicitly overridden later in code.")
     parser.add_argument("--output-dir", required=True, help="Directory for export-summary.{json,md} and dataset.json")
     parser.add_argument("--godot", default=DEFAULT_GODOT_BIN)
     parser.add_argument("--capture-delay-ms", type=int, default=7000)
@@ -427,8 +544,28 @@ def main() -> int:
     args = parser.parse_args()
 
     repo_root = _repo_root()
-    manifest = _load_manifest(repo_root, args.manifest)
-    captures_dir = (repo_root / args.captures_dir).resolve()
+    snapshot = _load_snapshot_manifest(repo_root, args.snapshot_manifest) if args.snapshot_manifest else None
+    resolved_manifest_path = args.manifest
+    resolved_captures_dir = args.captures_dir
+    resolved_frame_count = args.frame_count
+    resolved_no_punch_window_ms = args.no_punch_window_ms
+    resolved_no_punch_stride_ms = args.no_punch_stride_ms
+    resolved_max_no_punch_samples = args.max_no_punch_samples
+    resolved_max_transition_no_punch_samples = args.max_transition_no_punch_samples
+    if snapshot:
+        benchmark_manifest = snapshot.get("benchmark_manifest", {}) if isinstance(snapshot.get("benchmark_manifest", {}), dict) else {}
+        export_parameters = snapshot.get("export_parameters", {}) if isinstance(snapshot.get("export_parameters", {}), dict) else {}
+        capture_report_source = snapshot.get("capture_report_source", {}) if isinstance(snapshot.get("capture_report_source", {}), dict) else {}
+        resolved_manifest_path = str(benchmark_manifest.get("path") or resolved_manifest_path)
+        resolved_captures_dir = str(capture_report_source.get("root_dir") or resolved_captures_dir)
+        resolved_frame_count = int(export_parameters.get("frame_count", resolved_frame_count))
+        resolved_no_punch_window_ms = int(export_parameters.get("no_punch_window_ms", resolved_no_punch_window_ms))
+        resolved_no_punch_stride_ms = int(export_parameters.get("no_punch_stride_ms", resolved_no_punch_stride_ms))
+        resolved_max_no_punch_samples = int(export_parameters.get("max_no_punch_samples", resolved_max_no_punch_samples))
+        resolved_max_transition_no_punch_samples = int(export_parameters.get("max_transition_no_punch_samples", resolved_max_transition_no_punch_samples))
+
+    manifest = _load_manifest(repo_root, resolved_manifest_path)
+    captures_dir = (repo_root / resolved_captures_dir).resolve()
     output_dir = (repo_root / args.output_dir).resolve()
     ensure_clean_dir(output_dir)
     if not args.skip_captures:
@@ -436,15 +573,21 @@ def main() -> int:
         for fixture in manifest.get("fixtures", []):
             run_capture(repo_root, fixture, captures_dir, godot_bin=args.godot, capture_delay_ms=args.capture_delay_ms)
 
+    snapshot_verification = None
+    if snapshot:
+        snapshot_verification = _verify_snapshot_inputs(repo_root, snapshot, resolved_manifest_path, captures_dir)
+
     export_summary, threshold_summary = _export_dataset(
         repo_root,
         manifest,
         captures_dir,
-        frame_count=args.frame_count,
-        no_punch_window_ms=args.no_punch_window_ms,
-        no_punch_stride_ms=args.no_punch_stride_ms,
-        max_no_punch_samples=args.max_no_punch_samples,
-        max_transition_no_punch_samples=args.max_transition_no_punch_samples,
+        frame_count=resolved_frame_count,
+        no_punch_window_ms=resolved_no_punch_window_ms,
+        no_punch_stride_ms=resolved_no_punch_stride_ms,
+        max_no_punch_samples=resolved_max_no_punch_samples,
+        max_transition_no_punch_samples=resolved_max_transition_no_punch_samples,
+        snapshot=snapshot,
+        snapshot_verification=snapshot_verification,
     )
     write_json(output_dir / "dataset.json", export_summary)
     write_json(output_dir / "threshold-baseline.json", threshold_summary)

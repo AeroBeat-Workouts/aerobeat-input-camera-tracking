@@ -16,6 +16,7 @@ The harness is intentionally model-agnostic so the first temporal-MLP baseline a
 - Manifest: `.testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json`
 - Fixture YAML truth windows + videos under `.testbed/assets/fixtures/boxing/`
 - Headless proving capture path via `res://scripts/capture_fixture_proving.gd`
+- Optional frozen snapshot manifest: `.testbed/assets/benchmarks/boxing_punch_classifier_hardened_2026_06_16.snapshot.json`
 
 ## Export behavior
 
@@ -41,6 +42,15 @@ python3 scripts/export_boxing_punch_classifier_dataset.py \
   --captures-dir .temp/boxing-punch-classifier-export/captures
 ```
 
+Recreate the frozen hardened snapshot exactly from its archived capture-report package:
+
+```bash
+python3 scripts/export_boxing_punch_classifier_dataset.py \
+  --snapshot-manifest .testbed/assets/benchmarks/boxing_punch_classifier_hardened_2026_06_16.snapshot.json \
+  --skip-captures \
+  --output-dir .temp/boxing-punch-classifier-export/boxing-punch-classifier-hardened-2026-06-16-rerun
+```
+
 Train the tiny temporal MLP baseline:
 
 ```bash
@@ -62,8 +72,8 @@ python3 scripts/train_boxing_punch_temporal_cnn.py \
 
 The export script writes:
 
-- `dataset.json` — samples, labels, windows, chronological splits, metadata, threshold predictions, and alignment fields
-- `export-summary.json` / `.md` — counts, fixture summary, no-punch context mix, and alignment summary
+- `dataset.json` — samples, labels, windows, chronological splits, metadata, threshold predictions, alignment fields, and frozen snapshot provenance when a snapshot manifest is supplied
+- `export-summary.json` / `.md` — counts, fixture summary, no-punch context mix, alignment summary, and frozen snapshot provenance when applicable
 - `threshold-baseline.json` — threshold comparison on exported windows
 
 The MLP script writes:
@@ -83,3 +93,10 @@ The CNN script writes:
 - `docs/baselines/boxing-punch-classifier-mlp-hardened-baseline-2026-06-16/`
 
 Those directories are the committed audit trail for the first feasibility push, the immediate same-harness CNN follow-up, and the first benchmark-hardening rerun around the MLP baseline.
+
+The named reproducibility anchor for the hardened benchmark snapshot is:
+
+- `.testbed/assets/benchmarks/boxing_punch_classifier_hardened_2026_06_16.snapshot.json`
+- `.testbed/assets/benchmarks/boxing_punch_classifier_hardened_2026_06_16.snapshot.md`
+
+That snapshot freezes the exact fixture/truth/capture/export inputs for the archived hardened dataset and tells future reruns which capture-report package and export settings they are expected to recreate.
