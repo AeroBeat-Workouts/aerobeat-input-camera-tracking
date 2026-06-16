@@ -15,7 +15,7 @@ const DEFAULT_EMIT_HOLD_MS := 100
 const DEFAULT_SHOW_SCORES := true
 const DEFAULT_SHOW_EVENT_GATE_STATE := true
 const DEFAULT_LIBRARY_ID := "boxing_side_aware_v1"
-const FEATURE_COUNT := 6
+const FEATURE_COUNT := 4
 const DEFAULT_DISTANCE_SCALE := 0.45
 const SUPPORTED_CLASSES := [
 	"straight_left",
@@ -339,8 +339,6 @@ func _extract_side_features(shoulder: Dictionary, elbow: Dictionary, wrist: Dict
 		(float(elbow.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width,
 		(float(wrist.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width,
 		(float(wrist.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width,
-		float(elbow.get("z", 0.0)) - float(shoulder.get("z", 0.0)),
-		float(wrist.get("z", 0.0)) - float(shoulder.get("z", 0.0)),
 	]
 
 func _score_current_window() -> Dictionary:

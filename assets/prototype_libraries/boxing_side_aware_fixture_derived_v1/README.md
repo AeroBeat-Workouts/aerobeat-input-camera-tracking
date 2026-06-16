@@ -9,7 +9,7 @@ Derived prototype library for the boxing prototype matcher.
 - Pose generation path: `.testbed/scripts/capture_fixture_proving.gd` -> `proving_harness.gd` full pose snapshots
 - Derived library: `assets/prototype_libraries/boxing_side_aware_fixture_derived_v1/library.json`
 - Derivation report: `assets/prototype_libraries/boxing_side_aware_fixture_derived_v1/derivation_report.json`
-- Scratch captures: `.temp/hook-left-window01-final-captures`
+- Scratch captures: `.temp/xy-only-derived-prototype-library-from-fixtures`
 
 ## Regenerate
 

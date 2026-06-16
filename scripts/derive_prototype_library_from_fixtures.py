@@ -38,8 +38,6 @@ FEATURE_NAMES = [
     "elbow_y_from_shoulder_over_shoulder_width",
     "wrist_x_from_shoulder_over_shoulder_width",
     "wrist_y_from_shoulder_over_shoulder_width",
-    "elbow_z_from_shoulder",
-    "wrist_z_from_shoulder",
 ]
 LANDMARK_IDS = {
     "left_shoulder": "11",
@@ -145,8 +143,6 @@ def _extract_side_features(landmarks_by_id: dict, metrics: dict, side: str):
         (float(elbow.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width,
         (float(wrist.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width,
         (float(wrist.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width,
-        float(elbow.get("z", 0.0)) - float(shoulder.get("z", 0.0)),
-        float(wrist.get("z", 0.0)) - float(shoulder.get("z", 0.0)),
     ]
 
 
