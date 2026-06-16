@@ -1,0 +1,635 @@
+{
+  "comparison_target": "threshold_gates",
+  "records": [
+    {
+      "sample_id": "straight_left_fixture::straight_left::01",
+      "split": "train",
+      "actual": "straight_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_left_fixture::straight_left::02",
+      "split": "train",
+      "actual": "straight_left",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "straight_left_fixture::straight_left::03",
+      "split": "train",
+      "actual": "straight_left",
+      "predicted": "hook_left"
+    },
+    {
+      "sample_id": "straight_left_fixture::straight_left::04",
+      "split": "test",
+      "actual": "straight_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::straight_right::01",
+      "split": "train",
+      "actual": "straight_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::straight_right::02",
+      "split": "train",
+      "actual": "straight_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::straight_right::03",
+      "split": "train",
+      "actual": "straight_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::straight_right::04",
+      "split": "test",
+      "actual": "straight_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::hook_left::01",
+      "split": "train",
+      "actual": "hook_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::hook_left::02",
+      "split": "train",
+      "actual": "hook_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::hook_left::03",
+      "split": "train",
+      "actual": "hook_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::hook_left::04",
+      "split": "test",
+      "actual": "hook_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_right_fixture::hook_right::01",
+      "split": "train",
+      "actual": "hook_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_right_fixture::hook_right::02",
+      "split": "train",
+      "actual": "hook_right",
+      "predicted": "hook_left"
+    },
+    {
+      "sample_id": "hook_right_fixture::hook_right::03",
+      "split": "train",
+      "actual": "hook_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_right_fixture::hook_right::04",
+      "split": "test",
+      "actual": "hook_right",
+      "predicted": "hook_left"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::uppercut_left::01",
+      "split": "train",
+      "actual": "uppercut_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::uppercut_left::02",
+      "split": "train",
+      "actual": "uppercut_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::uppercut_left::03",
+      "split": "train",
+      "actual": "uppercut_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::uppercut_left::04",
+      "split": "test",
+      "actual": "uppercut_left",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::uppercut_right::01",
+      "split": "train",
+      "actual": "uppercut_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::uppercut_right::02",
+      "split": "train",
+      "actual": "uppercut_right",
+      "predicted": "uppercut_right"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::uppercut_right::03",
+      "split": "train",
+      "actual": "uppercut_right",
+      "predicted": "hook_right"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::uppercut_right::04",
+      "split": "test",
+      "actual": "uppercut_right",
+      "predicted": "uppercut_left"
+    },
+    {
+      "sample_id": "hook_left_fixture::no_punch::001",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "hook_left"
+    },
+    {
+      "sample_id": "hook_left_fixture::no_punch::012",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "uppercut_right"
+    },
+    {
+      "sample_id": "hook_right_fixture::no_punch::004",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "hook_right"
+    },
+    {
+      "sample_id": "hook_right_fixture::no_punch::015",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "knee_left_fixture::no_punch::001",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "knee_left_fixture::no_punch::012",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "hook_right"
+    },
+    {
+      "sample_id": "knee_left_fixture::no_punch::023",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "knee_right_fixture::no_punch::010",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "hook_left"
+    },
+    {
+      "sample_id": "knee_right_fixture::no_punch::021",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "uppercut_right"
+    },
+    {
+      "sample_id": "leg_lift_left_fixture::no_punch::001",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_left_fixture::no_punch::012",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_left_fixture::no_punch::023",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_right_fixture::no_punch::006",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_right_fixture::no_punch::018",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "run_in_place_fixture::no_punch::002",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "run_in_place_fixture::no_punch::013",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_left_fixture::no_punch::002",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_left_fixture::no_punch::013",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_left_fixture::no_punch::024",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_right_fixture::no_punch::007",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_right_fixture::no_punch::018",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "squat_fixture::no_punch::008",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "squat_fixture::no_punch::019",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "stance_transition_fixture::no_punch::006",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "hook_right"
+    },
+    {
+      "sample_id": "stance_transition_fixture::no_punch::017",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "hook_left"
+    },
+    {
+      "sample_id": "stance_transition_fixture::no_punch::028",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "hook_right"
+    },
+    {
+      "sample_id": "straight_left_fixture::no_punch::001",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "hook_left"
+    },
+    {
+      "sample_id": "straight_left_fixture::no_punch::012",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "hook_right"
+    },
+    {
+      "sample_id": "straight_right_fixture::no_punch::007",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "uppercut_right"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::no_punch::008",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::no_punch::003",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_left_fixture::no_punch::006",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_left_fixture::no_punch::017",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_right_fixture::no_punch::001",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_right"
+    },
+    {
+      "sample_id": "weave_right_fixture::no_punch::012",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_right_fixture::no_punch::023",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    }
+  ],
+  "metrics_by_split": {
+    "test": {
+      "sample_count": 15,
+      "accuracy": 0.4,
+      "macro_precision": 0.09523809523809523,
+      "macro_recall": 0.09523809523809523,
+      "macro_f1": 0.09523809523809523,
+      "actual_counts": {
+        "straight_left": 1,
+        "straight_right": 1,
+        "hook_left": 1,
+        "hook_right": 1,
+        "uppercut_left": 1,
+        "uppercut_right": 1,
+        "no_punch": 9
+      },
+      "predicted_counts": {
+        "straight_left": 1,
+        "straight_right": 0,
+        "hook_left": 2,
+        "hook_right": 2,
+        "uppercut_left": 1,
+        "uppercut_right": 0,
+        "no_punch": 9
+      },
+      "per_class": {
+        "straight_left": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "straight_right": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "hook_left": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "hook_right": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "uppercut_left": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "uppercut_right": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "no_punch": {
+          "precision": 0.6666666666666666,
+          "recall": 0.6666666666666666,
+          "f1": 0.6666666666666666,
+          "support": 9
+        }
+      },
+      "confusion": {
+        "straight_left": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 1
+        },
+        "straight_right": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 1
+        },
+        "hook_left": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 1
+        },
+        "hook_right": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 1,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 0
+        },
+        "uppercut_left": {
+          "straight_left": 1,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 0
+        },
+        "uppercut_right": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 1,
+          "uppercut_right": 0,
+          "no_punch": 0
+        },
+        "no_punch": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 1,
+          "hook_right": 2,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 6
+        }
+      }
+    },
+    "train": {
+      "sample_count": 45,
+      "accuracy": 0.37777777777777777,
+      "macro_precision": 0.1598639455782313,
+      "macro_recall": 0.17460317460317462,
+      "macro_f1": 0.16635745207173777,
+      "actual_counts": {
+        "straight_left": 3,
+        "straight_right": 3,
+        "hook_left": 3,
+        "hook_right": 3,
+        "uppercut_left": 3,
+        "uppercut_right": 3,
+        "no_punch": 27
+      },
+      "predicted_counts": {
+        "straight_left": 3,
+        "straight_right": 1,
+        "hook_left": 5,
+        "hook_right": 4,
+        "uppercut_left": 0,
+        "uppercut_right": 4,
+        "no_punch": 28
+      },
+      "per_class": {
+        "straight_left": {
+          "precision": 0.3333333333333333,
+          "recall": 0.3333333333333333,
+          "f1": 0.3333333333333333,
+          "support": 3
+        },
+        "straight_right": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 3
+        },
+        "hook_left": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 3
+        },
+        "hook_right": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 3
+        },
+        "uppercut_left": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 3
+        },
+        "uppercut_right": {
+          "precision": 0.25,
+          "recall": 0.3333333333333333,
+          "f1": 0.28571428571428575,
+          "support": 3
+        },
+        "no_punch": {
+          "precision": 0.5357142857142857,
+          "recall": 0.5555555555555556,
+          "f1": 0.5454545454545454,
+          "support": 27
+        }
+      },
+      "confusion": {
+        "straight_left": {
+          "straight_left": 1,
+          "straight_right": 0,
+          "hook_left": 1,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 1
+        },
+        "straight_right": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 3
+        },
+        "hook_left": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 3
+        },
+        "hook_right": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 1,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 2
+        },
+        "uppercut_left": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 3
+        },
+        "uppercut_right": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 1,
+          "uppercut_left": 0,
+          "uppercut_right": 1,
+          "no_punch": 1
+        },
+        "no_punch": {
+          "straight_left": 2,
+          "straight_right": 1,
+          "hook_left": 3,
+          "hook_right": 3,
+          "uppercut_left": 0,
+          "uppercut_right": 3,
+          "no_punch": 15
+        }
+      }
+    }
+  }
+}
