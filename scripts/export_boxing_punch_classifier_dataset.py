@@ -202,6 +202,19 @@ def _summarize_alignment(samples: list[dict]) -> dict:
 
 
 
+def _resolve_export_artifact_metadata(snapshot: dict | None = None) -> dict:
+    metadata = snapshot.get("export_artifact_metadata", {}) if snapshot and isinstance(snapshot.get("export_artifact_metadata", {}), dict) else {}
+    exported_at = str(metadata.get("exported_at", "")).strip()
+    if not exported_at:
+        exported_at = datetime.now(timezone.utc).isoformat()
+    version = int(metadata.get("version", 3) or 3)
+    return {
+        "version": version,
+        "exported_at": exported_at,
+    }
+
+
+
 def _export_dataset(
     repo_root: Path,
     manifest: dict,
@@ -377,10 +390,11 @@ def _export_dataset(
 
     sample_kind_counts = dict(Counter(sample["sample_kind"] for sample in samples))
     negative_context_counts = dict(Counter(sample.get("negative_context", "n/a") for sample in samples if sample["label"] == "no_punch"))
+    export_artifact_metadata = _resolve_export_artifact_metadata(snapshot)
     export_summary = {
         "schema": "aerobeat.boxing_punch_classifier_export",
-        "version": 3,
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "version": export_artifact_metadata["version"],
+        "exported_at": export_artifact_metadata["exported_at"],
         "manifest_path": manifest["_manifest_path"],
         "capture_dir": captures_dir.relative_to(repo_root).as_posix(),
         "window_frame_count": frame_count,
@@ -401,7 +415,12 @@ def _export_dataset(
         "source_snapshot": {
             "snapshot_id": snapshot.get("snapshot_id", "") if snapshot else "",
             "snapshot_manifest_path": snapshot.get("_snapshot_manifest_path", "") if snapshot else "",
-            "dataset_anchor": snapshot.get("dataset_anchor", {}) if snapshot else {},
+            "anchor_artifacts": {
+                "dataset_path": str(snapshot.get("dataset_anchor", {}).get("dataset_path", "")) if snapshot else "",
+                "export_summary_path": str(snapshot.get("dataset_anchor", {}).get("export_summary_path", "")) if snapshot else "",
+                "threshold_baseline_path": str(snapshot.get("dataset_anchor", {}).get("threshold_baseline_path", "")) if snapshot else "",
+                "threshold_baseline_sha256": str(snapshot.get("dataset_anchor", {}).get("threshold_baseline_sha256", "")) if snapshot else "",
+            },
             "capture_report_source": snapshot.get("capture_report_source", {}) if snapshot else {},
             "export_parameters": snapshot.get("export_parameters", {}) if snapshot else {},
             "file_verification": snapshot_verification or {},
@@ -458,7 +477,7 @@ def _render_markdown(export_summary: dict, threshold_summary: dict) -> str:
         "",
     ]
     if source_snapshot.get("snapshot_id"):
-        dataset_anchor = source_snapshot.get("dataset_anchor", {}) if isinstance(source_snapshot.get("dataset_anchor", {}), dict) else {}
+        anchor_artifacts = source_snapshot.get("anchor_artifacts", {}) if isinstance(source_snapshot.get("anchor_artifacts", {}), dict) else {}
         capture_report_source = source_snapshot.get("capture_report_source", {}) if isinstance(source_snapshot.get("capture_report_source", {}), dict) else {}
         export_parameters = source_snapshot.get("export_parameters", {}) if isinstance(source_snapshot.get("export_parameters", {}), dict) else {}
         lines.extend(
@@ -466,8 +485,9 @@ def _render_markdown(export_summary: dict, threshold_summary: dict) -> str:
                 f"- Capture package: `{capture_report_source.get('package_id', '')}`",
                 f"- Capture source root: `{capture_report_source.get('root_dir', '')}`",
                 f"- Alignment basis: `{capture_report_source.get('alignment_basis', '')}`",
-                f"- Dataset anchor: `{dataset_anchor.get('dataset_path', '')}` sha256=`{dataset_anchor.get('dataset_sha256', '')}`",
-                f"- Threshold anchor: `{dataset_anchor.get('threshold_baseline_path', '')}` sha256=`{dataset_anchor.get('threshold_baseline_sha256', '')}`",
+                f"- Dataset anchor path: `{anchor_artifacts.get('dataset_path', '')}`",
+                f"- Export summary anchor path: `{anchor_artifacts.get('export_summary_path', '')}`",
+                f"- Threshold anchor: `{anchor_artifacts.get('threshold_baseline_path', '')}` sha256=`{anchor_artifacts.get('threshold_baseline_sha256', '')}`",
                 f"- Export parameters: `{json.dumps(export_parameters, sort_keys=True)}`",
                 "",
             ]

@@ -9,13 +9,14 @@ Frozen hardened boxing punch-classifier benchmark snapshot anchored to the 2026-
 - Capture source root: `.temp/boxing-punch-classifier-export/hardened-captures-2026-06-16`
 - Alignment basis: `fixture_window_plus_capture_time_origin_offset_from_provider_tracking_ms_since_first_pose`
 - Export parameters: `{"frame_count": 8, "max_no_punch_samples": 48, "max_transition_no_punch_samples": 24, "no_punch_stride_ms": 250, "no_punch_window_ms": 250}`
+- Canonical export artifact metadata: `{"exported_at": "2026-06-16T21:40:26.418732+00:00", "version": 3}`
 - Split strategy: `chronological_holdout_v1`
 - Negative sampling policy: `{"background_windows": "complement_intervals iter_fixed_windows evenly_pick", "transition_windows": "before_and_after_each_punch_window clamped_to_non_punch_intervals evenly_pick"}`
 
 ## Dataset anchor
 
-- Dataset: `.temp/boxing-punch-classifier-export/hardened-2026-06-16/dataset.json` sha256=`7d62c6d2581e6cb81d923a39bfad4a19c892de4e01b044a7e1dbdb8d877615be`
-- Export summary: `.temp/boxing-punch-classifier-export/hardened-2026-06-16/export-summary.json` sha256=`2d4e9aa05c7ed2e0276e01f10cec120cfb614a172eea61315aabca10f6f92c92`
+- Dataset: `.temp/boxing-punch-classifier-export/hardened-2026-06-16/dataset.json` sha256=`90af58361b4fac04571beb340806415434748a2401df9462d3f425637b1a88ba`
+- Export summary: `.temp/boxing-punch-classifier-export/hardened-2026-06-16/export-summary.json` sha256=`8abc20a46396609144f7aeaa3d83de785f9e8174bcaefd1681bbe2d82a625b6c`
 - Threshold baseline: `.temp/boxing-punch-classifier-export/hardened-2026-06-16/threshold-baseline.json` sha256=`a89539077c750103eb406c67364fed1bdf9c44cbf1a378028af5debc7de5198a`
 
 ## Fixtures

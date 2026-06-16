@@ -73,6 +73,7 @@ def _render_markdown(snapshot: dict) -> str:
         f"- Capture source root: `{snapshot['capture_report_source']['root_dir']}`",
         f"- Alignment basis: `{snapshot['capture_report_source']['alignment_basis']}`",
         f"- Export parameters: `{json.dumps(snapshot['export_parameters'], sort_keys=True)}`",
+        f"- Canonical export artifact metadata: `{json.dumps(snapshot.get('export_artifact_metadata', {}), sort_keys=True)}`",
         f"- Split strategy: `{snapshot['split_strategy']['name']}`",
         f"- Negative sampling policy: `{json.dumps(snapshot['negative_sampling_policy'], sort_keys=True)}`",
         "",
@@ -158,6 +159,9 @@ def main() -> int:
             }
         )
 
+    dataset = load_json(dataset_path)
+    export_summary = load_json(export_summary_path)
+
     snapshot = {
         "schema": "aerobeat.boxing_punch_classifier_snapshot",
         "version": 1,
@@ -190,6 +194,10 @@ def main() -> int:
         "negative_sampling_policy": {
             "background_windows": "complement_intervals iter_fixed_windows evenly_pick",
             "transition_windows": "before_and_after_each_punch_window clamped_to_non_punch_intervals evenly_pick",
+        },
+        "export_artifact_metadata": {
+            "version": int(dataset.get("version", export_summary.get("version", 3)) or 3),
+            "exported_at": str(dataset.get("exported_at", export_summary.get("exported_at", "")) or ""),
         },
         "dataset_anchor": {
             "dataset_path": _rel(repo_root, dataset_path),

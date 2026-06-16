@@ -77,9 +77,9 @@ This stays inside the current hybrid boxing architecture. Threshold/pose continu
 **Files Created/Deleted/Modified:**
 - replay/export/docs artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Validated that the remaining dataset/export-summary drift was reproducibility metadata, not sample-content drift. The first rerun confirmed `threshold-baseline.json` already matched byte-for-byte while `dataset.json` / `export-summary.json` only differed because Task 1 had added `source_snapshot`, bumped the export schema to `version: 3`, and emitted a fresh `exported_at`. Tightening that path surfaced a second issue: exported artifacts were copying the snapshot's own dataset/export-summary SHA-256 values into `source_snapshot.dataset_anchor`, creating a self-reference loop that made byte-for-byte anchor reproduction impossible after re-freezing the snapshot. Fixed this by letting the snapshot carry canonical export artifact metadata (`version`, `exported_at`) while the exported dataset/export summary now embed only stable anchor paths plus the threshold-baseline hash, leaving full mutable anchor hashes solely in the snapshot manifest. Re-exported the named hardened anchor, re-froze the snapshot manifest/markdown, and verified repeated `--snapshot-manifest ... --skip-captures` reruns now reproduce `dataset.json`, `export-summary.json`, and `threshold-baseline.json` byte-for-byte.
 
 ---
 
