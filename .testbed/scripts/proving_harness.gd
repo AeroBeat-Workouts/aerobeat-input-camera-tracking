@@ -1176,17 +1176,23 @@ func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript)
 	var backend_override := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE").strip_edges().to_lower()
 	if not backend_override.is_empty():
 		var punch_detection: Dictionary = gesture_profile.get("punch_detection", {}) if gesture_profile.get("punch_detection", {}) is Dictionary else {}
-		if backend_override == "prototype_matcher" or backend_override == "learned_classifier":
+		var threshold_backend: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
+		var legacy_threshold_gates: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
+		if backend_override == "threshold_gates":
+			backend_override = "threshold_gates"
+		if backend_override == "threshold_gates" or backend_override == "prototype_matcher" or backend_override == "learned_classifier":
 			punch_detection["backend"] = backend_override
 			gesture_profile["punch_detection"] = punch_detection
-			var threshold_gates: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
-			threshold_gates["enabled"] = false
-			gesture_profile["threshold_gates"] = threshold_gates
+			var enable_threshold_backend := backend_override == "threshold_gates"
+			threshold_backend["enabled"] = enable_threshold_backend
+			legacy_threshold_gates["enabled"] = enable_threshold_backend
+			gesture_profile["threshold_gates"] = threshold_backend
+			gesture_profile["threshold_gates"] = legacy_threshold_gates
 			if backend_override == "prototype_matcher":
 				var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
 				matcher_config["enabled"] = true
 				gesture_profile["prototype_matcher"] = matcher_config
-			else:
+			elif backend_override == "learned_classifier":
 				var learned_config: Dictionary = gesture_profile.get("learned_classifier", {}) if gesture_profile.get("learned_classifier", {}) is Dictionary else {}
 				learned_config["enabled"] = true
 				gesture_profile["learned_classifier"] = learned_config

@@ -1606,7 +1606,31 @@ func test_learned_classifier_selection_does_not_fall_back_to_threshold_backend_w
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
-	assert_eq(String(state.get("gesture_debug", {}).get("punch_detection", {}).get("backend", "")), "none")
+	var punch_detection_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
+	assert_eq(String(punch_detection_debug.get("selected_backend", "")), "learned_classifier")
+	assert_false(bool(punch_detection_debug.get("selected_backend_enabled", true)))
+	assert_eq(String(punch_detection_debug.get("active_backend_resolution", "")), "selected_backend_disabled")
+	assert_eq(String(punch_detection_debug.get("active_backend", "")), "none")
+	assert_eq(String(punch_detection_debug.get("backend", "")), "none")
+
+func test_threshold_gates_disabled_resolves_selected_backend_to_none_without_fallback() -> void:
+	config.gesture_profile_document = {
+		"punch_detection": {
+			"backend": "threshold_gates",
+		},
+		"threshold_gates": {
+			"enabled": false,
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	var punch_detection_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
+	assert_eq(String(punch_detection_debug.get("selected_backend_raw", "")), "threshold_gates")
+	assert_eq(String(punch_detection_debug.get("selected_backend", "")), "threshold_gates")
+	assert_false(bool(punch_detection_debug.get("selected_backend_enabled", true)))
+	assert_eq(String(punch_detection_debug.get("active_backend_resolution", "")), "selected_backend_disabled")
+	assert_eq(String(punch_detection_debug.get("active_backend", "")), "none")
 
 func _calibrate_stance() -> void:
 	for idx in range(5):

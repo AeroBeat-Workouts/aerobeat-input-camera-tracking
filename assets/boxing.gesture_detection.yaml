@@ -6,7 +6,7 @@ punch_detection:
   backend: threshold_gates
 
 threshold_gates:
-  # Keep the current threshold-gate straight/hook/uppercut detector active. input.
+  # Keep the current threshold-based straight/hook/uppercut punch backend active. input.
   enabled: true
 
 guard:

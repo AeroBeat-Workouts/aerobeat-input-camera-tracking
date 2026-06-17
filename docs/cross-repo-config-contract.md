@@ -230,7 +230,7 @@ learned_classifier:
 ### Locked gesture field ownership
 
 - `punch_detection.backend` = public boxing punch-backend selector owned by `aerobeat-input-camera-tracking`
-- `threshold_gates.enabled` = public on/off wrapper for the legacy threshold backend owned by `aerobeat-input-camera-tracking`
+- `threshold_gates.enabled` = public on/off wrapper for the threshold-gated punch backend owned by `aerobeat-input-camera-tracking`
 - `straight_punch.*` = boxing gameplay interpretation owned by `aerobeat-input-camera-tracking`
 - `straight_punch.evaluation.*` = event evaluation policy owned by `aerobeat-input-camera-tracking`
 - `straight_punch.thresholds.*` = gameplay tuning owned by `aerobeat-input-camera-tracking`

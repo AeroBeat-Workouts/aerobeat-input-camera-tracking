@@ -57,7 +57,9 @@ func get_debug_state() -> Dictionary:
 	var debug_state := _last_debug_state.duplicate(true)
 	debug_state["enabled"] = _is_enabled_in_config()
 	debug_state["selected_backend"] = _get_selected_backend()
-	debug_state["active_backend"] = BACKEND_LEARNED_CLASSIFIER if _is_active_backend() else "inactive"
+	debug_state["selected_backend_enabled"] = _is_selected_backend_enabled()
+	debug_state["active_backend"] = BACKEND_LEARNED_CLASSIFIER if _is_active_backend() else "none"
+	debug_state["activation_reason"] = _get_activation_reason()
 	debug_state["model_path"] = _model_path
 	debug_state["model_loaded"] = _model_error == "" and not _model_document.is_empty()
 	debug_state["model_error"] = _model_error
@@ -80,7 +82,9 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	var debug_state := _build_debug_state()
 	debug_state["current_timestamp_ms"] = timestamp_ms
 	debug_state["selected_backend"] = _get_selected_backend()
-	debug_state["active_backend"] = BACKEND_LEARNED_CLASSIFIER if _is_active_backend() else "inactive"
+	debug_state["selected_backend_enabled"] = _is_selected_backend_enabled()
+	debug_state["active_backend"] = BACKEND_LEARNED_CLASSIFIER if _is_active_backend() else "none"
+	debug_state["activation_reason"] = _get_activation_reason()
 	debug_state["model_path"] = _model_path
 	debug_state["model_loaded"] = _model_error == "" and not _model_document.is_empty()
 	debug_state["model_error"] = _model_error
@@ -219,7 +223,9 @@ func _build_debug_state() -> Dictionary:
 	return {
 		"enabled": _is_enabled_in_config(),
 		"selected_backend": _get_selected_backend(),
-		"active_backend": BACKEND_LEARNED_CLASSIFIER if _is_active_backend() else "inactive",
+		"selected_backend_enabled": _is_selected_backend_enabled(),
+		"active_backend": BACKEND_LEARNED_CLASSIFIER if _is_active_backend() else "none",
+		"activation_reason": _get_activation_reason(),
 		"model_path": model_path,
 		"model_loaded": model_error == "" and not model_document.is_empty(),
 		"model_error": model_error,
@@ -435,15 +441,40 @@ func _get_gesture_profile_document() -> Dictionary:
 func _get_selected_backend() -> String:
 	var gesture_profile_document := _get_gesture_profile_document()
 	var punch_detection: Dictionary = gesture_profile_document.get("punch_detection", {}) if gesture_profile_document.get("punch_detection", {}) is Dictionary else {}
-	return String(punch_detection.get("backend", BACKEND_THRESHOLD_GATES))
+	return _normalize_backend_name(String(punch_detection.get("backend", BACKEND_THRESHOLD_GATES)))
 
 func _is_enabled_in_config() -> bool:
 	var gesture_profile_document := _get_gesture_profile_document()
 	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
 	return bool(learned.get("enabled", false))
 
+func _is_selected_backend_enabled() -> bool:
+	var selected_backend := _get_selected_backend()
+	var gesture_profile_document := _get_gesture_profile_document()
+	if selected_backend == BACKEND_LEARNED_CLASSIFIER:
+		return _is_enabled_in_config()
+	if selected_backend == BACKEND_PROTOTYPE_MATCHER:
+		var matcher: Dictionary = gesture_profile_document.get("prototype_matcher", {}) if gesture_profile_document.get("prototype_matcher", {}) is Dictionary else {}
+		return bool(matcher.get("enabled", false))
+	if selected_backend == BACKEND_THRESHOLD_GATES:
+		var threshold_backend: Dictionary = gesture_profile_document.get(BACKEND_THRESHOLD_GATES, {}) if gesture_profile_document.get(BACKEND_THRESHOLD_GATES, {}) is Dictionary else {}
+		return bool(threshold_backend.get("enabled", true))
+	return false
+
 func _is_active_backend() -> bool:
 	return _get_selected_backend() == BACKEND_LEARNED_CLASSIFIER and _is_enabled_in_config()
+
+func _get_activation_reason() -> String:
+	if _is_active_backend():
+		return "active"
+	if _get_selected_backend() != BACKEND_LEARNED_CLASSIFIER:
+		return "backend_not_selected"
+	return "selected_backend_disabled"
+
+func _normalize_backend_name(backend_name: String) -> String:
+	if backend_name == BACKEND_THRESHOLD_GATES:
+		return BACKEND_THRESHOLD_GATES
+	return backend_name
 
 func _get_model_artifact_path() -> String:
 	var gesture_profile_document := _get_gesture_profile_document()

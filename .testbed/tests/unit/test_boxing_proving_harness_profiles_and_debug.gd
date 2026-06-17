@@ -642,6 +642,41 @@ func test_boxing_learned_classifier_hover_card_and_event_feed_surface_truthful_b
 	assert_string_contains(text_body, "Learned model path: res://docs/models/test-mlp-result.json (loaded=true)")
 	assert_string_contains(text_body, "Best class / score / threshold: straight_left / 0.932 / 0.700")
 
+func test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvious() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"punch_detection": {
+				"backend": "none",
+				"active_backend": "none",
+				"selected_backend": "learned_classifier",
+				"selected_backend_enabled": false,
+				"active_backend_resolution": "selected_backend_disabled",
+				"threshold_gates_enabled": true,
+			},
+			"learned_classifier": {
+				"selected_backend": "learned_classifier",
+				"selected_backend_enabled": false,
+				"active_backend": "none",
+				"activation_reason": "selected_backend_disabled",
+				"model_path": "res://docs/models/test-mlp-result.json",
+				"model_loaded": false,
+				"result_class": "no_punch",
+				"best_class": "no_punch",
+				"best_score": 0.0,
+				"required_score": 0.700,
+			},
+		}
+	})
+
+	var text_body := String(harness._build_boxing_event_feed_text())
+	assert_string_contains(text_body, "Learned classifier truth")
+	assert_string_contains(text_body, "Active backend: none")
+	assert_string_contains(text_body, "Selected backend: learned_classifier")
+	assert_string_contains(text_body, "Selected backend enabled: false")
+	assert_string_contains(text_body, "Backend resolution: selected_backend_disabled")
+	assert_string_contains(text_body, "Learned model path: res://docs/models/test-mlp-result.json (loaded=false)")
+
 func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake_threshold_equality() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {

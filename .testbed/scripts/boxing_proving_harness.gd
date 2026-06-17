@@ -1190,7 +1190,7 @@ func _active_punch_detection_backend() -> String:
 	var latest_state := _boxing_latest_state_snapshot()
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
 	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
-	return String(punch_detection.get("backend", "threshold_gates"))
+	return String(punch_detection.get("active_backend", punch_detection.get("backend", "threshold_gates")))
 
 func _prototype_matcher_debug_state() -> Dictionary:
 	var latest_state := _boxing_latest_state_snapshot()
@@ -2225,7 +2225,9 @@ func _build_boxing_event_feed_text() -> String:
 	var punch_detection_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) is Dictionary) else {}
 	var prototype_matcher_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}) is Dictionary) else {}
 	var learned_classifier_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("learned_classifier", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("learned_classifier", {}) is Dictionary) else {}
-	var classifier_backend := String(punch_detection_debug.get("backend", prototype_matcher_debug.get("active_backend", "threshold_gates")))
+	var active_backend := String(punch_detection_debug.get("active_backend", punch_detection_debug.get("backend", "threshold_gates")))
+	var selected_backend := String(punch_detection_debug.get("selected_backend", "threshold_gates"))
+	var classifier_backend := active_backend if active_backend != "none" else selected_backend
 	var classifier_debug := prototype_matcher_debug
 	var classifier_title := "Prototype matcher truth"
 	var classifier_loaded_label := "Prototype library ID"
@@ -2233,16 +2235,28 @@ func _build_boxing_event_feed_text() -> String:
 		classifier_debug = learned_classifier_debug
 		classifier_title = "Learned classifier truth"
 		classifier_loaded_label = "Learned model path"
+	elif classifier_backend == "threshold_gates":
+		classifier_debug = {}
+		classifier_title = "Threshold gates truth"
+		classifier_loaded_label = "Threshold gates"
 	lines.append("")
 	lines.append(classifier_title)
 	lines.append("-----------------------")
-	lines.append("Active backend: %s" % classifier_backend)
-	lines.append("Selected backend: %s" % String(classifier_debug.get("selected_backend", "threshold_gates")))
-	lines.append("%s: %s (loaded=%s)" % [
-		classifier_loaded_label,
-		String(classifier_debug.get("library_id", classifier_debug.get("model_path", ""))),
-		_fmt_bool(bool(classifier_debug.get("library_loaded", classifier_debug.get("model_loaded", false)))),
-	])
+	lines.append("Active backend: %s" % active_backend)
+	lines.append("Selected backend: %s" % selected_backend)
+	lines.append("Selected backend enabled: %s" % _fmt_bool(bool(punch_detection_debug.get("selected_backend_enabled", active_backend != "none"))))
+	lines.append("Backend resolution: %s" % String(punch_detection_debug.get("active_backend_resolution", "selected_backend_active")))
+	if classifier_backend != "threshold_gates":
+		lines.append("%s: %s (loaded=%s)" % [
+			classifier_loaded_label,
+			String(classifier_debug.get("library_id", classifier_debug.get("model_path", ""))),
+			_fmt_bool(bool(classifier_debug.get("library_loaded", classifier_debug.get("model_loaded", false)))),
+		])
+	else:
+		lines.append("%s: enabled=%s" % [
+			classifier_loaded_label,
+			_fmt_bool(bool(punch_detection_debug.get("threshold_gates_enabled", true))),
+		])
 	lines.append("Best class / score / threshold: %s / %s / %s" % [
 		String(classifier_debug.get("best_class", "no_punch")),
 		_fmt_float(classifier_debug.get("best_score", 0.0)),

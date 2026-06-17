@@ -595,10 +595,15 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	}
 
 func _build_punch_detection_debug_state() -> Dictionary:
+	var active_backend := _get_active_punch_detection_backend()
 	return {
-		"backend": _get_active_punch_detection_backend(),
+		"backend": active_backend,
+		"active_backend": active_backend,
 		"selected_backend": _get_selected_punch_detection_backend(),
-		"threshold_gates_enabled": _threshold_gates_backend_enabled(),
+		"selected_backend_raw": _get_selected_punch_detection_backend_raw(),
+		"selected_backend_enabled": _selected_punch_detection_backend_enabled(),
+		"active_backend_resolution": _get_punch_backend_resolution_reason(),
+		"threshold_gates_enabled": _threshold_gates_enabled(),
 		"prototype_matcher_enabled": _prototype_matcher_backend_enabled(),
 		"learned_classifier_enabled": _learned_classifier_backend_enabled(),
 	}
@@ -1850,6 +1855,9 @@ func _set_straight_punch_state(side: String, state: Dictionary) -> void:
 
 
 func _get_selected_punch_detection_backend() -> String:
+	return _normalize_punch_backend_name(_get_selected_punch_detection_backend_raw())
+
+func _get_selected_punch_detection_backend_raw() -> String:
 	if _config == null:
 		return "threshold_gates"
 	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
@@ -1858,14 +1866,14 @@ func _get_selected_punch_detection_backend() -> String:
 	var punch_detection: Dictionary = gesture_profile_document.get("punch_detection", {}) if gesture_profile_document.get("punch_detection", {}) is Dictionary else {}
 	return String(punch_detection.get("backend", "threshold_gates"))
 
-func _threshold_gates_backend_enabled() -> bool:
+func _threshold_gates_enabled() -> bool:
 	if _config == null:
 		return true
 	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
 	if not gesture_profile_document is Dictionary:
 		return true
-	var threshold_gates: Dictionary = gesture_profile_document.get("threshold_gates", {}) if gesture_profile_document.get("threshold_gates", {}) is Dictionary else {}
-	return bool(threshold_gates.get("enabled", true))
+	var threshold_backend: Dictionary = gesture_profile_document.get("threshold_gates", {}) if gesture_profile_document.get("threshold_gates", {}) is Dictionary else {}
+	return bool(threshold_backend.get("enabled", true))
 
 func _prototype_matcher_backend_enabled() -> bool:
 	if _config == null:
@@ -1885,13 +1893,34 @@ func _learned_classifier_backend_enabled() -> bool:
 	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
 	return bool(learned.get("enabled", false))
 
+func _selected_punch_detection_backend_enabled() -> bool:
+	var selected_backend := _get_selected_punch_detection_backend()
+	if selected_backend == "prototype_matcher":
+		return _prototype_matcher_backend_enabled()
+	if selected_backend == "learned_classifier":
+		return _learned_classifier_backend_enabled()
+	if selected_backend == "threshold_gates":
+		return _threshold_gates_enabled()
+	return false
+
 func _get_active_punch_detection_backend() -> String:
 	var selected_backend := _get_selected_punch_detection_backend()
 	if selected_backend == "prototype_matcher":
 		return "prototype_matcher" if _prototype_matcher_backend_enabled() else "none"
 	if selected_backend == "learned_classifier":
 		return "learned_classifier" if _learned_classifier_backend_enabled() else "none"
-	return "threshold_gates" if _threshold_gates_backend_enabled() else "none"
+	if selected_backend == "threshold_gates":
+		return "threshold_gates" if _threshold_gates_enabled() else "none"
+	return "none"
+
+func _get_punch_backend_resolution_reason() -> String:
+	var selected_backend := _get_selected_punch_detection_backend()
+	if selected_backend == "prototype_matcher" or selected_backend == "learned_classifier" or selected_backend == "threshold_gates":
+		return "selected_backend_active" if _selected_punch_detection_backend_enabled() else "selected_backend_disabled"
+	return "unknown_selected_backend"
+
+func _normalize_punch_backend_name(backend_name: String) -> String:
+	return backend_name
 
 func _get_guard_config() -> Dictionary:
 	var config := {
