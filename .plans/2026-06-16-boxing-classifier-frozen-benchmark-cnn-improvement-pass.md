@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-16
 **Status:** Blocked
-**Last Updated:** 2026-06-16 21:58 EDT
-**Blocked Reason:** Session stop requested after coder pass; QA and audit on the CNN improvement result remain pending for the next session.
+**Last Updated:** 2026-06-17 09:36 EDT
+**Blocked Reason:** QA failed on an internal artifact-consistency issue: `tuning-summary.json` records the threshold baseline test macro-F1 as `0.25925925925925924`, while the frozen source/export artifacts and committed `best-cnn/cnn-result.json` agree on `0.2585034013605442`. Corrective follow-up moved to `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-17-boxing-classifier-frozen-benchmark-cnn-artifact-consistency-fix.md`.
 **Agent:** `pico`
 
 ---
@@ -80,9 +80,9 @@ The success bar for this branch is not “CNN solved boxing.” The success bar 
 **Files Created/Deleted/Modified:**
 - QA notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** QA confirmed the comparison stayed on the frozen snapshot contract: the pass used `--skip-captures`, reused one frozen export, and the committed export hashes in `tuning-summary.json` exactly match the anchors in `REF-02` (`dataset.json=90af58361b4fac04571beb340806415434748a2401df9462d3f425637b1a88ba`, `export-summary.json=8abc20a46396609144f7aeaa3d83de785f9e8174bcaefd1681bbe2d82a625b6c`, `threshold-baseline.json=a89539077c750103eb406c67364fed1bdf9c44cbf1a378028af5debc7de5198a`). QA also confirmed the tuned CNN’s headline claim is directionally honest but weak: best observed accuracy improved from `0.7241379310` to `0.7586206897`, while macro-F1 only moved from `0.2644376899` to `0.2653061224`, and alternate seeds (`7`, `99`) regressed materially. However, the committed artifact bundle is **not internally consistent**: `docs/baselines/boxing-punch-classifier-frozen-benchmark-cnn-improvement-pass-2026-06-16/tuning-summary.json` records the threshold baseline test macro-F1 as `0.25925925925925924`, but the frozen source artifact `REF-07`, the frozen export’s `threshold-baseline.json`, and the committed `best-cnn/cnn-result.json` all agree on `0.2585034013605442`. Because this pass’s acceptance criteria explicitly include artifact consistency, QA failed the bead pending correction of that mismatch and any dependent summary deltas.
 
 ---
 
