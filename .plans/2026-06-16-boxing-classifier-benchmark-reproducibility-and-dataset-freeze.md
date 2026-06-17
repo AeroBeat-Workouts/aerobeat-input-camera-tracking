@@ -1,8 +1,8 @@
 # AeroBeat Boxing Classifier Benchmark Reproducibility and Dataset Freeze
 
 **Date:** 2026-06-16
-**Status:** In Progress
-**Last Updated:** 2026-06-16 19:24 EDT
+**Status:** Complete
+**Last Updated:** 2026-06-16 19:49 EDT
 **Blocked Reason:** None.
 **Agent:** `pico`
 
@@ -97,9 +97,9 @@ This stays inside the current hybrid boxing architecture. Threshold/pose continu
 **Files Created/Deleted/Modified:**
 - QA notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA reran `python3 scripts/export_boxing_punch_classifier_dataset.py --snapshot-manifest .testbed/assets/benchmarks/boxing_punch_classifier_hardened_2026_06_16.snapshot.json --skip-captures` twice into clean output dirs and byte-compared the outputs against the archived anchor in `REF-05`. `dataset.json`, `export-summary.json`, and `threshold-baseline.json` all matched the archived anchor SHA-256 values exactly on both reruns, and the two reruns also matched each other byte-for-byte. Snapshot review confirmed the manifest freezes the benchmark manifest hash, fixture YAML/video hashes, full truth windows, per-fixture capture-report hashes, time-origin offsets, alignment basis, export parameters, split strategy, negative-sampling policy, and canonical artifact metadata clearly enough to identify a single source package. Provenance inspection in the rerun outputs confirmed the self-reference loop is gone: exported `source_snapshot.anchor_artifacts` now carries only stable anchor paths plus the threshold-baseline hash, while the mutable dataset/export-summary hashes remain only in the snapshot manifest, so the reproducibility fix reflects removal of metadata/self-reference drift rather than hidden sample-content divergence. Remaining caveat: this QA covered the frozen `--skip-captures` regeneration path only; it did not re-run live Godot captures, so capture-stage nondeterminism remains outside this task’s scope.
 
 ---
 
@@ -117,21 +117,22 @@ This stays inside the current hybrid boxing architecture. Threshold/pose continu
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit reran `python3 scripts/export_boxing_punch_classifier_dataset.py --snapshot-manifest .testbed/assets/benchmarks/boxing_punch_classifier_hardened_2026_06_16.snapshot.json --skip-captures` twice into clean output dirs and byte-compared those artifacts against the archived hardened anchor in `REF-05`. `dataset.json`, `export-summary.json`, and `threshold-baseline.json` matched the archived anchor exactly on the first audit rerun, and the two audit reruns also matched each other byte-for-byte. A targeted provenance inspection confirmed the regenerated `source_snapshot.anchor_artifacts` now carries only stable anchor paths plus the threshold-baseline hash, while mutable dataset/export-summary hashes remain in the snapshot manifest rather than in the regenerated artifacts, so the prior self-reference drift is actually removed rather than merely masked. Audit verdict: the benchmark is now reproducible enough to resume model-family comparisons **provided those comparisons are run against this frozen snapshot / `--skip-captures` seam**. Live capture nondeterminism remains a separate unresolved branch and should be tracked as a future hardening slice rather than block immediate frozen-benchmark comparisons.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** A named frozen boxing classifier benchmark snapshot whose export inputs, capture-report provenance, and archived anchor artifacts now reproduce exactly across repeated `--skip-captures` reruns. The benchmark can support renewed MLP-vs-CNN-style model-family comparisons again, but only when those comparisons stay pinned to this frozen snapshot path.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02` now documents the frozen snapshot rerun path explicitly. `REF-03` and `REF-04` support snapshot-verified regeneration with stable provenance embedded in exported artifacts. `REF-05` remains the canonical reproducibility anchor, and the audit revalidated exact byte-for-byte reproduction against it. Deliberate boundary: this plan did not prove fresh live capture runs are deterministic; that remains outside this reference check.
 
 **Commits:**
-- Pending.
+- `4c4602f` - Freeze boxing classifier benchmark snapshot provenance
+- `ae842cd` - Stabilize boxing snapshot dataset regeneration
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** For benchmark trust, artifact provenance has to be frozen without letting regenerated outputs self-reference mutable hashes. The right comparison seam is now the archived frozen snapshot, while live-capture reproducibility should be hardened later as its own task instead of being conflated with model benchmarking.

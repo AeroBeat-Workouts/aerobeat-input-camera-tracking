@@ -1,8 +1,8 @@
 # AeroBeat Boxing Punch Classifier Feasibility — MLP Baseline Then 1D Temporal CNN
 
 **Date:** 2026-06-16
-**Status:** In Progress
-**Last Updated:** 2026-06-16 16:22 EDT
+**Status:** Complete
+**Last Updated:** 2026-06-16 16:59 EDT
 **Blocked Reason:** None.
 **Agent:** `pico`
 
@@ -145,11 +145,13 @@ The first-pass runtime shape should stay aligned with the prior classifier plann
 - relevant owning repo paths
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.plans/2026-06-16-boxing-punch-classifier-feasibility-mlp-then-temporal-cnn.md`
+- `.temp/qa-cnn-rerun-2026-06-16/`
+- `.temp/qa-mlp-rerun-2026-06-16/`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified that the CNN comparison is fair **inside the committed fixture-local harness**. The CNN script consumes the committed `docs/baselines/boxing-punch-classifier-mlp-baseline-2026-06-16/dataset.json` plus the committed `mlp-result.json`, so it reuses the exact same exported windows, label set, deterministic split, and threshold-baseline records rather than regenerating fresh captures. I also independently reran both training scripts on the committed dataset with the exact recorded hyperparameters and reproduced the committed artifacts bit-for-bit at the result level: the MLP stayed at **0.867 accuracy / 0.887 macro-F1**, and the CNN stayed at **0.667 accuracy / 0.492 macro-F1**, with matching loss curves and matching per-sample train/test predictions. The committed docs and artifacts are internally consistent: dataset shape is `8x16`, split counts remain `45 train / 15 test`, the CNN model JSON matches the documented **`8x16 -> conv1d(16->12, k=5, same) -> relu -> conv1d(12->8, k=5, same) -> relu -> flatten(64) -> logits(7)`** shape, and the reported threshold comparison remains **0.400 accuracy / 0.095 macro-F1** on those same windows. Truthful read: this first small CNN **did beat the threshold baseline**, but it **lost clearly to the tiny temporal MLP baseline**, so it does **not** currently justify replacing the MLP as the better next mainline model family. Keep the prior audit constraints in force: this is still only a same-harness, fixture-local directional result with same-clip leakage and no real-world generalization claim.
 
 ---
 
@@ -167,21 +169,26 @@ The first-pass runtime shape should stay aligned with the prior classifier plann
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit agrees with QA’s narrow claim and tightens the product conclusion: **MLP wins for now, but don't overread it.** On the exact committed exported-window protocol, the tiny temporal MLP remains the best-performing classifier in this slice at **0.867 accuracy / 0.887 macro-F1**, ahead of the first small temporal CNN at **0.667 / 0.492** and the threshold baseline at **0.400 / 0.095**. I independently reran both training scripts on the committed `dataset.json` with the recorded hyperparameters and reproduced the same metrics. That is enough to make a same-harness model choice for the next branch: keep the hybrid boxing architecture and prefer the tiny temporal MLP over this first CNN as the current mainline punch-classifier candidate.
+
+The limits matter. This harness is still too weak to support a broad model-family verdict beyond this first slice because train/test windows leak within the same source clips, the benchmark is fixture-local and directional rather than product-general, and fresh recaptures can move alignment enough to change outcomes outside the committed artifact comparison. So the right call is **not** “CNNs are bad for AeroBeat.” The right call is: this specific small CNN lost a fair apples-to-apples comparison on the current harness, so AeroBeat should **not** spend the next branch tuning CNNs first. The better next classifier branch is to keep the tiny temporal MLP as the punch-classifier baseline and invest the next seam in **evaluation/data hardening**: clip-held-out or session-held-out splits, more negative/transition coverage, and tighter capture-time alignment/replay determinism. Once that stronger benchmark exists, compare MLP against richer temporal families again if needed.
+
+Strongest constraints before acting on this result: (1) do not claim real-world punch generalization from this slice; (2) do not replace threshold handling for non-punch boxing states, because the approved hybrid architecture still fits the evidence best; (3) do not interpret this as a permanent MLP-over-CNN theorem, only as the current same-harness winner; and (4) treat any future model comparison that regenerates captures as partially confounded unless capture alignment is tightened or the comparison stays on frozen exported windows. References validated: `REF-01`, `REF-03`, `REF-06`, `REF-07`.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** A disciplined first feasibility slice for AeroBeat boxing punch classification: reusable fixture export/eval tooling, a tiny temporal-MLP baseline, a first same-harness 1D temporal-CNN comparison, QA verification of both artifact sets, and an independent audit conclusion on what AeroBeat should do next. The final audited recommendation is to continue down the hybrid classifier path for punches while keeping threshold logic for non-punch boxing state, with the **tiny temporal MLP as the current preferred classifier baseline** and **benchmark/data hardening** as the next branch rather than more CNN-first tuning.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-01` and `REF-03` still hold: the hybrid boxing architecture remains the right mainline direction, with classifier work scoped to punch recognition and guard/recovery/transition left to pose/threshold logic. `REF-06` and `REF-07` were satisfied for this slice’s fixture-export/eval workflow, with explicit caveats carried forward about same-clip leakage, fixture-local scope, and recapture alignment drift.
 
 **Commits:**
-- Pending.
+- `3cc4190` - Add boxing punch classifier export harness and MLP baseline
+- `0d5142c` - Add temporal CNN punch classifier comparison
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** The tooling path is good enough to answer narrow within-harness questions quickly, but it is not yet a trustworthy generalization benchmark. Small temporal models can easily look decisively different on frozen exported windows, so the next high-value move is improving split discipline and capture determinism before reading too much into model-family outcomes.

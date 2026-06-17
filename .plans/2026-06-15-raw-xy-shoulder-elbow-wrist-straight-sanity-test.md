@@ -1,9 +1,9 @@
 # AeroBeat Raw-XY Shoulder/Elbow/Wrist Straight Sanity Test
 
 **Date:** 2026-06-15  
-**Status:** Blocked  
-**Last Updated:** 2026-06-15 21:58 EDT  
-**Blocked Reason:** Session stopping for handoff before QA/audit on the raw-XY sanity test and before choosing whether to modify the prototype approach further or move to the next overall system.  
+**Status:** Complete  
+**Last Updated:** 2026-06-16 10:33 EDT  
+**Blocked Reason:** None.  
 **Agent:** `pico`
 
 ---
@@ -79,11 +79,11 @@ The output should tell us whether the prototype approach has a viable straight-p
 - relevant owning repo paths
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.plans/2026-06-15-raw-xy-shoulder-elbow-wrist-straight-sanity-test.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified `REF-01` is truly using raw per-side `shoulder_x`, `shoulder_y`, `elbow_x`, `elbow_y`, `wrist_x`, `wrist_y` values when the raw-XY libraries declare those feature names, while the older shoulder-relative and pose-`z` feature paths remain only as compatibility branches and are not active for this packet. `REF-04` is internally consistent with that claim: it declares the same six raw-XY feature names, contains exactly `8` straight prototypes (`4` left, `4` right), and matches the straight-only subset of `REF-03`. The saved 2026-06-15 review packet (`REF-08`) is self-consistent with the saved benchmark artifact it cites: `straight_left_fixture` = `12` expected / `17` wrong, `straight_right_fixture` = `24` expected / `12` wrong, and `run_in_place_negative_control` = `29` false positives (`28` left, `1` right). For confidence, QA reran `REF-05` against the same manifest into a fresh temp output directory. That rerun was not byte-identical to the saved artifact and came out slightly worse (`13/18`, `22/14`, `30` false positives), which suggests some replay/capture timing jitter in the benchmark path. However, the qualitative result was unchanged and still damning: both positive fixtures cross-fire materially and the negative control remains badly unsafe. Viability verdict: **not successful**. Raw-XY shoulder/elbow/wrist does not count as a viable straight-left/right-vs-no-punch result.
 
 ---
 
@@ -101,21 +101,21 @@ The output should tell us whether the prototype approach has a viable straight-p
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit agrees with QA and the saved raw-XY benchmark packet. `REF-01` and `REF-04` do show the intended raw per-side `shoulder_x`, `shoulder_y`, `elbow_x`, `elbow_y`, `wrist_x`, `wrist_y` feature space with `8` straight-only prototypes (`4` left, `4` right). `REF-08` is materially consistent with the referenced raw-XY benchmark artifact: `straight_left_fixture` emitted `12` expected vs `17` wrong, `straight_right_fixture` emitted `24` expected vs `12` wrong, and `run_in_place_negative_control` emitted `29` false positives (`28` left, `1` right). The decisive audit point is not tiny replay jitter but the magnitude of overlap in the saved packet itself: many winning margins are near-zero in the positive fixtures, the negative control hallucinates attacks with scores around `0.94-0.97`, and the previously clean straight-right lane regressed into left/right cross-fire. Verdict: raw-XY shoulder/elbow/wrist is still too noisy for viable straight-left/right-vs-no-punch discrimination. Recommended next branch: try the more abstract threshold-inspired feature pass rather than another literal raw-coordinate prototype variant.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** A disciplined raw-XY shoulder/elbow/wrist straight-only prototype-matcher rerun, followed by QA and an independent audit confirming that the representation change does not make straight-left/right-vs-no-punch viable.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-01`, `REF-04`, `REF-05`, `REF-07`, and `REF-08` were checked in audit. The raw-XY matcher/library wiring is real, the saved benchmark packet is internally consistent on the key verdict counts, and those counts are sufficient on their own to reject viability even before considering QA's slightly worse rerun.
 
 **Commits:**
-- Pending.
+- `429d98d` - Test raw XY shoulder/elbow/wrist straight matcher
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** Removing depth and moving to literal raw XY coordinates did not solve the core problem. The prototype matcher still confuses left vs right with tiny score margins and still hallucinates attacks on the negative control at high confidence. The next useful experiment, if any, should move toward more abstract threshold-inspired features instead of another raw-coordinate prototype variant.

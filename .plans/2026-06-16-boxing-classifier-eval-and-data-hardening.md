@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-16
 **Status:** In Progress
-**Last Updated:** 2026-06-16 17:42 EDT
+**Last Updated:** 2026-06-16 18:00 EDT
 **Blocked Reason:** None.
 **Agent:** `pico`
 
@@ -74,11 +74,11 @@ This should stay disciplined. We are not trying to solve all classifier architec
 - relevant owning repo paths
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.plans/2026-06-16-boxing-classifier-eval-and-data-hardening.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified all three claimed hardening changes in code and artifacts: samples are now assigned via `chronological_holdout_v1`, `no_punch` coverage expanded to 72 with explicit transition-before/after negatives, and export summaries now include per-sample plus aggregated alignment-error reporting. The committed hardened artifact set is internally consistent: `dataset.json`, `export-summary.json`, `threshold-baseline.json`, and `mlp-result.json` agree on **96** samples, **67/29** train/test split, and the reported hardened metrics (**MLP 0.655 accuracy / 0.210 macro F1**, **threshold 0.621 accuracy / 0.259 macro F1**). QA also confirmed that rerunning the trainer on the committed hardened dataset reproduces the same headline MLP metrics. One caveat: a fresh exporter rerun against the current default capture-report location (`--skip-captures`) did **not** byte-reproduce the archived hardened dataset or threshold metrics, which suggests the exact capture-report set matters and that the archived `.temp/boxing-punch-classifier-export/hardened-2026-06-16/` inputs should be treated as the reproducibility anchor for this benchmark snapshot. Honest read: the hardened comparison is fairer than the original, materially harder, and the prior apparent MLP edge mostly disappeared; the MLP is now near-threshold on accuracy and worse than threshold on macro-F1.
 
 ---
 
@@ -94,11 +94,11 @@ This should stay disciplined. We are not trying to solve all classifier architec
 - relevant owning repo paths
 
 **Files Created/Deleted/Modified:**
-- audit notes/artifacts as needed
+- `.plans/2026-06-16-boxing-classifier-eval-and-data-hardening.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit agrees with QA on the core facts and tightens the decision. The hardened artifact set is materially fairer than the original benchmark: it really does use `chronological_holdout_v1`, expands negatives to **72 no-punch** windows with transition examples, and exposes alignment summaries instead of hiding replay drift. On that frozen hardened dataset, the tiny MLP reproduces exactly at **0.655 accuracy / 0.210 macro-F1** and the threshold baseline is **0.621 accuracy / 0.259 macro-F1**, which means the earlier apparent MLP win mostly collapsed under a harder split and stronger negatives. The strict audit conclusion is that this slice is trustworthy enough to say **the first classifier advantage was not robust**, but **not yet trustworthy enough to justify another model-family comparison from fresh exports** because the current exporter path does not byte-reproduce the archived hardened dataset or threshold metrics when rerun with the present default capture-report location and `--skip-captures`. For now, the archived `.temp/boxing-punch-classifier-export/hardened-2026-06-16/` capture/report set is the reproducibility anchor. Recommended next branch: stay on the classifier line, but make the next branch a **benchmark reproducibility / dataset-freeze hardening branch**, not a temporal-CNN-vs-MLP (or depth) branch yet. Only after export inputs and capture-report provenance are explicitly frozen and re-runnable should another model-family comparison be treated as roadmap-shaping evidence.
 
 ---
 

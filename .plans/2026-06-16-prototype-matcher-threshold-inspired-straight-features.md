@@ -1,8 +1,8 @@
 # AeroBeat Prototype Matcher Threshold-Inspired Straight Features
 
 **Date:** 2026-06-16
-**Status:** In Progress
-**Last Updated:** 2026-06-16 10:43 EDT
+**Status:** Complete
+**Last Updated:** 2026-06-16 10:54 EDT
 **Blocked Reason:** None.
 **Agent:** `pico`
 
@@ -98,11 +98,12 @@ If this pass still fails, we should treat it as stronger evidence that the proto
 - relevant owning repo paths
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.plans/2026-06-16-prototype-matcher-threshold-inspired-straight-features.md`
+- `.temp/qa-threshold-inspired-straight-benchmark/`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified the implementation seam stayed narrow: commit `e60cfcf` touched the matcher, derivation script, regenerated prototype-library/review artifacts, the active plan, and a small prototype-matcher unit-test relaxation, with no broader detector architecture change. The matcher/runtime and derivation path both now carry the same two new per-side features — `combined_elbow_wrist_velocity_xy_magnitude` and `elbow_shoulder_xy_distance_over_shoulder_width` — and the saved straight-only library/filter/review packet are internally consistent on library id, feature names, class set, prototype count, and reported benchmark totals. For confidence, QA reran the straight-only benchmark against the committed library into `.temp/qa-threshold-inspired-straight-benchmark/`. The rerun did **not** reproduce the saved counts exactly: committed packet says straight-right `27 expected / 9 wrong` and run-in-place `28` false positives, while the rerun produced straight-right `25 expected / 11 wrong` and run-in-place `31` false positives. That instability does not rescue the branch; it reinforces the conclusion that the matcher remains non-viable for straights because left/right cross-fire is still high and the negative control still hallucinates punches at unacceptable rates.
 
 ---
 
@@ -120,21 +121,21 @@ If this pass still fails, we should treat it as stronger evidence that the proto
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit agrees with QA and the committed review packet: the threshold-inspired branch really does add only the two promised per-side features — `combined_elbow_wrist_velocity_xy_magnitude` and `elbow_shoulder_xy_distance_over_shoulder_width` — and the saved straight-only library/benchmark artifacts are internally consistent. Versus the prior raw-XY branch, the saved packet improved positive-fixture totals from `36 expected / 29 wrong` to `44 expected / 23 wrong`, with run-in-place false positives improving only from `29` to `28`. QA's independent rerun came out slightly worse (`17/14`, `25/11`, `31` false positives), which reinforces that the branch is unstable but still qualitatively the same. The decisive audit point is strategic, not statistical: even after the improvement, both positive fixtures still cross-fire materially and the negative control still hallucinates high-score punches. Recommendation: stop prototype-matcher iteration for straight punches in this dataset and move to the next overall detection approach/system rather than spending another pass on prototype features without a new architecture.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** A narrow threshold-inspired prototype-matcher experiment for straight punches that added combined elbow+wrist velocity plus normalized elbow-to-shoulder proximity, regenerated the derived prototype libraries, reran the straight-only benchmark, and then completed QA plus independent audit against the prior raw-XY branch.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-01`, `REF-02`, `REF-03`, `REF-07`, and `REF-09` were checked in audit. The matcher/library feature wiring is real, the saved review packet matches the saved committed benchmark artifacts on the key counts, and QA's slightly worse rerun does not change the verdict. The branch improved directionally over raw-XY but still fails the fundamental straight-left/right-vs-no-punch truth test badly enough that another prototype-feature pass is not justified.
 
 **Commits:**
-- Pending.
+- `e60cfcf` - Add threshold-inspired straight prototype features
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** Adding a couple of threshold-inspired abstract features can move the numbers a bit, but it does not fix the structural problem: the prototype matcher still confuses left vs right and still fires on run-in-place at high confidence. For this straight-punch problem, continued prototype tweaking looks like local optimization on the wrong detector shape.

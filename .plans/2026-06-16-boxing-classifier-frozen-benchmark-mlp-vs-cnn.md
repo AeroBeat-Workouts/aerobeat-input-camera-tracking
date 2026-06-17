@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-16
 **Status:** In Progress
-**Last Updated:** 2026-06-16 19:39 EDT
+**Last Updated:** 2026-06-16 19:56 EDT
 **Blocked Reason:** None.
 **Agent:** `pico`
 
@@ -77,9 +77,9 @@ This branch should stay narrow and disciplined. The point is not to reopen broad
 **Files Created/Deleted/Modified:**
 - QA notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA re-ran the exact frozen export + MLP + CNN commands against `REF-02` into fresh QA-only temp outputs and got the same export hashes and the same committed test metrics/records. The rerun confirmed the comparison is fair on a shared frozen `dataset.json` generated with `--skip-captures`, both learned models use the same `chronological_holdout_v1` split, and the committed artifact set is internally consistent (`cnn-result.json` links back to the matching MLP result and both report the same frozen dataset path shape/metrics). Truthful QA read: on this hardened frozen benchmark slice, the CNN really does beat the MLP modestly but clearly (`0.724/0.264` vs `0.655/0.210` accuracy/macro-F1), while the threshold baseline remains close in macro-F1 (`0.621/0.259`). Caveat retained: this is still a small frozen fixture benchmark, so the result supports the frozen-slice ranking claim only, not a broad live/generalization claim.
 
 ---
 
@@ -97,21 +97,21 @@ This branch should stay narrow and disciplined. The point is not to reopen broad
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit agrees with QA and the committed artifact set. The frozen comparison really is apples-to-apples on `REF-02`: both learned models were evaluated from the same `--skip-captures` export path and the same `chronological_holdout_v1` split, and the committed JSON/markdown artifacts report the same numbers consistently. Strict read: **CNN wins on the frozen benchmark for now, but do not overgeneralize beyond that path.** On this slice, the current temporal CNN beats the current temporal MLP by `+0.06897` accuracy and `+0.05491` macro-F1 (`0.72414/0.26444` vs `0.65517/0.20952`). It also edges the threshold baseline in accuracy and only barely in macro-F1 (`0.62069/0.25850`), which means the learned-model win is real but still modest and the benchmark remains small/hard enough that branch decisions should stay conservative. Audit recommendation: prefer the temporal CNN over the MLP as the **frozen-benchmark baseline** going forward, and make the next classifier branch a **targeted CNN-on-frozen-benchmark improvement pass** rather than reopening broad classifier exploration or reverting to the MLP. Strongest constraints before acting: this result is tied to `REF-02` only, the margin over threshold on macro-F1 is tiny, and the branch does not yet justify a broad claim about live-capture/general production superiority.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Completed the coder slice for the frozen-benchmark rerun: reproducible export verification plus a documented apples-to-apples MLP-vs-CNN comparison artifact set on the named frozen snapshot.
+**What We Built:** Completed the full frozen-benchmark MLP-vs-CNN loop: coder reran and documented the reproducible comparison on the named frozen snapshot, QA independently reproduced the same hashes/metrics, and audit concluded that the current temporal CNN is the better learned-model baseline on this frozen path.
 
-**Reference Check:** `REF-02` satisfied via exact export hash match on the rerun; `REF-03`/`REF-04`/`REF-05`/`REF-06` exercised by the export + training commands and updated artifact docs; `REF-07` comparison updated because the earlier winner/loser relationship changed on the hardened frozen benchmark.
+**Reference Check:** `REF-02` satisfied via exact frozen-snapshot export reuse and matching committed metrics; `REF-03`/`REF-04`/`REF-05`/`REF-06` exercised by the shared harness plus both trainer outputs; `REF-07` updated because the hardened frozen benchmark reverses the earlier winner/loser relationship.
 
 **Commits:**
-- Pending coder commit.
+- `7a66f24` - Document frozen boxing classifier MLP vs CNN rerun
 
-**Lessons Learned:** The frozen benchmark did not preserve the earlier first-pass ranking. On this reproducible hardened slice, the current small CNN modestly surpasses the hardened MLP, so future classifier decisions should reference the frozen benchmark rather than the earlier leakier same-harness baseline.
+**Lessons Learned:** The hardened frozen benchmark changed the truthful ranking. On this reproducible slice, the CNN beats the MLP modestly but clearly, yet its macro-F1 lead over the threshold baseline is still tiny. That makes the right next move a narrow CNN-focused follow-up on the frozen path, not a broad generalization claim or a premature declaration that the classifier problem is solved.

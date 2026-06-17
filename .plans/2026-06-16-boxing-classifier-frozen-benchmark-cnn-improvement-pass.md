@@ -1,9 +1,9 @@
 # AeroBeat Boxing Classifier Frozen-Benchmark CNN Improvement Pass
 
 **Date:** 2026-06-16
-**Status:** In Progress
-**Last Updated:** 2026-06-16 21:08 EDT
-**Blocked Reason:** None.
+**Status:** Blocked
+**Last Updated:** 2026-06-16 21:58 EDT
+**Blocked Reason:** Session stop requested after coder pass; QA and audit on the CNN improvement result remain pending for the next session.
 **Agent:** `pico`
 
 ---
@@ -110,11 +110,11 @@ The success bar for this branch is not “CNN solved boxing.” The success bar 
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Pending.
+**What We Built:** Built and documented a targeted frozen-benchmark CNN improvement sweep against the reproducible snapshot path, including a committed best-run artifact bundle and tuning summary. The pass confirmed the frozen benchmark still reproduces exactly and that the current CNN remains ahead of the frozen MLP on this slice, but the best observed improvement was mostly an accuracy nudge rather than a meaningful macro-F1 gain.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02` preserved; all comparison work stayed on the named frozen snapshot with `--skip-captures`. `REF-07` remains the comparison baseline the improvement pass was judged against.
 
 **Commits:**
-- Pending.
+- `a065855ac747e6b09d4020c9dbe5a4c4af8c0fc1` - `docs: record frozen benchmark cnn improvement pass`
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** The frozen benchmark is finally stable enough to run disciplined CNN tuning, but this first sweep suggests the current small CNN is seed-sensitive and not obviously opening a strong margin over threshold. The next session should finish QA/audit on this pass before deciding whether to do more CNN tuning, adjust the feature set, or pivot the next testing branch.
