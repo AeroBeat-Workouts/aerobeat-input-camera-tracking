@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-17  
 **Status:** In Progress  
-**Last Updated:** 2026-06-17 16:00 EDT  
+**Last Updated:** 2026-06-17 16:02 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -111,7 +111,7 @@ This is intentionally a narrow cleanup slice, not a new feature branch. The lear
 **Reference Check:** `REF-01` now matches the backend options locked in `REF-02`; `REF-03` and `REF-04` were updated exactly at the reported warning sites from `REF-05`.
 
 **Commits:**
-- `81ead40` - Clean backend comment and proving warnings
+- `4c480a5` - Clean backend comment and proving warnings
 
 **Lessons Learned:** For these proving-scene cleanup slices, the smallest honest validation is the profile-loader test plus the proving-harness debug/profile suite, which catches both YAML-load regressions and testbed-script breakage without widening into unrelated runtime passes.
 
