@@ -24,7 +24,7 @@
   },
   "threshold_baseline": {
     "test_accuracy": 0.6206896551724138,
-    "test_macro_f1": 0.25925925925925924
+    "test_macro_f1": 0.2585034013605442
   },
   "focused_sweep": [
     {
@@ -103,7 +103,7 @@
     },
     "delta_vs_threshold": {
       "accuracy": 0.13793103448275856,
-      "macro_f1": 0.006046863189720356
+      "macro_f1": 0.006802721088435382
     }
   },
   "conclusion": "Best observed CNN tuning slightly improved accuracy but did not meaningfully widen the CNN lead on macro-F1; the gain was tiny on macro-F1 and seed-sensitive."
