@@ -77,6 +77,13 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("timing", {}).get("emit_hold_ms", -1)), 100)
 	assert_true(bool(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("debug", {}).get("show_scores", false)))
 	assert_true(bool(bundle.get("gesture_detection", {}).get("prototype_matcher", {}).get("debug", {}).get("show_event_gate_state", false)))
+	assert_false(bool(bundle.get("gesture_detection", {}).get("learned_classifier", {}).get("enabled", true)))
+	assert_eq(String(bundle.get("gesture_detection", {}).get("learned_classifier", {}).get("model", {}).get("artifact_path", "")), "res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json")
+	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("learned_classifier", {}).get("thresholds", {}).get("match_score_min", -1.0)), 0.70))
+	assert_eq(int(bundle.get("gesture_detection", {}).get("learned_classifier", {}).get("timing", {}).get("emit_cooldown_ms", -1)), 250)
+	assert_eq(int(bundle.get("gesture_detection", {}).get("learned_classifier", {}).get("timing", {}).get("emit_hold_ms", -1)), 100)
+	assert_true(bool(bundle.get("gesture_detection", {}).get("learned_classifier", {}).get("debug", {}).get("show_scores", false)))
+	assert_true(bool(bundle.get("gesture_detection", {}).get("learned_classifier", {}).get("debug", {}).get("show_event_gate_state", false)))
 
 func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	var config = CameraTrackingConfigScript.new()

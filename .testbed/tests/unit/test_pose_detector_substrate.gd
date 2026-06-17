@@ -1560,6 +1560,54 @@ func test_prototype_matcher_backend_applies_emit_cooldown_and_hold_without_spam(
 	matcher_debug = state.get("gesture_debug", {}).get("prototype_matcher", {})
 	assert_true(["emitted", "emit_hold_active"].has(String(matcher_debug.get("reason", ""))))
 
+func test_learned_classifier_backend_emits_and_surfaces_truthful_debug_state() -> void:
+	var model_path := _write_test_learned_classifier_model("straight_left", 10.0)
+	_enable_learned_classifier_backend({
+		"model_path": model_path,
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 250,
+		"emit_hold_ms": 100,
+	})
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
+	assert_eq(_event_names(state.get("events", [])), ["punch_left"])
+	var gesture_debug: Dictionary = state.get("gesture_debug", {})
+	assert_eq(String(gesture_debug.get("punch_detection", {}).get("backend", "")), "learned_classifier")
+	assert_true(bool(gesture_debug.get("punch_detection", {}).get("learned_classifier_enabled", false)))
+	var learned_debug: Dictionary = gesture_debug.get("learned_classifier", {})
+	assert_eq(String(learned_debug.get("selected_backend", "")), "learned_classifier")
+	assert_eq(String(learned_debug.get("active_backend", "")), "learned_classifier")
+	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
+	assert_eq(String(learned_debug.get("result_class", "")), "straight_left")
+	assert_eq(String(learned_debug.get("emitted_event_name", "")), "punch_left")
+	assert_true(bool(learned_debug.get("model_loaded", false)))
+	assert_eq(String(learned_debug.get("model_path", "")), model_path)
+	assert_true(float(learned_debug.get("best_score", 0.0)) >= 0.70)
+
+func test_learned_classifier_selection_does_not_fall_back_to_threshold_backend_when_disabled() -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"punch_detection": {
+			"backend": "learned_classifier",
+		},
+		"threshold_gates": {
+			"enabled": true,
+		},
+		"learned_classifier": {
+			"enabled": false,
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	assert_eq(String(state.get("gesture_debug", {}).get("punch_detection", {}).get("backend", "")), "none")
+
 func _calibrate_stance() -> void:
 	for idx in range(5):
 		var state := substrate.process_landmarks(_make_pose_frame(), 1000 + idx * 16)
@@ -1710,6 +1758,84 @@ func _enable_prototype_matcher_backend(options: Dictionary = {}) -> void:
 		},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
+
+func _enable_learned_classifier_backend(options: Dictionary = {}) -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"punch_detection": {
+			"backend": "learned_classifier",
+		},
+		"threshold_gates": {
+			"enabled": true,
+		},
+		"learned_classifier": {
+			"enabled": true,
+			"model": {
+				"artifact_path": String(options.get("model_path", "")),
+			},
+			"thresholds": {
+				"match_score_min": float(options.get("match_score_min", 0.70)),
+			},
+			"timing": {
+				"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
+				"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
+			},
+			"debug": {
+				"show_scores": true,
+				"show_event_gate_state": true,
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+
+func _write_test_learned_classifier_model(winner_class: String = "straight_left", confidence_logit: float = 10.0) -> String:
+	var path := "user://test-learned-classifier-%s.json" % winner_class
+	var class_order := ["straight_left", "straight_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"]
+	var winner_index := class_order.find(winner_class)
+	assert_true(winner_index >= 0)
+	var means: Array = []
+	var stds: Array = []
+	for _idx in range(16):
+		means.append(0.0)
+		stds.append(1.0)
+	var logits_biases: Array = []
+	for idx in range(class_order.size()):
+		logits_biases.append(confidence_logit if idx == winner_index else 0.0)
+	var document := {
+		"schema": "aerobeat.boxing_punch_classifier_mlp_result",
+		"version": 1,
+		"class_order": class_order,
+		"dataset_window_shape": {
+			"frame_count": 1,
+			"frame_feature_count": 16,
+			"flattened_input_dim": 16,
+		},
+		"standardization": {
+			"means": means,
+			"stds": stds,
+		},
+		"model": {
+			"input_dim": 16,
+			"hidden_dim": 1,
+			"output_dim": class_order.size(),
+			"w1": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+			"b1": [1.0],
+			"w2": [[0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]],
+			"b2": logits_biases,
+		},
+	}
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	assert_not_null(file)
+	file.store_string(JSON.stringify(document))
+	file.flush()
+	file = null
+	return path
 
 func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0, frame_index: int = 1, timestamp_seconds: float = 0.0, fresh_sample: Variant = null, sample_source: String = "", stable_ms: int = -1) -> Dictionary:
 	var physical_bbox_area := maxf(0.10 - bbox_area, 0.0)

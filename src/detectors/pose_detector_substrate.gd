@@ -2,6 +2,7 @@ class_name PoseDetectorSubstrate
 extends RefCounted
 
 const PrototypePunchMatcher = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd")
+const LearnedPunchClassifierScript = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/learned_punch_classifier.gd")
 
 const TRACKING_TRACKING := &"tracking"
 const TRACKING_DEGRADED := &"degraded"
@@ -74,6 +75,7 @@ const FLOW_RING_START_ANGLE_DEGREES := 60.0
 var _config = null
 var _smoother: LandmarkSmoother = LandmarkSmoother.new()
 var _prototype_punch_matcher: PrototypePunchMatcher = PrototypePunchMatcher.new()
+var _learned_punch_classifier = LearnedPunchClassifierScript.new()
 var _latest_state: Dictionary = {}
 var _baseline_accumulator := {
 	"frames": 0,
@@ -113,6 +115,7 @@ var _frame_index := 0
 func _init() -> void:
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
 	_prototype_punch_matcher = PrototypePunchMatcher.new()
+	_learned_punch_classifier = LearnedPunchClassifierScript.new()
 	_latest_state = _build_empty_state()
 	_reset_gesture_state()
 
@@ -120,6 +123,7 @@ func configure(config) -> PoseDetectorSubstrate:
 	_config = config
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
 	_prototype_punch_matcher.configure(config)
+	_learned_punch_classifier.configure(config)
 	return self
 
 func reset() -> void:
@@ -133,6 +137,7 @@ func reset() -> void:
 	_reset_baseline_calibration()
 	_reset_gesture_state()
 	_prototype_punch_matcher.reset()
+	_learned_punch_classifier.reset()
 	_latest_state = _build_empty_state()
 
 func request_athlete_recalibration() -> void:
@@ -585,6 +590,7 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		"hook": _build_pose_strike_debug_state("hook", metrics),
 		"uppercut": _build_pose_strike_debug_state("uppercut", metrics),
 		"prototype_matcher": _prototype_punch_matcher.get_debug_state(),
+		"learned_classifier": _learned_punch_classifier.get_debug_state(),
 		"flow": _build_flow_debug_state(metrics),
 	}
 
@@ -594,6 +600,7 @@ func _build_punch_detection_debug_state() -> Dictionary:
 		"selected_backend": _get_selected_punch_detection_backend(),
 		"threshold_gates_enabled": _threshold_gates_backend_enabled(),
 		"prototype_matcher_enabled": _prototype_matcher_backend_enabled(),
+		"learned_classifier_enabled": _learned_classifier_backend_enabled(),
 	}
 
 func _build_guard_debug_state() -> Dictionary:
@@ -1002,6 +1009,8 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	var punch_backend := _get_active_punch_detection_backend()
 	if punch_backend == "prototype_matcher":
 		events.append_array(_prototype_punch_matcher.process_window(landmarks_by_id, metrics, timestamp_ms))
+	elif punch_backend == "learned_classifier":
+		events.append_array(_learned_punch_classifier.process_window(landmarks_by_id, metrics, timestamp_ms))
 	elif punch_backend == "threshold_gates":
 		_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 		_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
@@ -1867,10 +1876,21 @@ func _prototype_matcher_backend_enabled() -> bool:
 	var matcher: Dictionary = gesture_profile_document.get("prototype_matcher", {}) if gesture_profile_document.get("prototype_matcher", {}) is Dictionary else {}
 	return bool(matcher.get("enabled", false))
 
+func _learned_classifier_backend_enabled() -> bool:
+	if _config == null:
+		return false
+	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
+	if not gesture_profile_document is Dictionary:
+		return false
+	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
+	return bool(learned.get("enabled", false))
+
 func _get_active_punch_detection_backend() -> String:
 	var selected_backend := _get_selected_punch_detection_backend()
 	if selected_backend == "prototype_matcher":
 		return "prototype_matcher" if _prototype_matcher_backend_enabled() else "none"
+	if selected_backend == "learned_classifier":
+		return "learned_classifier" if _learned_classifier_backend_enabled() else "none"
 	return "threshold_gates" if _threshold_gates_backend_enabled() else "none"
 
 func _get_guard_config() -> Dictionary:

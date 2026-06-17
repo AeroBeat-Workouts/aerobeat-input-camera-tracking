@@ -161,3 +161,23 @@ prototype_matcher:
     show_scores: true
     # Show duplicate-suppression / hold state in proving/debug views. input presentation.
     show_event_gate_state: true
+
+learned_classifier:
+  # Turn the threshold-windowed learned punch classifier on or off. input.
+  enabled: false
+  model:
+    # Exported learned-classifier artifact to load for runtime punch inference. input.
+    artifact_path: res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
+  thresholds:
+    # Require the best learned positive-class score to reach at least this 0..1 value or emit no_punch. input.
+    match_score_min: 0.70
+  timing:
+    # After a punch event fires, suppress duplicate re-fires for this long. input.
+    emit_cooldown_ms: 250
+    # Keep the current confident event active for this long before allowing a new event. input.
+    emit_hold_ms: 100
+  debug:
+    # Show per-class learned scores in proving/debug views. input presentation.
+    show_scores: true
+    # Show duplicate-suppression / hold state in proving/debug views. input presentation.
+    show_event_gate_state: true

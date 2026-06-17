@@ -85,3 +85,27 @@ func test_fixture_state_timeline_captures_prototype_matcher_debug_truth() -> voi
 	assert_eq(String(entry.get("punch_detection", {}).get("backend", "")), "prototype_matcher")
 	assert_eq(String(entry.get("prototype_matcher", {}).get("best_class", "")), "straight_left")
 	assert_true(is_equal_approx(float(entry.get("prototype_matcher", {}).get("best_score", 0.0)), 0.84))
+
+func test_fixture_state_timeline_captures_learned_classifier_debug_truth() -> void:
+	harness.fixture_state_timeline_mode = harness.FIXTURE_STATE_TIMELINE_MODE_FULL
+	harness._latest_state = {
+		"gesture_debug": {
+			"punch_detection": {"backend": "learned_classifier"},
+			"learned_classifier": {
+				"best_class": "hook_right",
+				"best_score": 0.91,
+				"reason": "emitted",
+				"emitted_event_name": "hook_right",
+				"model_path": "res://docs/models/test-mlp-result.json"
+			}
+		}
+	}
+
+	harness._record_fixture_state_snapshot("pose_updated")
+	var timeline: Array = harness._fixture_state_timeline
+	assert_eq(timeline.size(), 1)
+	var entry: Dictionary = timeline[0]
+	assert_eq(String(entry.get("punch_detection", {}).get("backend", "")), "learned_classifier")
+	assert_eq(String(entry.get("learned_classifier", {}).get("best_class", "")), "hook_right")
+	assert_true(is_equal_approx(float(entry.get("learned_classifier", {}).get("best_score", 0.0)), 0.91))
+	assert_eq(String(entry.get("learned_classifier", {}).get("model_path", "")), "res://docs/models/test-mlp-result.json")

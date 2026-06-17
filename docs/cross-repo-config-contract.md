@@ -213,6 +213,18 @@ prototype_matcher:
   debug:
     show_scores: true|false
     show_event_gate_state: true|false
+learned_classifier:
+  enabled: true|false
+  model:
+    artifact_path: res://docs/.../mlp-result.json|user://...|/abs/path/to/model.json
+  thresholds:
+    match_score_min: 0.70
+  timing:
+    emit_cooldown_ms: 250
+    emit_hold_ms: 100
+  debug:
+    show_scores: true|false
+    show_event_gate_state: true|false
 ```
 
 ### Locked gesture field ownership
@@ -233,6 +245,13 @@ prototype_matcher:
 - `prototype_matcher.timing.emit_hold_ms` = public event-hold gate owned by `aerobeat-input-camera-tracking`
 - `prototype_matcher.debug.show_scores` = public proving/debug visibility flag owned by `aerobeat-input-camera-tracking`
 - `prototype_matcher.debug.show_event_gate_state` = public proving/debug visibility flag owned by `aerobeat-input-camera-tracking`
+- `learned_classifier.enabled` = public on/off wrapper for the learned punch backend owned by `aerobeat-input-camera-tracking`
+- `learned_classifier.model.artifact_path` = public learned-model artifact locator owned by `aerobeat-input-camera-tracking`
+- `learned_classifier.thresholds.match_score_min` = public learned-classifier rejection threshold owned by `aerobeat-input-camera-tracking`
+- `learned_classifier.timing.emit_cooldown_ms` = public learned duplicate-suppression cooldown owned by `aerobeat-input-camera-tracking`
+- `learned_classifier.timing.emit_hold_ms` = public learned event-hold gate owned by `aerobeat-input-camera-tracking`
+- `learned_classifier.debug.show_scores` = public learned proving/debug visibility flag owned by `aerobeat-input-camera-tracking`
+- `learned_classifier.debug.show_event_gate_state` = public learned proving/debug visibility flag owned by `aerobeat-input-camera-tracking`
 
 ### Locked gesture defaults by profile
 
@@ -259,6 +278,13 @@ prototype_matcher:
 - `prototype_matcher.timing.emit_hold_ms: 100`
 - `prototype_matcher.debug.show_scores: true`
 - `prototype_matcher.debug.show_event_gate_state: true`
+- `learned_classifier.enabled: false`
+- `learned_classifier.model.artifact_path: res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json`
+- `learned_classifier.thresholds.match_score_min: 0.70`
+- `learned_classifier.timing.emit_cooldown_ms: 250`
+- `learned_classifier.timing.emit_hold_ms: 100`
+- `learned_classifier.debug.show_scores: true`
+- `learned_classifier.debug.show_event_gate_state: true`
 
 #### Flow gesture defaults
 

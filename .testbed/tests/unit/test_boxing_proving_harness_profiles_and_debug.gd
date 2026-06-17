@@ -212,6 +212,19 @@ func test_proving_runtime_config_can_force_prototype_matcher_backend_for_fixture
 	assert_true(bool(gesture_profile.get("prototype_matcher", {}).get("enabled", false)))
 	assert_false(bool(gesture_profile.get("threshold_gates", {}).get("enabled", true)))
 
+func test_proving_runtime_config_can_force_learned_classifier_backend_for_fixture_benchmarks() -> void:
+	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "learned_classifier")
+	var harness: Variant = ProvingHarnessScript.new()
+	var config: Variant = harness._build_runtime_config()
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
+
+	assert_not_null(config)
+	var gesture_profile: Dictionary = config.gesture_profile_document
+	assert_eq(String(gesture_profile.get("punch_detection", {}).get("backend", "")), "learned_classifier")
+	assert_true(bool(gesture_profile.get("learned_classifier", {}).get("enabled", false)))
+	assert_false(bool(gesture_profile.get("threshold_gates", {}).get("enabled", true)))
+
 func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	var harness: Variant = _new_harness()
 	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
@@ -573,6 +586,61 @@ func test_boxing_prototype_matcher_debug_visibility_flags_hide_scores_and_gate_s
 	assert_string_contains(text_body, "Debug flags: show_scores=false show_event_gate_state=false")
 	assert_string_contains(text_body, "Class scores: hidden (show_scores=false)")
 	assert_string_contains(text_body, "Gate reason / hold / cooldown / active event: hidden (show_event_gate_state=false)")
+
+func test_boxing_learned_classifier_hover_card_and_event_feed_surface_truthful_backend_specific_fields() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"punch_detection": {
+				"backend": "learned_classifier",
+			},
+			"learned_classifier": {
+				"selected_backend": "learned_classifier",
+				"active_backend": "learned_classifier",
+				"model_path": "res://docs/models/test-mlp-result.json",
+				"model_loaded": true,
+				"best_class": "straight_left",
+				"best_score": 0.932,
+				"required_score": 0.700,
+				"result_class": "straight_left",
+				"emitted_event_name": "punch_left",
+				"show_scores": true,
+				"show_event_gate_state": true,
+				"class_scores": {
+					"straight_left": 0.932,
+					"hook_left": 0.041,
+					"no_punch": 0.015,
+				},
+				"reason": "emitted",
+				"hold_ms_remaining": 100,
+				"cooldown_ms_remaining": 250,
+				"active_event_class": "straight_left",
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(model.get("title", "")), "Straight Punch L (Learned Classifier)")
+	assert_eq(String(rows[3].get("label", "")), "Active learned model path")
+	assert_eq(String(rows[3].get("current_text", "")), "res://docs/models/test-mlp-result.json")
+	assert_eq(String(rows[4].get("label", "")), "Learned model loaded")
+	assert_eq(String(rows[4].get("current_text", "")), "true")
+	assert_eq(String(rows[6].get("current_text", "")), "straight_left")
+	assert_eq(String(rows[7].get("current_text", "")), "0.932")
+	assert_eq(String(rows[10].get("current_text", "")), "punch_left")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Active learned model path - res://docs/models/test-mlp-result.json")
+	assert_string_contains(body, "Best class - straight_left")
+	assert_string_contains(body, "Per-class scores - {hook_left=0.041, no_punch=0.015, straight_left=0.932}")
+
+	var text_body := String(harness._build_boxing_event_feed_text())
+	assert_string_contains(text_body, "Learned classifier truth")
+	assert_string_contains(text_body, "Active backend: learned_classifier")
+	assert_string_contains(text_body, "Learned model path: res://docs/models/test-mlp-result.json (loaded=true)")
+	assert_string_contains(text_body, "Best class / score / threshold: straight_left / 0.932 / 0.700")
 
 func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake_threshold_equality() -> void:
 	var harness = _new_harness()

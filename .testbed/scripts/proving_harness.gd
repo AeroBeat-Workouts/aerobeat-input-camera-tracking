@@ -1176,15 +1176,20 @@ func _apply_runtime_gesture_backend_override(config) -> void:
 	var backend_override := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE").strip_edges().to_lower()
 	if not backend_override.is_empty():
 		var punch_detection: Dictionary = gesture_profile.get("punch_detection", {}) if gesture_profile.get("punch_detection", {}) is Dictionary else {}
-		if backend_override == "prototype_matcher":
-			punch_detection["backend"] = "prototype_matcher"
+		if backend_override == "prototype_matcher" or backend_override == "learned_classifier":
+			punch_detection["backend"] = backend_override
 			gesture_profile["punch_detection"] = punch_detection
 			var threshold_gates: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
 			threshold_gates["enabled"] = false
 			gesture_profile["threshold_gates"] = threshold_gates
-			var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
-			matcher_config["enabled"] = true
-			gesture_profile["prototype_matcher"] = matcher_config
+			if backend_override == "prototype_matcher":
+				var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
+				matcher_config["enabled"] = true
+				gesture_profile["prototype_matcher"] = matcher_config
+			else:
+				var learned_config: Dictionary = gesture_profile.get("learned_classifier", {}) if gesture_profile.get("learned_classifier", {}) is Dictionary else {}
+				learned_config["enabled"] = true
+				gesture_profile["learned_classifier"] = learned_config
 	var library_id_override := OS.get_environment("AEROBEAT_PROTOTYPE_LIBRARY_ID_OVERRIDE").strip_edges()
 	if not library_id_override.is_empty():
 		var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
@@ -1261,10 +1266,14 @@ func _connect_power_signal(signal_name: String) -> void:
 		if provider != null and provider.has_method("get_detector_state"):
 			_latest_state = provider.get_detector_state()
 		var payload := {"power": power}
-		var prototype_match := _prototype_match_payload_for_signal(signal_name)
-		if not prototype_match.is_empty():
-			payload["backend"] = "prototype_matcher"
-			payload["prototype_match"] = prototype_match
+		var classifier_match := _classifier_match_payload_for_signal(signal_name)
+		if not classifier_match.is_empty():
+			var classifier_backend := String(classifier_match.get("backend", ""))
+			payload["backend"] = classifier_backend
+			if classifier_backend == "prototype_matcher":
+				payload["prototype_match"] = classifier_match.get("payload", {})
+			elif classifier_backend == "learned_classifier":
+				payload["learned_classifier"] = classifier_match.get("payload", {})
 		_record_event(signal_name, payload)
 	_remember_mode_signal_relay(signal_name, relay)
 
@@ -1282,27 +1291,47 @@ func _connect_flow_signal(signal_name: String) -> void:
 		_record_event(signal_name, {"placement": placement, "direction": direction})
 	_remember_mode_signal_relay(signal_name, relay)
 
-func _prototype_match_payload_for_signal(signal_name: String) -> Dictionary:
+func _classifier_match_payload_for_signal(signal_name: String) -> Dictionary:
 	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
 	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
-	if String(punch_detection.get("backend", "")).strip_edges().to_lower() != "prototype_matcher":
-		return {}
-	var matcher_debug: Dictionary = (gesture_debug.get("prototype_matcher", {}) as Dictionary)
-	if String(matcher_debug.get("emitted_event_name", "")) != signal_name:
-		return {}
-	return {
-		"class_name": String(matcher_debug.get("result_class", "")),
-		"score": float(matcher_debug.get("best_score", 0.0)),
-		"prototype_id": String(matcher_debug.get("best_prototype_id", "")),
-		"prototype_side": String(matcher_debug.get("best_prototype_side", "")),
-		"runner_up_class": String(matcher_debug.get("runner_up_class", "")),
-		"runner_up_score": float(matcher_debug.get("runner_up_score", 0.0)),
-		"runner_up_prototype_id": String(matcher_debug.get("runner_up_prototype_id", "")),
-		"class_margin": float(matcher_debug.get("best_class_margin", 0.0)),
-		"threshold": float(matcher_debug.get("required_score", matcher_debug.get("match_score_min", 0.0))),
-		"library_id": String(matcher_debug.get("library_id", "")),
-		"reason": String(matcher_debug.get("reason", "")),
-	}
+	var backend := String(punch_detection.get("backend", "")).strip_edges().to_lower()
+	if backend == "prototype_matcher":
+		var matcher_debug: Dictionary = (gesture_debug.get("prototype_matcher", {}) as Dictionary)
+		if String(matcher_debug.get("emitted_event_name", "")) != signal_name:
+			return {}
+		return {
+			"backend": "prototype_matcher",
+			"payload": {
+				"class_name": String(matcher_debug.get("result_class", "")),
+				"score": float(matcher_debug.get("best_score", 0.0)),
+				"prototype_id": String(matcher_debug.get("best_prototype_id", "")),
+				"prototype_side": String(matcher_debug.get("best_prototype_side", "")),
+				"runner_up_class": String(matcher_debug.get("runner_up_class", "")),
+				"runner_up_score": float(matcher_debug.get("runner_up_score", 0.0)),
+				"runner_up_prototype_id": String(matcher_debug.get("runner_up_prototype_id", "")),
+				"class_margin": float(matcher_debug.get("best_class_margin", 0.0)),
+				"threshold": float(matcher_debug.get("required_score", matcher_debug.get("match_score_min", 0.0))),
+				"library_id": String(matcher_debug.get("library_id", "")),
+				"reason": String(matcher_debug.get("reason", "")),
+			},
+		}
+	if backend == "learned_classifier":
+		var learned_debug: Dictionary = (gesture_debug.get("learned_classifier", {}) as Dictionary)
+		if String(learned_debug.get("emitted_event_name", "")) != signal_name:
+			return {}
+		return {
+			"backend": "learned_classifier",
+			"payload": {
+				"class_name": String(learned_debug.get("result_class", "")),
+				"score": float(learned_debug.get("best_score", 0.0)),
+				"runner_up_class": String(learned_debug.get("runner_up_class", "")),
+				"runner_up_score": float(learned_debug.get("runner_up_score", 0.0)),
+				"threshold": float(learned_debug.get("required_score", learned_debug.get("match_score_min", 0.0))),
+				"model_path": String(learned_debug.get("model_path", "")),
+				"reason": String(learned_debug.get("reason", "")),
+			},
+		}
+	return {}
 
 func _on_pose_updated(landmarks: Array) -> void:
 	if _is_preview_only_mode():
@@ -2733,6 +2762,7 @@ func _record_fixture_state_snapshot(reason: String) -> void:
 		"flow": (gesture_debug.get("flow", {}) as Dictionary).duplicate(true),
 		"punch_detection": (gesture_debug.get("punch_detection", {}) as Dictionary).duplicate(true),
 		"prototype_matcher": (gesture_debug.get("prototype_matcher", {}) as Dictionary).duplicate(true),
+		"learned_classifier": (gesture_debug.get("learned_classifier", {}) as Dictionary).duplicate(true),
 		"boxing_debug": _build_fixture_boxing_debug_snapshot(),
 		"latest_event": _latest_event_name(),
 	}

@@ -1157,10 +1157,14 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 		"punch_left":
 			if _active_punch_detection_backend() == "prototype_matcher":
 				return _build_prototype_matcher_hover_card_model(spec, "left")
+			if _active_punch_detection_backend() == "learned_classifier":
+				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_punch_hover_card_model(spec, "left")
 		"punch_right":
 			if _active_punch_detection_backend() == "prototype_matcher":
 				return _build_prototype_matcher_hover_card_model(spec, "right")
+			if _active_punch_detection_backend() == "learned_classifier":
+				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_punch_hover_card_model(spec, "right")
 		"hook_left":
 			return _build_pose_strike_hover_card_model(spec, "hook", "left")
@@ -1193,6 +1197,11 @@ func _prototype_matcher_debug_state() -> Dictionary:
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
 	return ((gesture_debug.get("prototype_matcher", {}) as Dictionary)).duplicate(true)
 
+func _learned_classifier_debug_state() -> Dictionary:
+	var latest_state := _boxing_latest_state_snapshot()
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	return ((gesture_debug.get("learned_classifier", {}) as Dictionary)).duplicate(true)
+
 func _merged_punch_debug_state(side: String) -> Dictionary:
 	var latest_state := _boxing_latest_state_snapshot()
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
@@ -1221,15 +1230,22 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 	}
 
 func _build_prototype_matcher_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
-	var matcher_debug := _prototype_matcher_debug_state()
+	return _build_classifier_hover_card_model(spec, side, "prototype_matcher", _prototype_matcher_debug_state())
+
+func _build_learned_classifier_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
+	return _build_classifier_hover_card_model(spec, side, "learned_classifier", _learned_classifier_debug_state())
+
+func _build_classifier_hover_card_model(spec: Dictionary, side: String, backend: String, classifier_debug: Dictionary) -> Dictionary:
 	var rows: Array[Dictionary] = []
-	for row_spec_variant: Variant in PROTOTYPE_MATCHER_REQUIREMENT_ROWS:
+	for row_spec_variant: Variant in _classifier_requirement_rows_for_backend(backend):
 		var row_spec: Dictionary = row_spec_variant
-		rows.append(_build_prototype_matcher_requirement_row(row_spec, matcher_debug, side))
+		rows.append(_build_classifier_requirement_row(row_spec, classifier_debug, backend, side))
+	var title_suffix := "Prototype Matcher" if backend == "prototype_matcher" else "Learned Classifier"
+	var footer_source := "gesture_debug.prototype_matcher" if backend == "prototype_matcher" else "gesture_debug.learned_classifier"
 	return {
-		"title": "%s (Prototype Matcher)" % String(spec.get("title", _display_name_for_card_key("punch_%s" % side))),
+		"title": "%s (%s)" % [String(spec.get("title", _display_name_for_card_key("punch_%s" % side))), title_suffix],
 		"rows": rows,
-		"footer": "Live values come from gesture_debug.prototype_matcher for the active punch backend.",
+		"footer": "Live values come from %s for the active punch backend." % footer_source,
 	}
 
 func _build_pose_strike_hover_card_model(spec: Dictionary, family: String, side: String) -> Dictionary:
@@ -1471,7 +1487,22 @@ func _fmt_matcher_class_scores(class_scores: Dictionary) -> String:
 		pairs.append("%s=%s" % [key, _fmt_float(class_scores.get(key, 0.0))])
 	return "{" + ", ".join(pairs) + "}"
 
-func _build_prototype_matcher_requirement_row(row_spec: Dictionary, matcher_debug: Dictionary, _side: String) -> Dictionary:
+func _classifier_requirement_rows_for_backend(backend: String) -> Array:
+	var rows: Array = PROTOTYPE_MATCHER_REQUIREMENT_ROWS.duplicate(true)
+	if backend == "prototype_matcher":
+		return rows
+	for row_variant in rows:
+		if not row_variant is Dictionary:
+			continue
+		var row: Dictionary = row_variant
+		match String(row.get("id", "")):
+			"library_id":
+				row["label"] = "Active learned model path"
+			"library_loaded":
+				row["label"] = "Learned model loaded"
+	return rows
+
+func _build_classifier_requirement_row(row_spec: Dictionary, classifier_debug: Dictionary, backend: String, _side: String) -> Dictionary:
 	var row := row_spec.duplicate(true)
 	var row_id := String(row_spec.get("id", ""))
 	var passed := false
@@ -1480,67 +1511,67 @@ func _build_prototype_matcher_requirement_row(row_spec: Dictionary, matcher_debu
 		"backend_section", "score_section", "gate_section":
 			current_text = ""
 		"active_backend":
-			current_text = String(matcher_debug.get("active_backend", "inactive"))
-			passed = current_text == "prototype_matcher"
+			current_text = String(classifier_debug.get("active_backend", "inactive"))
+			passed = current_text == backend
 		"selected_backend":
-			current_text = String(matcher_debug.get("selected_backend", ""))
-			passed = current_text == "prototype_matcher"
+			current_text = String(classifier_debug.get("selected_backend", ""))
+			passed = current_text == backend
 		"library_id":
-			current_text = String(matcher_debug.get("library_id", ""))
+			current_text = String(classifier_debug.get("library_id", classifier_debug.get("model_path", "")))
 			passed = not current_text.is_empty()
 		"library_loaded":
-			current_text = _fmt_bool(bool(matcher_debug.get("library_loaded", false)))
-			passed = bool(matcher_debug.get("library_loaded", false))
+			current_text = _fmt_bool(bool(classifier_debug.get("library_loaded", classifier_debug.get("model_loaded", false))))
+			passed = bool(classifier_debug.get("library_loaded", classifier_debug.get("model_loaded", false)))
 		"best_class":
-			current_text = String(matcher_debug.get("best_class", "no_punch"))
+			current_text = String(classifier_debug.get("best_class", "no_punch"))
 			passed = not current_text.is_empty()
 		"best_score":
-			current_text = _fmt_float(matcher_debug.get("best_score", 0.0))
+			current_text = _fmt_float(classifier_debug.get("best_score", 0.0))
 			passed = true
 		"required_score":
-			current_text = _fmt_float(matcher_debug.get("required_score", matcher_debug.get("match_score_min", 0.0)))
+			current_text = _fmt_float(classifier_debug.get("required_score", classifier_debug.get("match_score_min", 0.0)))
 			passed = true
 		"result_class":
-			current_text = String(matcher_debug.get("result_class", "no_punch"))
+			current_text = String(classifier_debug.get("result_class", "no_punch"))
 			passed = not current_text.is_empty()
 		"emitted_event_name":
-			current_text = String(matcher_debug.get("emitted_event_name", ""))
+			current_text = String(classifier_debug.get("emitted_event_name", ""))
 			if current_text.is_empty():
 				current_text = "none"
 			passed = true
 		"show_scores":
-			current_text = _fmt_bool(bool(matcher_debug.get("show_scores", false)))
+			current_text = _fmt_bool(bool(classifier_debug.get("show_scores", false)))
 			passed = true
 		"class_scores":
-			if bool(matcher_debug.get("show_scores", false)):
-				current_text = _fmt_matcher_class_scores(matcher_debug.get("class_scores", {}) as Dictionary)
+			if bool(classifier_debug.get("show_scores", false)):
+				current_text = _fmt_matcher_class_scores(classifier_debug.get("class_scores", {}) as Dictionary)
 			else:
 				current_text = "hidden (show_scores=false)"
 			passed = true
 		"show_event_gate_state":
-			current_text = _fmt_bool(bool(matcher_debug.get("show_event_gate_state", false)))
+			current_text = _fmt_bool(bool(classifier_debug.get("show_event_gate_state", false)))
 			passed = true
 		"gate_reason":
-			if bool(matcher_debug.get("show_event_gate_state", false)):
-				current_text = String(matcher_debug.get("reason", "idle"))
+			if bool(classifier_debug.get("show_event_gate_state", false)):
+				current_text = String(classifier_debug.get("reason", "idle"))
 			else:
 				current_text = "hidden (show_event_gate_state=false)"
 			passed = true
 		"hold_ms_remaining":
-			if bool(matcher_debug.get("show_event_gate_state", false)):
-				current_text = "%dms" % int(matcher_debug.get("hold_ms_remaining", 0))
+			if bool(classifier_debug.get("show_event_gate_state", false)):
+				current_text = "%dms" % int(classifier_debug.get("hold_ms_remaining", 0))
 			else:
 				current_text = "hidden (show_event_gate_state=false)"
 			passed = true
 		"cooldown_ms_remaining":
-			if bool(matcher_debug.get("show_event_gate_state", false)):
-				current_text = "%dms" % int(matcher_debug.get("cooldown_ms_remaining", 0))
+			if bool(classifier_debug.get("show_event_gate_state", false)):
+				current_text = "%dms" % int(classifier_debug.get("cooldown_ms_remaining", 0))
 			else:
 				current_text = "hidden (show_event_gate_state=false)"
 			passed = true
 		"active_event_class":
-			if bool(matcher_debug.get("show_event_gate_state", false)):
-				current_text = String(matcher_debug.get("active_event_class", "no_punch"))
+			if bool(classifier_debug.get("show_event_gate_state", false)):
+				current_text = String(classifier_debug.get("active_event_class", "no_punch"))
 			else:
 				current_text = "hidden (show_event_gate_state=false)"
 			passed = true
@@ -2193,38 +2224,48 @@ func _build_boxing_event_feed_text() -> String:
 
 	var punch_detection_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) is Dictionary) else {}
 	var prototype_matcher_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}) is Dictionary) else {}
+	var learned_classifier_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("learned_classifier", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("learned_classifier", {}) is Dictionary) else {}
+	var classifier_backend := String(punch_detection_debug.get("backend", prototype_matcher_debug.get("active_backend", "threshold_gates")))
+	var classifier_debug := prototype_matcher_debug
+	var classifier_title := "Prototype matcher truth"
+	var classifier_loaded_label := "Prototype library ID"
+	if classifier_backend == "learned_classifier":
+		classifier_debug = learned_classifier_debug
+		classifier_title = "Learned classifier truth"
+		classifier_loaded_label = "Learned model path"
 	lines.append("")
-	lines.append("Prototype matcher truth")
+	lines.append(classifier_title)
 	lines.append("-----------------------")
-	lines.append("Active backend: %s" % String(punch_detection_debug.get("backend", prototype_matcher_debug.get("active_backend", "threshold_gates"))))
-	lines.append("Selected backend: %s" % String(prototype_matcher_debug.get("selected_backend", "threshold_gates")))
-	lines.append("Prototype library ID: %s (loaded=%s)" % [
-		String(prototype_matcher_debug.get("library_id", "")),
-		_fmt_bool(bool(prototype_matcher_debug.get("library_loaded", false))),
+	lines.append("Active backend: %s" % classifier_backend)
+	lines.append("Selected backend: %s" % String(classifier_debug.get("selected_backend", "threshold_gates")))
+	lines.append("%s: %s (loaded=%s)" % [
+		classifier_loaded_label,
+		String(classifier_debug.get("library_id", classifier_debug.get("model_path", ""))),
+		_fmt_bool(bool(classifier_debug.get("library_loaded", classifier_debug.get("model_loaded", false)))),
 	])
 	lines.append("Best class / score / threshold: %s / %s / %s" % [
-		String(prototype_matcher_debug.get("best_class", "no_punch")),
-		_fmt_float(prototype_matcher_debug.get("best_score", 0.0)),
-		_fmt_float(prototype_matcher_debug.get("required_score", prototype_matcher_debug.get("match_score_min", 0.0))),
+		String(classifier_debug.get("best_class", "no_punch")),
+		_fmt_float(classifier_debug.get("best_score", 0.0)),
+		_fmt_float(classifier_debug.get("required_score", classifier_debug.get("match_score_min", 0.0))),
 	])
 	lines.append("Result class / emitted event: %s / %s" % [
-		String(prototype_matcher_debug.get("result_class", "no_punch")),
-		String(prototype_matcher_debug.get("emitted_event_name", "none")) if not String(prototype_matcher_debug.get("emitted_event_name", "")).is_empty() else "none",
+		String(classifier_debug.get("result_class", "no_punch")),
+		String(classifier_debug.get("emitted_event_name", "none")) if not String(classifier_debug.get("emitted_event_name", "")).is_empty() else "none",
 	])
 	lines.append("Debug flags: show_scores=%s show_event_gate_state=%s" % [
-		_fmt_bool(bool(prototype_matcher_debug.get("show_scores", false))),
-		_fmt_bool(bool(prototype_matcher_debug.get("show_event_gate_state", false))),
+		_fmt_bool(bool(classifier_debug.get("show_scores", false))),
+		_fmt_bool(bool(classifier_debug.get("show_event_gate_state", false))),
 	])
-	if bool(prototype_matcher_debug.get("show_scores", false)):
-		lines.append("Class scores: %s" % _fmt_matcher_class_scores(prototype_matcher_debug.get("class_scores", {}) as Dictionary))
+	if bool(classifier_debug.get("show_scores", false)):
+		lines.append("Class scores: %s" % _fmt_matcher_class_scores(classifier_debug.get("class_scores", {}) as Dictionary))
 	else:
 		lines.append("Class scores: hidden (show_scores=false)")
-	if bool(prototype_matcher_debug.get("show_event_gate_state", false)):
+	if bool(classifier_debug.get("show_event_gate_state", false)):
 		lines.append("Gate reason / hold / cooldown / active event: %s / %dms / %dms / %s" % [
-			String(prototype_matcher_debug.get("reason", "idle")),
-			int(prototype_matcher_debug.get("hold_ms_remaining", 0)),
-			int(prototype_matcher_debug.get("cooldown_ms_remaining", 0)),
-			String(prototype_matcher_debug.get("active_event_class", "no_punch")),
+			String(classifier_debug.get("reason", "idle")),
+			int(classifier_debug.get("hold_ms_remaining", 0)),
+			int(classifier_debug.get("cooldown_ms_remaining", 0)),
+			String(classifier_debug.get("active_event_class", "no_punch")),
 		])
 	else:
 		lines.append("Gate reason / hold / cooldown / active event: hidden (show_event_gate_state=false)")
