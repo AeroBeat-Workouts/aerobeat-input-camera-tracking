@@ -1,8 +1,8 @@
 # AeroBeat Boxing Punch Backend State Separation and Non-Punch Gate Clarity
 
 **Date:** 2026-06-17  
-**Status:** In Progress  
-**Last Updated:** 2026-06-17 19:10 EDT  
+**Status:** Complete  
+**Last Updated:** 2026-06-17 19:46 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -95,7 +95,7 @@ This plan should stay product-truthful. We are not doing another benchmark branc
 
 **Status:** ✅ Complete
 
-**Results:** Narrowed the slice per Derrick to keep `threshold_gates` named as-is and focus purely on selector/enable-state truth. Updated runtime/debug reporting so punch debug now exposes `selected_backend`, `selected_backend_enabled`, `active_backend`, and `active_backend_resolution`, making it explicit when a selected backend is disabled and therefore resolves to `none` rather than silently falling back. Kept non-punch gesture processing untouched and independent. Updated proving runtime override handling plus boxing proving/event-feed text so selected-vs-active backend state is visible during bench/debug work. Tightened docs/YAML comments to state that `threshold_gates.enabled` only controls the threshold-gated punch backend. Added focused unit coverage for disabled selected backends and proving/event-feed truth. Focused validation passed via `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_aero_camera_tracking.gd -gexit` (118/118 passing).
+**Results:** Narrowed the slice per Derrick to keep `threshold_gates` named as-is and focus purely on selector/enable-state truth. Updated runtime/debug reporting so punch debug now exposes `selected_backend`, `selected_backend_raw`, `selected_backend_enabled`, `active_backend`, and `active_backend_resolution`, making it explicit when a selected backend is disabled and therefore resolves to `none` rather than silently falling back. Kept non-punch gesture processing untouched and independent. Updated proving runtime override handling plus boxing proving/event-feed text so selected-vs-active backend state is visible during bench/debug work. Tightened docs/YAML comments to state that `threshold_gates.enabled` only controls the threshold-gated punch backend. Added focused unit coverage for disabled selected backends and proving/event-feed truth. Focused validation passed via `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_aero_camera_tracking.gd -gexit` (118/118 passing). Broader unit sweep still shows unrelated pre-existing failures in `test_camera_tracking_provider.gd`, treated as out of scope for this slice. Commit pushed: `bd4111f`. 
 
 ---
 
@@ -113,9 +113,9 @@ This plan should stay product-truthful. We are not doing another benchmark branc
 **Files Created/Deleted/Modified:**
 - QA notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA PASS for coder commit `bd4111f`. Re-ran the focused automated suite with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` and got `98/98` passing, exit `0`. QA also ran headless proving captures to verify runtime/debug truth directly for three scenarios: (1) `learned_classifier` selected plus disabled showed `Active backend: none`, `Selected backend: learned_classifier`, `Selected backend enabled: false`, and `Backend resolution: selected_backend_disabled`, with guard-only events and no punch events; (2) `prototype_matcher` selected plus disabled showed the same truth pattern with `prototype_matcher`; and (3) `threshold_gates` selected plus enabled showed `Active backend: threshold_gates`, `Selected backend enabled: true`, `Backend resolution: selected_backend_active`, and a timeline containing threshold punch events (`punch_left`, `hook_left`, `uppercut_left`). QA also confirmed that non-punch gestures remain independent: guard still toggles while the active punch backend is `none` in disabled-backend captures, and squat/weave independence remains covered by existing focused tests and separate code paths/debug builders. Minor caveat: headless capture tooling emitted a screenshot-null error under dummy rendering, but still produced valid `report.json` and `report.md` artifacts and exited successfully, so the text/debug-state proving evidence is still valid.
 
 ---
 
@@ -133,25 +133,26 @@ This plan should stay product-truthful. We are not doing another benchmark branc
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit PASS for `bd4111f`. Independent audit confirmed the fix addresses the real reported confusion rather than masking it: `pose_detector_substrate.gd` now truthfully separates `selected_backend`, `selected_backend_enabled`, `active_backend`, and `active_backend_resolution`, and the classifier/matcher debug states plus boxing proving event-feed text expose the same distinction. Disabled `learned_classifier` and `prototype_matcher` selections now resolve cleanly to `none` with explicit `selected_backend_disabled` reasoning, while `threshold_gates` selected plus enabled still preserves the threshold punch path. Non-punch gestures remain independent of punch backend selection: direct runtime probing showed the active punch backend resolving to `none` while guard/weave events still emitted, and the non-punch paths remain structurally separate in `process_landmarks()`. The docs, YAML comments, and proving UI now describe the behavior truthfully after Derrick’s clarification, and no silent `threshold_gates` rename shipped. Focused validation was independently rerun and passed (`98/98` across substrate and proving-harness debug tests). The only caveat is the existing headless screenshot-null issue in capture tooling under dummy rendering, but it does not invalidate the generated text/JSON proving artifacts used for the truth check.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** We did not change the punch/non-punch architecture or rename `threshold_gates`. Instead, we fixed the real product confusion seam: the runtime and proving/debug surfaces now make selected-vs-enabled-vs-active punch backend truth explicit, so when `learned_classifier` or `prototype_matcher` is selected but disabled, the system clearly reports that the active backend is `none` instead of leaving the user to guess why punches are missing. The threshold punch backend still works when selected and enabled, and non-punch gestures remain independent.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02` and `REF-03` are now truthful about `punch_detection.backend` and the meaning of `threshold_gates.enabled`; `REF-04`, `REF-05`, and `REF-06` now expose accurate runtime/debug truth for selected, enabled, and active backend state; `REF-07` now surfaces that truth clearly in proving UI/event text; `REF-08` was intentionally narrowed by later user clarification, and the final implementation honored that clarification by not shipping the proposed rename.
 
 **Commits:**
-- Pending
+- `71f0e7f` - `chore: archive plans and record punch backend separation plan`
+- `bd4111f` - coder implementation commit for selected-vs-enabled-vs-active backend truth clarification
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** The underlying bug was not gesture-state shadowing but config/runtime truth opacity. When punch backend selection and enablement are separate concepts, the UI/debug contract must state both explicitly or manual proving will feel broken even when the runtime is technically doing what it was told.
 
 ---
 
-*Completed on Pending*
+*Completed on 2026-06-17*
