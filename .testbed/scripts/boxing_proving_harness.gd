@@ -1491,7 +1491,7 @@ func _classifier_requirement_rows_for_backend(backend: String) -> Array:
 	var rows: Array = PROTOTYPE_MATCHER_REQUIREMENT_ROWS.duplicate(true)
 	if backend == "prototype_matcher":
 		return rows
-	for row_variant in rows:
+	for row_variant: Variant in rows:
 		if not row_variant is Dictionary:
 			continue
 		var row: Dictionary = row_variant

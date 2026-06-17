@@ -1169,7 +1169,7 @@ func _build_runtime_config() -> Variant:
 	_apply_runtime_gesture_backend_override(config)
 	return config
 
-func _apply_runtime_gesture_backend_override(config) -> void:
+func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript) -> void:
 	if config == null:
 		return
 	var gesture_profile: Dictionary = config.gesture_profile_document.duplicate(true) if config.get("gesture_profile_document") is Dictionary else {}

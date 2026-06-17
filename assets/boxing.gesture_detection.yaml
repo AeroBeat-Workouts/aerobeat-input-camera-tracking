@@ -2,7 +2,7 @@ schema: aerobeat/gesture_detection_config
 version: 1
 profile: boxing
 punch_detection:
-  # Pick which punch-detection family is active for boxing. input.
+  # [threshold_gates, prototype_matcher, learned_classifier] Pick which punch-detection family is active for boxing. input.
   backend: threshold_gates
 
 threshold_gates:
