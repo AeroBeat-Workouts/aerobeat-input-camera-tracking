@@ -957,6 +957,7 @@ func _should_evaluate_gestures_this_frame() -> bool:
 func _clear_transient_gesture_state() -> void:
 	_reset_gesture_state()
 	_prototype_punch_matcher.reset()
+	_learned_punch_classifier.reset()
 
 func _reset_temporal_runtime_state_for_timestamp_rewind() -> void:
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())

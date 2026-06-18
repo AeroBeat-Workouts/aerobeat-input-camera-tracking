@@ -1584,6 +1584,64 @@ func test_learned_classifier_backend_emits_and_surfaces_truthful_debug_state() -
 	assert_eq(String(learned_debug.get("model_path", "")), model_path)
 	assert_true(float(learned_debug.get("best_score", 0.0)) >= 0.70)
 
+func test_learned_classifier_replay_timestamp_rewind_resets_temporal_gate_state() -> void:
+	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2)
+	_enable_learned_classifier_backend({
+		"model_path": model_path,
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 250,
+		"emit_hold_ms": 100,
+	})
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	assert_eq(String(learned_debug.get("reason", "")), "window_not_full")
+	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
+	assert_eq(_event_names(state.get("events", [])), ["punch_left"])
+	learned_debug = state.get("gesture_debug", {}).get("learned_classifier", {})
+	assert_true(int(learned_debug.get("last_eval_timestamp_ms", 0)) > 0)
+	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
+	assert_true(int(learned_debug.get("cooldown_ms_remaining", 0)) > 0)
+	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
+
+	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 20)
+	assert_eq(_event_names(state.get("events", [])), [])
+	learned_debug = state.get("gesture_debug", {}).get("learned_classifier", {})
+	assert_eq(int(learned_debug.get("window_sample_count", -1)), 1)
+	assert_eq(int(learned_debug.get("last_eval_timestamp_ms", -1)), 0)
+	assert_eq(int(learned_debug.get("hold_ms_remaining", -1)), 0)
+	assert_eq(int(learned_debug.get("cooldown_ms_remaining", -1)), 0)
+	assert_eq(String(learned_debug.get("active_event_class", "")), "no_punch")
+	assert_eq(String(learned_debug.get("reason", "")), "window_not_full")
+
+func test_learned_classifier_lost_tracking_cleanup_resets_temporal_gate_state() -> void:
+	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2)
+	_enable_learned_classifier_backend({
+		"model_path": model_path,
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 250,
+		"emit_hold_ms": 100,
+	})
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
+	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
+	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
+	assert_true(int(learned_debug.get("cooldown_ms_remaining", 0)) > 0)
+
+	state = substrate.process_landmarks(_make_pose_frame({}, 0.50, 1.0, 0.2, 0.2), 116)
+	state = substrate.process_landmarks(_make_pose_frame({}, 0.50, 1.0, 0.2, 0.2), 132)
+	state = substrate.process_landmarks(_make_pose_frame({}, 0.50, 1.0, 0.2, 0.2), 148)
+	assert_eq(String(state.get("tracking_state", "")), "lost")
+	learned_debug = state.get("gesture_debug", {}).get("learned_classifier", {})
+	assert_eq(int(learned_debug.get("window_sample_count", -1)), 0)
+	assert_eq(int(learned_debug.get("last_eval_timestamp_ms", -1)), 0)
+	assert_eq(int(learned_debug.get("hold_ms_remaining", -1)), 0)
+	assert_eq(int(learned_debug.get("cooldown_ms_remaining", -1)), 0)
+	assert_eq(String(learned_debug.get("active_event_class", "")), "no_punch")
+	assert_eq(String(learned_debug.get("reason", "")), "idle")
+
 func test_learned_classifier_repo_root_docs_path_falls_back_to_addon_mount_in_testbed() -> void:
 	_enable_learned_classifier_backend({
 		"model_path": "res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json",
@@ -1830,37 +1888,41 @@ func _enable_learned_classifier_backend(options: Dictionary = {}) -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
-func _write_test_learned_classifier_model(winner_class: String = "straight_left", confidence_logit: float = 10.0) -> String:
-	var path := "user://test-learned-classifier-%s.json" % winner_class
+func _write_test_learned_classifier_model(winner_class: String = "straight_left", confidence_logit: float = 10.0, frame_count: int = 1) -> String:
+	var path := "user://test-learned-classifier-%s-%d.json" % [winner_class, frame_count]
 	var class_order := ["straight_left", "straight_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"]
 	var winner_index := class_order.find(winner_class)
 	assert_true(winner_index >= 0)
 	var means: Array = []
 	var stds: Array = []
-	for _idx in range(16):
+	for _idx in range(frame_count * 16):
 		means.append(0.0)
 		stds.append(1.0)
 	var logits_biases: Array = []
 	for idx in range(class_order.size()):
 		logits_biases.append(confidence_logit if idx == winner_index else 0.0)
+	var input_dim := frame_count * 16
+	var hidden_weights: Array = []
+	for _idx in range(input_dim):
+		hidden_weights.append(0.0)
 	var document := {
 		"schema": "aerobeat.boxing_punch_classifier_mlp_result",
 		"version": 1,
 		"class_order": class_order,
 		"dataset_window_shape": {
-			"frame_count": 1,
+			"frame_count": frame_count,
 			"frame_feature_count": 16,
-			"flattened_input_dim": 16,
+			"flattened_input_dim": input_dim,
 		},
 		"standardization": {
 			"means": means,
 			"stds": stds,
 		},
 		"model": {
-			"input_dim": 16,
+			"input_dim": input_dim,
 			"hidden_dim": 1,
 			"output_dim": class_order.size(),
-			"w1": [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
+			"w1": [hidden_weights],
 			"b1": [1.0],
 			"w2": [[0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]],
 			"b2": logits_biases,
