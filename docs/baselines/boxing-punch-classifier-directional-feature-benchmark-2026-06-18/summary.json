@@ -1,0 +1,107 @@
+{
+  "schema": "aerobeat.boxing_punch_classifier_directional_feature_benchmark_summary",
+  "version": 1,
+  "captures_dir": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16",
+  "variants": {
+    "baseline_v1": {
+      "description": "baseline only (8/side, 16/frame)",
+      "feature_count_per_frame": 16,
+      "mlp_accuracy": 0.7586206896551724,
+      "mlp_macro_f1": 0.3623188405797101,
+      "cnn_accuracy": 0.8620689655172413,
+      "cnn_macro_f1": 0.41982507288629733,
+      "feature_set": "baseline_v1",
+      "focused_test_predictions": {
+        "mlp": {
+          "hook_left": "no_punch",
+          "hook_right": "no_punch",
+          "uppercut_left": "uppercut_right",
+          "uppercut_right": "no_punch",
+          "straight_right": "straight_right"
+        },
+        "cnn": {
+          "hook_left": "no_punch",
+          "hook_right": "no_punch",
+          "uppercut_left": "no_punch",
+          "uppercut_right": "hook_left",
+          "straight_right": "straight_right"
+        }
+      }
+    },
+    "camera_directional_v1": {
+      "description": "baseline + camera directional bundle (15/side, 30/frame)",
+      "feature_count_per_frame": 30,
+      "mlp_accuracy": 0.6896551724137931,
+      "mlp_macro_f1": 0.354978354978355,
+      "cnn_accuracy": 0.7586206896551724,
+      "cnn_macro_f1": 0.3623188405797101,
+      "feature_set": "camera_directional_v1",
+      "focused_test_predictions": {
+        "mlp": {
+          "hook_left": "no_punch",
+          "hook_right": "no_punch",
+          "uppercut_left": "uppercut_right",
+          "uppercut_right": "no_punch",
+          "straight_right": "straight_right"
+        },
+        "cnn": {
+          "hook_left": "no_punch",
+          "hook_right": "no_punch",
+          "uppercut_left": "uppercut_left",
+          "uppercut_right": "no_punch",
+          "straight_right": "straight_right"
+        }
+      }
+    },
+    "body_directional_v1": {
+      "description": "baseline + body directional bundle (15/side, 30/frame)",
+      "feature_count_per_frame": 30,
+      "mlp_accuracy": 0.6896551724137931,
+      "mlp_macro_f1": 0.354978354978355,
+      "cnn_accuracy": 0.6896551724137931,
+      "cnn_macro_f1": 0.3576965669988926,
+      "feature_set": "body_directional_v1",
+      "focused_test_predictions": {
+        "mlp": {
+          "hook_left": "no_punch",
+          "hook_right": "no_punch",
+          "uppercut_left": "uppercut_right",
+          "uppercut_right": "no_punch",
+          "straight_right": "straight_right"
+        },
+        "cnn": {
+          "hook_left": "straight_left",
+          "hook_right": "no_punch",
+          "uppercut_left": "uppercut_left",
+          "uppercut_right": "no_punch",
+          "straight_right": "straight_right"
+        }
+      }
+    },
+    "combined_directional_v1": {
+      "description": "baseline + camera + body bundles (22/side, 44/frame)",
+      "feature_count_per_frame": 44,
+      "mlp_accuracy": 0.6896551724137931,
+      "mlp_macro_f1": 0.25565575067236196,
+      "cnn_accuracy": 0.7931034482758621,
+      "cnn_macro_f1": 0.3630952380952381,
+      "feature_set": "combined_directional_v1",
+      "focused_test_predictions": {
+        "mlp": {
+          "hook_left": "no_punch",
+          "hook_right": "no_punch",
+          "uppercut_left": "uppercut_right",
+          "uppercut_right": "uppercut_right",
+          "straight_right": "straight_right"
+        },
+        "cnn": {
+          "hook_left": "no_punch",
+          "hook_right": "no_punch",
+          "uppercut_left": "no_punch",
+          "uppercut_right": "no_punch",
+          "straight_right": "straight_right"
+        }
+      }
+    }
+  }
+}

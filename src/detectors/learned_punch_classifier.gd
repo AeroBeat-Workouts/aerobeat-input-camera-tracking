@@ -33,11 +33,32 @@ const DEFAULT_FEATURE_NAMES := [
 	FEATURE_NAME_COMBINED_ELBOW_WRIST_VELOCITY_XY_MAGNITUDE,
 	FEATURE_NAME_ELBOW_SHOULDER_XY_DISTANCE_OVER_SHOULDER_WIDTH,
 ]
+const DEFAULT_FRAME_FEATURE_NAMES := [
+	"left_shoulder_x",
+	"left_shoulder_y",
+	"left_elbow_x",
+	"left_elbow_y",
+	"left_wrist_x",
+	"left_wrist_y",
+	"left_combined_elbow_wrist_velocity_xy_magnitude",
+	"left_elbow_shoulder_xy_distance_over_shoulder_width",
+	"right_shoulder_x",
+	"right_shoulder_y",
+	"right_elbow_x",
+	"right_elbow_y",
+	"right_wrist_x",
+	"right_wrist_y",
+	"right_combined_elbow_wrist_velocity_xy_magnitude",
+	"right_elbow_shoulder_xy_distance_over_shoulder_width",
+]
 
 var _model_document: Dictionary = {}
 var _model_path := ""
 var _model_error := ""
 var _resolved_class_order: Array = DEFAULT_CLASS_ORDER.duplicate(true)
+var _resolved_feature_set := "baseline_v1"
+var _resolved_side_feature_names: Array = DEFAULT_FEATURE_NAMES.duplicate(true)
+var _resolved_frame_feature_names: Array = DEFAULT_FRAME_FEATURE_NAMES.duplicate(true)
 var _resolved_frame_count := 8
 var _resolved_frame_feature_count := 16
 var _last_scored_best_class := OUTCOME_NO_PUNCH
@@ -95,6 +116,9 @@ func get_debug_state() -> Dictionary:
 	debug_state["frame_count"] = _get_frame_count()
 	debug_state["frame_feature_count"] = _get_frame_feature_count()
 	debug_state["class_order"] = _resolved_class_order.duplicate(true)
+	debug_state["feature_set"] = _resolved_feature_set
+	debug_state["side_feature_names"] = _resolved_side_feature_names.duplicate(true)
+	debug_state["frame_feature_names"] = _resolved_frame_feature_names.duplicate(true)
 	return debug_state
 
 func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_ms: int) -> Array:
@@ -114,6 +138,9 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	debug_state["frame_count"] = _get_frame_count()
 	debug_state["frame_feature_count"] = _get_frame_feature_count()
 	debug_state["class_order"] = _resolved_class_order.duplicate(true)
+	debug_state["feature_set"] = _resolved_feature_set
+	debug_state["side_feature_names"] = _resolved_side_feature_names.duplicate(true)
+	debug_state["frame_feature_names"] = _resolved_frame_feature_names.duplicate(true)
 	debug_state["match_score_min"] = _get_match_score_min()
 	debug_state["emit_cooldown_ms"] = _get_emit_cooldown_ms()
 	debug_state["emit_hold_ms"] = _get_emit_hold_ms()
@@ -339,6 +366,9 @@ func _load_model_if_needed() -> void:
 	_model_document.clear()
 	_model_error = ""
 	_resolved_class_order = DEFAULT_CLASS_ORDER.duplicate(true)
+	_resolved_feature_set = "baseline_v1"
+	_resolved_side_feature_names = DEFAULT_FEATURE_NAMES.duplicate(true)
+	_resolved_frame_feature_names = DEFAULT_FRAME_FEATURE_NAMES.duplicate(true)
 	_resolved_frame_count = 8
 	_resolved_frame_feature_count = 16
 	var file := FileAccess.open(_model_path, FileAccess.READ)
@@ -371,6 +401,39 @@ func _load_model_if_needed() -> void:
 	var window_shape: Dictionary = _model_document.get("dataset_window_shape", {}) if _model_document.get("dataset_window_shape", {}) is Dictionary else {}
 	_resolved_frame_count = max(1, int(window_shape.get("frame_count", 8)))
 	_resolved_frame_feature_count = max(1, int(window_shape.get("frame_feature_count", 16)))
+	_resolved_feature_set = String(_model_document.get("feature_set", _resolved_feature_set))
+	var side_feature_names_variant: Variant = _model_document.get("side_feature_names", [])
+	var frame_feature_names_variant: Variant = _model_document.get("frame_feature_names", [])
+	if side_feature_names_variant is Array and not (side_feature_names_variant as Array).is_empty():
+		_resolved_side_feature_names = []
+		for feature_name_variant in (side_feature_names_variant as Array):
+			_resolved_side_feature_names.append(String(feature_name_variant))
+	else:
+		_resolved_side_feature_names = DEFAULT_FEATURE_NAMES.duplicate(true)
+	if frame_feature_names_variant is Array and not (frame_feature_names_variant as Array).is_empty():
+		_resolved_frame_feature_names = []
+		for feature_name_variant in (frame_feature_names_variant as Array):
+			_resolved_frame_feature_names.append(String(feature_name_variant))
+	else:
+		_resolved_frame_feature_names = _build_frame_feature_names(_resolved_side_feature_names)
+	if _resolved_side_feature_names.size() * 2 != _resolved_frame_feature_count:
+		_model_error = "model_side_feature_shape_mismatch"
+		_model_document.clear()
+		return
+	if _resolved_frame_feature_names.size() != _resolved_frame_feature_count:
+		_model_error = "model_frame_feature_shape_mismatch"
+		_model_document.clear()
+		return
+	var expected_frame_feature_names := _build_frame_feature_names(_resolved_side_feature_names)
+	if expected_frame_feature_names.size() != _resolved_frame_feature_names.size():
+		_model_error = "model_frame_feature_names_missing"
+		_model_document.clear()
+		return
+	for idx in range(expected_frame_feature_names.size()):
+		if String(expected_frame_feature_names[idx]) != String(_resolved_frame_feature_names[idx]):
+			_model_error = "model_feature_name_order_mismatch"
+			_model_document.clear()
+			return
 	var standardization: Dictionary = _model_document.get("standardization", {}) if _model_document.get("standardization", {}) is Dictionary else {}
 	var means: Variant = standardization.get("means", [])
 	var stds: Variant = standardization.get("stds", [])
@@ -599,11 +662,19 @@ func _get_debug_bool(debug_config: Dictionary, key: String, default_value: bool)
 	var raw_value = debug_config.get(key, default_value)
 	return raw_value if raw_value is bool else default_value
 
+func _build_frame_feature_names(side_feature_names: Array) -> Array:
+	var result: Array = []
+	for feature_name_variant in side_feature_names:
+		result.append("left_%s" % String(feature_name_variant))
+	for feature_name_variant in side_feature_names:
+		result.append("right_%s" % String(feature_name_variant))
+	return result
+
 func _get_feature_names() -> Array:
-	return DEFAULT_FEATURE_NAMES.duplicate(true)
+	return _resolved_side_feature_names.duplicate(true)
 
 func _get_feature_count() -> int:
-	return DEFAULT_FEATURE_NAMES.size()
+	return _resolved_side_feature_names.size()
 
 func _get_frame_count() -> int:
 	return max(1, int(_resolved_frame_count) if typeof(_resolved_frame_count) == TYPE_INT else 8)

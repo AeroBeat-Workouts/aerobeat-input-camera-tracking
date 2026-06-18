@@ -16,6 +16,8 @@ from boxing_classifier_harness import (
     DEFAULT_NO_PUNCH_STRIDE_MS,
     DEFAULT_THRESHOLD_WINDOW_MS,
     DEFAULT_WINDOW_FRAME_COUNT,
+    FEATURE_SET_BASELINE_V1,
+    SUPPORTED_FEATURE_SETS,
     PUNCH_CLASS_ORDER,
     PUNCH_GESTURE_NAMES,
     assign_chronological_holdout_splits,
@@ -24,8 +26,11 @@ from boxing_classifier_harness import (
     ensure_clean_dir,
     evenly_pick,
     extract_window_sample,
+    feature_names_per_side,
     fixture_duration_ms,
     format_confusion_markdown,
+    frame_feature_names,
+    normalize_feature_set,
     iter_fixed_windows,
     load_json,
     load_yaml,
@@ -224,9 +229,13 @@ def _export_dataset(
     no_punch_stride_ms: int,
     max_no_punch_samples: int,
     max_transition_no_punch_samples: int,
+    feature_set: str = FEATURE_SET_BASELINE_V1,
     snapshot: dict | None = None,
     snapshot_verification: dict | None = None,
 ) -> tuple[dict, dict]:
+    resolved_feature_set = normalize_feature_set(feature_set)
+    resolved_side_feature_names = feature_names_per_side(resolved_feature_set)
+    resolved_frame_feature_names = frame_feature_names(resolved_feature_set)
     samples = []
     fixture_summaries = []
     background_no_punch_candidates = []
@@ -236,7 +245,7 @@ def _export_dataset(
         fixture_path = (repo_root / fixture["fixture_path"]).resolve()
         fixture_yaml = load_yaml(fixture_path)
         capture_report = load_json(captures_dir / "captures" / fixture["id"] / "report.json")
-        feature_snapshots = build_feature_snapshots(capture_report)
+        feature_snapshots = build_feature_snapshots(capture_report, feature_set=resolved_feature_set)
 
         gesture_windows = {}
         for gesture in fixture_yaml.get("expected_gestures", []) or []:
@@ -272,6 +281,9 @@ def _export_dataset(
                     sample_kind="annotated_punch_window",
                     source_window_index=window_index,
                     source_gesture_name=gesture_name,
+                    feature_set=resolved_feature_set,
+                    frame_feature_names_override=resolved_frame_feature_names,
+                    side_feature_names_override=resolved_side_feature_names,
                     extra_metadata={
                         "negative_context": "n/a",
                         "repetition_index": window_index,
@@ -300,6 +312,9 @@ def _export_dataset(
                 sample_kind="derived_no_punch_window",
                 source_window_index=candidate_index,
                 source_gesture_name="no_punch",
+                feature_set=resolved_feature_set,
+                frame_feature_names_override=resolved_frame_feature_names,
+                side_feature_names_override=resolved_side_feature_names,
                 extra_metadata={
                     "negative_context": "punch_fixture_background" if is_punch_fixture else "non_punch_fixture_background",
                 },
@@ -331,6 +346,9 @@ def _export_dataset(
                     sample_kind="transition_before_punch",
                     source_window_index=punch_index,
                     source_gesture_name=gesture_name,
+                    feature_set=resolved_feature_set,
+                    frame_feature_names_override=resolved_frame_feature_names,
+                    side_feature_names_override=resolved_side_feature_names,
                     extra_metadata={
                         "negative_context": "transition_before_punch",
                         "repetition_index": punch_index,
@@ -355,6 +373,9 @@ def _export_dataset(
                     sample_kind="transition_after_punch",
                     source_window_index=punch_index,
                     source_gesture_name=gesture_name,
+                    feature_set=resolved_feature_set,
+                    frame_feature_names_override=resolved_frame_feature_names,
+                    side_feature_names_override=resolved_side_feature_names,
                     extra_metadata={
                         "negative_context": "transition_after_punch",
                         "repetition_index": punch_index,
@@ -398,8 +419,10 @@ def _export_dataset(
         "manifest_path": manifest["_manifest_path"],
         "capture_dir": captures_dir.relative_to(repo_root).as_posix(),
         "window_frame_count": frame_count,
-        "frame_feature_count": len(samples[0]["feature_names"]) if samples else 0,
-        "frame_feature_names": samples[0]["feature_names"] if samples else [],
+        "feature_set": resolved_feature_set,
+        "frame_feature_count": len(resolved_frame_feature_names),
+        "side_feature_names": list(resolved_side_feature_names),
+        "frame_feature_names": list(resolved_frame_feature_names),
         "class_order": list(PUNCH_CLASS_ORDER),
         "no_punch_window_ms": no_punch_window_ms,
         "no_punch_stride_ms": no_punch_stride_ms,
@@ -560,6 +583,7 @@ def main() -> int:
     parser.add_argument("--no-punch-stride-ms", type=int, default=DEFAULT_NO_PUNCH_STRIDE_MS)
     parser.add_argument("--max-no-punch-samples", type=int, default=DEFAULT_MAX_NO_PUNCH_SAMPLES)
     parser.add_argument("--max-transition-no-punch-samples", type=int, default=DEFAULT_MAX_TRANSITION_NO_PUNCH_SAMPLES)
+    parser.add_argument("--feature-set", default=FEATURE_SET_BASELINE_V1, choices=SUPPORTED_FEATURE_SETS, help="Feature schema to export/train with.")
     parser.add_argument("--skip-captures", action="store_true", help="Reuse existing report.json files under --captures-dir instead of rerunning Godot capture.")
     args = parser.parse_args()
 
@@ -572,6 +596,7 @@ def main() -> int:
     resolved_no_punch_stride_ms = args.no_punch_stride_ms
     resolved_max_no_punch_samples = args.max_no_punch_samples
     resolved_max_transition_no_punch_samples = args.max_transition_no_punch_samples
+    resolved_feature_set = normalize_feature_set(args.feature_set)
     if snapshot:
         benchmark_manifest = snapshot.get("benchmark_manifest", {}) if isinstance(snapshot.get("benchmark_manifest", {}), dict) else {}
         export_parameters = snapshot.get("export_parameters", {}) if isinstance(snapshot.get("export_parameters", {}), dict) else {}
@@ -583,6 +608,7 @@ def main() -> int:
         resolved_no_punch_stride_ms = int(export_parameters.get("no_punch_stride_ms", resolved_no_punch_stride_ms))
         resolved_max_no_punch_samples = int(export_parameters.get("max_no_punch_samples", resolved_max_no_punch_samples))
         resolved_max_transition_no_punch_samples = int(export_parameters.get("max_transition_no_punch_samples", resolved_max_transition_no_punch_samples))
+        resolved_feature_set = normalize_feature_set(export_parameters.get("feature_set", resolved_feature_set))
 
     manifest = _load_manifest(repo_root, resolved_manifest_path)
     captures_dir = (repo_root / resolved_captures_dir).resolve()
@@ -606,6 +632,7 @@ def main() -> int:
         no_punch_stride_ms=resolved_no_punch_stride_ms,
         max_no_punch_samples=resolved_max_no_punch_samples,
         max_transition_no_punch_samples=resolved_max_transition_no_punch_samples,
+        feature_set=resolved_feature_set,
         snapshot=snapshot,
         snapshot_verification=snapshot_verification,
     )

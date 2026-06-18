@@ -24,6 +24,20 @@ const FEATURE_NAME_WRIST_X := "wrist_x"
 const FEATURE_NAME_WRIST_Y := "wrist_y"
 const FEATURE_NAME_COMBINED_ELBOW_WRIST_VELOCITY_XY_MAGNITUDE := "combined_elbow_wrist_velocity_xy_magnitude"
 const FEATURE_NAME_ELBOW_SHOULDER_XY_DISTANCE_OVER_SHOULDER_WIDTH := "elbow_shoulder_xy_distance_over_shoulder_width"
+const FEATURE_NAME_CAMERA_SIGNED_VX := "camera_signed_vx"
+const FEATURE_NAME_CAMERA_SIGNED_VY := "camera_signed_vy"
+const FEATURE_NAME_CAMERA_DIRECTION_NONE := "camera_direction_none"
+const FEATURE_NAME_CAMERA_DIRECTION_UP := "camera_direction_up"
+const FEATURE_NAME_CAMERA_DIRECTION_DOWN := "camera_direction_down"
+const FEATURE_NAME_CAMERA_DIRECTION_LEFT := "camera_direction_left"
+const FEATURE_NAME_CAMERA_DIRECTION_RIGHT := "camera_direction_right"
+const FEATURE_NAME_BODY_SIGNED_VX := "body_signed_vx"
+const FEATURE_NAME_BODY_SIGNED_VY := "body_signed_vy"
+const FEATURE_NAME_BODY_DIRECTION_NONE := "body_direction_none"
+const FEATURE_NAME_BODY_DIRECTION_UP := "body_direction_up"
+const FEATURE_NAME_BODY_DIRECTION_DOWN := "body_direction_down"
+const FEATURE_NAME_BODY_DIRECTION_LEFT := "body_direction_left"
+const FEATURE_NAME_BODY_DIRECTION_RIGHT := "body_direction_right"
 const FEATURE_NAME_ELBOW_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "elbow_x_from_shoulder_over_shoulder_width"
 const FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "elbow_y_from_shoulder_over_shoulder_width"
 const FEATURE_NAME_WRIST_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "wrist_x_from_shoulder_over_shoulder_width"
@@ -51,6 +65,7 @@ var _last_emit_timestamp_ms := -1
 var _last_emitted_class := OUTCOME_NO_PUNCH
 var _emit_cooldown_until_ms := 0
 var _emit_hold_until_ms := 0
+var _latest_landmarks_by_id: Dictionary = {}
 
 func configure(config) -> PrototypePunchMatcher:
 	_config = config
@@ -338,6 +353,7 @@ func _resolve_window_span_ms(samples: Array = _sample_history) -> int:
 	return int((samples[samples.size() - 1] as Dictionary).get("timestamp_ms", 0)) - int((samples[0] as Dictionary).get("timestamp_ms", 0))
 
 func _extract_runtime_sample(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_ms: int) -> Dictionary:
+	_latest_landmarks_by_id = landmarks_by_id.duplicate(true)
 	var measurements: Dictionary = metrics.get("measurements", {}) if metrics.get("measurements", {}) is Dictionary else {}
 	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
 	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
@@ -359,18 +375,28 @@ func _extract_runtime_sample(landmarks_by_id: Dictionary, metrics: Dictionary, t
 func _extract_side_features(side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float, timestamp_ms: int) -> Dictionary:
 	var feature_names := _get_feature_names()
 	var signal_position := _resolve_combined_elbow_wrist_signal_position(elbow, wrist)
-	var combined_velocity_magnitude := _resolve_recent_combined_velocity_magnitude(side, signal_position, timestamp_ms)
+	var average_velocity := _resolve_recent_combined_velocity_components(side, signal_position, timestamp_ms)
+	var camera_signed_vx := float(average_velocity.x)
+	var camera_signed_vy := -float(average_velocity.y)
+	var left_shoulder := PoseMetrics.get_landmark(_latest_landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
+	var right_shoulder := PoseMetrics.get_landmark(_latest_landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
+	var body_lateral_axis := _body_lateral_unit_vector(left_shoulder, right_shoulder)
+	var body_signed_vx := (float(average_velocity.x) * body_lateral_axis.x) + (float(average_velocity.y) * body_lateral_axis.y)
+	var body_signed_vy := camera_signed_vy
+	var camera_direction := _coarse_direction_buckets(camera_signed_vx, camera_signed_vy)
+	var body_direction := _coarse_direction_buckets(body_signed_vx, body_signed_vy)
+	var combined_velocity_magnitude := average_velocity.length()
 	var elbow_shoulder_xy_distance_over_shoulder_width := PoseMetrics.distance_2d(elbow, shoulder) / shoulder_width
 	var features: Array = []
 	for feature_name_variant in feature_names:
 		var feature_name := String(feature_name_variant)
-		features.append(_resolve_feature_value(feature_name, shoulder, elbow, wrist, shoulder_width, combined_velocity_magnitude, elbow_shoulder_xy_distance_over_shoulder_width))
+		features.append(_resolve_feature_value(feature_name, shoulder, elbow, wrist, shoulder_width, combined_velocity_magnitude, elbow_shoulder_xy_distance_over_shoulder_width, camera_signed_vx, camera_signed_vy, body_signed_vx, body_signed_vy, camera_direction, body_direction))
 	return {
 		"features": features,
 		"signal_position": signal_position,
 	}
 
-func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float, combined_velocity_magnitude: float, elbow_shoulder_xy_distance_over_shoulder_width: float) -> float:
+func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float, combined_velocity_magnitude: float, elbow_shoulder_xy_distance_over_shoulder_width: float, camera_signed_vx: float, camera_signed_vy: float, body_signed_vx: float, body_signed_vy: float, camera_direction: Dictionary, body_direction: Dictionary) -> float:
 	match feature_name:
 		FEATURE_NAME_SHOULDER_X:
 			return float(shoulder.get("x", 0.0))
@@ -388,6 +414,34 @@ func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: D
 			return combined_velocity_magnitude
 		FEATURE_NAME_ELBOW_SHOULDER_XY_DISTANCE_OVER_SHOULDER_WIDTH:
 			return elbow_shoulder_xy_distance_over_shoulder_width
+		FEATURE_NAME_CAMERA_SIGNED_VX:
+			return camera_signed_vx
+		FEATURE_NAME_CAMERA_SIGNED_VY:
+			return camera_signed_vy
+		FEATURE_NAME_CAMERA_DIRECTION_NONE:
+			return float(camera_direction.get("none", 0.0))
+		FEATURE_NAME_CAMERA_DIRECTION_UP:
+			return float(camera_direction.get("up", 0.0))
+		FEATURE_NAME_CAMERA_DIRECTION_DOWN:
+			return float(camera_direction.get("down", 0.0))
+		FEATURE_NAME_CAMERA_DIRECTION_LEFT:
+			return float(camera_direction.get("left", 0.0))
+		FEATURE_NAME_CAMERA_DIRECTION_RIGHT:
+			return float(camera_direction.get("right", 0.0))
+		FEATURE_NAME_BODY_SIGNED_VX:
+			return body_signed_vx
+		FEATURE_NAME_BODY_SIGNED_VY:
+			return body_signed_vy
+		FEATURE_NAME_BODY_DIRECTION_NONE:
+			return float(body_direction.get("none", 0.0))
+		FEATURE_NAME_BODY_DIRECTION_UP:
+			return float(body_direction.get("up", 0.0))
+		FEATURE_NAME_BODY_DIRECTION_DOWN:
+			return float(body_direction.get("down", 0.0))
+		FEATURE_NAME_BODY_DIRECTION_LEFT:
+			return float(body_direction.get("left", 0.0))
+		FEATURE_NAME_BODY_DIRECTION_RIGHT:
+			return float(body_direction.get("right", 0.0))
 		FEATURE_NAME_ELBOW_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
 			return (float(elbow.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width
 		FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
@@ -409,7 +463,7 @@ func _resolve_combined_elbow_wrist_signal_position(elbow: Dictionary, wrist: Dic
 		(float(elbow.get("y", 0.0)) + float(wrist.get("y", 0.0))) * 0.5
 	)
 
-func _resolve_recent_combined_velocity_magnitude(side: String, signal_position: Vector2, timestamp_ms: int) -> float:
+func _resolve_recent_combined_velocity_components(side: String, signal_position: Vector2, timestamp_ms: int) -> Vector2:
 	var previous_entries: Array = []
 	for sample_variant in _sample_history:
 		if not sample_variant is Dictionary:
@@ -427,7 +481,7 @@ func _resolve_recent_combined_velocity_magnitude(side: String, signal_position: 
 		"signal_position": signal_position,
 	})
 	if previous_entries.size() < 2:
-		return 0.0
+		return Vector2.ZERO
 	var velocity_sum := Vector2.ZERO
 	var velocity_sample_count := 0
 	for index in range(1, previous_entries.size()):
@@ -443,8 +497,38 @@ func _resolve_recent_combined_velocity_magnitude(side: String, signal_position: 
 		velocity_sum += (current_signal - previous_signal) / (float(segment_dt_ms) / 1000.0)
 		velocity_sample_count += 1
 	if velocity_sample_count <= 0:
-		return 0.0
-	return (velocity_sum / float(velocity_sample_count)).length()
+		return Vector2.ZERO
+	return velocity_sum / float(velocity_sample_count)
+
+func _resolve_recent_combined_velocity_magnitude(side: String, signal_position: Vector2, timestamp_ms: int) -> float:
+	return _resolve_recent_combined_velocity_components(side, signal_position, timestamp_ms).length()
+
+func _body_lateral_unit_vector(left_shoulder: Dictionary, right_shoulder: Dictionary) -> Vector2:
+	var axis := Vector2(
+		float(left_shoulder.get("x", 0.0)) - float(right_shoulder.get("x", 0.0)),
+		float(left_shoulder.get("y", 0.0)) - float(right_shoulder.get("y", 0.0))
+	)
+	if axis.length() <= 0.000001:
+		return Vector2.RIGHT
+	return axis.normalized()
+
+func _coarse_direction_buckets(signed_vx: float, signed_vy: float, min_speed: float = 0.000001) -> Dictionary:
+	var speed := Vector2(signed_vx, signed_vy).length()
+	var buckets := {
+		"none": 0.0,
+		"up": 0.0,
+		"down": 0.0,
+		"left": 0.0,
+		"right": 0.0,
+	}
+	if speed <= min_speed:
+		buckets["none"] = 1.0
+		return buckets
+	if absf(signed_vx) >= absf(signed_vy):
+		buckets["right" if signed_vx >= 0.0 else "left"] = 1.0
+	else:
+		buckets["up" if signed_vy >= 0.0 else "down"] = 1.0
+	return buckets
 
 func _score_current_window() -> Dictionary:
 	var prototypes: Array = (_library.get("prototypes", []) as Array).duplicate(true)

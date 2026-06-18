@@ -46,7 +46,17 @@ LANDMARK_IDS = {
     "left_wrist": "15",
     "right_wrist": "16",
 }
-FEATURE_NAMES_PER_SIDE = [
+FEATURE_SET_BASELINE_V1 = "baseline_v1"
+FEATURE_SET_CAMERA_DIRECTIONAL_V1 = "camera_directional_v1"
+FEATURE_SET_BODY_DIRECTIONAL_V1 = "body_directional_v1"
+FEATURE_SET_COMBINED_DIRECTIONAL_V1 = "combined_directional_v1"
+SUPPORTED_FEATURE_SETS = [
+    FEATURE_SET_BASELINE_V1,
+    FEATURE_SET_CAMERA_DIRECTIONAL_V1,
+    FEATURE_SET_BODY_DIRECTIONAL_V1,
+    FEATURE_SET_COMBINED_DIRECTIONAL_V1,
+]
+BASELINE_FEATURE_NAMES_PER_SIDE = [
     "shoulder_x",
     "shoulder_y",
     "elbow_x",
@@ -56,11 +66,50 @@ FEATURE_NAMES_PER_SIDE = [
     "combined_elbow_wrist_velocity_xy_magnitude",
     "elbow_shoulder_xy_distance_over_shoulder_width",
 ]
-FRAME_FEATURE_NAMES = [
-    f"left_{name}" for name in FEATURE_NAMES_PER_SIDE
-] + [
-    f"right_{name}" for name in FEATURE_NAMES_PER_SIDE
+CAMERA_DIRECTIONAL_FEATURE_NAMES_PER_SIDE = [
+    "camera_signed_vx",
+    "camera_signed_vy",
+    "camera_direction_none",
+    "camera_direction_up",
+    "camera_direction_down",
+    "camera_direction_left",
+    "camera_direction_right",
 ]
+BODY_DIRECTIONAL_FEATURE_NAMES_PER_SIDE = [
+    "body_signed_vx",
+    "body_signed_vy",
+    "body_direction_none",
+    "body_direction_up",
+    "body_direction_down",
+    "body_direction_left",
+    "body_direction_right",
+]
+
+
+def normalize_feature_set(feature_set: str | None) -> str:
+    candidate = str(feature_set or FEATURE_SET_BASELINE_V1).strip() or FEATURE_SET_BASELINE_V1
+    if candidate not in SUPPORTED_FEATURE_SETS:
+        raise ValueError(f"unsupported feature_set '{candidate}' (expected one of {SUPPORTED_FEATURE_SETS})")
+    return candidate
+
+
+def feature_names_per_side(feature_set: str | None = None) -> list[str]:
+    resolved = normalize_feature_set(feature_set)
+    names = list(BASELINE_FEATURE_NAMES_PER_SIDE)
+    if resolved in (FEATURE_SET_CAMERA_DIRECTIONAL_V1, FEATURE_SET_COMBINED_DIRECTIONAL_V1):
+        names.extend(CAMERA_DIRECTIONAL_FEATURE_NAMES_PER_SIDE)
+    if resolved in (FEATURE_SET_BODY_DIRECTIONAL_V1, FEATURE_SET_COMBINED_DIRECTIONAL_V1):
+        names.extend(BODY_DIRECTIONAL_FEATURE_NAMES_PER_SIDE)
+    return names
+
+
+def frame_feature_names(feature_set: str | None = None) -> list[str]:
+    per_side = feature_names_per_side(feature_set)
+    return [f"left_{name}" for name in per_side] + [f"right_{name}" for name in per_side]
+
+
+FEATURE_NAMES_PER_SIDE = feature_names_per_side(FEATURE_SET_BASELINE_V1)
+FRAME_FEATURE_NAMES = frame_feature_names(FEATURE_SET_BASELINE_V1)
 DEFAULT_WINDOW_FRAME_COUNT = 8
 DEFAULT_THRESHOLD_WINDOW_MS = 250
 DEFAULT_NO_PUNCH_STRIDE_MS = 250
@@ -253,11 +302,11 @@ def _resolve_combined_elbow_wrist_signal_position(elbow: dict, wrist: dict) -> t
     )
 
 
-def _resolve_recent_combined_velocity_magnitude(history: list[dict], timestamp_ms: int, signal_position: tuple[float, float]) -> float:
+def _resolve_recent_combined_velocity_components(history: list[dict], timestamp_ms: int, signal_position: tuple[float, float]) -> tuple[float, float]:
     entries = list(history)
     entries.append({"timestamp_ms": timestamp_ms, "signal_position": signal_position})
     if len(entries) < 2:
-        return 0.0
+        return 0.0, 0.0
     velocity_sum_x = 0.0
     velocity_sum_y = 0.0
     velocity_sample_count = 0
@@ -274,10 +323,41 @@ def _resolve_recent_combined_velocity_magnitude(history: list[dict], timestamp_m
         velocity_sum_y += (float(current_y) - float(previous_y)) / seconds
         velocity_sample_count += 1
     if velocity_sample_count <= 0:
-        return 0.0
-    average_velocity_x = velocity_sum_x / float(velocity_sample_count)
-    average_velocity_y = velocity_sum_y / float(velocity_sample_count)
+        return 0.0, 0.0
+    return velocity_sum_x / float(velocity_sample_count), velocity_sum_y / float(velocity_sample_count)
+
+
+def _resolve_recent_combined_velocity_magnitude(history: list[dict], timestamp_ms: int, signal_position: tuple[float, float]) -> float:
+    average_velocity_x, average_velocity_y = _resolve_recent_combined_velocity_components(history, timestamp_ms, signal_position)
     return math.hypot(average_velocity_x, average_velocity_y)
+
+
+def _body_lateral_unit_vector(left_shoulder: dict, right_shoulder: dict) -> tuple[float, float]:
+    axis_x = float(left_shoulder.get("x", 0.0)) - float(right_shoulder.get("x", 0.0))
+    axis_y = float(left_shoulder.get("y", 0.0)) - float(right_shoulder.get("y", 0.0))
+    axis_length = math.hypot(axis_x, axis_y)
+    if axis_length <= 1e-8:
+        return 1.0, 0.0
+    return axis_x / axis_length, axis_y / axis_length
+
+
+def _coarse_direction_buckets(signed_vx: float, signed_vy: float, min_speed: float = 1e-6) -> dict[str, float]:
+    speed = math.hypot(signed_vx, signed_vy)
+    buckets = {
+        "none": 0.0,
+        "up": 0.0,
+        "down": 0.0,
+        "left": 0.0,
+        "right": 0.0,
+    }
+    if speed <= min_speed:
+        buckets["none"] = 1.0
+        return buckets
+    if abs(signed_vx) >= abs(signed_vy):
+        buckets["right" if signed_vx >= 0.0 else "left"] = 1.0
+    else:
+        buckets["up" if signed_vy >= 0.0 else "down"] = 1.0
+    return buckets
 
 
 def extract_side_features(
@@ -287,36 +367,73 @@ def extract_side_features(
     timestamp_ms: int,
     signal_history_by_side: dict[str, list[dict]],
     min_visibility: float = 0.5,
+    feature_set: str = FEATURE_SET_BASELINE_V1,
+    feature_names: list[str] | None = None,
 ):
+    resolved_feature_set = normalize_feature_set(feature_set)
+    resolved_feature_names = list(feature_names or feature_names_per_side(resolved_feature_set))
     shoulder = _landmark(landmarks_by_id, f"{side}_shoulder")
     elbow = _landmark(landmarks_by_id, f"{side}_elbow")
     wrist = _landmark(landmarks_by_id, f"{side}_wrist")
-    if not shoulder or not elbow or not wrist:
+    opposite_side = "right" if side == "left" else "left"
+    opposite_shoulder = _landmark(landmarks_by_id, f"{opposite_side}_shoulder")
+    if not shoulder or not elbow or not wrist or not opposite_shoulder:
         return None
-    if min(float(shoulder.get("v", 0.0)), float(elbow.get("v", 0.0)), float(wrist.get("v", 0.0))) < min_visibility:
+    if min(float(shoulder.get("v", 0.0)), float(elbow.get("v", 0.0)), float(wrist.get("v", 0.0)), float(opposite_shoulder.get("v", 0.0))) < min_visibility:
         return None
     measurements = metrics.get("measurements", {}) if isinstance(metrics.get("measurements", {}), dict) else {}
     shoulder_width = max(float(measurements.get("shoulder_width", 0.0)), 0.000001)
     signal_position = _resolve_combined_elbow_wrist_signal_position(elbow, wrist)
     side_history = signal_history_by_side.setdefault(side, [])
-    combined_velocity_magnitude = _resolve_recent_combined_velocity_magnitude(side_history, timestamp_ms, signal_position)
+    average_velocity_x, average_velocity_y = _resolve_recent_combined_velocity_components(side_history, timestamp_ms, signal_position)
+    camera_signed_vx = average_velocity_x
+    camera_signed_vy = -average_velocity_y
+    lateral_axis_x, lateral_axis_y = _body_lateral_unit_vector(
+        _landmark(landmarks_by_id, "left_shoulder"),
+        _landmark(landmarks_by_id, "right_shoulder"),
+    )
+    body_signed_vx = (average_velocity_x * lateral_axis_x) + (average_velocity_y * lateral_axis_y)
+    body_signed_vy = camera_signed_vy
+    camera_direction = _coarse_direction_buckets(camera_signed_vx, camera_signed_vy)
+    body_direction = _coarse_direction_buckets(body_signed_vx, body_signed_vy)
+    combined_velocity_magnitude = math.hypot(average_velocity_x, average_velocity_y)
     elbow_shoulder_xy_distance_over_shoulder_width = _distance_2d(elbow, shoulder) / shoulder_width
+    feature_values = {
+        "shoulder_x": float(shoulder.get("x", 0.0)),
+        "shoulder_y": float(shoulder.get("y", 0.0)),
+        "elbow_x": float(elbow.get("x", 0.0)),
+        "elbow_y": float(elbow.get("y", 0.0)),
+        "wrist_x": float(wrist.get("x", 0.0)),
+        "wrist_y": float(wrist.get("y", 0.0)),
+        "combined_elbow_wrist_velocity_xy_magnitude": combined_velocity_magnitude,
+        "elbow_shoulder_xy_distance_over_shoulder_width": elbow_shoulder_xy_distance_over_shoulder_width,
+        "camera_signed_vx": camera_signed_vx,
+        "camera_signed_vy": camera_signed_vy,
+        "camera_direction_none": camera_direction["none"],
+        "camera_direction_up": camera_direction["up"],
+        "camera_direction_down": camera_direction["down"],
+        "camera_direction_left": camera_direction["left"],
+        "camera_direction_right": camera_direction["right"],
+        "body_signed_vx": body_signed_vx,
+        "body_signed_vy": body_signed_vy,
+        "body_direction_none": body_direction["none"],
+        "body_direction_up": body_direction["up"],
+        "body_direction_down": body_direction["down"],
+        "body_direction_left": body_direction["left"],
+        "body_direction_right": body_direction["right"],
+    }
     return {
-        "features": [
-            float(shoulder.get("x", 0.0)),
-            float(shoulder.get("y", 0.0)),
-            float(elbow.get("x", 0.0)),
-            float(elbow.get("y", 0.0)),
-            float(wrist.get("x", 0.0)),
-            float(wrist.get("y", 0.0)),
-            combined_velocity_magnitude,
-            elbow_shoulder_xy_distance_over_shoulder_width,
-        ],
+        "feature_set": resolved_feature_set,
+        "feature_names": resolved_feature_names,
+        "features": [float(feature_values[name]) for name in resolved_feature_names],
         "signal_position": signal_position,
     }
 
 
-def build_feature_snapshots(capture_report: dict) -> list[dict]:
+def build_feature_snapshots(capture_report: dict, feature_set: str = FEATURE_SET_BASELINE_V1) -> list[dict]:
+    resolved_feature_set = normalize_feature_set(feature_set)
+    resolved_feature_names = feature_names_per_side(resolved_feature_set)
+    resolved_frame_feature_names = frame_feature_names(resolved_feature_set)
     snapshots = []
     signal_history_by_side: dict[str, list[dict]] = {"left": [], "right": []}
     for snapshot in pose_snapshots(capture_report):
@@ -324,8 +441,8 @@ def build_feature_snapshots(capture_report: dict) -> list[dict]:
         landmarks_by_id = pose_snapshot.get("landmarks_by_id", {}) if isinstance(pose_snapshot.get("landmarks_by_id", {}), dict) else {}
         metrics = pose_snapshot.get("metrics", {}) if isinstance(pose_snapshot.get("metrics", {}), dict) else {}
         timestamp_ms = int(snapshot["timestamp_ms"])
-        left = extract_side_features(landmarks_by_id, metrics, "left", timestamp_ms, signal_history_by_side)
-        right = extract_side_features(landmarks_by_id, metrics, "right", timestamp_ms, signal_history_by_side)
+        left = extract_side_features(landmarks_by_id, metrics, "left", timestamp_ms, signal_history_by_side, feature_set=resolved_feature_set, feature_names=resolved_feature_names)
+        right = extract_side_features(landmarks_by_id, metrics, "right", timestamp_ms, signal_history_by_side, feature_set=resolved_feature_set, feature_names=resolved_feature_names)
         if left is not None:
             signal_history_by_side["left"].append({"timestamp_ms": timestamp_ms, "signal_position": left["signal_position"]})
         if right is not None:
@@ -335,6 +452,9 @@ def build_feature_snapshots(capture_report: dict) -> list[dict]:
         snapshots.append(
             {
                 "timestamp_ms": timestamp_ms,
+                "feature_set": resolved_feature_set,
+                "feature_names": list(resolved_frame_feature_names),
+                "side_feature_names": list(resolved_feature_names),
                 "features": [float(v) for v in (left["features"] + right["features"])],
             }
         )
@@ -445,6 +565,9 @@ def extract_window_sample(
     sample_kind: str,
     source_window_index: int,
     source_gesture_name: str,
+    feature_set: str = FEATURE_SET_BASELINE_V1,
+    frame_feature_names_override: list[str] | None = None,
+    side_feature_names_override: list[str] | None = None,
     extra_metadata: dict | None = None,
 ) -> dict | None:
     capture_start_ms, capture_end_ms, alignment = capture_window_range_ms(capture_report, start_ms, end_ms)
@@ -457,6 +580,9 @@ def extract_window_sample(
     threshold_prediction = threshold_window_prediction(capture_report, capture_start_ms, capture_end_ms)
     matched_pose_start_ms = int(matched[0]["timestamp_ms"])
     matched_pose_end_ms = int(matched[-1]["timestamp_ms"])
+    resolved_feature_set = normalize_feature_set(feature_set)
+    resolved_frame_feature_names = list(frame_feature_names_override or frame_feature_names(resolved_feature_set))
+    resolved_side_feature_names = list(side_feature_names_override or feature_names_per_side(resolved_feature_set))
     sample = {
         "sample_id": sample_id,
         "label": label,
@@ -478,8 +604,10 @@ def extract_window_sample(
         "end_alignment_error_ms": capture_end_ms - matched_pose_end_ms,
         "matched_pose_duration_ms": max(0, matched_pose_end_ms - matched_pose_start_ms),
         "frame_count": frame_count,
-        "frame_feature_count": len(FRAME_FEATURE_NAMES),
-        "feature_names": list(FRAME_FEATURE_NAMES),
+        "frame_feature_count": len(resolved_frame_feature_names),
+        "feature_set": resolved_feature_set,
+        "side_feature_names": resolved_side_feature_names,
+        "feature_names": resolved_frame_feature_names,
         "frames": frames,
         "metadata_gestures": overlapping_gesture_names(gesture_windows, start_ms, end_ms),
         "threshold_baseline": threshold_prediction,

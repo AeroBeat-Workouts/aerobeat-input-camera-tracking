@@ -119,6 +119,26 @@ class TinyTemporalMLP:
 
 
 
+def _validate_dataset_schema(dataset: dict) -> tuple[str, list[str], list[str]]:
+    feature_set = str(dataset.get("feature_set", "baseline_v1"))
+    frame_feature_names = [str(name) for name in dataset.get("frame_feature_names", [])]
+    side_feature_names = [str(name) for name in dataset.get("side_feature_names", [])]
+    frame_feature_count = int(dataset.get("frame_feature_count", 0))
+    if frame_feature_names and len(frame_feature_names) != frame_feature_count:
+        raise ValueError(f"dataset frame_feature_names length {len(frame_feature_names)} != frame_feature_count {frame_feature_count}")
+    if side_feature_names and frame_feature_names and frame_feature_names != [f"left_{name}" for name in side_feature_names] + [f"right_{name}" for name in side_feature_names]:
+        raise ValueError("dataset side/frame feature metadata mismatch")
+    for sample in dataset.get("samples", []):
+        sample_feature_names = [str(name) for name in sample.get("feature_names", [])]
+        if frame_feature_names and sample_feature_names and sample_feature_names != frame_feature_names:
+            raise ValueError(f"sample {sample.get('sample_id', '<unknown>')} feature_names mismatch dataset frame_feature_names")
+        if frame_feature_count and int(sample.get("frame_feature_count", 0)) != frame_feature_count:
+            raise ValueError(f"sample {sample.get('sample_id', '<unknown>')} frame_feature_count mismatch dataset frame_feature_count")
+        if feature_set and str(sample.get("feature_set", feature_set)) != feature_set:
+            raise ValueError(f"sample {sample.get('sample_id', '<unknown>')} feature_set mismatch dataset feature_set")
+    return feature_set, side_feature_names, frame_feature_names
+
+
 def _records_from_predictions(samples: list[dict], predicted_labels: list[str]) -> list[dict]:
     records = []
     for sample, predicted_label in zip(samples, predicted_labels):
@@ -184,6 +204,7 @@ def main() -> int:
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    feature_set, side_feature_names, frame_feature_names = _validate_dataset_schema(dataset)
     samples = dataset["samples"]
     label_to_index = {label: idx for idx, label in enumerate(PUNCH_CLASS_ORDER)}
 
@@ -232,6 +253,9 @@ def main() -> int:
         "dataset_path": dataset_path.as_posix(),
         "class_order": list(PUNCH_CLASS_ORDER),
         "split_strategy": str(dataset.get("split_strategy", "unknown")),
+        "feature_set": feature_set,
+        "side_feature_names": side_feature_names,
+        "frame_feature_names": frame_feature_names,
         "dataset_window_shape": {
             "frame_count": int(dataset.get("window_frame_count", 0)),
             "frame_feature_count": int(dataset.get("frame_feature_count", 0)),
@@ -267,6 +291,9 @@ def main() -> int:
     write_json(output_dir / "mlp-result.json", summary)
     write_json(output_dir / "mlp-model.json", {
         "class_order": list(PUNCH_CLASS_ORDER),
+        "feature_set": feature_set,
+        "side_feature_names": side_feature_names,
+        "frame_feature_names": frame_feature_names,
         "window_frame_count": dataset.get("window_frame_count", 0),
         "frame_feature_count": dataset.get("frame_feature_count", 0),
         "flattened_input_dim": input_dim,
