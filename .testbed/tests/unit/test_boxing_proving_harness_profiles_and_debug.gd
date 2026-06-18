@@ -642,6 +642,68 @@ func test_boxing_learned_classifier_hover_card_and_event_feed_surface_truthful_b
 	assert_string_contains(text_body, "Learned model path: res://docs/models/test-mlp-result.json (loaded=true)")
 	assert_string_contains(text_body, "Best class / score / threshold: straight_left / 0.932 / 0.700")
 
+func test_boxing_learned_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"punch_detection": {
+				"backend": "learned_classifier",
+			},
+			"learned_classifier": {
+				"selected_backend": "learned_classifier",
+				"active_backend": "learned_classifier",
+				"model_path": "res://docs/models/test-mlp-result.json",
+				"model_loaded": true,
+				"best_class": "hook_left",
+				"best_score": 0.811,
+				"required_score": 0.700,
+				"result_class": "hook_left",
+				"emitted_event_name": "hook_left",
+				"show_scores": true,
+				"show_event_gate_state": true,
+				"class_scores": {
+					"hook_left": 0.811,
+					"uppercut_left": 0.102,
+					"no_punch": 0.033,
+				},
+				"reason": "emitted",
+				"hold_ms_remaining": 88,
+				"cooldown_ms_remaining": 210,
+				"active_event_class": "hook_left",
+			},
+			"hook": {
+				"left": {
+					"state": "not_ready",
+					"wrist_velocity": 0.010,
+					"directionality_ratio": 0.200,
+				}
+			},
+			"uppercut": {
+				"left": {
+					"state": "tracking_lost",
+					"wrist_velocity": 0.000,
+					"directionality_ratio": 0.000,
+				}
+			},
+		}
+	})
+
+	var hook_model: Dictionary = harness._build_hover_card_model("hook_left")
+	var hook_rows: Array = hook_model.get("rows", [])
+	assert_eq(String(hook_model.get("title", "")), "Hook L (Learned Classifier)")
+	assert_eq(String(hook_rows[1].get("current_text", "")), "learned_classifier")
+	assert_eq(String(hook_rows[6].get("current_text", "")), "hook_left")
+	assert_eq(String(hook_rows[7].get("current_text", "")), "0.811")
+	assert_eq(String(hook_rows[10].get("current_text", "")), "hook_left")
+	assert_eq(String(hook_rows[12].get("current_text", "")), "{hook_left=0.811, no_punch=0.033, uppercut_left=0.102}")
+
+	var uppercut_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "uppercut_left")
+	var uppercut_body := String(uppercut_inspector.get("body", ""))
+	assert_string_contains(uppercut_body, "Active backend - learned_classifier")
+	assert_string_contains(uppercut_body, "Best class - hook_left")
+	assert_string_contains(uppercut_body, "Per-class scores - {hook_left=0.811, no_punch=0.033, uppercut_left=0.102}")
+	assert_false(uppercut_body.contains("Motion window - "))
+
 func test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvious() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {

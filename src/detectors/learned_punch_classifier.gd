@@ -40,6 +40,15 @@ var _model_error := ""
 var _resolved_class_order: Array = DEFAULT_CLASS_ORDER.duplicate(true)
 var _resolved_frame_count := 8
 var _resolved_frame_feature_count := 16
+var _last_scored_best_class := OUTCOME_NO_PUNCH
+var _last_scored_best_score := 0.0
+var _last_scored_runner_up_class := OUTCOME_NO_PUNCH
+var _last_scored_runner_up_score := 0.0
+var _last_scored_result_class := OUTCOME_NO_PUNCH
+var _last_scored_emitted_event_name := ""
+var _last_scored_class_scores: Dictionary = {}
+var _last_scored_evaluated_window_sample_count := 0
+var _last_scored_evaluated_window_span_ms := 0
 
 func configure(config) -> LearnedPunchClassifier:
 	_config = config
@@ -54,6 +63,15 @@ func reset() -> void:
 	_last_emitted_class = OUTCOME_NO_PUNCH
 	_emit_cooldown_until_ms = 0
 	_emit_hold_until_ms = 0
+	_last_scored_best_class = OUTCOME_NO_PUNCH
+	_last_scored_best_score = 0.0
+	_last_scored_runner_up_class = OUTCOME_NO_PUNCH
+	_last_scored_runner_up_score = 0.0
+	_last_scored_result_class = OUTCOME_NO_PUNCH
+	_last_scored_emitted_event_name = ""
+	_last_scored_class_scores = {}
+	_last_scored_evaluated_window_sample_count = 0
+	_last_scored_evaluated_window_span_ms = 0
 	_last_debug_state = _build_debug_state()
 
 func get_debug_state() -> Dictionary:
@@ -83,6 +101,7 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	_load_model_if_needed()
 	var events: Array = []
 	var debug_state := _build_debug_state()
+	_apply_persisted_classifier_truth(debug_state)
 	debug_state["current_timestamp_ms"] = timestamp_ms
 	debug_state["selected_backend"] = _get_selected_backend()
 	debug_state["selected_backend_enabled"] = _is_selected_backend_enabled()
@@ -100,20 +119,13 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	debug_state["emit_hold_ms"] = _get_emit_hold_ms()
 	debug_state["show_scores"] = _get_show_scores()
 	debug_state["show_event_gate_state"] = _get_show_event_gate_state()
-	debug_state["result_class"] = OUTCOME_NO_PUNCH
 	debug_state["reason"] = "inactive"
 	debug_state["emitted"] = false
-	debug_state["emitted_event_name"] = ""
 	debug_state["cooldown_ms_remaining"] = max(0, _emit_cooldown_until_ms - timestamp_ms)
 	debug_state["hold_ms_remaining"] = max(0, _emit_hold_until_ms - timestamp_ms)
 	debug_state["active_event_class"] = _last_emitted_class if timestamp_ms < _emit_hold_until_ms else OUTCOME_NO_PUNCH
 	debug_state["last_emit_timestamp_ms"] = _last_emit_timestamp_ms
-	debug_state["class_scores"] = {}
-	debug_state["best_class"] = OUTCOME_NO_PUNCH
-	debug_state["best_score"] = 0.0
 	debug_state["required_score"] = _get_match_score_min()
-	debug_state["runner_up_class"] = OUTCOME_NO_PUNCH
-	debug_state["runner_up_score"] = 0.0
 
 	if not _is_active_backend():
 		_last_debug_state = debug_state
@@ -168,6 +180,17 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	debug_state["required_score"] = _get_match_score_min()
 	if best_score + 0.000001 < _get_match_score_min() or best_class == OUTCOME_NO_PUNCH:
 		debug_state["result_class"] = OUTCOME_NO_PUNCH
+		_persist_scored_classifier_truth(
+			best_class,
+			best_score,
+			runner_up_class,
+			runner_up_score,
+			class_scores,
+			OUTCOME_NO_PUNCH,
+			"",
+			int(debug_state.get("evaluated_window_sample_count", 0)),
+			int(debug_state.get("evaluated_window_span_ms", 0))
+		)
 		debug_state["reason"] = "below_threshold" if best_class != OUTCOME_NO_PUNCH else "no_punch"
 		_last_debug_state = debug_state
 		return events
@@ -212,11 +235,55 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	debug_state["reason"] = "emitted"
 	debug_state["emitted"] = true
 	debug_state["emitted_event_name"] = event_name
+	_persist_scored_classifier_truth(
+		best_class,
+		best_score,
+		runner_up_class,
+		runner_up_score,
+		class_scores,
+		best_class,
+		event_name,
+		int(debug_state.get("evaluated_window_sample_count", 0)),
+		int(debug_state.get("evaluated_window_span_ms", 0))
+	)
 	debug_state["cooldown_ms_remaining"] = _emit_cooldown_until_ms - timestamp_ms
 	debug_state["hold_ms_remaining"] = _emit_hold_until_ms - timestamp_ms
 	debug_state["active_event_class"] = best_class
 	_last_debug_state = debug_state
 	return events
+
+func _apply_persisted_classifier_truth(debug_state: Dictionary) -> void:
+	debug_state["best_class"] = _last_scored_best_class
+	debug_state["best_score"] = _last_scored_best_score
+	debug_state["runner_up_class"] = _last_scored_runner_up_class
+	debug_state["runner_up_score"] = _last_scored_runner_up_score
+	debug_state["required_score"] = _get_match_score_min()
+	debug_state["result_class"] = _last_scored_result_class
+	debug_state["emitted_event_name"] = _last_scored_emitted_event_name
+	debug_state["class_scores"] = _last_scored_class_scores.duplicate(true)
+	debug_state["evaluated_window_sample_count"] = _last_scored_evaluated_window_sample_count
+	debug_state["evaluated_window_span_ms"] = _last_scored_evaluated_window_span_ms
+
+func _persist_scored_classifier_truth(
+	best_class: String,
+	best_score: float,
+	runner_up_class: String,
+	runner_up_score: float,
+	class_scores: Dictionary,
+	result_class: String,
+	emitted_event_name: String,
+	evaluated_window_sample_count: int,
+	evaluated_window_span_ms: int
+) -> void:
+	_last_scored_best_class = best_class
+	_last_scored_best_score = best_score
+	_last_scored_runner_up_class = runner_up_class
+	_last_scored_runner_up_score = runner_up_score
+	_last_scored_result_class = result_class
+	_last_scored_emitted_event_name = emitted_event_name
+	_last_scored_class_scores = class_scores.duplicate(true)
+	_last_scored_evaluated_window_sample_count = evaluated_window_sample_count
+	_last_scored_evaluated_window_span_ms = evaluated_window_span_ms
 
 func _build_debug_state() -> Dictionary:
 	var model_document: Dictionary = _model_document if _model_document is Dictionary else {}

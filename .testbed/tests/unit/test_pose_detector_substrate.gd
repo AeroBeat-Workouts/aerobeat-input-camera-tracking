@@ -1584,6 +1584,42 @@ func test_learned_classifier_backend_emits_and_surfaces_truthful_debug_state() -
 	assert_eq(String(learned_debug.get("model_path", "")), model_path)
 	assert_true(float(learned_debug.get("best_score", 0.0)) >= 0.70)
 
+func test_learned_classifier_non_eval_frames_preserve_last_scored_debug_truth() -> void:
+	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2)
+	_enable_learned_classifier_backend({
+		"model_path": model_path,
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 250,
+		"emit_hold_ms": 100,
+	})
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
+	assert_eq(String(state.get("gesture_debug", {}).get("learned_classifier", {}).get("reason", "")), "window_not_full")
+	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
+	assert_eq(_event_names(state.get("events", [])), ["punch_left"])
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	var emitted_class_scores: Dictionary = learned_debug.get("class_scores", {})
+	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
+	assert_eq(String(learned_debug.get("result_class", "")), "straight_left")
+	assert_eq(String(learned_debug.get("emitted_event_name", "")), "punch_left")
+	assert_true(float(learned_debug.get("best_score", 0.0)) >= 0.70)
+	assert_false(emitted_class_scores.is_empty())
+
+	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.36, "elbow_y": 0.66, "wrist_x": 0.26, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 120)
+	assert_eq(_event_names(state.get("events", [])), [])
+	learned_debug = state.get("gesture_debug", {}).get("learned_classifier", {})
+	assert_eq(String(learned_debug.get("reason", "")), "step_wait")
+	assert_false(bool(learned_debug.get("emitted", true)))
+	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
+	assert_eq(String(learned_debug.get("result_class", "")), "straight_left")
+	assert_eq(String(learned_debug.get("emitted_event_name", "")), "punch_left")
+	assert_true(is_equal_approx(float(learned_debug.get("best_score", 0.0)), float(emitted_class_scores.get("straight_left", 0.0))))
+	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
+	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
+	assert_true(int(learned_debug.get("cooldown_ms_remaining", 0)) > 0)
+	var step_wait_scores: Dictionary = learned_debug.get("class_scores", {})
+	assert_true(is_equal_approx(float(step_wait_scores.get("straight_left", 0.0)), float(emitted_class_scores.get("straight_left", 0.0))))
+
 func test_learned_classifier_replay_timestamp_rewind_resets_temporal_gate_state() -> void:
 	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2)
 	_enable_learned_classifier_backend({

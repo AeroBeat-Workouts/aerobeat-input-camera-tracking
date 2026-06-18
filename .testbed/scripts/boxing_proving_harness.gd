@@ -1167,12 +1167,28 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_punch_hover_card_model(spec, "right")
 		"hook_left":
+			if _active_punch_detection_backend() == "prototype_matcher":
+				return _build_prototype_matcher_hover_card_model(spec, "left")
+			if _active_punch_detection_backend() == "learned_classifier":
+				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_pose_strike_hover_card_model(spec, "hook", "left")
 		"hook_right":
+			if _active_punch_detection_backend() == "prototype_matcher":
+				return _build_prototype_matcher_hover_card_model(spec, "right")
+			if _active_punch_detection_backend() == "learned_classifier":
+				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_pose_strike_hover_card_model(spec, "hook", "right")
 		"uppercut_left":
+			if _active_punch_detection_backend() == "prototype_matcher":
+				return _build_prototype_matcher_hover_card_model(spec, "left")
+			if _active_punch_detection_backend() == "learned_classifier":
+				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "left")
 		"uppercut_right":
+			if _active_punch_detection_backend() == "prototype_matcher":
+				return _build_prototype_matcher_hover_card_model(spec, "right")
+			if _active_punch_detection_backend() == "learned_classifier":
+				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "right")
 		"guard":
 			return _build_guard_hover_card_model(spec)
