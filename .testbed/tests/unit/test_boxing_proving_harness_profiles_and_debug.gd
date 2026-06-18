@@ -212,6 +212,23 @@ func test_proving_runtime_config_can_force_prototype_matcher_backend_for_fixture
 	assert_true(bool(gesture_profile.get("prototype_matcher", {}).get("enabled", false)))
 	assert_false(bool(gesture_profile.get("threshold_gates", {}).get("enabled", true)))
 
+func test_proving_runtime_config_can_force_mixed_family_backend_for_fixture_benchmarks() -> void:
+	var previous_backend := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
+	var previous_model := OS.get_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE")
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "mixed_family")
+	OS.set_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE", "res://docs/models/straight-family-test.json")
+	var harness: Variant = ProvingHarnessScript.new()
+	var config: Variant = harness._build_runtime_config()
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous_backend)
+	OS.set_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE", previous_model)
+
+	assert_not_null(config)
+	var gesture_profile: Dictionary = config.gesture_profile_document
+	assert_eq(String(gesture_profile.get("punch_detection", {}).get("backend", "")), "mixed_family")
+	assert_true(bool(gesture_profile.get("threshold_gates", {}).get("enabled", false)))
+	assert_true(bool(gesture_profile.get("learned_classifier", {}).get("enabled", false)))
+	assert_eq(String(gesture_profile.get("learned_classifier", {}).get("model", {}).get("artifact_path", "")), "res://docs/models/straight-family-test.json")
+
 func test_proving_runtime_config_can_force_learned_classifier_backend_for_fixture_benchmarks() -> void:
 	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "learned_classifier")
@@ -641,6 +658,40 @@ func test_boxing_learned_classifier_hover_card_and_event_feed_surface_truthful_b
 	assert_string_contains(text_body, "Active backend: learned_classifier")
 	assert_string_contains(text_body, "Learned model path: res://docs/models/test-mlp-result.json (loaded=true)")
 	assert_string_contains(text_body, "Best class / score / threshold: straight_left / 0.932 / 0.700")
+
+func test_boxing_event_feed_reports_mixed_family_routing_truth() -> void:
+	var harness: Variant = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"punch_detection": {
+				"active_backend": "mixed_family",
+				"selected_backend": "mixed_family",
+				"selected_backend_enabled": true,
+				"active_backend_resolution": "selected_backend_active",
+				"routing_mode": "mixed_family",
+				"straight_backend": "learned_classifier",
+				"hook_backend": "threshold_gates",
+				"uppercut_backend": "threshold_gates",
+				"hook_uppercut_backend_note": "hook/uppercut stay on threshold_gates in mixed_family proving mode",
+			},
+			"learned_classifier": {
+				"model_path": "res://docs/models/straight-family-test.json",
+				"model_loaded": true,
+				"best_class": "straight_left",
+				"best_score": 0.91,
+				"required_score": 0.70,
+				"result_class": "straight_left",
+				"emitted_event_name": "punch_left",
+				"show_scores": false,
+				"show_event_gate_state": false,
+			},
+		},
+	})
+	var text_body := String(harness._build_boxing_event_feed_text())
+	assert_string_contains(text_body, "Routing mode: mixed_family")
+	assert_string_contains(text_body, "Per-family backends: straight=learned_classifier hook=threshold_gates uppercut=threshold_gates")
+	assert_string_contains(text_body, "Hook/uppercut routing note: hook/uppercut stay on threshold_gates in mixed_family proving mode")
+	assert_string_contains(text_body, "Event/backend truth: punch_left=learned_classifier punch_right=learned_classifier hook_left=threshold_gates")
 
 func test_boxing_learned_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels() -> void:
 	var harness = _new_harness()

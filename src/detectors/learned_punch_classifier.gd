@@ -2,6 +2,7 @@ class_name LearnedPunchClassifier
 extends "res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd"
 
 const BACKEND_LEARNED_CLASSIFIER := "learned_classifier"
+const BACKEND_MIXED_FAMILY := "mixed_family"
 const LEARNED_DEFAULT_WINDOW_MS := 250
 const LEARNED_DEFAULT_WINDOW_STEP_MS := 33
 const LEARNED_DEFAULT_MATCH_SCORE_MIN := 0.70
@@ -598,21 +599,26 @@ func _is_selected_backend_enabled() -> bool:
 	if selected_backend == BACKEND_THRESHOLD_GATES:
 		var threshold_backend: Dictionary = gesture_profile_document.get(BACKEND_THRESHOLD_GATES, {}) if gesture_profile_document.get(BACKEND_THRESHOLD_GATES, {}) is Dictionary else {}
 		return bool(threshold_backend.get("enabled", true))
+	if selected_backend == BACKEND_MIXED_FAMILY:
+		return _is_enabled_in_config()
 	return false
 
 func _is_active_backend() -> bool:
-	return _get_selected_backend() == BACKEND_LEARNED_CLASSIFIER and _is_enabled_in_config()
+	var selected_backend := _get_selected_backend()
+	return (selected_backend == BACKEND_LEARNED_CLASSIFIER or selected_backend == BACKEND_MIXED_FAMILY) and _is_enabled_in_config()
 
 func _get_activation_reason() -> String:
 	if _is_active_backend():
 		return "active"
-	if _get_selected_backend() != BACKEND_LEARNED_CLASSIFIER:
+	if _get_selected_backend() != BACKEND_LEARNED_CLASSIFIER and _get_selected_backend() != BACKEND_MIXED_FAMILY:
 		return "backend_not_selected"
 	return "selected_backend_disabled"
 
 func _normalize_backend_name(backend_name: String) -> String:
 	if backend_name == BACKEND_THRESHOLD_GATES:
 		return BACKEND_THRESHOLD_GATES
+	if backend_name == BACKEND_MIXED_FAMILY:
+		return BACKEND_MIXED_FAMILY
 	return backend_name
 
 func _get_model_artifact_path() -> String:

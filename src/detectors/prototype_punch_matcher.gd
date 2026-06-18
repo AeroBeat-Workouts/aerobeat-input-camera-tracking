@@ -40,6 +40,7 @@ const FEATURE_NAME_BODY_DIRECTION_LEFT := "body_direction_left"
 const FEATURE_NAME_BODY_DIRECTION_RIGHT := "body_direction_right"
 const FEATURE_NAME_ELBOW_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "elbow_x_from_shoulder_over_shoulder_width"
 const FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "elbow_y_from_shoulder_over_shoulder_width"
+const FEATURE_NAME_ELBOW_SHOULDER_RADIAL_VELOCITY_OVER_SHOULDER_WIDTH := "elbow_shoulder_radial_velocity_over_shoulder_width"
 const FEATURE_NAME_WRIST_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "wrist_x_from_shoulder_over_shoulder_width"
 const FEATURE_NAME_WRIST_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH := "wrist_y_from_shoulder_over_shoulder_width"
 const FEATURE_NAME_ELBOW_Z_FROM_SHOULDER := "elbow_z_from_shoulder"
@@ -154,8 +155,14 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 	var right_sample: Dictionary = sample.get("right", {}) if sample.get("right", {}) is Dictionary else {}
 	_sample_history.append({
 		"timestamp_ms": timestamp_ms,
-		"left": (left_sample.get("features", []) as Array).duplicate(true),
-		"right": (right_sample.get("features", []) as Array).duplicate(true),
+		"left": {
+			"features": (left_sample.get("features", []) as Array).duplicate(true),
+			"elbow_position": left_sample.get("elbow_position", Vector2.ZERO),
+		},
+		"right": {
+			"features": (right_sample.get("features", []) as Array).duplicate(true),
+			"elbow_position": right_sample.get("elbow_position", Vector2.ZERO),
+		},
 		"left_signal_position": left_sample.get("signal_position", Vector2.ZERO),
 		"right_signal_position": right_sample.get("signal_position", Vector2.ZERO),
 	})
@@ -387,16 +394,19 @@ func _extract_side_features(side: String, shoulder: Dictionary, elbow: Dictionar
 	var body_direction := _coarse_direction_buckets(body_signed_vx, body_signed_vy)
 	var combined_velocity_magnitude := average_velocity.length()
 	var elbow_shoulder_xy_distance_over_shoulder_width := PoseMetrics.distance_2d(elbow, shoulder) / shoulder_width
+	var elbow_velocity := _resolve_recent_joint_velocity_components(side, elbow, timestamp_ms, "elbow")
+	var elbow_shoulder_radial_velocity_over_shoulder_width := _resolve_radial_velocity_over_shoulder_width(shoulder, elbow, elbow_velocity, shoulder_width)
 	var features: Array = []
 	for feature_name_variant in feature_names:
 		var feature_name := String(feature_name_variant)
-		features.append(_resolve_feature_value(feature_name, shoulder, elbow, wrist, shoulder_width, combined_velocity_magnitude, elbow_shoulder_xy_distance_over_shoulder_width, camera_signed_vx, camera_signed_vy, body_signed_vx, body_signed_vy, camera_direction, body_direction))
+		features.append(_resolve_feature_value(feature_name, shoulder, elbow, wrist, shoulder_width, combined_velocity_magnitude, elbow_shoulder_xy_distance_over_shoulder_width, elbow_shoulder_radial_velocity_over_shoulder_width, camera_signed_vx, camera_signed_vy, body_signed_vx, body_signed_vy, camera_direction, body_direction))
 	return {
 		"features": features,
 		"signal_position": signal_position,
+		"elbow_position": Vector2(float(elbow.get("x", 0.0)), float(elbow.get("y", 0.0))),
 	}
 
-func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float, combined_velocity_magnitude: float, elbow_shoulder_xy_distance_over_shoulder_width: float, camera_signed_vx: float, camera_signed_vy: float, body_signed_vx: float, body_signed_vy: float, camera_direction: Dictionary, body_direction: Dictionary) -> float:
+func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, shoulder_width: float, combined_velocity_magnitude: float, elbow_shoulder_xy_distance_over_shoulder_width: float, elbow_shoulder_radial_velocity_over_shoulder_width: float, camera_signed_vx: float, camera_signed_vy: float, body_signed_vx: float, body_signed_vy: float, camera_direction: Dictionary, body_direction: Dictionary) -> float:
 	match feature_name:
 		FEATURE_NAME_SHOULDER_X:
 			return float(shoulder.get("x", 0.0))
@@ -446,6 +456,8 @@ func _resolve_feature_value(feature_name: String, shoulder: Dictionary, elbow: D
 			return (float(elbow.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width
 		FEATURE_NAME_ELBOW_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
 			return (float(elbow.get("y", 0.0)) - float(shoulder.get("y", 0.0))) / shoulder_width
+		FEATURE_NAME_ELBOW_SHOULDER_RADIAL_VELOCITY_OVER_SHOULDER_WIDTH:
+			return elbow_shoulder_radial_velocity_over_shoulder_width
 		FEATURE_NAME_WRIST_X_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
 			return (float(wrist.get("x", 0.0)) - float(shoulder.get("x", 0.0))) / shoulder_width
 		FEATURE_NAME_WRIST_Y_FROM_SHOULDER_OVER_SHOULDER_WIDTH:
@@ -502,6 +514,56 @@ func _resolve_recent_combined_velocity_components(side: String, signal_position:
 
 func _resolve_recent_combined_velocity_magnitude(side: String, signal_position: Vector2, timestamp_ms: int) -> float:
 	return _resolve_recent_combined_velocity_components(side, signal_position, timestamp_ms).length()
+
+func _resolve_recent_joint_velocity_components(side: String, joint: Dictionary, timestamp_ms: int, joint_key: String) -> Vector2:
+	var current_position := Vector2(float(joint.get("x", 0.0)), float(joint.get("y", 0.0)))
+	var previous_entries: Array = []
+	for sample_variant in _sample_history:
+		if not sample_variant is Dictionary:
+			continue
+		var sample: Dictionary = sample_variant
+		var side_entry: Dictionary = sample.get(side, {}) if sample.get(side, {}) is Dictionary else {}
+		var previous_position = side_entry.get("%s_position" % joint_key, null)
+		if previous_position == null or not previous_position is Vector2:
+			continue
+		previous_entries.append({
+			"timestamp_ms": int(sample.get("timestamp_ms", timestamp_ms)),
+			"position": previous_position,
+		})
+	previous_entries.append({
+		"timestamp_ms": timestamp_ms,
+		"position": current_position,
+	})
+	if previous_entries.size() < 2:
+		return Vector2.ZERO
+	var velocity_sum := Vector2.ZERO
+	var velocity_sample_count := 0
+	for index in range(1, previous_entries.size()):
+		var previous_entry: Dictionary = previous_entries[index - 1] as Dictionary
+		var current_entry: Dictionary = previous_entries[index] as Dictionary
+		var previous_timestamp_ms := int(previous_entry.get("timestamp_ms", timestamp_ms))
+		var current_timestamp_ms := int(current_entry.get("timestamp_ms", timestamp_ms))
+		var segment_dt_ms := current_timestamp_ms - previous_timestamp_ms
+		if segment_dt_ms <= 0:
+			continue
+		var previous_position: Vector2 = previous_entry.get("position", current_position)
+		var latest_position: Vector2 = current_entry.get("position", current_position)
+		velocity_sum += (latest_position - previous_position) / (float(segment_dt_ms) / 1000.0)
+		velocity_sample_count += 1
+	if velocity_sample_count <= 0:
+		return Vector2.ZERO
+	return velocity_sum / float(velocity_sample_count)
+
+func _resolve_radial_velocity_over_shoulder_width(shoulder: Dictionary, elbow: Dictionary, elbow_velocity: Vector2, shoulder_width: float) -> float:
+	var radial := Vector2(
+		float(elbow.get("x", 0.0)) - float(shoulder.get("x", 0.0)),
+		float(elbow.get("y", 0.0)) - float(shoulder.get("y", 0.0))
+	)
+	var radial_length := radial.length()
+	if radial_length <= 0.000001:
+		return 0.0
+	var radial_unit := radial / radial_length
+	return elbow_velocity.dot(radial_unit) / shoulder_width
 
 func _body_lateral_unit_vector(left_shoulder: Dictionary, right_shoulder: Dictionary) -> Vector2:
 	var axis := Vector2(
@@ -676,7 +738,12 @@ func _resample_side_window(side: String, target_count: int, samples: Array = _sa
 		if not sample_variant is Dictionary:
 			continue
 		var sample: Dictionary = sample_variant
-		var features: Variant = sample.get(side, [])
+		var side_value: Variant = sample.get(side, [])
+		var features: Variant = []
+		if side_value is Dictionary:
+			features = (side_value as Dictionary).get("features", [])
+		else:
+			features = side_value
 		if features is Array and (features as Array).size() == _get_feature_count():
 			series.append((features as Array).duplicate(true))
 	if series.is_empty() or target_count <= 0:

@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 15:08 EDT  
-**Blocked Reason:** None; Task 21 QA reproduced the refreshed retimed hook/uppercut motion-shape subset cleanly and Task 22 audit is ready.  
+**Last Updated:** 2026-06-18 16:40 EDT  
+**Blocked Reason:** None; Task 29 QA reproduced the targeted hook/uppercut pocket-exit rerun cleanly and Task 30 audit is ready.  
 **Agent:** `pico`
 
 ---
@@ -825,6 +825,111 @@ Narrowest next benchmark matrix: retimed fair hook/uppercut subset only, compari
 **Prompt:** Verify the targeted hook/uppercut cue benchmark is reproducible and compared fairly against retimed control and the fair retimed hook/uppercut subset baseline. Confirm exact variable inventory and summarize whether the targeted cue meaningfully improves the diagnosed failure mode.
 
 **Folders Created/Deleted/Modified:**
+- `.temp/qa-pocket-exit-rerun-2026-06-18/`
+- relevant checked-in benchmark artifact paths under `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-pocket-exit-benchmark-2026-06-18/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_family_mask_v1/{export,mlp,cnn}`
+- `.temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_pocket_exit_variant_v1/{export,mlp}`
+
+**Status:** ✅ Complete
+
+**Results:** QA reran the narrow targeted pocket-exit slice from the checked-in retimed source dataset into `.temp/qa-pocket-exit-rerun-2026-06-18/`: `python3 scripts/export_boxing_punch_classifier_dataset.py --source-dataset docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/family_combined_directional_hook_motion_shape_v1/export/dataset.json --mask-profile hook_uppercut_family_mask_v1 --output-dir .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_family_mask_v1/export`, `python3 scripts/train_boxing_punch_mlp_baseline.py --dataset .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_family_mask_v1/export/dataset.json --output-dir .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_family_mask_v1/mlp`, `python3 scripts/train_boxing_punch_temporal_cnn.py --dataset .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_family_mask_v1/export/dataset.json --mlp-result .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_family_mask_v1/mlp/mlp-result.json --output-dir .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_family_mask_v1/cnn`, then `python3 scripts/export_boxing_punch_classifier_dataset.py --source-dataset docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/family_combined_directional_hook_motion_shape_v1/export/dataset.json --mask-profile hook_uppercut_pocket_exit_variant_v1 --output-dir .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_pocket_exit_variant_v1/export` and `python3 scripts/train_boxing_punch_mlp_baseline.py --dataset .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_pocket_exit_variant_v1/export/dataset.json --output-dir .temp/qa-pocket-exit-rerun-2026-06-18/hook_uppercut_pocket_exit_variant_v1/mlp`.
+
+The rerun reproduced the checked-in semantic outputs exactly. Control export counts/inventories matched (`88` samples, `61 train / 27 test`), control MLP matched `0.7037 accuracy / 0.3792 macro-F1`, control CNN matched `0.8519 / 0.5159`, target export counts/inventories matched (`88 / 61 / 27`), and the target MLP matched `0.7037 / 0.3792`. Committed vs rerun `test_records` matched exactly for control MLP/CNN and target MLP, not just the headline metrics.
+
+The exact targeted inventory is also truthful. Per side, `hook_uppercut_pocket_exit_variant_v1` keeps the retimed control bundle plus the prior Variant A/C motion-shape stack and adds only the three intended pocket-exit scalars: `wrist_from_elbow_vertical_range_over_shoulder_width`, `elbow_shoulder_distance_range_over_shoulder_width`, and `wrist_from_elbow_vertical_peak_phase` (materialized in the frame inventory as left/right-prefixed variables). No accidental feature drops or additions were found in the rerun export summaries.
+
+The fair subset-baseline comparison remains truthful. The current control CNN uses the exact same 27 held-out hook/uppercut/no-punch sample IDs, in the same order, as the already-audited `shared_vector_subset_baseline.records` from `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/summary.json`, which still project to `0.8889 accuracy / 0.5872 macro-F1` from `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json`. So the comparison target did not drift between the retimed masked-control benchmark and this targeted rerun.
+
+Gate behavior was followed correctly. The targeted MLP tied the retimed control MLP exactly at `0.7037 / 0.3792`, stayed below the retimed Variant A/C MLP reference `0.8148 / 0.4778`, and therefore did **not** earn a targeted CNN run. The diagnosed uppercut misses also remained unchanged: `uppercut_left_fixture::uppercut_left::04` stayed `uppercut_left -> no_punch`, `uppercut_right_fixture::uppercut_right::04` stayed `uppercut_right -> hook_left`, and the target MLP produced `0` test prediction changes versus the rerun control. QA passes and audit is ready.
+
+---
+
+### Task 30: Audit targeted hook/uppercut cue benchmark conclusions
+
+**Bead ID:** `aerobeat-input-camera-tracking-ds8t`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the targeted hook/uppercut cue benchmark and state whether the new cue family improves the exact diagnosed misses enough to justify continuing specialization, or whether hook/uppercut still fails to beat the fair retimed subset baseline.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 31: Research mixed per-family runtime topology for Godot proving
+
+**Bead ID:** `aerobeat-input-camera-tracking-0r5q`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Derrick wants to pause hook/uppercut feature tweaking and instead plan a mixed runtime path so Godot proving can use the best currently-supported classifier choice per punch family. Research the narrowest runtime topology change needed to let straights use the specialized learned winner while hook/uppercut stay on the best current path for now. Be explicit about whether this should be family-gated routing, multiple learned artifacts, hybrid learned+existing backend composition, or some simpler proving-only topology.
+
+**Folders Created/Deleted/Modified:**
+- relevant runtime / proving paths discovered during research
+
+**Files Created/Deleted/Modified:**
+- plan updates / research notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Research completed against the current runtime/proving code shape. Ranked topology options: **(1) recommended** proving-only mixed router inside `src/detectors/pose_detector_substrate.gd` that lets the learned classifier own only the straight family while existing threshold-gate runtime keeps hook/uppercut; **(2)** broader mixed router that supports per-family backend selection generically (straight/hook/uppercut each choose learned vs threshold/prototype) with config/debug plumbing for every family; **(3)** multi-artifact learned runtime (straight artifact + hook/uppercut artifact[s]) with one learned router owning multiple model loads; **(4)** learned-family gate followed by family-specialized learned heads. Option 1 is the smallest honest path because the current substrate already has separate straight/hook/uppercut threshold paths, the proving harness already exposes runtime backend overrides, and the current straight masked MLP artifact only needs one additional runtime feature (`elbow_shoulder_radial_velocity_over_shoulder_width`) beyond the feature names already resolved in `src/detectors/prototype_punch_matcher.gd`.
+
+Key constraint discovered: the current learned runtime is **not** ready for the hook/uppercut specialized artifacts. `src/detectors/learned_punch_classifier.gd` can load alternate artifact paths, but it inherits feature extraction from `src/detectors/prototype_punch_matcher.gd`, whose resolver currently knows the baseline feature names plus some shoulder-relative offsets — not the hook/uppercut runtime-candidate names from the benchmark harness (for example `camera_wrist_signed_vx`, `body_wrist_signed_vx`, etc.). Unknown feature names currently fall back to `0.0`, so promoting the hook/uppercut specialized artifacts now would be misleading. By contrast, the straight masked winner at `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json` only adds one missing runtime feature on top of already-supported straight-side values, which makes it the only realistic near-term learned promotion.
+
+Recommended narrow implementation path for Task 32: keep this **proving-only first**. Add a mixed punch-routing mode at the substrate/proving layer that (a) runs a straight-only learned classifier artifact for `straight_left`/`straight_right` → `punch_left`/`punch_right`, (b) keeps the current threshold-gate hook/uppercut runtime for `hook_*`/`uppercut_*`, and (c) surfaces explicit debug truth showing per-family routing plus the active learned model path. Likely files/components: `src/detectors/pose_detector_substrate.gd` for event routing + debug state, `src/detectors/learned_punch_classifier.gd` plus `src/detectors/prototype_punch_matcher.gd` for the one missing straight feature and straight-artifact loading, `assets/boxing.gesture_detection.yaml` and/or proving-only env override handling in `.testbed/scripts/proving_harness.gd`, and `.testbed/scripts/boxing_proving_harness.gd` so the proving UI/quick stats expose `routing_mode`, `straight_backend`, `hook_backend`, `uppercut_backend`, straight learned model path, and the fact that hook/uppercut still come from the existing backend. Coder readiness: **yes** — the next slice is narrow and implementable without claiming hook/uppercut learned specialization is runtime-ready yet.
+
+---
+
+### Task 32: Implement mixed per-family runtime punch-classifier path for Godot proving
+
+**Bead ID:** `aerobeat-input-camera-tracking-zc8x`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Implement the agreed mixed per-family runtime proving path so Derrick can test the best currently-supported choice per punch family in Godot replay/live proving. Keep the implementation as narrow as possible and make the active routing/debug truth explicit in proving surfaces.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `src/detectors/pose_detector_substrate.gd`
+- `src/detectors/learned_punch_classifier.gd`
+- `src/detectors/prototype_punch_matcher.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Added a proving-only `mixed_family` punch backend that routes straights through the learned classifier while keeping hook/uppercut on the existing threshold-gate runtime path. `pose_detector_substrate.gd` now surfaces explicit per-family routing/debug truth (`routing_mode`, `straight_backend`, `hook_backend`, `uppercut_backend`, `straight_model_path`, and a hook/uppercut note), and `boxing_proving_harness.gd` now exposes that truth in the event feed and uses per-family backend truth when choosing hover-card detail panels. `proving_harness.gd` gained a proving override path for `AEROBEAT_PUNCH_BACKEND_OVERRIDE=mixed_family`, defaulting straights to `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json` unless `AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE` is set. `prototype_punch_matcher.gd` gained runtime support for the missing straight-family feature `elbow_shoulder_radial_velocity_over_shoulder_width` plus backward-compatible sample-history handling so the learned classifier still works normally. Focused unit coverage was added for mixed routing truth and proving debug surfaces, and the focused GUT suites passed: `res://tests/unit/test_pose_detector_substrate.gd` and `res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`.
+
+---
+
+### Task 33: QA mixed per-family runtime punch-classifier path in proving
+
+**Bead ID:** `aerobeat-input-camera-tracking-9h1o`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the mixed per-family runtime proving path works truthfully in the highest-fidelity proving flow available and that the debug/proving surfaces make the active family routing explicit.
+
+**Folders Created/Deleted/Modified:**
 - relevant repo paths used during QA
 
 **Files Created/Deleted/Modified:**
@@ -836,13 +941,13 @@ Narrowest next benchmark matrix: retimed fair hook/uppercut subset only, compari
 
 ---
 
-### Task 30: Audit targeted hook/uppercut cue benchmark conclusions
+### Task 34: Audit mixed per-family runtime punch-classifier path
 
-**Bead ID:** `aerobeat-input-camera-tracking-ds8t`  
+**Bead ID:** `aerobeat-input-camera-tracking-4hpa`  
 **SubAgent:** `primary` (for `auditor`)  
 **Role:** `auditor`  
-**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
-**Prompt:** Independently truth-check the targeted hook/uppercut cue benchmark and state whether the new cue family improves the exact diagnosed misses enough to justify continuing specialization, or whether hook/uppercut still fails to beat the fair retimed subset baseline.
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the mixed per-family runtime proving path and confirm whether it is ready for Derrick’s replay/live testing feedback loop.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo paths used during audit

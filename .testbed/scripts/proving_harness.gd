@@ -13,6 +13,8 @@ const VENDOR_MODEL_LITE := "models/pose_landmarker_lite.task"
 const VENDOR_MODEL_FULL := "models/pose_landmarker_full.task"
 const VENDOR_MODEL_HEAVY := "models/pose_landmarker_heavy.task"
 const DEFAULT_TRACKING_OVERLAY_MODE := "optimized"
+const PROVING_MIXED_FAMILY_BACKEND := "mixed_family"
+const PROVING_MIXED_STRAIGHT_MODEL_PATH := "docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json"
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -1180,10 +1182,10 @@ func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript)
 		var legacy_threshold_gates: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
 		if backend_override == "threshold_gates":
 			backend_override = "threshold_gates"
-		if backend_override == "threshold_gates" or backend_override == "prototype_matcher" or backend_override == "learned_classifier":
+		if backend_override == "threshold_gates" or backend_override == "prototype_matcher" or backend_override == "learned_classifier" or backend_override == PROVING_MIXED_FAMILY_BACKEND:
 			punch_detection["backend"] = backend_override
 			gesture_profile["punch_detection"] = punch_detection
-			var enable_threshold_backend := backend_override == "threshold_gates"
+			var enable_threshold_backend := backend_override == "threshold_gates" or backend_override == PROVING_MIXED_FAMILY_BACKEND
 			threshold_backend["enabled"] = enable_threshold_backend
 			legacy_threshold_gates["enabled"] = enable_threshold_backend
 			gesture_profile["threshold_gates"] = threshold_backend
@@ -1192,9 +1194,16 @@ func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript)
 				var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
 				matcher_config["enabled"] = true
 				gesture_profile["prototype_matcher"] = matcher_config
-			elif backend_override == "learned_classifier":
+			elif backend_override == "learned_classifier" or backend_override == PROVING_MIXED_FAMILY_BACKEND:
 				var learned_config: Dictionary = gesture_profile.get("learned_classifier", {}) if gesture_profile.get("learned_classifier", {}) is Dictionary else {}
 				learned_config["enabled"] = true
+				if backend_override == PROVING_MIXED_FAMILY_BACKEND:
+					var model_config: Dictionary = learned_config.get("model", {}) if learned_config.get("model", {}) is Dictionary else {}
+					var mixed_model_path := OS.get_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE").strip_edges()
+					if mixed_model_path.is_empty():
+						mixed_model_path = PROVING_MIXED_STRAIGHT_MODEL_PATH
+					model_config["artifact_path"] = mixed_model_path
+					learned_config["model"] = model_config
 				gesture_profile["learned_classifier"] = learned_config
 	var library_id_override := OS.get_environment("AEROBEAT_PROTOTYPE_LIBRARY_ID_OVERRIDE").strip_edges()
 	if not library_id_override.is_empty():

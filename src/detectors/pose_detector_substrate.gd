@@ -3,6 +3,7 @@ extends RefCounted
 
 const PrototypePunchMatcher = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd")
 const LearnedPunchClassifierScript = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/learned_punch_classifier.gd")
+const PUNCH_BACKEND_MIXED_FAMILY := "mixed_family"
 
 const TRACKING_TRACKING := &"tracking"
 const TRACKING_DEGRADED := &"degraded"
@@ -596,13 +597,29 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 
 func _build_punch_detection_debug_state() -> Dictionary:
 	var active_backend := _get_active_punch_detection_backend()
+	var selected_backend := _get_selected_punch_detection_backend()
+	var routing_mode := "single_backend"
+	var straight_backend := active_backend
+	var hook_backend := active_backend
+	var uppercut_backend := active_backend
+	if active_backend == PUNCH_BACKEND_MIXED_FAMILY:
+		routing_mode = "mixed_family"
+		straight_backend = "learned_classifier" if _learned_classifier_backend_enabled() else "none"
+		hook_backend = "threshold_gates" if _threshold_gates_enabled() else "none"
+		uppercut_backend = "threshold_gates" if _threshold_gates_enabled() else "none"
 	return {
 		"backend": active_backend,
 		"active_backend": active_backend,
-		"selected_backend": _get_selected_punch_detection_backend(),
+		"selected_backend": selected_backend,
 		"selected_backend_raw": _get_selected_punch_detection_backend_raw(),
 		"selected_backend_enabled": _selected_punch_detection_backend_enabled(),
 		"active_backend_resolution": _get_punch_backend_resolution_reason(),
+		"routing_mode": routing_mode,
+		"straight_backend": straight_backend,
+		"hook_backend": hook_backend,
+		"uppercut_backend": uppercut_backend,
+		"hook_uppercut_backend_note": "hook/uppercut stay on threshold_gates in mixed_family proving mode" if active_backend == PUNCH_BACKEND_MIXED_FAMILY else "",
+		"straight_model_path": String(_learned_punch_classifier.get_debug_state().get("model_path", "")) if active_backend == PUNCH_BACKEND_MIXED_FAMILY else "",
 		"threshold_gates_enabled": _threshold_gates_enabled(),
 		"prototype_matcher_enabled": _prototype_matcher_backend_enabled(),
 		"learned_classifier_enabled": _learned_classifier_backend_enabled(),
@@ -1017,6 +1034,12 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 		events.append_array(_prototype_punch_matcher.process_window(landmarks_by_id, metrics, timestamp_ms))
 	elif punch_backend == "learned_classifier":
 		events.append_array(_learned_punch_classifier.process_window(landmarks_by_id, metrics, timestamp_ms))
+	elif punch_backend == PUNCH_BACKEND_MIXED_FAMILY:
+		events.append_array(_filter_events_by_names(_learned_punch_classifier.process_window(landmarks_by_id, metrics, timestamp_ms), ["punch_left", "punch_right"]))
+		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
 	elif punch_backend == "threshold_gates":
 		_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 		_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
@@ -1900,6 +1923,8 @@ func _selected_punch_detection_backend_enabled() -> bool:
 		return _prototype_matcher_backend_enabled()
 	if selected_backend == "learned_classifier":
 		return _learned_classifier_backend_enabled()
+	if selected_backend == PUNCH_BACKEND_MIXED_FAMILY:
+		return _threshold_gates_enabled() and _learned_classifier_backend_enabled()
 	if selected_backend == "threshold_gates":
 		return _threshold_gates_enabled()
 	return false
@@ -1910,18 +1935,32 @@ func _get_active_punch_detection_backend() -> String:
 		return "prototype_matcher" if _prototype_matcher_backend_enabled() else "none"
 	if selected_backend == "learned_classifier":
 		return "learned_classifier" if _learned_classifier_backend_enabled() else "none"
+	if selected_backend == PUNCH_BACKEND_MIXED_FAMILY:
+		return PUNCH_BACKEND_MIXED_FAMILY if _threshold_gates_enabled() and _learned_classifier_backend_enabled() else "none"
 	if selected_backend == "threshold_gates":
 		return "threshold_gates" if _threshold_gates_enabled() else "none"
 	return "none"
 
 func _get_punch_backend_resolution_reason() -> String:
 	var selected_backend := _get_selected_punch_detection_backend()
-	if selected_backend == "prototype_matcher" or selected_backend == "learned_classifier" or selected_backend == "threshold_gates":
+	if selected_backend == "prototype_matcher" or selected_backend == "learned_classifier" or selected_backend == "threshold_gates" or selected_backend == PUNCH_BACKEND_MIXED_FAMILY:
 		return "selected_backend_active" if _selected_punch_detection_backend_enabled() else "selected_backend_disabled"
 	return "unknown_selected_backend"
 
 func _normalize_punch_backend_name(backend_name: String) -> String:
+	if backend_name == PUNCH_BACKEND_MIXED_FAMILY:
+		return PUNCH_BACKEND_MIXED_FAMILY
 	return backend_name
+
+func _filter_events_by_names(events: Array, allowed_names: Array[String]) -> Array:
+	var filtered: Array = []
+	for event_variant in events:
+		if not event_variant is Dictionary:
+			continue
+		var event: Dictionary = event_variant
+		if allowed_names.has(String(event.get("name", ""))):
+			filtered.append(event.duplicate(true))
+	return filtered
 
 func _get_guard_config() -> Dictionary:
 	var config := {

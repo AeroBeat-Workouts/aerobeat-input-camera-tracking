@@ -1690,6 +1690,55 @@ func test_learned_classifier_repo_root_docs_path_falls_back_to_addon_mount_in_te
 	assert_eq(String(learned_debug.get("model_path", "")), "res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json")
 	assert_ne(String(learned_debug.get("reason", "")), "model_unavailable")
 
+func test_mixed_family_backend_routes_straights_to_learned_classifier_and_surfaces_truth() -> void:
+	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2, [
+		"left_elbow_shoulder_xy_distance_over_shoulder_width",
+		"left_elbow_shoulder_radial_velocity_over_shoulder_width",
+		"right_elbow_shoulder_xy_distance_over_shoulder_width",
+		"right_elbow_shoulder_radial_velocity_over_shoulder_width",
+	])
+	_enable_mixed_family_backend({
+		"model_path": model_path,
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 250,
+		"emit_hold_ms": 100,
+	})
+	_calibrate_stance()
+	var first_frame := _prototype_pose_frame("left", {"elbow_x": 0.42, "elbow_y": 0.67, "wrist_x": 0.32, "wrist_y": 0.62, "elbow_z": 0.00, "wrist_z": 0.00})
+	var second_frame := _prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00})
+	var state := substrate.process_landmarks(first_frame, 40)
+	assert_eq(String(state.get("gesture_debug", {}).get("learned_classifier", {}).get("reason", "")), "window_not_full")
+	state = substrate.process_landmarks(second_frame, 100)
+	var event_names := _event_names(state.get("events", []))
+	assert_true(event_names.has("punch_left"))
+	assert_false(event_names.has("hook_left"))
+	var gesture_debug: Dictionary = state.get("gesture_debug", {})
+	var punch_detection_debug: Dictionary = gesture_debug.get("punch_detection", {})
+	assert_eq(String(punch_detection_debug.get("active_backend", "")), "mixed_family")
+	assert_eq(String(punch_detection_debug.get("routing_mode", "")), "mixed_family")
+	assert_eq(String(punch_detection_debug.get("straight_backend", "")), "learned_classifier")
+	assert_eq(String(punch_detection_debug.get("hook_backend", "")), "threshold_gates")
+	assert_eq(String(punch_detection_debug.get("uppercut_backend", "")), "threshold_gates")
+	assert_eq(String(punch_detection_debug.get("straight_model_path", "")), model_path)
+	assert_string_contains(String(punch_detection_debug.get("hook_uppercut_backend_note", "")), "hook/uppercut stay on threshold_gates")
+	var learned_debug: Dictionary = gesture_debug.get("learned_classifier", {})
+	assert_eq(String(learned_debug.get("selected_backend", "")), "mixed_family")
+	assert_eq(String(learned_debug.get("active_backend", "")), "learned_classifier")
+	assert_eq(String(learned_debug.get("emitted_event_name", "")), "punch_left")
+
+func test_mixed_family_backend_filters_non_straight_learned_events() -> void:
+	var model_path := _write_test_learned_classifier_model("hook_left", 10.0)
+	_enable_mixed_family_backend({
+		"model_path": model_path,
+		"match_score_min": 0.70,
+	})
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
+	var event_names := _event_names(state.get("events", []))
+	assert_false(event_names.has("hook_left"))
+	assert_false(event_names.has("punch_left"))
+	assert_eq(String(state.get("gesture_debug", {}).get("learned_classifier", {}).get("best_class", "")), "hook_left")
+
 func test_learned_classifier_selection_does_not_fall_back_to_threshold_backend_when_disabled() -> void:
 	config.tracker_profile_document = {
 		"tracking": {
@@ -1889,6 +1938,41 @@ func _enable_prototype_matcher_backend(options: Dictionary = {}) -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
+func _enable_mixed_family_backend(options: Dictionary = {}) -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"punch_detection": {
+			"backend": "mixed_family",
+		},
+		"threshold_gates": {
+			"enabled": true,
+		},
+		"learned_classifier": {
+			"enabled": true,
+			"model": {
+				"artifact_path": String(options.get("model_path", "")),
+			},
+			"thresholds": {
+				"match_score_min": float(options.get("match_score_min", 0.70)),
+			},
+			"timing": {
+				"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
+				"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
+			},
+			"debug": {
+				"show_scores": true,
+				"show_event_gate_state": true,
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+
 func _enable_learned_classifier_backend(options: Dictionary = {}) -> void:
 	config.tracker_profile_document = {
 		"tracking": {
@@ -1924,20 +2008,44 @@ func _enable_learned_classifier_backend(options: Dictionary = {}) -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
-func _write_test_learned_classifier_model(winner_class: String = "straight_left", confidence_logit: float = 10.0, frame_count: int = 1) -> String:
-	var path := "user://test-learned-classifier-%s-%d.json" % [winner_class, frame_count]
+func _write_test_learned_classifier_model(winner_class: String = "straight_left", confidence_logit: float = 10.0, frame_count: int = 1, frame_feature_names: Array = []) -> String:
+	var feature_slug := "default" if frame_feature_names.is_empty() else str(frame_feature_names.size())
+	var path := "user://test-learned-classifier-%s-%d-%s.json" % [winner_class, frame_count, feature_slug]
 	var class_order := ["straight_left", "straight_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"]
 	var winner_index := class_order.find(winner_class)
 	assert_true(winner_index >= 0)
 	var means: Array = []
 	var stds: Array = []
-	for _idx in range(frame_count * 16):
+	var effective_frame_feature_names := frame_feature_names.duplicate(true)
+	var effective_side_feature_names: Array = []
+	if effective_frame_feature_names.is_empty():
+		for feature_name in [
+			"left_shoulder_x", "left_shoulder_y", "left_elbow_x", "left_elbow_y", "left_wrist_x", "left_wrist_y", "left_combined_elbow_wrist_velocity_xy_magnitude", "left_elbow_shoulder_xy_distance_over_shoulder_width",
+			"right_shoulder_x", "right_shoulder_y", "right_elbow_x", "right_elbow_y", "right_wrist_x", "right_wrist_y", "right_combined_elbow_wrist_velocity_xy_magnitude", "right_elbow_shoulder_xy_distance_over_shoulder_width",
+		]:
+			effective_frame_feature_names.append(feature_name)
+		effective_side_feature_names = [
+			"shoulder_x", "shoulder_y", "elbow_x", "elbow_y", "wrist_x", "wrist_y", "combined_elbow_wrist_velocity_xy_magnitude", "elbow_shoulder_xy_distance_over_shoulder_width",
+		]
+	else:
+		var seen_side_feature_names: Dictionary = {}
+		for frame_feature_name_variant in effective_frame_feature_names:
+			var frame_feature_name := String(frame_feature_name_variant)
+			var side_feature_name := frame_feature_name
+			if frame_feature_name.begins_with("left_"):
+				side_feature_name = frame_feature_name.trim_prefix("left_")
+			elif frame_feature_name.begins_with("right_"):
+				side_feature_name = frame_feature_name.trim_prefix("right_")
+			if not seen_side_feature_names.has(side_feature_name):
+				seen_side_feature_names[side_feature_name] = true
+				effective_side_feature_names.append(side_feature_name)
+	for _idx in range(frame_count * effective_frame_feature_names.size()):
 		means.append(0.0)
 		stds.append(1.0)
 	var logits_biases: Array = []
 	for idx in range(class_order.size()):
 		logits_biases.append(confidence_logit if idx == winner_index else 0.0)
-	var input_dim := frame_count * 16
+	var input_dim := frame_count * effective_frame_feature_names.size()
 	var hidden_weights: Array = []
 	for _idx in range(input_dim):
 		hidden_weights.append(0.0)
@@ -1947,9 +2055,11 @@ func _write_test_learned_classifier_model(winner_class: String = "straight_left"
 		"class_order": class_order,
 		"dataset_window_shape": {
 			"frame_count": frame_count,
-			"frame_feature_count": 16,
+			"frame_feature_count": effective_frame_feature_names.size(),
 			"flattened_input_dim": input_dim,
 		},
+		"side_feature_names": effective_side_feature_names,
+		"frame_feature_names": effective_frame_feature_names,
 		"standardization": {
 			"means": means,
 			"stds": stds,

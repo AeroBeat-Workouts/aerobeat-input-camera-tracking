@@ -1155,39 +1155,45 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 		}
 	match card_key:
 		"punch_left":
-			if _active_punch_detection_backend() == "prototype_matcher":
+			var punch_left_backend := _punch_backend_for_event("punch_left")
+			if punch_left_backend == "prototype_matcher":
 				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if _active_punch_detection_backend() == "learned_classifier":
+			if punch_left_backend == "learned_classifier":
 				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_punch_hover_card_model(spec, "left")
 		"punch_right":
-			if _active_punch_detection_backend() == "prototype_matcher":
+			var punch_right_backend := _punch_backend_for_event("punch_right")
+			if punch_right_backend == "prototype_matcher":
 				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if _active_punch_detection_backend() == "learned_classifier":
+			if punch_right_backend == "learned_classifier":
 				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_punch_hover_card_model(spec, "right")
 		"hook_left":
-			if _active_punch_detection_backend() == "prototype_matcher":
+			var hook_left_backend := _punch_backend_for_event("hook_left")
+			if hook_left_backend == "prototype_matcher":
 				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if _active_punch_detection_backend() == "learned_classifier":
+			if hook_left_backend == "learned_classifier":
 				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_pose_strike_hover_card_model(spec, "hook", "left")
 		"hook_right":
-			if _active_punch_detection_backend() == "prototype_matcher":
+			var hook_right_backend := _punch_backend_for_event("hook_right")
+			if hook_right_backend == "prototype_matcher":
 				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if _active_punch_detection_backend() == "learned_classifier":
+			if hook_right_backend == "learned_classifier":
 				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_pose_strike_hover_card_model(spec, "hook", "right")
 		"uppercut_left":
-			if _active_punch_detection_backend() == "prototype_matcher":
+			var uppercut_left_backend := _punch_backend_for_event("uppercut_left")
+			if uppercut_left_backend == "prototype_matcher":
 				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if _active_punch_detection_backend() == "learned_classifier":
+			if uppercut_left_backend == "learned_classifier":
 				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "left")
 		"uppercut_right":
-			if _active_punch_detection_backend() == "prototype_matcher":
+			var uppercut_right_backend := _punch_backend_for_event("uppercut_right")
+			if uppercut_right_backend == "prototype_matcher":
 				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if _active_punch_detection_backend() == "learned_classifier":
+			if uppercut_right_backend == "learned_classifier":
 				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "right")
 		"guard":
@@ -1207,6 +1213,18 @@ func _active_punch_detection_backend() -> String:
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
 	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
 	return String(punch_detection.get("active_backend", punch_detection.get("backend", "threshold_gates")))
+
+func _punch_backend_for_event(event_name: String) -> String:
+	var latest_state := _boxing_latest_state_snapshot()
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
+	if event_name.begins_with("punch_"):
+		return String(punch_detection.get("straight_backend", _active_punch_detection_backend()))
+	if event_name.begins_with("hook_"):
+		return String(punch_detection.get("hook_backend", _active_punch_detection_backend()))
+	if event_name.begins_with("uppercut_"):
+		return String(punch_detection.get("uppercut_backend", _active_punch_detection_backend()))
+	return _active_punch_detection_backend()
 
 func _prototype_matcher_debug_state() -> Dictionary:
 	var latest_state := _boxing_latest_state_snapshot()
@@ -2262,9 +2280,17 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append(classifier_title)
 	lines.append("-----------------------")
 	lines.append("Active backend: %s" % active_backend)
+	lines.append("Routing mode: %s" % String(punch_detection_debug.get("routing_mode", "single_backend")))
+	lines.append("Per-family backends: straight=%s hook=%s uppercut=%s" % [
+		String(punch_detection_debug.get("straight_backend", active_backend)),
+		String(punch_detection_debug.get("hook_backend", active_backend)),
+		String(punch_detection_debug.get("uppercut_backend", active_backend)),
+	])
 	lines.append("Selected backend: %s" % selected_backend)
 	lines.append("Selected backend enabled: %s" % _fmt_bool(bool(punch_detection_debug.get("selected_backend_enabled", active_backend != "none"))))
 	lines.append("Backend resolution: %s" % String(punch_detection_debug.get("active_backend_resolution", "selected_backend_active")))
+	if not String(punch_detection_debug.get("hook_uppercut_backend_note", "")).is_empty():
+		lines.append("Hook/uppercut routing note: %s" % String(punch_detection_debug.get("hook_uppercut_backend_note", "")))
 	if classifier_backend != "threshold_gates":
 		lines.append("%s: %s (loaded=%s)" % [
 			classifier_loaded_label,
@@ -2284,6 +2310,14 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Result class / emitted event: %s / %s" % [
 		String(classifier_debug.get("result_class", "no_punch")),
 		String(classifier_debug.get("emitted_event_name", "none")) if not String(classifier_debug.get("emitted_event_name", "")).is_empty() else "none",
+	])
+	lines.append("Event/backend truth: punch_left=%s punch_right=%s hook_left=%s hook_right=%s uppercut_left=%s uppercut_right=%s" % [
+		_punch_backend_for_event("punch_left"),
+		_punch_backend_for_event("punch_right"),
+		_punch_backend_for_event("hook_left"),
+		_punch_backend_for_event("hook_right"),
+		_punch_backend_for_event("uppercut_left"),
+		_punch_backend_for_event("uppercut_right"),
 	])
 	lines.append("Debug flags: show_scores=%s show_event_gate_state=%s" % [
 		_fmt_bool(bool(classifier_debug.get("show_scores", false))),
