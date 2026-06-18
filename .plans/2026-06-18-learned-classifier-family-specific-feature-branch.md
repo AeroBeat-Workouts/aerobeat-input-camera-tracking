@@ -1,9 +1,9 @@
 # AeroBeat Learned Classifier Family-Specific Feature Branch
 
 **Date:** 2026-06-18  
-**Status:** Blocked  
-**Last Updated:** 2026-06-18 10:36 EDT  
-**Blocked Reason:** Awaiting design revision before QA/audit because the first family-specific benchmark still fed one shared feature vector to one shared classifier instead of truly isolating straight-family cues from hook/uppercut cues.  
+**Status:** In Progress  
+**Last Updated:** 2026-06-18 10:45 EDT  
+**Blocked Reason:** None currently; resumed on the approved plan with a design-review research slice to evaluate family-isolated classifier topologies before resuming QA/audit.  
 **Agent:** `pico`
 
 ---
@@ -117,6 +117,99 @@ This branch should stay benchmark-driven. We should avoid jumping straight to ru
 **Status:** ⚪ Not Started
 
 **Results:** Intentionally not executed before land-the-plane for the same reason as QA: the benchmark implementation needs a design review first because it still mixed family-specific cues into one shared classifier input vector, which Derrick correctly identified as materially different from the intended test.
+
+---
+
+### Task 5: Review family-isolated classifier topology options before more benchmarking
+
+**Bead ID:** `aerobeat-input-camera-tracking-hi8l`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Review the current learned classifier runtime and benchmark harness to answer the next design question truthfully: how can we prevent straight-family cues from competing with hook/uppercut-only cues? Compare at least three options: (1) keep the current classifier tech but mask features per family/head, (2) stage the decision path into punch-family routing plus family-specific classification, and (3) change model tech if the current flat shared-input setup cannot express that cleanly. Also judge whether collecting more videos and YAML truths should happen before or after the topology change. Cite exact repo paths and explain the narrowest honest next experiment. Claim bead `aerobeat-input-camera-tracking-hi8l` on start and close it when finished if the research is complete.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths discovered during design review
+
+**Files Created/Deleted/Modified:**
+- plan updates and any research notes/artifacts if needed
+
+**Status:** ✅ Complete
+
+**Results:** Research completed. Current evidence says the repo’s first “family-specific” branch was still architecturally flat: `scripts/boxing_classifier_harness.py` exported one shared left+right feature vector per frame and both training paths consumed one shared multiclass label space, so irrelevant family cues were still available to every class. The narrowest honest next move is not “collect more of the same and hope”; it is a topology check inside the existing harness. Recommended order: first run one benchmark that keeps the current temporal CNN/MLP tech but physically removes irrelevant inputs by exporting family/head-specific datasets (for example, straight-vs-no-punch and hook/uppercut-vs-no-punch or straight/hook/uppercut family heads with per-head feature masks), then compare against the current shared-vector baseline. That tells us whether the present model family is being limited mainly by mixed-input noise or by data scarcity. More videos/YAML truth still matter, but because the current dataset is tiny (4 labeled positives per punch class in the hardened export) they should follow immediately after the topology experiment rather than be the first response; otherwise we risk scaling a known-confounded setup. Constraints discovered: the runtime loader in `src/detectors/learned_punch_classifier.gd` currently only accepts `aerobeat.boxing_punch_classifier_mlp_result` artifacts, and its feature extraction still depends on `src/detectors/prototype_punch_matcher.gd`, which does not resolve the newer wrist-only directional or elbow radial-velocity feature names used by the family benchmark. So the present family-specific feature branch is harness-only evidence unless runtime feature support is extended later.
+
+---
+
+### Task 6: Implement masked-family harness benchmark and report per-family variable usage
+
+**Bead ID:** `aerobeat-input-camera-tracking-vzun`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Implement the narrowest honest topology test in the existing benchmark/export harness: physically isolate family/head-specific inputs instead of feeding one family-mixed feature vector to one shared classifier. Keep this harness-only for now. Export/train/evaluate at least one straight-family masked setup and one hook/uppercut-family masked setup using the current hardened capture package, compare them against the current shared-vector baseline, and report exactly which variables/features each family/head received. If the masked setup still loses, produce a clear per-family variable inventory so Derrick can diagnose whether the chosen signals themselves are wrong. Claim bead `aerobeat-input-camera-tracking-vzun` on start, run relevant repo-local validation/benchmark commands, commit/push by default when done, and close the bead with a clear reason.
+
+**Folders Created/Deleted/Modified:**
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/`
+- benchmark/export/runtime-adjacent repo paths discovered during implementation
+
+**Files Created/Deleted/Modified:**
+- `scripts/boxing_classifier_harness.py`
+- `scripts/export_boxing_punch_classifier_dataset.py`
+- `scripts/train_boxing_punch_mlp_baseline.py`
+- `scripts/train_boxing_punch_temporal_cnn.py`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/summary.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/summary.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/**`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/**`
+- plan updates / notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Added harness support for deriving masked family/head datasets directly from the hardened `family_combined_directional_v1` export, with explicit `mask_inventory` metadata and threshold-baseline remapping inside the reduced class space. `train_boxing_punch_mlp_baseline.py` and `train_boxing_punch_temporal_cnn.py` now honor dataset-provided `class_order`, so the same training stack can evaluate reduced family heads without runtime integration.
+
+Generated `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/` with two harness-only variants: `straight_family_mask_v1` and `hook_uppercut_family_mask_v1`. Each variant includes `export/`, `mlp/`, and `cnn/` artifacts plus explicit active/masked feature inventories. I also wrote benchmark-level `summary.json` and `summary.md` that compare each masked head against the existing shared-vector CNN baseline both in full (`baseline_v1`) and on the matching subset of test samples.
+
+Outcome: the masked topology did **not** beat the shared-vector baseline on the same head-local subsets. Straight-family masked CNN reached **0.9600 accuracy / 0.8815 macro-F1** on its 3-class test slice, but the projected shared-vector baseline was already **1.0000 / 1.0000** there. Hook/uppercut masked CNN reached **0.8148 / 0.1796**, while the projected shared-vector baseline was **0.8519 / 0.1878**; masked MLP matched **0.8148 accuracy** and improved macro-F1 to **0.3159**, but still did not produce a clean win over the shared-vector route. The per-family variable inventory is now explicit in `export/export-summary.json` for each variant and summarized in `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/summary.{json,md}` for Derrick’s diagnosis pass.
+
+---
+
+### Task 7: QA masked-family benchmark outputs and reproducibility
+
+**Bead ID:** `aerobeat-input-camera-tracking-owve`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Verify the masked-family harness benchmark runs truthfully and reproducibly enough for decision-making. Re-run the relevant commands if needed, confirm the compared baselines are fair, and summarize whether masked family isolation materially improved results or still underperformed. Include the per-family variable inventory in the QA summary so Derrick can inspect it easily.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 8: Audit masked-family conclusions and recommend next move
+
+**Bead ID:** `aerobeat-input-camera-tracking-1vwg`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the masked-family benchmark conclusions. Confirm whether feature isolation helped enough to justify staged routing and more data collection, or whether the family-specific variable choices themselves still look weak. If the masked benchmark loses, make the per-family variable inventory explicit and recommend the next diagnosis path for Derrick. Claim bead `aerobeat-input-camera-tracking-1vwg` only when its dependency is ready, and close it only if the audit truly passes.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 

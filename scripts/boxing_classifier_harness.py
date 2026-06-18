@@ -37,6 +37,12 @@ PUNCH_CLASS_ORDER = [
     "uppercut_right",
     "no_punch",
 ]
+MASK_PROFILE_STRAIGHT_FAMILY_V1 = "straight_family_mask_v1"
+MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1 = "hook_uppercut_family_mask_v1"
+MASK_PROFILE_TO_CLASS_ORDER = {
+    MASK_PROFILE_STRAIGHT_FAMILY_V1: ["straight_left", "straight_right", "no_punch"],
+    MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
+}
 PUNCH_GESTURE_NAMES = set(PUNCH_CLASS_TO_EVENT.keys())
 LANDMARK_IDS = {
     "left_shoulder": "11",
@@ -113,6 +119,12 @@ BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE = [
     "body_wrist_direction_left",
     "body_wrist_direction_right",
 ]
+MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES = {
+    MASK_PROFILE_STRAIGHT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE + STRAIGHT_FAMILY_FEATURE_NAMES_PER_SIDE,
+    MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE
+    + CAMERA_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE,
+}
 
 
 def normalize_feature_set(feature_set: str | None) -> str:
@@ -145,6 +157,121 @@ def feature_names_per_side(feature_set: str | None = None) -> list[str]:
 def frame_feature_names(feature_set: str | None = None) -> list[str]:
     per_side = feature_names_per_side(feature_set)
     return [f"left_{name}" for name in per_side] + [f"right_{name}" for name in per_side]
+
+
+def dataset_class_order(dataset: dict) -> list[str]:
+    class_order = [str(label) for label in dataset.get("class_order", []) if str(label).strip()]
+    return class_order or list(PUNCH_CLASS_ORDER)
+
+
+def masked_class_order(mask_profile: str) -> list[str]:
+    if mask_profile not in MASK_PROFILE_TO_CLASS_ORDER:
+        raise ValueError(f"unsupported mask profile '{mask_profile}'")
+    return list(MASK_PROFILE_TO_CLASS_ORDER[mask_profile])
+
+
+def masked_active_side_feature_names(mask_profile: str) -> list[str]:
+    if mask_profile not in MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES:
+        raise ValueError(f"unsupported mask profile '{mask_profile}'")
+    return list(MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES[mask_profile])
+
+
+def normalize_predicted_label_for_class_order(predicted_label: str, class_order: list[str]) -> str:
+    normalized = str(predicted_label or "").strip()
+    if normalized in class_order:
+        return normalized
+    if "no_punch" in class_order:
+        return "no_punch"
+    raise ValueError(f"predicted label '{predicted_label}' not present in class_order {class_order}")
+
+
+def derive_masked_dataset(source_dataset: dict, mask_profile: str, derived_feature_set: str | None = None) -> tuple[dict, dict]:
+    class_order = masked_class_order(mask_profile)
+    active_side_names = masked_active_side_feature_names(mask_profile)
+    source_side_feature_names = [str(name) for name in source_dataset.get("side_feature_names", [])]
+    source_frame_feature_names = [str(name) for name in source_dataset.get("frame_feature_names", [])]
+    if not source_side_feature_names or not source_frame_feature_names:
+        raise ValueError("source dataset missing side/frame feature metadata required for masking")
+
+    missing = [name for name in active_side_names if name not in source_side_feature_names]
+    if missing:
+        raise ValueError(f"source dataset missing active side features for {mask_profile}: {missing}")
+
+    active_indices = [source_side_feature_names.index(name) for name in active_side_names]
+    side_count = len(source_side_feature_names)
+    frame_indices = active_indices + [side_count + index for index in active_indices]
+    derived_frame_feature_names = [source_frame_feature_names[index] for index in frame_indices]
+    derived_samples = []
+
+    for sample in source_dataset.get("samples", []):
+        label = str(sample.get("label", "")).strip()
+        if label not in class_order:
+            continue
+        derived_sample = json.loads(json.dumps(sample))
+        derived_sample["frames"] = [
+            [float(frame[index]) for index in frame_indices]
+            for frame in sample.get("frames", [])
+        ]
+        derived_sample["label"] = label
+        derived_sample["feature_set"] = derived_feature_set or mask_profile
+        derived_sample["side_feature_names"] = list(active_side_names)
+        derived_sample["feature_names"] = list(derived_frame_feature_names)
+        derived_sample["frame_feature_count"] = len(derived_frame_feature_names)
+        threshold_baseline = derived_sample.get("threshold_baseline", {}) if isinstance(derived_sample.get("threshold_baseline", {}), dict) else {}
+        original_predicted_label = str(threshold_baseline.get("predicted_label", "")).strip()
+        threshold_baseline["original_predicted_label"] = original_predicted_label
+        threshold_baseline["predicted_label"] = normalize_predicted_label_for_class_order(original_predicted_label, class_order)
+        derived_sample["threshold_baseline"] = threshold_baseline
+        derived_samples.append(derived_sample)
+
+    derived_dataset = json.loads(json.dumps(source_dataset))
+    derived_dataset["feature_set"] = derived_feature_set or mask_profile
+    derived_dataset["class_order"] = class_order
+    derived_dataset["side_feature_names"] = list(active_side_names)
+    derived_dataset["frame_feature_names"] = list(derived_frame_feature_names)
+    derived_dataset["frame_feature_count"] = len(derived_frame_feature_names)
+    derived_dataset["samples"] = derived_samples
+    derived_dataset["mask_profile"] = mask_profile
+    derived_dataset["mask_inventory"] = {
+        "mask_profile": mask_profile,
+        "class_order": class_order,
+        "active_side_feature_names": list(active_side_names),
+        "masked_side_feature_names": [name for name in source_side_feature_names if name not in active_side_names],
+        "active_frame_feature_names": list(derived_frame_feature_names),
+        "source_feature_set": str(source_dataset.get("feature_set", "")),
+        "source_class_order": dataset_class_order(source_dataset),
+    }
+    derived_dataset["derived_from"] = {
+        "source_feature_set": str(source_dataset.get("feature_set", "")),
+        "source_class_order": dataset_class_order(source_dataset),
+        "source_frame_feature_count": int(source_dataset.get("frame_feature_count", 0) or 0),
+        "source_sample_count": len(source_dataset.get("samples", [])),
+    }
+    derived_dataset["sample_count"] = len(derived_samples)
+    derived_dataset["label_counts"] = {label: sum(1 for sample in derived_samples if sample.get("label") == label) for label in class_order}
+
+    threshold_records = [
+        {
+            "sample_id": sample["sample_id"],
+            "split": sample.get("split", ""),
+            "actual": sample["label"],
+            "predicted": sample.get("threshold_baseline", {}).get("predicted_label", "no_punch"),
+        }
+        for sample in derived_samples
+    ]
+    threshold_summary = {
+        "schema": "aerobeat.boxing_punch_classifier_threshold_baseline",
+        "version": int(source_dataset.get("version", 1) or 1),
+        "feature_set": derived_dataset["feature_set"],
+        "class_order": class_order,
+        "mask_inventory": derived_dataset["mask_inventory"],
+        "metrics_by_split": {
+            split: classification_metrics([record for record in threshold_records if record["split"] == split], class_order)
+            for split in ("train", "test")
+        },
+        "records": threshold_records,
+    }
+    return derived_dataset, threshold_summary
 
 
 FEATURE_NAMES_PER_SIDE = feature_names_per_side(FEATURE_SET_BASELINE_V1)

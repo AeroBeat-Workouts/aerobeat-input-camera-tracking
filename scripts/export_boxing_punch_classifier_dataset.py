@@ -17,12 +17,15 @@ from boxing_classifier_harness import (
     DEFAULT_THRESHOLD_WINDOW_MS,
     DEFAULT_WINDOW_FRAME_COUNT,
     FEATURE_SET_BASELINE_V1,
+    MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1,
+    MASK_PROFILE_STRAIGHT_FAMILY_V1,
     SUPPORTED_FEATURE_SETS,
     PUNCH_CLASS_ORDER,
     PUNCH_GESTURE_NAMES,
     assign_chronological_holdout_splits,
     build_feature_snapshots,
     complement_intervals,
+    derive_masked_dataset,
     ensure_clean_dir,
     evenly_pick,
     extract_window_sample,
@@ -495,10 +498,26 @@ def _render_markdown(export_summary: dict, threshold_summary: dict) -> str:
         f"- Split counts: `{json.dumps(export_summary['split_counts'], sort_keys=True)}`",
         f"- Sample kinds: `{json.dumps(export_summary.get('sample_kind_counts', {}), sort_keys=True)}`",
         f"- No-punch contexts: `{json.dumps(export_summary.get('negative_context_counts', {}), sort_keys=True)}`",
-        "",
-        "## Frozen source snapshot",
-        "",
     ]
+    mask_inventory = export_summary.get("mask_inventory", {}) if isinstance(export_summary.get("mask_inventory", {}), dict) else {}
+    derived_from = export_summary.get("derived_from", {}) if isinstance(export_summary.get("derived_from", {}), dict) else {}
+    if mask_inventory:
+        lines.extend(
+            [
+                f"- Mask profile: `{mask_inventory.get('mask_profile', '')}`",
+                f"- Active side features: `{json.dumps(mask_inventory.get('active_side_feature_names', []))}`",
+                f"- Masked side features: `{json.dumps(mask_inventory.get('masked_side_feature_names', []))}`",
+            ]
+        )
+    if derived_from:
+        lines.extend(
+            [
+                f"- Derived from feature set: `{derived_from.get('source_feature_set', '')}`",
+                f"- Derived from frame feature count: **{derived_from.get('source_frame_feature_count', 0)}**",
+                f"- Derived from sample count: **{derived_from.get('source_sample_count', 0)}**",
+            ]
+        )
+    lines.extend(["", "## Frozen source snapshot", ""])
     if source_snapshot.get("snapshot_id"):
         anchor_artifacts = source_snapshot.get("anchor_artifacts", {}) if isinstance(source_snapshot.get("anchor_artifacts", {}), dict) else {}
         capture_report_source = source_snapshot.get("capture_report_source", {}) if isinstance(source_snapshot.get("capture_report_source", {}), dict) else {}
@@ -575,6 +594,9 @@ def main() -> int:
     parser.add_argument("--manifest", default=".testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json")
     parser.add_argument("--captures-dir", default=".temp/boxing-punch-classifier-export/captures")
     parser.add_argument("--snapshot-manifest", help="Frozen snapshot manifest JSON relative to the repo root. When set, manifest/captures/export parameters are resolved from the snapshot unless explicitly overridden later in code.")
+    parser.add_argument("--source-dataset", help="Existing dataset.json relative to the repo root. When set, derive a masked family/head export from that dataset instead of rerunning capture export.")
+    parser.add_argument("--mask-profile", choices=[MASK_PROFILE_STRAIGHT_FAMILY_V1, MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1], help="Family/head mask profile to derive from --source-dataset.")
+    parser.add_argument("--derived-feature-set", help="Optional metadata name for a derived masked dataset feature_set.")
     parser.add_argument("--output-dir", required=True, help="Directory for export-summary.{json,md} and dataset.json")
     parser.add_argument("--godot", default=DEFAULT_GODOT_BIN)
     parser.add_argument("--capture-delay-ms", type=int, default=7000)
@@ -588,6 +610,35 @@ def main() -> int:
     args = parser.parse_args()
 
     repo_root = _repo_root()
+    output_dir = (repo_root / args.output_dir).resolve()
+    ensure_clean_dir(output_dir)
+
+    if args.source_dataset:
+        if not args.mask_profile:
+            raise ValueError("--mask-profile is required when using --source-dataset")
+        source_dataset_path = (repo_root / args.source_dataset).resolve()
+        source_dataset = load_json(source_dataset_path)
+        export_summary, threshold_summary = derive_masked_dataset(
+            source_dataset,
+            mask_profile=args.mask_profile,
+            derived_feature_set=args.derived_feature_set or args.mask_profile,
+        )
+        export_summary.setdefault("manifest_path", str(source_dataset.get("manifest_path", "")))
+        export_summary.setdefault("capture_dir", str(source_dataset.get("capture_dir", "")))
+        export_summary.setdefault("exported_at", datetime.now(timezone.utc).isoformat())
+        export_summary.setdefault("version", int(source_dataset.get("version", 1) or 1))
+        export_summary.setdefault("window_frame_count", int(source_dataset.get("window_frame_count", 0) or 0))
+        export_summary.setdefault("split_strategy", str(source_dataset.get("split_strategy", "unknown")))
+        export_summary.setdefault("split_counts", dict(source_dataset.get("split_counts", {})))
+        export_summary.setdefault("sample_kind_counts", dict(source_dataset.get("sample_kind_counts", {})))
+        export_summary.setdefault("negative_context_counts", dict(source_dataset.get("negative_context_counts", {})))
+        export_summary["source_dataset_path"] = args.source_dataset
+        write_json(output_dir / "dataset.json", export_summary)
+        write_json(output_dir / "threshold-baseline.json", threshold_summary)
+        write_json(output_dir / "export-summary.json", {k: v for k, v in export_summary.items() if k != "samples"})
+        (output_dir / "export-summary.md").write_text(_render_markdown(export_summary, threshold_summary), encoding="utf-8")
+        return 0
+
     snapshot = _load_snapshot_manifest(repo_root, args.snapshot_manifest) if args.snapshot_manifest else None
     resolved_manifest_path = args.manifest
     resolved_captures_dir = args.captures_dir
@@ -612,8 +663,6 @@ def main() -> int:
 
     manifest = _load_manifest(repo_root, resolved_manifest_path)
     captures_dir = (repo_root / resolved_captures_dir).resolve()
-    output_dir = (repo_root / args.output_dir).resolve()
-    ensure_clean_dir(output_dir)
     if not args.skip_captures:
         ensure_clean_dir(captures_dir)
         for fixture in manifest.get("fixtures", []):

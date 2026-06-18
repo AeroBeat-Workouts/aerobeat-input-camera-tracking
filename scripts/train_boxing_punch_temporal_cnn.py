@@ -13,6 +13,7 @@ from boxing_classifier_harness import (
     apply_standardization,
     classification_metrics,
     compute_standardization,
+    dataset_class_order,
     flatten_frames,
     format_confusion_markdown,
     load_json,
@@ -372,7 +373,8 @@ def main() -> int:
 
     feature_set, side_feature_names, frame_feature_names = _validate_dataset_schema(dataset)
     samples = dataset["samples"]
-    label_to_index = {label: idx for idx, label in enumerate(PUNCH_CLASS_ORDER)}
+    class_order = dataset_class_order(dataset)
+    label_to_index = {label: idx for idx, label in enumerate(class_order)}
     frame_count = int(dataset.get("window_frame_count", 0))
     frame_feature_count = int(dataset.get("frame_feature_count", 0))
 
@@ -394,7 +396,7 @@ def main() -> int:
         conv1_channels=args.conv1_channels,
         conv2_channels=args.conv2_channels,
         kernel_size=args.kernel_size,
-        output_dim=len(PUNCH_CLASS_ORDER),
+        output_dim=len(class_order),
         seed=args.seed,
     )
     epoch_losses = []
@@ -406,7 +408,7 @@ def main() -> int:
         for frames in frame_batches:
             probabilities = model.predict_proba(frames)
             best_index = max(range(len(probabilities)), key=lambda idx: probabilities[idx])
-            predictions.append(PUNCH_CLASS_ORDER[best_index])
+            predictions.append(class_order[best_index])
         return predictions
 
     train_predictions = predict_labels(train_frames)
@@ -422,7 +424,7 @@ def main() -> int:
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "dataset_path": dataset_path.as_posix(),
         "mlp_baseline_path": mlp_result_path.as_posix(),
-        "class_order": list(PUNCH_CLASS_ORDER),
+        "class_order": list(class_order),
         "split_strategy": str(dataset.get("split_strategy", "unknown")),
         "dataset_window_shape": {
             "frame_count": frame_count,
@@ -430,7 +432,7 @@ def main() -> int:
             "flattened_input_dim": frame_count * frame_feature_count,
         },
         "temporal_cnn": {
-            "model_shape": f"{frame_count}x{frame_feature_count} -> conv1d({frame_feature_count}->{args.conv1_channels}, k={args.kernel_size}, same) -> relu -> conv1d({args.conv1_channels}->{args.conv2_channels}, k={args.kernel_size}, same) -> relu -> flatten({frame_count * args.conv2_channels}) -> logits({len(PUNCH_CLASS_ORDER)})",
+            "model_shape": f"{frame_count}x{frame_feature_count} -> conv1d({frame_feature_count}->{args.conv1_channels}, k={args.kernel_size}, same) -> relu -> conv1d({args.conv1_channels}->{args.conv2_channels}, k={args.kernel_size}, same) -> relu -> flatten({frame_count * args.conv2_channels}) -> logits({len(class_order)})",
             "conv1_channels": args.conv1_channels,
             "conv2_channels": args.conv2_channels,
             "kernel_size": args.kernel_size,
@@ -439,8 +441,8 @@ def main() -> int:
             "weight_decay": args.weight_decay,
             "seed": args.seed,
             "final_training_loss": epoch_losses[-1] if epoch_losses else None,
-            "train_metrics": classification_metrics(train_records, PUNCH_CLASS_ORDER),
-            "test_metrics": classification_metrics(test_records, PUNCH_CLASS_ORDER),
+            "train_metrics": classification_metrics(train_records, class_order),
+            "test_metrics": classification_metrics(test_records, class_order),
             "train_records": train_records,
             "test_records": test_records,
             "loss_curve": epoch_losses,
@@ -451,8 +453,8 @@ def main() -> int:
             "test_metrics": mlp_result.get("mlp", {}).get("test_metrics", {}),
         },
         "threshold_baseline": {
-            "train_metrics": classification_metrics(threshold_train_records, PUNCH_CLASS_ORDER),
-            "test_metrics": classification_metrics(threshold_test_records, PUNCH_CLASS_ORDER),
+            "train_metrics": classification_metrics(threshold_train_records, class_order),
+            "test_metrics": classification_metrics(threshold_test_records, class_order),
             "train_records": threshold_train_records,
             "test_records": threshold_test_records,
         },
@@ -465,7 +467,7 @@ def main() -> int:
 
     write_json(output_dir / "cnn-result.json", summary)
     write_json(output_dir / "cnn-model.json", {
-        "class_order": list(PUNCH_CLASS_ORDER),
+        "class_order": list(class_order),
         "window_frame_count": frame_count,
         "frame_feature_count": frame_feature_count,
         "standardization": summary["standardization"],

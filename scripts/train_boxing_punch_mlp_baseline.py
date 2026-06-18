@@ -13,6 +13,7 @@ from boxing_classifier_harness import (
     apply_standardization,
     classification_metrics,
     compute_standardization,
+    dataset_class_order,
     flatten_frames,
     format_confusion_markdown,
     load_json,
@@ -206,7 +207,8 @@ def main() -> int:
 
     feature_set, side_feature_names, frame_feature_names = _validate_dataset_schema(dataset)
     samples = dataset["samples"]
-    label_to_index = {label: idx for idx, label in enumerate(PUNCH_CLASS_ORDER)}
+    class_order = dataset_class_order(dataset)
+    label_to_index = {label: idx for idx, label in enumerate(class_order)}
 
     train_samples = [sample for sample in samples if sample["split"] == "train"]
     test_samples = [sample for sample in samples if sample["split"] == "test"]
@@ -219,7 +221,7 @@ def main() -> int:
     test_labels = [label_to_index[sample["label"]] for sample in test_samples]
 
     input_dim = len(train_vectors[0]) if train_vectors else len(test_vectors[0])
-    model = TinyTemporalMLP(input_dim=input_dim, hidden_dim=args.hidden_dim, output_dim=len(PUNCH_CLASS_ORDER), seed=args.seed)
+    model = TinyTemporalMLP(input_dim=input_dim, hidden_dim=args.hidden_dim, output_dim=len(class_order), seed=args.seed)
     epoch_losses = []
     for _ in range(args.epochs):
         loss = model.train_batch(train_vectors, train_labels, lr=args.learning_rate, weight_decay=args.weight_decay)
@@ -230,7 +232,7 @@ def main() -> int:
         for vector in vectors:
             probabilities = model.predict_proba(vector)
             best_index = max(range(len(probabilities)), key=lambda idx: probabilities[idx])
-            predictions.append(PUNCH_CLASS_ORDER[best_index])
+            predictions.append(class_order[best_index])
         return predictions
 
     train_predictions = predict_labels(train_vectors)
@@ -251,7 +253,7 @@ def main() -> int:
         "version": 1,
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "dataset_path": dataset_path.as_posix(),
-        "class_order": list(PUNCH_CLASS_ORDER),
+        "class_order": list(class_order),
         "split_strategy": str(dataset.get("split_strategy", "unknown")),
         "feature_set": feature_set,
         "side_feature_names": side_feature_names,
@@ -262,22 +264,22 @@ def main() -> int:
             "flattened_input_dim": input_dim,
         },
         "mlp": {
-            "model_shape": f"{dataset.get('window_frame_count', 0)}x{dataset.get('frame_feature_count', 0)} -> flatten({input_dim}) -> hidden({args.hidden_dim}) -> logits({len(PUNCH_CLASS_ORDER)})",
+            "model_shape": f"{dataset.get('window_frame_count', 0)}x{dataset.get('frame_feature_count', 0)} -> flatten({input_dim}) -> hidden({args.hidden_dim}) -> logits({len(class_order)})",
             "hidden_dim": args.hidden_dim,
             "epochs": args.epochs,
             "learning_rate": args.learning_rate,
             "weight_decay": args.weight_decay,
             "seed": args.seed,
             "final_training_loss": epoch_losses[-1] if epoch_losses else None,
-            "train_metrics": classification_metrics(train_records, PUNCH_CLASS_ORDER),
-            "test_metrics": classification_metrics(test_records, PUNCH_CLASS_ORDER),
+            "train_metrics": classification_metrics(train_records, class_order),
+            "test_metrics": classification_metrics(test_records, class_order),
             "train_records": train_records,
             "test_records": test_records,
             "loss_curve": epoch_losses,
         },
         "threshold_baseline": {
-            "train_metrics": classification_metrics(threshold_train_records, PUNCH_CLASS_ORDER),
-            "test_metrics": classification_metrics(threshold_test_records, PUNCH_CLASS_ORDER),
+            "train_metrics": classification_metrics(threshold_train_records, class_order),
+            "test_metrics": classification_metrics(threshold_test_records, class_order),
             "train_records": threshold_train_records,
             "test_records": threshold_test_records,
         },
@@ -290,7 +292,7 @@ def main() -> int:
 
     write_json(output_dir / "mlp-result.json", summary)
     write_json(output_dir / "mlp-model.json", {
-        "class_order": list(PUNCH_CLASS_ORDER),
+        "class_order": list(class_order),
         "feature_set": feature_set,
         "side_feature_names": side_feature_names,
         "frame_feature_names": frame_feature_names,
