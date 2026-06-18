@@ -1,9 +1,9 @@
 # AeroBeat Learned Classifier Family-Specific Feature Branch
 
 **Date:** 2026-06-18  
-**Status:** In Progress  
-**Last Updated:** 2026-06-18 18:49 EDT  
-**Blocked Reason:** None; Task 36 landed the smallest honest global mixed-family rollout, restored the boxing profile’s safe default backend contract, and handed a focused validation bundle to QA.  
+**Status:** Blocked  
+**Last Updated:** 2026-06-18 19:55 EDT  
+**Blocked Reason:** Awaiting Derrick's manual GUI replay/live testing feedback on the mixed-family rollout; terminal-side truth/routing checks passed, but behavior quality still shows straight-left misses and threshold hook/uppercut false positives that need human verification before the next bug-squash slice.  
 **Agent:** `pico`
 
 ---
@@ -1204,14 +1204,25 @@ Bottom line: terminal-side truth plumbing is now more honest, but QA is **not** 
 **Prompt:** Verify the terminal-side mixed-family proving checks (and any bugfixes from Task 42) are reproducible, truthful, and explicit about what terminal-side validation can and cannot prove versus later manual GUI testing.
 
 **Folders Created/Deleted/Modified:**
+- `.temp/qa-mixed-family-terminal-rerun-2026-06-18/`
 - relevant repo paths used during QA
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.temp/qa-mixed-family-terminal-rerun-2026-06-18/straight_right/{report.json,report.md,godot.log}`
+- `.temp/qa-mixed-family-terminal-rerun-2026-06-18/run_in_place/{report.json,report.md,godot.log}`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA reran the focused terminal-side verification from current repo state and reproduced the truth-surface fix cleanly. First, the focused runtime/proving unit coverage passed again with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit`, yielding `110/110` passing tests. That rerun specifically re-proved the new mixed-family truth-surface expectations added in commit `be4b0bf`: `test_boxing_event_feed_reports_mixed_family_routing_truth` and `test_mixed_family_classifier_match_payload_uses_per_family_backend_truth` both passed, alongside the substrate mixed-routing tests.
+
+Then QA reran a small fresh proving replay subset into `.temp/qa-mixed-family-terminal-rerun-2026-06-18/` using the live mixed-family proving path rather than trusting the existing saved summary: `AEROBEAT_PUNCH_BACKEND_OVERRIDE=mixed_family AEROBEAT_FIXTURE_STATE_TIMELINE_MODE=full AEROBEAT_CAMERA_TRACKING_SOURCE="$PWD/.testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4" godot --headless --path .testbed --script res://scripts/capture_fixture_proving.gd -- res://scenes/boxing_proving.tscn "$PWD/.testbed/assets/fixtures/boxing/straight_right" "$PWD/.temp/qa-mixed-family-terminal-rerun-2026-06-18/straight_right" 8000` and the matching run-in-place negative-control command against `/.testbed/assets/fixtures/boxing/run_in_place/boxing_guard->run_in_place_repeat_01_take_01.mp4`. Both captures exited successfully and reproduced the intended routing truth: `active_backend=mixed_family`, `routing_mode=mixed_family`, `straight_backend=learned_classifier`, `hook_backend=threshold_gates`, `uppercut_backend=threshold_gates`, and the straight learned model path resolved to the checked-in straight-family masked MLP artifact.
+
+The truth-surface fix from `be4b0bf` is real. In the rerun `straight_right` replay, emitted `punch_right` events again carried `payload.backend=learned_classifier` with the expected learned-classifier payload block, while threshold-routed `hook_*` / `uppercut_*` events in the same replay carried `payload.backend=threshold_gates` instead of dropping backend truth. The negative control also stayed honest about provenance: its emitted false positives were all threshold-routed (`uppercut_left`, `uppercut_right`, `hook_left`), with no fabricated learned-classifier backend attribution.
+
+What terminal-side QA now truly proves is narrower than rollout acceptance. It proves that mixed-family backend activation is real, that per-family routing truth surfaces are wired correctly in runtime/proving code, that emitted replay attack payloads now expose the routed backend truthfully after the bugfix, and that the proving/event-feed/unit-test surfaces are internally consistent. It does **not** prove that the mixed-family rollout is behaviorally ready. The same rerun still showed extra threshold hook/uppercut false positives during the positive straight replay and during the run-in-place negative control, while the saved full-summary evidence from Task 42 still shows the opposite straight replay (`straight_left_fixture`) failing to emit learned straight events at all. Those are behavior-quality/runtime-tuning problems, not disprovals of the truth-surface fix.
+
+QA judgment: terminal-side verification passes as a truthfulness/reproducibility task, but only with the explicit caveat that it is **not** a final product acceptance pass. Derrick’s manual GUI replay/live test is still required for hover-card/visual-quality confirmation, for final acceptance of replay/live behavior, and for any decision that the broader mixed-family rollout is pass-ready. Audit is ready on that narrower claim.
 
 ---
 
@@ -1224,31 +1235,43 @@ Bottom line: terminal-side truth plumbing is now more honest, but QA is **not** 
 **Prompt:** Independently truth-check the terminal-side mixed-family proving verification and any resulting fixes, and state what is now proven versus what still requires Derrick’s manual GUI replay/live test.
 
 **Folders Created/Deleted/Modified:**
+- `.temp/audit-mixed-family-terminal-rerun-2026-06-18/`
 - relevant repo paths used during audit
 
 **Files Created/Deleted/Modified:**
-- audit notes/artifacts as needed
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.temp/audit-mixed-family-terminal-rerun-2026-06-18/straight_right/report.json`
+- `.temp/audit-mixed-family-terminal-rerun-2026-06-18/straight_right/report.md`
+- `.temp/audit-mixed-family-terminal-rerun-2026-06-18/run_in_place/report.json`
+- `.temp/audit-mixed-family-terminal-rerun-2026-06-18/run_in_place/report.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit passed for the narrow terminal-side claim. I independently reran the focused unit coverage that exercises the proving truth surfaces and substrate routing (`test_boxing_proving_harness_profiles_and_debug.gd` + `test_pose_detector_substrate.gd`), and all 110 tests passed under headless Godot. That includes the specific mixed-family assertions added around `be4b0bf`: mixed-family event-feed truth now labels the straight path as `Mixed-family straight-classifier truth`, exposes the straight learned model path, and keeps per-family backend resolution explicit; `_classifier_match_payload_for_signal()` now resolves backend truth per emitted family instead of trusting the coarse selected backend; and mixed-family emitted payloads now return `backend=learned_classifier` for straight punches while returning `backend=threshold_gates` with an empty classifier payload for hook/uppercut events routed through threshold gates.
+
+I also reran a small fresh proving replay subset into `.temp/audit-mixed-family-terminal-rerun-2026-06-18/` using the live mixed-family path rather than trusting prior summaries. The positive `straight_right` replay again resolved `active_backend=mixed_family`, `routing_mode=mixed_family`, `straight_backend=learned_classifier`, `hook_backend=threshold_gates`, and `uppercut_backend=threshold_gates`; its emitted `punch_right` events carried `payload.backend=learned_classifier` plus the learned-classifier payload block with `class_name=straight_right`, while contemporaneous `hook_*` / `uppercut_*` events carried `payload.backend=threshold_gates`. The `run_in_place` negative-control replay stayed honest about provenance too: its false positives were still bad behaviorally, but they were all threshold-routed rather than being mislabeled as learned-classifier output.
+
+So what is now proven: the terminal-side mixed-family activation/routing truth is real, the `be4b0bf` truth-surface fix is real, emitted replay payloads now report per-family backend provenance truthfully, and the event-feed / proving / unit-test surfaces are internally consistent for this narrow claim. What is **not** proven: behavioral quality, manual hover-card/GUI presentation quality, replay UX, live-camera performance, or rollout readiness. The reruns still show threshold hook/uppercut false positives during the straight replay and the run-in-place negative control, and prior saved branch evidence still leaves broader learned-family behavior questions open. Derrick still needs manual GUI replay/live testing next session before any broader pass-ready judgment.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial / Awaiting next benchmark slice
+**Status:** ⚠️ Partial / Awaiting Derrick replay/live feedback
 
-**What We Built:** This branch progressed from the original flat shared-vector family-specific feature test into family-masked topology checks, reduced straight-family diagnosis, hook/uppercut motion-shape diagnosis, and finally a retimed-truth rerun after Derrick corrected the punch YAML windows to cover windup + punch while cutting off recovery. The design-review caveat still matters: this is still harness evidence, not runtime-ready routing. But the refreshed retimed-truth artifacts materially changed the branch judgment.
+**What We Built:** This branch progressed from the original flat shared-vector family-specific feature test into family-masked topology checks, reduced straight-family diagnosis, multiple hook/uppercut cue-design passes, retimed-truth reruns after Derrick corrected the punch YAML windows, and then a proving/runtime rollout that lets Godot use a mixed-family path: learned straights plus threshold-gated hook/uppercut. The terminal-side routing/provenance surfaces are now honest, and the broader runtime/config contract for `mixed_family` is explicit, but behavior quality is not yet clean enough to call the rollout accepted.
 
-**Reference Check:** `REF-02`/`REF-03` still anchor the harness/runtime context and feature implementation surface. `REF-05` now reflects the refreshed branch story only partially because later masked-topology conclusions had to be re-read through the retimed-truth rerun. The trustworthy updated read is: straight-family masking now wins fairly against the refreshed shared-vector straight subset baseline, while hook/uppercut masking still loses fairly against the refreshed shared-vector hook/uppercut subset baseline.
+**Reference Check:** `REF-02`/`REF-03` still anchor the runtime/harness implementation surface, and `REF-06` remains the fixture-manifest truth source. The trustworthy updated read after the retimed-YAML reruns is: straight-family masking wins fairly against the refreshed shared-vector straight subset baseline, hook/uppercut specialization still fails to beat the refreshed hook/uppercut subset baseline, and the honest near-term runtime move is mixed-family routing rather than hook/uppercut learned promotion.
 
 **Commits:**
-- `c4386cf` - `Benchmark family-specific learned punch features`
 - `05606b0` - `Refresh family benchmarks for retimed punch truth`
+- `0ba32df` - `Add proving mixed-family punch routing`
+- `44705f2` - `Globalize mixed-family straight artifact selection`
+- `1049634` - `Clarify mixed-family config comments`
+- `be4b0bf` - `Fix mixed-family proving backend truth surfaces`
 
-**Lessons Learned:** Two things turned out to be separately material. First, “family-specific named features inside one shared classifier” is not the same thing as true family isolation. Second, truth-window definition itself was strong enough to change the benchmark story: pre-retime blanket conclusions about masking were too broad. After retiming, straight-family isolation looks genuinely promising on the fair subset comparison, while hook/uppercut remains the weak branch and should be re-evaluated against the retimed truth basis before inventing another new feature family.
+**Lessons Learned:** Two things turned out to be separately material. First, “family-specific named features inside one shared classifier” is not the same thing as true family isolation. Second, truth-window definition itself was strong enough to change the benchmark story: pre-retime blanket conclusions about masking were too broad. After retiming, straight-family isolation looks genuinely promising on the fair subset comparison, while hook/uppercut remains the weak branch. Terminal-side verification then showed a separate truth-plumbing issue in mixed-family proving that was worth fixing, but also confirmed behavior quality still needs Derrick’s manual replay/live judgment before the next bug-squash slice.
 
 ---
 
-*Completed on Pending*
+*Completed on Pending manual follow-up*
