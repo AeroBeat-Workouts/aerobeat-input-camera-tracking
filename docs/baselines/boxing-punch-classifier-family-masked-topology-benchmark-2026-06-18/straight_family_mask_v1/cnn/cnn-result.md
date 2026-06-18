@@ -1,6 +1,6 @@
 # Boxing Punch Classifier 1D Temporal CNN Baseline
 
-- Trained at: `2026-06-18T15:27:35.618922+00:00`
+- Trained at: `2026-06-18T17:48:06.814467+00:00`
 - Dataset: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/export/dataset.json`
 - MLP baseline: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json`
 - Split strategy: `chronological_holdout_v1`
@@ -11,10 +11,10 @@
 
 ## Test split comparison
 
-- Temporal CNN accuracy: **0.960**
-- Temporal CNN macro F1: **0.881**
-- Temporal MLP accuracy: **0.920**
-- Temporal MLP macro F1: **0.763**
+- Temporal CNN accuracy: **0.880**
+- Temporal CNN macro F1: **0.699**
+- Temporal MLP accuracy: **0.880**
+- Temporal MLP macro F1: **0.699**
 - Threshold baseline accuracy: **0.840**
 - Threshold baseline macro F1: **0.304**
 
@@ -24,7 +24,7 @@
 | --- | --- | --- | --- |
 | straight_left | 1 | 0 | 0 |
 | straight_right | 0 | 1 | 0 |
-| no_punch | 1 | 0 | 22 |
+| no_punch | 1 | 2 | 20 |
 
 ## Temporal MLP confusion (test)
 
@@ -32,7 +32,7 @@
 | --- | --- | --- | --- |
 | straight_left | 1 | 0 | 0 |
 | straight_right | 0 | 1 | 0 |
-| no_punch | 1 | 1 | 21 |
+| no_punch | 1 | 2 | 20 |
 
 ## Threshold confusion (test)
 

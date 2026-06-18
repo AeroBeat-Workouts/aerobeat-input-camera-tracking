@@ -1,7 +1,7 @@
 {
   "schema": "aerobeat.boxing_punch_classifier_export",
   "version": 3,
-  "exported_at": "2026-06-18T13:52:29.743444+00:00",
+  "exported_at": "2026-06-18T17:45:52.972224+00:00",
   "manifest_path": ".testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json",
   "capture_dir": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16",
   "window_frame_count": 8,
@@ -66,13 +66,13 @@
   },
   "sample_kind_counts": {
     "annotated_punch_window": 8,
-    "transition_before_punch": 20,
     "derived_no_punch_window": 48,
+    "transition_before_punch": 20,
     "transition_after_punch": 4
   },
   "negative_context_counts": {
-    "transition_before_punch": 20,
     "punch_fixture_background": 13,
+    "transition_before_punch": 20,
     "non_punch_fixture_background": 35,
     "transition_after_punch": 4
   },
@@ -80,7 +80,7 @@
     "capture_time_origin_offset_ms": {
       "min": 1056,
       "max": 1136,
-      "mean": 1104.5625,
+      "mean": 1103.925,
       "unique_values": [
         1056,
         1079,
@@ -101,54 +101,54 @@
     "start_alignment_error_ms": {
       "min": 0,
       "max": 59,
-      "mean": 18.3125
+      "mean": 16.85
     },
     "end_alignment_error_ms": {
       "min": 0,
       "max": 149,
-      "mean": 18.25
+      "mean": 18.675
     },
     "by_fixture": {
       "straight_left_fixture": {
         "sample_count": 10,
         "capture_time_origin_offset_ms": 1056,
         "start_alignment_error_summary_ms": {
-          "min": 5,
-          "max": 30,
-          "mean": 18.8
+          "min": 3,
+          "max": 27,
+          "mean": 14.1
         },
         "end_alignment_error_summary_ms": {
           "min": 1,
           "max": 47,
-          "mean": 14.1
+          "mean": 20.9
         }
       },
       "straight_right_fixture": {
-        "sample_count": 11,
+        "sample_count": 10,
         "capture_time_origin_offset_ms": 1131,
         "start_alignment_error_summary_ms": {
           "min": 0,
-          "max": 34,
-          "mean": 14.454545454545455
+          "max": 33,
+          "mean": 15.6
         },
         "end_alignment_error_summary_ms": {
-          "min": 1,
-          "max": 47,
-          "mean": 19.0
+          "min": 0,
+          "max": 21,
+          "mean": 8.4
         }
       },
       "hook_left_fixture": {
-        "sample_count": 6,
+        "sample_count": 7,
         "capture_time_origin_offset_ms": 1080,
         "start_alignment_error_summary_ms": {
           "min": 4,
-          "max": 50,
-          "mean": 18.0
+          "max": 31,
+          "mean": 12.142857142857142
         },
         "end_alignment_error_summary_ms": {
-          "min": 7,
-          "max": 32,
-          "mean": 21.0
+          "min": 19,
+          "max": 31,
+          "mean": 24.571428571428573
         }
       },
       "hook_right_fixture": {
@@ -157,12 +157,12 @@
         "start_alignment_error_summary_ms": {
           "min": 0,
           "max": 17,
-          "mean": 7.666666666666667
+          "mean": 6.666666666666667
         },
         "end_alignment_error_summary_ms": {
-          "min": 7,
-          "max": 32,
-          "mean": 20.333333333333332
+          "min": 4,
+          "max": 54,
+          "mean": 24.5
         }
       },
       "knee_left_fixture": {
@@ -295,28 +295,28 @@
         "sample_count": 6,
         "capture_time_origin_offset_ms": 1136,
         "start_alignment_error_summary_ms": {
-          "min": 21,
-          "max": 40,
-          "mean": 26.0
+          "min": 6,
+          "max": 52,
+          "mean": 22.666666666666668
         },
         "end_alignment_error_summary_ms": {
-          "min": 0,
-          "max": 15,
-          "mean": 6.166666666666667
+          "min": 4,
+          "max": 27,
+          "mean": 13.833333333333334
         }
       },
       "uppercut_right_fixture": {
         "sample_count": 6,
         "capture_time_origin_offset_ms": 1130,
         "start_alignment_error_summary_ms": {
-          "min": 5,
-          "max": 34,
-          "mean": 15.166666666666666
+          "min": 1,
+          "max": 25,
+          "mean": 12.166666666666666
         },
         "end_alignment_error_summary_ms": {
-          "min": 20,
+          "min": 0,
           "max": 110,
-          "mean": 42.0
+          "mean": 37.666666666666664
         }
       },
       "weave_left_fixture": {
@@ -390,10 +390,9 @@
         "straight_left_fixture::no_punch::012",
         "straight_left_fixture::no_punch::013",
         "straight_left_fixture::no_punch::014",
-        "straight_left_fixture::no_punch::015",
-        "straight_left_fixture::no_punch::016"
+        "straight_left_fixture::no_punch::015"
       ],
-      "background_no_punch_candidate_count": 16,
+      "background_no_punch_candidate_count": 15,
       "transition_no_punch_candidate_sample_ids": [
         "straight_left_fixture::transition_before::01",
         "straight_left_fixture::transition_after::01",
@@ -436,10 +435,9 @@
         "straight_right_fixture::no_punch::014",
         "straight_right_fixture::no_punch::015",
         "straight_right_fixture::no_punch::016",
-        "straight_right_fixture::no_punch::017",
-        "straight_right_fixture::no_punch::018"
+        "straight_right_fixture::no_punch::017"
       ],
-      "background_no_punch_candidate_count": 18,
+      "background_no_punch_candidate_count": 17,
       "transition_no_punch_candidate_sample_ids": [
         "straight_right_fixture::transition_before::01",
         "straight_right_fixture::transition_after::01",
@@ -532,9 +530,10 @@
         "hook_right_fixture::no_punch::016",
         "hook_right_fixture::no_punch::017",
         "hook_right_fixture::no_punch::018",
-        "hook_right_fixture::no_punch::019"
+        "hook_right_fixture::no_punch::019",
+        "hook_right_fixture::no_punch::020"
       ],
-      "background_no_punch_candidate_count": 19,
+      "background_no_punch_candidate_count": 20,
       "transition_no_punch_candidate_sample_ids": [
         "hook_right_fixture::transition_before::01",
         "hook_right_fixture::transition_after::01",
@@ -575,10 +574,9 @@
         "uppercut_left_fixture::no_punch::012",
         "uppercut_left_fixture::no_punch::013",
         "uppercut_left_fixture::no_punch::014",
-        "uppercut_left_fixture::no_punch::015",
-        "uppercut_left_fixture::no_punch::016"
+        "uppercut_left_fixture::no_punch::015"
       ],
-      "background_no_punch_candidate_count": 16,
+      "background_no_punch_candidate_count": 15,
       "transition_no_punch_candidate_sample_ids": [
         "uppercut_left_fixture::transition_before::01",
         "uppercut_left_fixture::transition_after::01",
@@ -618,9 +616,11 @@
         "uppercut_right_fixture::no_punch::012",
         "uppercut_right_fixture::no_punch::013",
         "uppercut_right_fixture::no_punch::014",
-        "uppercut_right_fixture::no_punch::015"
+        "uppercut_right_fixture::no_punch::015",
+        "uppercut_right_fixture::no_punch::016",
+        "uppercut_right_fixture::no_punch::017"
       ],
-      "background_no_punch_candidate_count": 15,
+      "background_no_punch_candidate_count": 17,
       "transition_no_punch_candidate_sample_ids": [
         "uppercut_right_fixture::transition_before::01",
         "uppercut_right_fixture::transition_after::01",

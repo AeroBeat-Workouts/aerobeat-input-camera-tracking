@@ -27,7 +27,7 @@ The straight velocity cue is intentionally **radial**: it is the elbow velocity 
 | `combined_directional_v1` | 44 | 0.690 | 0.256 | 0.793 | 0.363 |
 | `family_camera_directional_v1` | 36 | 0.793 | 0.366 | 0.793 | 0.126 |
 | `family_body_directional_v1` | 36 | 0.690 | 0.307 | 0.793 | 0.269 |
-| `family_combined_directional_v1` | 50 | 0.793 | 0.363 | 0.828 | 0.272 |
+| `family_combined_directional_v1` | 50 | 0.828 | 0.721 | 0.690 | 0.355 |
 
 ## Focused per-class test outcomes
 
@@ -89,14 +89,14 @@ Each positive class still has exactly one held-out positive example in this tiny
 - MLP focused predictions:
   - `straight_left` → `straight_left`
   - `straight_right` → `straight_right`
-  - `hook_left` → `no_punch`
-  - `hook_right` → `no_punch`
+  - `hook_left` → `hook_left`
+  - `hook_right` → `hook_right`
   - `uppercut_left` → `no_punch`
-  - `uppercut_right` → `no_punch`
+  - `uppercut_right` → `uppercut_right`
 - CNN focused predictions:
-  - `straight_left` → `no_punch`
+  - `straight_left` → `hook_right`
   - `straight_right` → `no_punch`
-  - `hook_left` → `no_punch`
+  - `hook_left` → `hook_left`
   - `hook_right` → `hook_right`
   - `uppercut_left` → `no_punch`
   - `uppercut_right` → `no_punch`
@@ -104,10 +104,10 @@ Each positive class still has exactly one held-out positive example in this tiny
 ## Takeaways
 
 - Best overall result is still the **baseline CNN** at accuracy **0.862** / macro F1 **0.420**.
-- None of the family-specific variants beat the baseline CNN overall, and none beat the prior directional CNN variants either. Best family CNN was `family_combined_directional_v1` at **0.828** / **0.272**, still below prior `combined_directional_v1` CNN macro F1 **0.363** and below prior `camera_directional_v1` CNN macro F1 **0.362**.
+- None of the family-specific variants beat the baseline CNN overall, and none beat the prior directional CNN variants either. After the retimed punch-truth refresh, `family_combined_directional_v1` moved to **0.690** accuracy / **0.355** macro-F1 on the CNN and **0.828** / **0.721** on the MLP. That still leaves the family branch below the baseline CNN on the full 7-class task, but the retimed truth materially increased hook-family recovery in the learned models compared with the earlier pre-retime read.
 - The family split did help the **MLP** a little versus the prior directional branch: `family_camera_directional_v1` reached **0.793** / **0.366**, beating prior `camera_directional_v1` MLP **0.690** / **0.355** and prior `body_directional_v1` MLP **0.690** / **0.355**, but that lift was not enough to matter more than the CNN regressions.
-- Hook-left remains unsolved across every family-specific variant in both model families.
-- The only new CNN positive-class recovery in this branch was `hook_right` under `family_combined_directional_v1`, but it came with both straight classes collapsing to `no_punch`, so it is not a promotion-worthy trade.
+- `uppercut_left` remains unsolved in the refreshed `family_combined_directional_v1` rerun, while `hook_left` is now recovered by both the refreshed family-combined MLP and CNN.
+- The retimed truth windows changed the trade-off: `family_combined_directional_v1` now recovers both held-out hook positives in the CNN and recovers hook_left, hook_right, and uppercut_right in the MLP, but the CNN still drops `straight_right` to `no_punch` and sends `straight_left` to `hook_right`.
 - The straight elbow bundle did **not** preserve the prior baseline CNN straight performance once paired with the wrist-direction family bundles; the camera/body family CNN variants became overly `no_punch`-heavy on held-out positives.
 
 ## Artifacts

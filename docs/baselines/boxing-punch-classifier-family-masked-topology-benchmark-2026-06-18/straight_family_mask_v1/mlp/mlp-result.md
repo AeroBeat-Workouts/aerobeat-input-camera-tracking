@@ -1,6 +1,6 @@
 # Boxing Punch Classifier Temporal-MLP Baseline
 
-- Trained at: `2026-06-18T15:27:01.332656+00:00`
+- Trained at: `2026-06-18T17:47:30.745429+00:00`
 - Dataset: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/export/dataset.json`
 - Split strategy: `chronological_holdout_v1`
 - Model shape: `8x22 -> flatten(176) -> hidden(24) -> logits(3)`
@@ -10,8 +10,8 @@
 
 ## Test split comparison
 
-- Temporal MLP accuracy: **0.920**
-- Temporal MLP macro F1: **0.763**
+- Temporal MLP accuracy: **0.880**
+- Temporal MLP macro F1: **0.699**
 - Threshold baseline accuracy: **0.840**
 - Threshold baseline macro F1: **0.304**
 
@@ -21,7 +21,7 @@
 | --- | --- | --- | --- |
 | straight_left | 1 | 0 | 0 |
 | straight_right | 0 | 1 | 0 |
-| no_punch | 1 | 1 | 21 |
+| no_punch | 1 | 2 | 20 |
 
 ## Threshold confusion (test)
 

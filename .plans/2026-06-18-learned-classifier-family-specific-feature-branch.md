@@ -402,14 +402,20 @@ Outcome: the new motion-shape cues did **not** produce a clear hook/uppercut win
 **Prompt:** Verify the hook/uppercut motion-shape benchmark variants are reproducible and compared fairly against the same hook/uppercut subset baseline. Confirm exact variable inventories and summarize whether the new motion-shape cues improve hook/uppercut separation.
 
 **Folders Created/Deleted/Modified:**
-- relevant repo paths used during QA
+- `.temp/qa-hook-uppercut-motion-shape-rerun-2026-06-18/`
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Re-ran the agreed narrow matrix from scratch into `.temp/qa-hook-uppercut-motion-shape-rerun-2026-06-18/`: full source export via `scripts/export_boxing_punch_classifier_dataset.py --manifest .testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json --captures-dir .temp/boxing-punch-classifier-export/hardened-captures-2026-06-16 --feature-set family_combined_directional_hook_motion_shape_v1 --skip-captures`, derived all three masked variants from that source dataset, re-trained MLPs for control/Variant A/Variant B, and re-ran the control CNN only. The rerun reproduced the checked-in metrics exactly: control MLP `0.8148148148148148 / 0.3159420289855072`, control CNN `0.8148148148148148 / 0.1795918367346939`, Variant A MLP `0.8518518518518519 / 0.184`, Variant B MLP `0.7407407407407407 / 0.17391304347826086`.
+
+QA also confirmed the comparison is fair: the control/Variant A/Variant B exports use the exact same 27 held-out test sample IDs in the same order, and that list exactly matches the `baseline_v1` family-specific benchmark test split after dropping the two held-out straight positives. Re-projecting `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json` onto the same five-class hook/uppercut/no-punch subset reproduced the documented shared-vector subset baseline `0.8518518518518519 accuracy / 0.1877551020408163 macro-F1`, so the subset-baseline comparison is honest.
+
+Variable inventories also matched the intended design exactly. Control keeps only baseline + camera/body wrist-direction features (22 per side / 44 frame features). Variant A adds only the forearm-orbit bundle (`wrist_x_from_elbow_over_shoulder_width`, `wrist_y_from_elbow_over_shoulder_width`, `forearm_unit_x`, `forearm_unit_y`, `wrist_elbow_radial_velocity_over_shoulder_width`, `wrist_elbow_tangential_velocity_over_shoulder_width`) for 28 per side / 56 frame features. Variant B adds only the relative elbow-to-wrist trajectory bundle on top of Variant A (`wrist_minus_elbow_velocity_x_over_shoulder_width`, `wrist_minus_elbow_velocity_y_over_shoulder_width`, `body_wrist_minus_elbow_velocity_lateral_over_shoulder_width`, `body_wrist_minus_elbow_velocity_vertical_over_shoulder_width`) for 32 per side / 64 frame features.
+
+The CNN gate was followed truthfully. Variant A was the best new MLP at macro-F1 `0.184`, which is still below the control MLP macro-F1 `0.3159420289855072`, so the agreed rule did not trigger a new-variant CNN run. No discrepancies found beyond the already-documented caveat that this benchmark still relies on the hardened capture-report package rather than a fully frozen snapshot because of known `straight_right` fixture-YAML hash drift. Audit is ready.
 
 ---
 
@@ -427,9 +433,46 @@ Outcome: the new motion-shape cues did **not** produce a clear hook/uppercut win
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit passed. I independently truth-checked the checked-in hook/uppercut motion-shape artifacts under `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/` against the source family benchmark baseline at `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json`. The benchmark-level `summary.{json,md}` is internally consistent with each variant’s `export/export-summary.json`, `mlp/mlp-result.json`, and the control `cnn/cnn-result.json`. All three variants report the same truthful reduced hook/uppercut dataset shape (`sample_count: 88`, `split_counts: {train: 61, test: 27}`, `label_counts: {hook_left: 4, hook_right: 4, uppercut_left: 4, uppercut_right: 4, no_punch: 72}`, `sample_kind_counts: {annotated_punch_window: 16, transition_before_punch: 20, derived_no_punch_window: 48, transition_after_punch: 4}`), and each variant’s projected shared-vector subset baseline uses the same 27 held-out hook/uppercut/no-punch sample IDs.
+
+The exact variable inventories are explicit and truthful. Control `hook_uppercut_family_mask_v1` keeps 22 active per-side features: `shoulder_x`, `shoulder_y`, `elbow_x`, `elbow_y`, `wrist_x`, `wrist_y`, `combined_elbow_wrist_velocity_xy_magnitude`, `elbow_shoulder_xy_distance_over_shoulder_width`, `camera_wrist_signed_vx`, `camera_wrist_signed_vy`, `camera_wrist_direction_{none,up,down,left,right}`, `body_wrist_signed_vx`, `body_wrist_signed_vy`, and `body_wrist_direction_{none,up,down,left,right}`. Variant A `hook_uppercut_motion_shape_variant_a_v1` adds the 6-feature forearm-orbit bundle per side: `wrist_x_from_elbow_over_shoulder_width`, `wrist_y_from_elbow_over_shoulder_width`, `forearm_unit_x`, `forearm_unit_y`, `wrist_elbow_radial_velocity_over_shoulder_width`, and `wrist_elbow_tangential_velocity_over_shoulder_width` (28 active per-side features total). Variant B `hook_uppercut_motion_shape_variant_b_v1` keeps all of Variant A and additionally adds the 4-feature relative elbow↔wrist trajectory bundle per side: `wrist_minus_elbow_velocity_x_over_shoulder_width`, `wrist_minus_elbow_velocity_y_over_shoulder_width`, `body_wrist_minus_elbow_velocity_lateral_over_shoulder_width`, and `body_wrist_minus_elbow_velocity_vertical_over_shoulder_width` (32 active per-side features total).
+
+The benchmark conclusion holds. The projected shared-vector subset baseline stays `0.8518518518518519 accuracy / 0.1877551020408163 macro-F1` on the same 27 test windows. Control MLP is the best of the masked/motion-shape MLPs at `0.8148148148148148 / 0.3159420289855072`, while control CNN remains `0.8148148148148148 / 0.1795918367346939`. Variant A MLP matches the subset baseline on accuracy at `0.8518518518518519` but drops macro-F1 to `0.184`, because it collapses to predicting all 27 test windows as `no_punch`. Variant B regresses further to `0.7407407407407407 / 0.17391304347826086`. The CNN gate was handled truthfully: because neither new MLP variant beat the control MLP on macro-F1, no new-variant CNN run was warranted.
+
+Final audit judgment: this first hook/uppercut motion-shape hypothesis was benchmarkable and clean, but it did not improve hook/uppercut separation enough to justify runtime specialization yet. The control MLP remaining best suggests the added motion-shape cues are not useless, but in their current form they are still weakly shaped and/or redundant with existing context rather than strongly discriminative for hook vs uppercut. The most important follow-up is diagnosis-first feature design: inspect the hook/uppercut misses and engineer a stronger next cue family (for example forearm angle/orbit phase, elbow-leading vs wrist-leading timing, or path-curvature / punch-plane features) before spending effort on broader staged routing or data expansion.
+
+---
+
+### Task 17: Rerun benchmark/export conclusions against retimed punch YAML truth windows
+
+**Bead ID:** `aerobeat-input-camera-tracking-vf1s`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Derrick retimed the punch fixture YAMLs so the punch-class windows now cover windup + punch and try to cut off before the recovery/return phase. Sync the latest repo state, verify the changed punch fixture YAMLs are the active truth inputs, then rerun the relevant learned-classifier export/benchmark slice(s) against this updated truth basis before drawing further conclusions about hook/uppercut or straight-family feature design. Keep the exact changed fixture paths and resulting sample-count/window-count deltas explicit in the artifacts and report.
+
+**Folders Created/Deleted/Modified:**
+- punch fixture YAML paths under `.testbed/assets/fixtures/boxing/`
+- refreshed benchmark artifact paths as needed
+
+**Files Created/Deleted/Modified:**
+- changed punch fixture YAMLs pulled from `main`
+- refreshed benchmark artifacts / summaries as needed
+- plan updates / notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Verified the retimed punch fixtures from `3093907` are present locally and active via `.testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json`, which still points at the live boxing fixture YAMLs under `.testbed/assets/fixtures/boxing/`. The changed punch truth windows are now: `straight_left` take_01 `1150-1300/2150-2650/3333-3833/4833-5088 → 900-1200/1900-2400/3150-3650/4600-4900`, `straight_right` `625-825/1700-2000/3100-3400/5200-5450 → 50-400/1700-2000/2650-3150/4150-4400`, `hook_left` `1200-1450/2500-3000/4000-4600/5075-5225 → 900-1450/2800-3000/4000-4583/5583-6000`, `hook_right` `900-1400/2400-2900/4000-4500/5730-5860 → 900-1400/2600-2900/4000-4400/5700-5900`, `uppercut_left` `900-1200/2900-3200/4600-5400/6000-7000 → 650-1200/2650-3200/4600-5150/6000-7000`, and `uppercut_right` `900-1150/2000-3000/3900-4650/5175-5350 → 900-1150/2650-3100/3900-4650/5680-6250`. Guard windows were unchanged and were not used as positive truth.
+
+Reran the narrowest honest learned-classifier slice that still covers the current conclusions: (1) the full `family_combined_directional_v1` export → MLP → CNN under `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/`, then (2) the two family-masked heads derived from that refreshed source dataset under `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/{straight_family_mask_v1,hook_uppercut_family_mask_v1}/`, each with export → MLP → CNN rerun plus benchmark-level `summary.{json,md}` refresh. I did **not** rerun the older full branch matrix because the current decision seam is whether the refreshed family-specific source + family-masked heads change the straight-vs-hook/uppercut diagnosis; rerunning unrelated earlier variants would be redundant for that question.
+
+Truth-window/sample-count outcome: total dataset counts did **not** change. The refreshed full export stayed at `sample_count 96`, `split_counts {train:67,test:29}`, `sample_kind_counts {annotated_punch_window:24, transition_before_punch:20, derived_no_punch_window:48, transition_after_punch:4}`, `label_counts {6 punch labels x4 each, no_punch:72}`. The masked exports also held constant: straight head `80` samples with `8 annotated punch / 72 no_punch`, hook/uppercut head `88` samples with `16 annotated punch / 72 no_punch`. What *did* change was which held-out windows landed in those buckets after the truth shift: e.g. the full-test no-punch/transition IDs changed from `hook_left::no_punch::017`, `hook_right::no_punch::014`, `straight_left::transition_before::{03,04}`, `straight_right::no_punch::018`, `uppercut_right::no_punch::012` to `hook_left::no_punch::019`, `hook_right::no_punch::016`, `straight_left::no_punch::009`, `straight_right::no_punch::011`, `uppercut_right::no_punch::014` while preserving the same bucket totals.
+
+Metric movement was material. On the refreshed full family-specific source, `family_combined_directional_v1` moved from `MLP 0.7931 / 0.3631` to `0.8276 / 0.7215` and from `CNN 0.8276 / 0.2717` to `0.6897 / 0.3550` (accuracy / macro-F1). The MLP now correctly recovers `hook_left`, `hook_right`, and `uppercut_right`; the CNN now recovers both hook positives but still drops `straight_right` to `no_punch` and sends `straight_left` to `hook_right`. On the refreshed masked straight head, both MLP and CNN landed at `0.8800 / 0.6990`, versus the prior `0.9200 / 0.7626` MLP and `0.9600 / 0.8815` CNN. On the refreshed masked hook/uppercut head, the MLP moved from `0.8148 / 0.3159` to `0.7037 / 0.3792`, while the CNN improved from `0.8148 / 0.1796` to `0.8519 / 0.5159`. I also refreshed the masked benchmark subset baselines so they now project from the refreshed `family_combined_directional_v1` CNN rather than the stale pre-retime baseline: straight subset baseline is now `0.7600 / 0.2879`, hook/uppercut subset baseline `0.8889 / 0.5872`. Under that fairer comparison, the masked straight head now **beats** the shared-vector subset baseline by `+0.1200` accuracy and about `+0.4111` macro-F1, while the masked hook/uppercut CNN still trails the shared-vector subset baseline by `-0.0370` accuracy / `-0.0713` macro-F1.
+
+Diagnosis shift: the retimed truth windows did **not** change total sample counts, but they *did* materially change the qualitative read. The refreshed full shared-vector `family_combined_directional_v1` models now recover hook positives much better than before, especially in the MLP, while the straight-family masked head remains the clearest beneficiary of isolation: on the retimed truth it now cleanly beats the refreshed shared-vector subset baseline. The hook/uppercut masked head improved in absolute CNN macro-F1 versus its own pre-retime artifact (`0.1796 → 0.5159`), but once compared against the refreshed shared-vector hook/uppercut subset baseline it is still a net loss. So the honest updated read is narrower than the pre-retime story: the retimed truth windows weaken the old blanket “masking is not helping” diagnosis, but only the straight-family masked path currently shows a fair apples-to-apples subset-baseline win; hook/uppercut still needs stronger cues.
 
 ---
 

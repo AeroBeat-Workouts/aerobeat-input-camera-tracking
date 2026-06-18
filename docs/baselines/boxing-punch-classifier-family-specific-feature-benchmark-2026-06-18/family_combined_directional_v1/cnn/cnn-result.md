@@ -1,6 +1,6 @@
 # Boxing Punch Classifier 1D Temporal CNN Baseline
 
-- Trained at: `2026-06-18T13:54:38.661824+00:00`
+- Trained at: `2026-06-18T17:47:24.549041+00:00`
 - Dataset: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/export/dataset.json`
 - MLP baseline: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/mlp/mlp-result.json`
 - Split strategy: `chronological_holdout_v1`
@@ -11,24 +11,24 @@
 
 ## Test split comparison
 
-- Temporal CNN accuracy: **0.828**
-- Temporal CNN macro F1: **0.272**
-- Temporal MLP accuracy: **0.793**
-- Temporal MLP macro F1: **0.363**
-- Threshold baseline accuracy: **0.655**
-- Threshold baseline macro F1: **0.341**
+- Temporal CNN accuracy: **0.690**
+- Temporal CNN macro F1: **0.355**
+- Temporal MLP accuracy: **0.828**
+- Temporal MLP macro F1: **0.721**
+- Threshold baseline accuracy: **0.586**
+- Threshold baseline macro F1: **0.250**
 
 ## Temporal CNN confusion (test)
 
 | actual \ predicted | straight_left | straight_right | hook_left | hook_right | uppercut_left | uppercut_right | no_punch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| straight_left | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| straight_left | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | straight_right | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
-| hook_left | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| hook_left | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
 | hook_right | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | uppercut_left | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
 | uppercut_right | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
-| no_punch | 0 | 0 | 0 | 0 | 0 | 0 | 23 |
+| no_punch | 2 | 2 | 0 | 0 | 1 | 0 | 18 |
 
 ## Temporal MLP confusion (test)
 
@@ -36,23 +36,23 @@
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | straight_left | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
 | straight_right | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
-| hook_left | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
-| hook_right | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| hook_left | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| hook_right | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | uppercut_left | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
-| uppercut_right | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
-| no_punch | 1 | 0 | 0 | 0 | 1 | 0 | 21 |
+| uppercut_right | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
+| no_punch | 1 | 2 | 0 | 0 | 1 | 0 | 19 |
 
 ## Threshold confusion (test)
 
 | actual \ predicted | straight_left | straight_right | hook_left | hook_right | uppercut_left | uppercut_right | no_punch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | straight_left | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
-| straight_right | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| hook_left | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| straight_right | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| hook_left | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | hook_right | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | uppercut_left | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
-| uppercut_right | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
-| no_punch | 1 | 1 | 1 | 1 | 2 | 1 | 16 |
+| uppercut_right | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| no_punch | 1 | 1 | 2 | 1 | 2 | 1 | 15 |
 
 ## Notes
 

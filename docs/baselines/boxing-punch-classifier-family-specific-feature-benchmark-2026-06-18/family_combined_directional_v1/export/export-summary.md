@@ -1,6 +1,6 @@
 # Boxing Punch Classifier Export
 
-- Exported at: `2026-06-18T13:52:29.743444+00:00`
+- Exported at: `2026-06-18T17:45:52.972224+00:00`
 - Manifest: `.testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json`
 - Capture dir: `.temp/boxing-punch-classifier-export/hardened-captures-2026-06-16`
 - Snapshot ID: `none`
@@ -20,12 +20,12 @@
 
 ## Alignment summary
 
-- Capture time-origin offset ms (min/mean/max): **1056 / 1107.0 / 1136**
-- Window start alignment error ms (min/mean/max): **0 / 18.5 / 59**
-- Window end alignment error ms (min/mean/max): **0 / 18.6 / 149**
+- Capture time-origin offset ms (min/mean/max): **1056 / 1106.5 / 1136**
+- Window start alignment error ms (min/mean/max): **0 / 16.7 / 59**
+- Window end alignment error ms (min/mean/max): **0 / 19.9 / 149**
 
-- `hook_left_fixture` offset=1080ms start_err=18.8ms end_err=16.1ms samples=10
-- `hook_right_fixture` offset=1131ms start_err=11.1ms end_err=21.2ms samples=10
+- `hook_left_fixture` offset=1080ms start_err=11.6ms end_err=21.6ms samples=11
+- `hook_right_fixture` offset=1131ms start_err=8.5ms end_err=25.9ms samples=10
 - `knee_left_fixture` offset=1133ms start_err=24.7ms end_err=12.3ms samples=3
 - `knee_right_fixture` offset=1130ms start_err=22.7ms end_err=26.3ms samples=3
 - `leg_lift_left_fixture` offset=1081ms start_err=32.0ms end_err=12.3ms samples=3
@@ -35,10 +35,10 @@
 - `sidestep_right_fixture` offset=1087ms start_err=22.0ms end_err=48.0ms samples=4
 - `squat_fixture` offset=1079ms start_err=18.3ms end_err=15.0ms samples=3
 - `stance_transition_fixture` offset=1133ms start_err=16.8ms end_err=5.2ms samples=4
-- `straight_left_fixture` offset=1056ms start_err=18.8ms end_err=14.1ms samples=10
-- `straight_right_fixture` offset=1131ms start_err=14.5ms end_err=19.0ms samples=11
-- `uppercut_left_fixture` offset=1136ms start_err=24.9ms end_err=19.7ms samples=10
-- `uppercut_right_fixture` offset=1130ms start_err=16.8ms end_err=29.2ms samples=10
+- `straight_left_fixture` offset=1056ms start_err=14.1ms end_err=20.9ms samples=10
+- `straight_right_fixture` offset=1131ms start_err=15.6ms end_err=8.4ms samples=10
+- `uppercut_left_fixture` offset=1136ms start_err=25.4ms end_err=24.4ms samples=10
+- `uppercut_right_fixture` offset=1130ms start_err=12.0ms end_err=30.7ms samples=10
 - `weave_left_fixture` offset=1088ms start_err=15.3ms end_err=12.0ms samples=3
 - `weave_right_fixture` offset=1084ms start_err=17.8ms end_err=15.8ms samples=4
 
@@ -49,7 +49,7 @@
 - Source video: `.testbed/assets/fixtures/boxing/straight_left/boxing_guard->straight_left_repeat_04_take_01.mp4`
 - Retained feature snapshots: **235**
 - Annotated punch windows: **4**
-- Background no-punch candidates: **16**
+- Background no-punch candidates: **15**
 - Transition no-punch candidates: **8**
 
 ### straight_right_fixture
@@ -57,7 +57,7 @@
 - Source video: `.testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.mp4`
 - Retained feature snapshots: **237**
 - Annotated punch windows: **4**
-- Background no-punch candidates: **18**
+- Background no-punch candidates: **17**
 - Transition no-punch candidates: **8**
 
 ### hook_left_fixture
@@ -73,7 +73,7 @@
 - Source video: `.testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.mp4`
 - Retained feature snapshots: **218**
 - Annotated punch windows: **4**
-- Background no-punch candidates: **19**
+- Background no-punch candidates: **20**
 - Transition no-punch candidates: **8**
 
 ### uppercut_left_fixture
@@ -81,7 +81,7 @@
 - Source video: `.testbed/assets/fixtures/boxing/uppercut_left/boxing_guard->uppercut_left_repeat_04_take_01.mp4`
 - Retained feature snapshots: **222**
 - Annotated punch windows: **4**
-- Background no-punch candidates: **16**
+- Background no-punch candidates: **15**
 - Transition no-punch candidates: **7**
 
 ### uppercut_right_fixture
@@ -89,7 +89,7 @@
 - Source video: `.testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.mp4`
 - Retained feature snapshots: **217**
 - Annotated punch windows: **4**
-- Background no-punch candidates: **15**
+- Background no-punch candidates: **17**
 - Transition no-punch candidates: **8**
 
 ### run_in_place_fixture
@@ -183,33 +183,33 @@
 ## Threshold baseline on exported windows
 
 ### test
-- Accuracy: **0.655**
-- Macro F1: **0.341**
-- Macro precision: **0.298**
-- Macro recall: **0.528**
+- Accuracy: **0.586**
+- Macro F1: **0.250**
+- Macro precision: **0.221**
+- Macro recall: **0.379**
 
 | actual \ predicted | straight_left | straight_right | hook_left | hook_right | uppercut_left | uppercut_right | no_punch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | straight_left | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
-| straight_right | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
-| hook_left | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| straight_right | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| hook_left | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | hook_right | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | uppercut_left | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
-| uppercut_right | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
-| no_punch | 1 | 1 | 1 | 1 | 2 | 1 | 16 |
+| uppercut_right | 0 | 0 | 0 | 0 | 0 | 0 | 1 |
+| no_punch | 1 | 1 | 2 | 1 | 2 | 1 | 15 |
 
 ### train
-- Accuracy: **0.552**
-- Macro F1: **0.157**
-- Macro precision: **0.144**
-- Macro recall: **0.197**
+- Accuracy: **0.537**
+- Macro F1: **0.160**
+- Macro precision: **0.149**
+- Macro recall: **0.194**
 
 | actual \ predicted | straight_left | straight_right | hook_left | hook_right | uppercut_left | uppercut_right | no_punch |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| straight_left | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| straight_right | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
-| hook_left | 0 | 0 | 0 | 0 | 0 | 1 | 2 |
+| straight_left | 1 | 0 | 0 | 0 | 0 | 0 | 2 |
+| straight_right | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
+| hook_left | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
 | hook_right | 0 | 0 | 2 | 0 | 0 | 0 | 1 |
-| uppercut_left | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| uppercut_right | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
-| no_punch | 5 | 1 | 0 | 4 | 1 | 3 | 35 |
+| uppercut_left | 0 | 0 | 0 | 1 | 0 | 0 | 2 |
+| uppercut_right | 0 | 0 | 0 | 0 | 0 | 1 | 2 |
+| no_punch | 6 | 1 | 1 | 1 | 2 | 4 | 34 |

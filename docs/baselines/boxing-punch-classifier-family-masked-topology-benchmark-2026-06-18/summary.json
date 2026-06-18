@@ -2,9 +2,9 @@
   "schema": "aerobeat.boxing_punch_classifier_family_masked_benchmark_summary",
   "version": 1,
   "shared_vector_baseline": {
-    "artifact": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json",
-    "test_accuracy": 0.8620689655172413,
-    "test_macro_f1": 0.41982507288629733
+    "artifact": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json",
+    "test_accuracy": 0.6896551724137931,
+    "test_macro_f1": 0.354978354978355
   },
   "variants": {
     "straight_family_mask_v1": {
@@ -89,30 +89,30 @@
         ]
       },
       "mlp": {
-        "test_accuracy": 0.92,
-        "test_macro_f1": 0.7626262626262625
+        "test_accuracy": 0.88,
+        "test_macro_f1": 0.6989664082687338
       },
       "cnn": {
-        "test_accuracy": 0.96,
-        "test_macro_f1": 0.8814814814814814
+        "test_accuracy": 0.88,
+        "test_macro_f1": 0.6989664082687338
       },
       "shared_vector_subset_baseline": {
-        "test_accuracy": 1.0,
-        "test_macro_f1": 1.0,
+        "test_accuracy": 0.76,
+        "test_macro_f1": 0.2878787878787879,
         "test_sample_count": 25,
-        "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json",
+        "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json",
         "records": [
           {
             "sample_id": "straight_left_fixture::straight_left::04",
             "split": "test",
             "actual": "straight_left",
-            "predicted": "straight_left"
+            "predicted": "no_punch"
           },
           {
             "sample_id": "straight_right_fixture::straight_right::04",
             "split": "test",
             "actual": "straight_right",
-            "predicted": "straight_right"
+            "predicted": "no_punch"
           },
           {
             "sample_id": "hook_left_fixture::transition_before::04",
@@ -121,13 +121,13 @@
             "predicted": "no_punch"
           },
           {
-            "sample_id": "hook_left_fixture::no_punch::017",
+            "sample_id": "hook_left_fixture::no_punch::019",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
           },
           {
-            "sample_id": "hook_right_fixture::no_punch::014",
+            "sample_id": "hook_right_fixture::no_punch::016",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
@@ -193,28 +193,28 @@
             "predicted": "no_punch"
           },
           {
-            "sample_id": "straight_left_fixture::transition_before::03",
+            "sample_id": "straight_left_fixture::no_punch::009",
             "split": "test",
             "actual": "no_punch",
-            "predicted": "no_punch"
+            "predicted": "straight_left"
           },
           {
             "sample_id": "straight_left_fixture::transition_before::04",
             "split": "test",
             "actual": "no_punch",
-            "predicted": "no_punch"
+            "predicted": "straight_left"
+          },
+          {
+            "sample_id": "straight_right_fixture::no_punch::011",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "straight_right"
           },
           {
             "sample_id": "straight_right_fixture::transition_before::04",
             "split": "test",
             "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_right_fixture::no_punch::018",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
+            "predicted": "straight_right"
           },
           {
             "sample_id": "uppercut_left_fixture::transition_before::03",
@@ -229,7 +229,7 @@
             "predicted": "no_punch"
           },
           {
-            "sample_id": "uppercut_right_fixture::no_punch::012",
+            "sample_id": "uppercut_right_fixture::no_punch::014",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
@@ -254,121 +254,67 @@
           }
         ],
         "metrics": {
-          "train_metrics": {
-            "sample_count": 55,
-            "accuracy": 1.0,
-            "macro_precision": 1.0,
-            "macro_recall": 1.0,
-            "macro_f1": 1.0,
-            "actual_counts": {
-              "straight_left": 3,
-              "straight_right": 3,
-              "no_punch": 49
-            },
-            "predicted_counts": {
-              "straight_left": 3,
-              "straight_right": 3,
-              "no_punch": 49
-            },
-            "per_class": {
-              "straight_left": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 3
-              },
-              "straight_right": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 3
-              },
-              "no_punch": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 49
-              }
-            },
-            "confusion": {
-              "straight_left": {
-                "straight_left": 3,
-                "straight_right": 0,
-                "no_punch": 0
-              },
-              "straight_right": {
-                "straight_left": 0,
-                "straight_right": 3,
-                "no_punch": 0
-              },
-              "no_punch": {
-                "straight_left": 0,
-                "straight_right": 0,
-                "no_punch": 49
-              }
-            }
-          },
           "test_metrics": {
             "sample_count": 25,
-            "accuracy": 1.0,
-            "macro_precision": 1.0,
-            "macro_recall": 1.0,
-            "macro_f1": 1.0,
+            "accuracy": 0.76,
+            "macro_precision": 0.30158730158730157,
+            "macro_recall": 0.2753623188405797,
+            "macro_f1": 0.2878787878787879,
             "actual_counts": {
               "straight_left": 1,
               "straight_right": 1,
               "no_punch": 23
             },
             "predicted_counts": {
-              "straight_left": 1,
-              "straight_right": 1,
-              "no_punch": 23
+              "straight_left": 2,
+              "straight_right": 2,
+              "no_punch": 21
             },
             "per_class": {
               "straight_left": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
                 "support": 1
               },
               "straight_right": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
+                "precision": 0.0,
+                "recall": 0.0,
+                "f1": 0.0,
                 "support": 1
               },
               "no_punch": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
+                "precision": 0.9047619047619048,
+                "recall": 0.8260869565217391,
+                "f1": 0.8636363636363636,
                 "support": 23
               }
             },
             "confusion": {
               "straight_left": {
-                "straight_left": 1,
+                "straight_left": 0,
                 "straight_right": 0,
-                "no_punch": 0
+                "no_punch": 1
               },
               "straight_right": {
                 "straight_left": 0,
-                "straight_right": 1,
-                "no_punch": 0
+                "straight_right": 0,
+                "no_punch": 1
               },
               "no_punch": {
-                "straight_left": 0,
-                "straight_right": 0,
-                "no_punch": 23
+                "straight_left": 2,
+                "straight_right": 2,
+                "no_punch": 19
               }
             }
           }
         }
       },
       "delta_vs_shared_vector_subset_baseline": {
-        "cnn_accuracy": -0.040000000000000036,
-        "cnn_macro_f1": -0.11851851851851858,
-        "mlp_accuracy": -0.07999999999999996,
-        "mlp_macro_f1": -0.23737373737373746
+        "cnn_accuracy": 0.12,
+        "cnn_macro_f1": 0.4110876203899459,
+        "mlp_accuracy": 0.12,
+        "mlp_macro_f1": 0.4110876203899459
       }
     },
     "hook_uppercut_family_mask_v1": {
@@ -479,30 +425,30 @@
         ]
       },
       "mlp": {
-        "test_accuracy": 0.8148148148148148,
-        "test_macro_f1": 0.3159420289855072
+        "test_accuracy": 0.7037037037037037,
+        "test_macro_f1": 0.3791869918699187
       },
       "cnn": {
-        "test_accuracy": 0.8148148148148148,
-        "test_macro_f1": 0.1795918367346939
+        "test_accuracy": 0.8518518518518519,
+        "test_macro_f1": 0.5159420289855072
       },
       "shared_vector_subset_baseline": {
-        "test_accuracy": 0.8518518518518519,
-        "test_macro_f1": 0.1877551020408163,
+        "test_accuracy": 0.8888888888888888,
+        "test_macro_f1": 0.5872340425531914,
         "test_sample_count": 27,
-        "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json",
+        "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json",
         "records": [
           {
             "sample_id": "hook_left_fixture::hook_left::04",
             "split": "test",
             "actual": "hook_left",
-            "predicted": "no_punch"
+            "predicted": "hook_left"
           },
           {
             "sample_id": "hook_right_fixture::hook_right::04",
             "split": "test",
             "actual": "hook_right",
-            "predicted": "no_punch"
+            "predicted": "hook_right"
           },
           {
             "sample_id": "uppercut_left_fixture::uppercut_left::04",
@@ -514,7 +460,7 @@
             "sample_id": "uppercut_right_fixture::uppercut_right::04",
             "split": "test",
             "actual": "uppercut_right",
-            "predicted": "hook_left"
+            "predicted": "no_punch"
           },
           {
             "sample_id": "hook_left_fixture::transition_before::04",
@@ -523,13 +469,13 @@
             "predicted": "no_punch"
           },
           {
-            "sample_id": "hook_left_fixture::no_punch::017",
+            "sample_id": "hook_left_fixture::no_punch::019",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
           },
           {
-            "sample_id": "hook_right_fixture::no_punch::014",
+            "sample_id": "hook_right_fixture::no_punch::016",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
@@ -595,7 +541,7 @@
             "predicted": "no_punch"
           },
           {
-            "sample_id": "straight_left_fixture::transition_before::03",
+            "sample_id": "straight_left_fixture::no_punch::009",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
@@ -607,13 +553,13 @@
             "predicted": "no_punch"
           },
           {
-            "sample_id": "straight_right_fixture::transition_before::04",
+            "sample_id": "straight_right_fixture::no_punch::011",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
           },
           {
-            "sample_id": "straight_right_fixture::no_punch::018",
+            "sample_id": "straight_right_fixture::transition_before::04",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
@@ -622,7 +568,7 @@
             "sample_id": "uppercut_left_fixture::transition_before::03",
             "split": "test",
             "actual": "no_punch",
-            "predicted": "no_punch"
+            "predicted": "uppercut_left"
           },
           {
             "sample_id": "uppercut_left_fixture::transition_before::04",
@@ -631,7 +577,7 @@
             "predicted": "no_punch"
           },
           {
-            "sample_id": "uppercut_right_fixture::no_punch::012",
+            "sample_id": "uppercut_right_fixture::no_punch::014",
             "split": "test",
             "actual": "no_punch",
             "predicted": "no_punch"
@@ -656,102 +602,12 @@
           }
         ],
         "metrics": {
-          "train_metrics": {
-            "sample_count": 61,
-            "accuracy": 0.9836065573770492,
-            "macro_precision": 0.9960000000000001,
-            "macro_recall": 0.9333333333333332,
-            "macro_f1": 0.9579797979797979,
-            "actual_counts": {
-              "hook_left": 3,
-              "hook_right": 3,
-              "uppercut_left": 3,
-              "uppercut_right": 3,
-              "no_punch": 49
-            },
-            "predicted_counts": {
-              "hook_left": 3,
-              "hook_right": 3,
-              "uppercut_left": 3,
-              "uppercut_right": 2,
-              "no_punch": 50
-            },
-            "per_class": {
-              "hook_left": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 3
-              },
-              "hook_right": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 3
-              },
-              "uppercut_left": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 3
-              },
-              "uppercut_right": {
-                "precision": 1.0,
-                "recall": 0.6666666666666666,
-                "f1": 0.8,
-                "support": 3
-              },
-              "no_punch": {
-                "precision": 0.98,
-                "recall": 1.0,
-                "f1": 0.98989898989899,
-                "support": 49
-              }
-            },
-            "confusion": {
-              "hook_left": {
-                "hook_left": 3,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 0
-              },
-              "hook_right": {
-                "hook_left": 0,
-                "hook_right": 3,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 0
-              },
-              "uppercut_left": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 3,
-                "uppercut_right": 0,
-                "no_punch": 0
-              },
-              "uppercut_right": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 2,
-                "no_punch": 1
-              },
-              "no_punch": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 49
-              }
-            }
-          },
           "test_metrics": {
             "sample_count": 27,
-            "accuracy": 0.8518518518518519,
-            "macro_precision": 0.1769230769230769,
-            "macro_recall": 0.2,
-            "macro_f1": 0.1877551020408163,
+            "accuracy": 0.8888888888888888,
+            "macro_precision": 0.5833333333333333,
+            "macro_recall": 0.5913043478260869,
+            "macro_f1": 0.5872340425531914,
             "actual_counts": {
               "hook_left": 1,
               "hook_right": 1,
@@ -761,22 +617,22 @@
             },
             "predicted_counts": {
               "hook_left": 1,
-              "hook_right": 0,
-              "uppercut_left": 0,
+              "hook_right": 1,
+              "uppercut_left": 1,
               "uppercut_right": 0,
-              "no_punch": 26
+              "no_punch": 24
             },
             "per_class": {
               "hook_left": {
-                "precision": 0.0,
-                "recall": 0.0,
-                "f1": 0.0,
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
                 "support": 1
               },
               "hook_right": {
-                "precision": 0.0,
-                "recall": 0.0,
-                "f1": 0.0,
+                "precision": 1.0,
+                "recall": 1.0,
+                "f1": 1.0,
                 "support": 1
               },
               "uppercut_left": {
@@ -792,57 +648,57 @@
                 "support": 1
               },
               "no_punch": {
-                "precision": 0.8846153846153846,
-                "recall": 1.0,
-                "f1": 0.9387755102040816,
+                "precision": 0.9166666666666666,
+                "recall": 0.9565217391304348,
+                "f1": 0.9361702127659574,
                 "support": 23
               }
             },
             "confusion": {
               "hook_left": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 1
-              },
-              "hook_right": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 1
-              },
-              "uppercut_left": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 1
-              },
-              "uppercut_right": {
                 "hook_left": 1,
                 "hook_right": 0,
                 "uppercut_left": 0,
                 "uppercut_right": 0,
                 "no_punch": 0
               },
-              "no_punch": {
+              "hook_right": {
+                "hook_left": 0,
+                "hook_right": 1,
+                "uppercut_left": 0,
+                "uppercut_right": 0,
+                "no_punch": 0
+              },
+              "uppercut_left": {
                 "hook_left": 0,
                 "hook_right": 0,
                 "uppercut_left": 0,
                 "uppercut_right": 0,
-                "no_punch": 23
+                "no_punch": 1
+              },
+              "uppercut_right": {
+                "hook_left": 0,
+                "hook_right": 0,
+                "uppercut_left": 0,
+                "uppercut_right": 0,
+                "no_punch": 1
+              },
+              "no_punch": {
+                "hook_left": 0,
+                "hook_right": 0,
+                "uppercut_left": 1,
+                "uppercut_right": 0,
+                "no_punch": 22
               }
             }
           }
         }
       },
       "delta_vs_shared_vector_subset_baseline": {
-        "cnn_accuracy": -0.03703703703703709,
-        "cnn_macro_f1": -0.008163265306122408,
-        "mlp_accuracy": -0.03703703703703709,
-        "mlp_macro_f1": 0.12818692694469092
+        "cnn_accuracy": -0.03703703703703698,
+        "cnn_macro_f1": -0.07129201356768422,
+        "mlp_accuracy": -0.18518518518518512,
+        "mlp_macro_f1": -0.20804705068327273
       }
     }
   }

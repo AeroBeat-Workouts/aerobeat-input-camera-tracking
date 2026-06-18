@@ -172,23 +172,23 @@
         "body_wrist_direction_left",
         "body_wrist_direction_right"
       ],
-      "mlp_accuracy": 0.7931034482758621,
-      "mlp_macro_f1": 0.3630952380952381,
-      "cnn_accuracy": 0.8275862068965517,
-      "cnn_macro_f1": 0.27170868347338933,
+      "mlp_accuracy": 0.8275862068965517,
+      "mlp_macro_f1": 0.7214839424141749,
+      "cnn_accuracy": 0.6896551724137931,
+      "cnn_macro_f1": 0.354978354978355,
       "focused_test_predictions": {
         "mlp": {
           "straight_left": "straight_left",
           "straight_right": "straight_right",
-          "hook_left": "no_punch",
-          "hook_right": "no_punch",
+          "hook_left": "hook_left",
+          "hook_right": "hook_right",
           "uppercut_left": "no_punch",
-          "uppercut_right": "no_punch"
+          "uppercut_right": "uppercut_right"
         },
         "cnn": {
-          "straight_left": "no_punch",
+          "straight_left": "hook_right",
           "straight_right": "no_punch",
-          "hook_left": "no_punch",
+          "hook_left": "hook_left",
           "hook_right": "hook_right",
           "uppercut_left": "no_punch",
           "uppercut_right": "no_punch"
