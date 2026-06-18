@@ -117,10 +117,10 @@
   "metrics_by_split": {
     "train": {
       "sample_count": 61,
-      "accuracy": 0.7049180327868853,
-      "macro_precision": 0.2375,
-      "macro_recall": 0.30068027210884357,
-      "macro_f1": 0.25796105383734247,
+      "accuracy": 0.6885245901639344,
+      "macro_precision": 0.20303951367781153,
+      "macro_recall": 0.23401360544217686,
+      "macro_f1": 0.21083333333333334,
       "actual_counts": {
         "hook_left": 3,
         "hook_right": 3,
@@ -129,11 +129,11 @@
         "no_punch": 49
       },
       "predicted_counts": {
-        "hook_left": 2,
-        "hook_right": 4,
-        "uppercut_left": 1,
-        "uppercut_right": 6,
-        "no_punch": 48
+        "hook_left": 3,
+        "hook_right": 2,
+        "uppercut_left": 2,
+        "uppercut_right": 7,
+        "no_punch": 47
       },
       "per_class": {
         "hook_left": {
@@ -155,15 +155,15 @@
           "support": 3
         },
         "uppercut_right": {
-          "precision": 0.3333333333333333,
-          "recall": 0.6666666666666666,
-          "f1": 0.4444444444444444,
+          "precision": 0.14285714285714285,
+          "recall": 0.3333333333333333,
+          "f1": 0.2,
           "support": 3
         },
         "no_punch": {
-          "precision": 0.8541666666666666,
+          "precision": 0.8723404255319149,
           "recall": 0.8367346938775511,
-          "f1": 0.845360824742268,
+          "f1": 0.8541666666666667,
           "support": 49
         }
       },
@@ -172,8 +172,8 @@
           "hook_left": 0,
           "hook_right": 0,
           "uppercut_left": 0,
-          "uppercut_right": 1,
-          "no_punch": 2
+          "uppercut_right": 2,
+          "no_punch": 1
         },
         "hook_right": {
           "hook_left": 2,
@@ -184,33 +184,33 @@
         },
         "uppercut_left": {
           "hook_left": 0,
-          "hook_right": 0,
+          "hook_right": 1,
           "uppercut_left": 0,
           "uppercut_right": 0,
-          "no_punch": 3
+          "no_punch": 2
         },
         "uppercut_right": {
           "hook_left": 0,
           "hook_right": 0,
           "uppercut_left": 0,
-          "uppercut_right": 2,
-          "no_punch": 1
+          "uppercut_right": 1,
+          "no_punch": 2
         },
         "no_punch": {
-          "hook_left": 0,
-          "hook_right": 4,
-          "uppercut_left": 1,
-          "uppercut_right": 3,
+          "hook_left": 1,
+          "hook_right": 1,
+          "uppercut_left": 2,
+          "uppercut_right": 4,
           "no_punch": 41
         }
       }
     },
     "test": {
       "sample_count": 27,
-      "accuracy": 0.7777777777777778,
-      "macro_precision": 0.4333333333333333,
-      "macro_recall": 0.7565217391304347,
-      "macro_f1": 0.5089430894308944,
+      "accuracy": 0.7037037037037037,
+      "macro_precision": 0.3555555555555555,
+      "macro_recall": 0.5478260869565217,
+      "macro_f1": 0.3991869918699187,
       "actual_counts": {
         "hook_left": 1,
         "hook_right": 1,
@@ -220,22 +220,22 @@
       },
       "predicted_counts": {
         "hook_left": 2,
-        "hook_right": 3,
+        "hook_right": 2,
         "uppercut_left": 3,
-        "uppercut_right": 1,
+        "uppercut_right": 2,
         "no_punch": 18
       },
       "per_class": {
         "hook_left": {
-          "precision": 0.5,
-          "recall": 1.0,
-          "f1": 0.6666666666666666,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
           "support": 1
         },
         "hook_right": {
-          "precision": 0.3333333333333333,
+          "precision": 0.5,
           "recall": 1.0,
-          "f1": 0.5,
+          "f1": 0.6666666666666666,
           "support": 1
         },
         "uppercut_left": {
@@ -251,18 +251,18 @@
           "support": 1
         },
         "no_punch": {
-          "precision": 1.0,
-          "recall": 0.782608695652174,
-          "f1": 0.878048780487805,
+          "precision": 0.9444444444444444,
+          "recall": 0.7391304347826086,
+          "f1": 0.8292682926829269,
           "support": 23
         }
       },
       "confusion": {
         "hook_left": {
-          "hook_left": 1,
+          "hook_left": 0,
           "hook_right": 0,
           "uppercut_left": 0,
-          "uppercut_right": 0,
+          "uppercut_right": 1,
           "no_punch": 0
         },
         "hook_right": {
@@ -281,17 +281,17 @@
         },
         "uppercut_right": {
           "hook_left": 0,
-          "hook_right": 1,
+          "hook_right": 0,
           "uppercut_left": 0,
           "uppercut_right": 0,
-          "no_punch": 0
+          "no_punch": 1
         },
         "no_punch": {
-          "hook_left": 1,
+          "hook_left": 2,
           "hook_right": 1,
           "uppercut_left": 2,
           "uppercut_right": 1,
-          "no_punch": 18
+          "no_punch": 17
         }
       }
     }
@@ -301,7 +301,7 @@
       "sample_id": "hook_left_fixture::hook_left::01",
       "split": "train",
       "actual": "hook_left",
-      "predicted": "no_punch"
+      "predicted": "uppercut_right"
     },
     {
       "sample_id": "hook_left_fixture::hook_left::02",
@@ -319,7 +319,7 @@
       "sample_id": "hook_left_fixture::hook_left::04",
       "split": "test",
       "actual": "hook_left",
-      "predicted": "hook_left"
+      "predicted": "uppercut_right"
     },
     {
       "sample_id": "hook_right_fixture::hook_right::01",
@@ -349,7 +349,7 @@
       "sample_id": "uppercut_left_fixture::uppercut_left::01",
       "split": "train",
       "actual": "uppercut_left",
-      "predicted": "no_punch"
+      "predicted": "hook_right"
     },
     {
       "sample_id": "uppercut_left_fixture::uppercut_left::02",
@@ -379,7 +379,7 @@
       "sample_id": "uppercut_right_fixture::uppercut_right::02",
       "split": "train",
       "actual": "uppercut_right",
-      "predicted": "uppercut_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "uppercut_right_fixture::uppercut_right::03",
@@ -391,13 +391,19 @@
       "sample_id": "uppercut_right_fixture::uppercut_right::04",
       "split": "test",
       "actual": "uppercut_right",
-      "predicted": "hook_right"
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::no_punch::002",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "hook_left"
     },
     {
       "sample_id": "hook_left_fixture::transition_before::01",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "uppercut_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "hook_left_fixture::transition_before::02",
@@ -406,7 +412,7 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "hook_left_fixture::no_punch::009",
+      "sample_id": "hook_left_fixture::no_punch::011",
       "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
@@ -424,7 +430,7 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "hook_left_fixture::no_punch::017",
+      "sample_id": "hook_left_fixture::no_punch::019",
       "split": "test",
       "actual": "no_punch",
       "predicted": "no_punch"
@@ -436,10 +442,10 @@
       "predicted": "uppercut_left"
     },
     {
-      "sample_id": "hook_right_fixture::no_punch::005",
+      "sample_id": "hook_right_fixture::no_punch::007",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "hook_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "hook_right_fixture::transition_before::02",
@@ -454,7 +460,7 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "hook_right_fixture::no_punch::014",
+      "sample_id": "hook_right_fixture::no_punch::016",
       "split": "test",
       "actual": "no_punch",
       "predicted": "no_punch"
@@ -652,13 +658,13 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_left_fixture::no_punch::009",
+      "sample_id": "straight_left_fixture::transition_before::03",
       "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_left_fixture::transition_before::03",
+      "sample_id": "straight_left_fixture::no_punch::009",
       "split": "test",
       "actual": "no_punch",
       "predicted": "no_punch"
@@ -670,16 +676,16 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_right_fixture::no_punch::002",
+      "sample_id": "straight_right_fixture::transition_before::01",
       "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_right_fixture::transition_before::01",
+      "sample_id": "straight_right_fixture::no_punch::003",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "uppercut_left"
     },
     {
       "sample_id": "straight_right_fixture::transition_before::02",
@@ -694,8 +700,8 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_right_fixture::no_punch::010",
-      "split": "train",
+      "sample_id": "straight_right_fixture::no_punch::011",
+      "split": "test",
       "actual": "no_punch",
       "predicted": "no_punch"
     },
@@ -706,22 +712,16 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_right_fixture::no_punch::018",
-      "split": "test",
+      "sample_id": "uppercut_left_fixture::transition_before::01",
+      "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_left_fixture::no_punch::003",
+      "sample_id": "uppercut_left_fixture::no_punch::004",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "hook_right"
-    },
-    {
-      "sample_id": "uppercut_left_fixture::transition_before::01",
-      "split": "train",
-      "actual": "no_punch",
-      "predicted": "hook_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "uppercut_left_fixture::transition_before::02",
@@ -730,10 +730,10 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_left_fixture::no_punch::011",
+      "sample_id": "uppercut_left_fixture::no_punch::012",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "uppercut_right"
     },
     {
       "sample_id": "uppercut_left_fixture::transition_before::03",
@@ -748,13 +748,13 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_right_fixture::no_punch::004",
+      "sample_id": "uppercut_right_fixture::transition_after::01",
       "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_right_fixture::transition_after::01",
+      "sample_id": "uppercut_right_fixture::no_punch::006",
       "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
@@ -763,7 +763,7 @@
       "sample_id": "uppercut_right_fixture::transition_after::02",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "uppercut_right"
     },
     {
       "sample_id": "uppercut_right_fixture::transition_after::03",
@@ -772,10 +772,10 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_right_fixture::no_punch::012",
+      "sample_id": "uppercut_right_fixture::no_punch::014",
       "split": "test",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "hook_left"
     },
     {
       "sample_id": "uppercut_right_fixture::transition_after::04",

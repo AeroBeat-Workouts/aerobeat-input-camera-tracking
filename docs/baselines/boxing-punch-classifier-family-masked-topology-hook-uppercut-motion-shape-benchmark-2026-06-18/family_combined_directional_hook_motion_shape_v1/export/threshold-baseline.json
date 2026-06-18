@@ -11,7 +11,7 @@
       "sample_id": "straight_left_fixture::straight_left::02",
       "split": "train",
       "actual": "straight_left",
-      "predicted": "no_punch"
+      "predicted": "straight_left"
     },
     {
       "sample_id": "straight_left_fixture::straight_left::03",
@@ -29,7 +29,7 @@
       "sample_id": "straight_right_fixture::straight_right::01",
       "split": "train",
       "actual": "straight_right",
-      "predicted": "uppercut_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "straight_right_fixture::straight_right::02",
@@ -41,19 +41,19 @@
       "sample_id": "straight_right_fixture::straight_right::03",
       "split": "train",
       "actual": "straight_right",
-      "predicted": "uppercut_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "straight_right_fixture::straight_right::04",
       "split": "test",
       "actual": "straight_right",
-      "predicted": "uppercut_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "hook_left_fixture::hook_left::01",
       "split": "train",
       "actual": "hook_left",
-      "predicted": "no_punch"
+      "predicted": "uppercut_right"
     },
     {
       "sample_id": "hook_left_fixture::hook_left::02",
@@ -71,7 +71,7 @@
       "sample_id": "hook_left_fixture::hook_left::04",
       "split": "test",
       "actual": "hook_left",
-      "predicted": "hook_left"
+      "predicted": "uppercut_right"
     },
     {
       "sample_id": "hook_right_fixture::hook_right::01",
@@ -101,7 +101,7 @@
       "sample_id": "uppercut_left_fixture::uppercut_left::01",
       "split": "train",
       "actual": "uppercut_left",
-      "predicted": "no_punch"
+      "predicted": "hook_right"
     },
     {
       "sample_id": "uppercut_left_fixture::uppercut_left::02",
@@ -131,7 +131,7 @@
       "sample_id": "uppercut_right_fixture::uppercut_right::02",
       "split": "train",
       "actual": "uppercut_right",
-      "predicted": "uppercut_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "uppercut_right_fixture::uppercut_right::03",
@@ -143,25 +143,31 @@
       "sample_id": "uppercut_right_fixture::uppercut_right::04",
       "split": "test",
       "actual": "uppercut_right",
-      "predicted": "hook_right"
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::no_punch::002",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "hook_left"
     },
     {
       "sample_id": "hook_left_fixture::transition_before::01",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "uppercut_right"
+      "predicted": "straight_left"
     },
     {
       "sample_id": "hook_left_fixture::transition_before::02",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "straight_left"
+      "predicted": "no_punch"
     },
     {
-      "sample_id": "hook_left_fixture::no_punch::009",
+      "sample_id": "hook_left_fixture::no_punch::011",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "straight_left"
     },
     {
       "sample_id": "hook_left_fixture::transition_before::03",
@@ -173,10 +179,10 @@
       "sample_id": "hook_left_fixture::transition_before::04",
       "split": "test",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "straight_right"
     },
     {
-      "sample_id": "hook_left_fixture::no_punch::017",
+      "sample_id": "hook_left_fixture::no_punch::019",
       "split": "test",
       "actual": "no_punch",
       "predicted": "no_punch"
@@ -188,10 +194,10 @@
       "predicted": "uppercut_left"
     },
     {
-      "sample_id": "hook_right_fixture::no_punch::005",
+      "sample_id": "hook_right_fixture::no_punch::007",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "hook_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "hook_right_fixture::transition_before::02",
@@ -206,10 +212,10 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "hook_right_fixture::no_punch::014",
+      "sample_id": "hook_right_fixture::no_punch::016",
       "split": "test",
       "actual": "no_punch",
-      "predicted": "straight_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "hook_right_fixture::transition_before::04",
@@ -401,37 +407,37 @@
       "sample_id": "straight_left_fixture::transition_before::02",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "straight_left"
+      "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_left_fixture::no_punch::009",
+      "sample_id": "straight_left_fixture::transition_before::03",
       "split": "train",
       "actual": "no_punch",
       "predicted": "straight_left"
     },
     {
-      "sample_id": "straight_left_fixture::transition_before::03",
+      "sample_id": "straight_left_fixture::no_punch::009",
       "split": "test",
       "actual": "no_punch",
-      "predicted": "straight_left"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "straight_left_fixture::transition_before::04",
       "split": "test",
       "actual": "no_punch",
-      "predicted": "no_punch"
-    },
-    {
-      "sample_id": "straight_right_fixture::no_punch::002",
-      "split": "train",
-      "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "straight_left"
     },
     {
       "sample_id": "straight_right_fixture::transition_before::01",
       "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::no_punch::003",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "uppercut_left"
     },
     {
       "sample_id": "straight_right_fixture::transition_before::02",
@@ -446,8 +452,8 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_right_fixture::no_punch::010",
-      "split": "train",
+      "sample_id": "straight_right_fixture::no_punch::011",
+      "split": "test",
       "actual": "no_punch",
       "predicted": "no_punch"
     },
@@ -458,34 +464,28 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "straight_right_fixture::no_punch::018",
-      "split": "test",
+      "sample_id": "uppercut_left_fixture::transition_before::01",
+      "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_left_fixture::no_punch::003",
+      "sample_id": "uppercut_left_fixture::no_punch::004",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "hook_right"
-    },
-    {
-      "sample_id": "uppercut_left_fixture::transition_before::01",
-      "split": "train",
-      "actual": "no_punch",
-      "predicted": "hook_right"
+      "predicted": "no_punch"
     },
     {
       "sample_id": "uppercut_left_fixture::transition_before::02",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "straight_left"
     },
     {
-      "sample_id": "uppercut_left_fixture::no_punch::011",
+      "sample_id": "uppercut_left_fixture::no_punch::012",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "uppercut_right"
     },
     {
       "sample_id": "uppercut_left_fixture::transition_before::03",
@@ -500,13 +500,13 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_right_fixture::no_punch::004",
+      "sample_id": "uppercut_right_fixture::transition_after::01",
       "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_right_fixture::transition_after::01",
+      "sample_id": "uppercut_right_fixture::no_punch::006",
       "split": "train",
       "actual": "no_punch",
       "predicted": "no_punch"
@@ -515,7 +515,7 @@
       "sample_id": "uppercut_right_fixture::transition_after::02",
       "split": "train",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "uppercut_right"
     },
     {
       "sample_id": "uppercut_right_fixture::transition_after::03",
@@ -524,10 +524,10 @@
       "predicted": "no_punch"
     },
     {
-      "sample_id": "uppercut_right_fixture::no_punch::012",
+      "sample_id": "uppercut_right_fixture::no_punch::014",
       "split": "test",
       "actual": "no_punch",
-      "predicted": "no_punch"
+      "predicted": "hook_left"
     },
     {
       "sample_id": "uppercut_right_fixture::transition_after::04",
@@ -581,10 +581,10 @@
   "metrics_by_split": {
     "test": {
       "sample_count": 29,
-      "accuracy": 0.6551724137931034,
-      "macro_precision": 0.29761904761904756,
-      "macro_recall": 0.5279503105590062,
-      "macro_f1": 0.34102564102564104,
+      "accuracy": 0.5862068965517241,
+      "macro_precision": 0.22128851540616243,
+      "macro_recall": 0.3788819875776398,
+      "macro_f1": 0.25,
       "actual_counts": {
         "straight_left": 1,
         "straight_right": 1,
@@ -598,10 +598,10 @@
         "straight_left": 1,
         "straight_right": 1,
         "hook_left": 2,
-        "hook_right": 4,
+        "hook_right": 3,
         "uppercut_left": 3,
         "uppercut_right": 2,
-        "no_punch": 16
+        "no_punch": 17
       },
       "per_class": {
         "straight_left": {
@@ -617,15 +617,15 @@
           "support": 1
         },
         "hook_left": {
-          "precision": 0.5,
-          "recall": 1.0,
-          "f1": 0.6666666666666666,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
           "support": 1
         },
         "hook_right": {
-          "precision": 0.25,
+          "precision": 0.3333333333333333,
           "recall": 1.0,
-          "f1": 0.4,
+          "f1": 0.5,
           "support": 1
         },
         "uppercut_left": {
@@ -641,9 +641,9 @@
           "support": 1
         },
         "no_punch": {
-          "precision": 1.0,
-          "recall": 0.6956521739130435,
-          "f1": 0.8205128205128205,
+          "precision": 0.8823529411764706,
+          "recall": 0.6521739130434783,
+          "f1": 0.75,
           "support": 23
         }
       },
@@ -663,16 +663,16 @@
           "hook_left": 0,
           "hook_right": 0,
           "uppercut_left": 0,
-          "uppercut_right": 1,
-          "no_punch": 0
+          "uppercut_right": 0,
+          "no_punch": 1
         },
         "hook_left": {
           "straight_left": 0,
           "straight_right": 0,
-          "hook_left": 1,
+          "hook_left": 0,
           "hook_right": 0,
           "uppercut_left": 0,
-          "uppercut_right": 0,
+          "uppercut_right": 1,
           "no_punch": 0
         },
         "hook_right": {
@@ -697,28 +697,28 @@
           "straight_left": 0,
           "straight_right": 0,
           "hook_left": 0,
-          "hook_right": 1,
+          "hook_right": 0,
           "uppercut_left": 0,
           "uppercut_right": 0,
-          "no_punch": 0
+          "no_punch": 1
         },
         "no_punch": {
           "straight_left": 1,
           "straight_right": 1,
-          "hook_left": 1,
+          "hook_left": 2,
           "hook_right": 1,
           "uppercut_left": 2,
           "uppercut_right": 1,
-          "no_punch": 16
+          "no_punch": 15
         }
       }
     },
     "train": {
       "sample_count": 67,
-      "accuracy": 0.5522388059701493,
-      "macro_precision": 0.14440993788819875,
-      "macro_recall": 0.19727891156462585,
-      "macro_f1": 0.15721120984278883,
+      "accuracy": 0.5373134328358209,
+      "macro_precision": 0.14875283446712015,
+      "macro_recall": 0.1943634596695821,
+      "macro_f1": 0.16048632218844985,
       "actual_counts": {
         "straight_left": 3,
         "straight_right": 3,
@@ -729,19 +729,19 @@
         "no_punch": 49
       },
       "predicted_counts": {
-        "straight_left": 5,
+        "straight_left": 7,
         "straight_right": 1,
-        "hook_left": 2,
-        "hook_right": 4,
-        "uppercut_left": 1,
-        "uppercut_right": 8,
-        "no_punch": 46
+        "hook_left": 3,
+        "hook_right": 2,
+        "uppercut_left": 2,
+        "uppercut_right": 7,
+        "no_punch": 45
       },
       "per_class": {
         "straight_left": {
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
+          "precision": 0.14285714285714285,
+          "recall": 0.3333333333333333,
+          "f1": 0.2,
           "support": 3
         },
         "straight_right": {
@@ -769,20 +769,29 @@
           "support": 3
         },
         "uppercut_right": {
-          "precision": 0.25,
-          "recall": 0.6666666666666666,
-          "f1": 0.36363636363636365,
+          "precision": 0.14285714285714285,
+          "recall": 0.3333333333333333,
+          "f1": 0.2,
           "support": 3
         },
         "no_punch": {
-          "precision": 0.7608695652173914,
-          "recall": 0.7142857142857143,
-          "f1": 0.7368421052631581,
+          "precision": 0.7555555555555555,
+          "recall": 0.6938775510204082,
+          "f1": 0.723404255319149,
           "support": 49
         }
       },
       "confusion": {
         "straight_left": {
+          "straight_left": 1,
+          "straight_right": 0,
+          "hook_left": 0,
+          "hook_right": 0,
+          "uppercut_left": 0,
+          "uppercut_right": 0,
+          "no_punch": 2
+        },
+        "straight_right": {
           "straight_left": 0,
           "straight_right": 0,
           "hook_left": 0,
@@ -791,7 +800,7 @@
           "uppercut_right": 0,
           "no_punch": 3
         },
-        "straight_right": {
+        "hook_left": {
           "straight_left": 0,
           "straight_right": 0,
           "hook_left": 0,
@@ -799,15 +808,6 @@
           "uppercut_left": 0,
           "uppercut_right": 2,
           "no_punch": 1
-        },
-        "hook_left": {
-          "straight_left": 0,
-          "straight_right": 0,
-          "hook_left": 0,
-          "hook_right": 0,
-          "uppercut_left": 0,
-          "uppercut_right": 1,
-          "no_punch": 2
         },
         "hook_right": {
           "straight_left": 0,
@@ -822,10 +822,10 @@
           "straight_left": 0,
           "straight_right": 0,
           "hook_left": 0,
-          "hook_right": 0,
+          "hook_right": 1,
           "uppercut_left": 0,
           "uppercut_right": 0,
-          "no_punch": 3
+          "no_punch": 2
         },
         "uppercut_right": {
           "straight_left": 0,
@@ -833,17 +833,17 @@
           "hook_left": 0,
           "hook_right": 0,
           "uppercut_left": 0,
-          "uppercut_right": 2,
-          "no_punch": 1
+          "uppercut_right": 1,
+          "no_punch": 2
         },
         "no_punch": {
-          "straight_left": 5,
+          "straight_left": 6,
           "straight_right": 1,
-          "hook_left": 0,
-          "hook_right": 4,
-          "uppercut_left": 1,
-          "uppercut_right": 3,
-          "no_punch": 35
+          "hook_left": 1,
+          "hook_right": 1,
+          "uppercut_left": 2,
+          "uppercut_right": 4,
+          "no_punch": 34
         }
       }
     }

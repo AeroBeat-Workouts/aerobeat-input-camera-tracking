@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 12:26 EDT  
-**Blocked Reason:** None; Task 12 audit passed on the reduced straight-family variants and the next slice is ready to plan.  
+**Last Updated:** 2026-06-18 14:24 EDT  
+**Blocked Reason:** None; Task 18 audit passed on the retimed-truth rerun and the next slice is ready to choose.  
 **Agent:** `pico`
 
 ---
@@ -474,20 +474,178 @@ Metric movement was material. On the refreshed full family-specific source, `fam
 
 Diagnosis shift: the retimed truth windows did **not** change total sample counts, but they *did* materially change the qualitative read. The refreshed full shared-vector `family_combined_directional_v1` models now recover hook positives much better than before, especially in the MLP, while the straight-family masked head remains the clearest beneficiary of isolation: on the retimed truth it now cleanly beats the refreshed shared-vector subset baseline. The hook/uppercut masked head improved in absolute CNN macro-F1 versus its own pre-retime artifact (`0.1796 → 0.5159`), but once compared against the refreshed shared-vector hook/uppercut subset baseline it is still a net loss. So the honest updated read is narrower than the pre-retime story: the retimed truth windows weaken the old blanket “masking is not helping” diagnosis, but only the straight-family masked path currently shows a fair apples-to-apples subset-baseline win; hook/uppercut still needs stronger cues.
 
+QA follow-up on the closed rerun bead confirmed the refreshed checked-in artifacts reproduce cleanly enough for audit. I reran the same slice into `.temp/qa-retimed-yaml-rerun-2026-06-18/` with the current repo state: `python3 scripts/export_boxing_punch_classifier_dataset.py --manifest .testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json --captures-dir .temp/boxing-punch-classifier-export/hardened-captures-2026-06-16 --feature-set family_combined_directional_v1 --skip-captures --output-dir .temp/qa-retimed-yaml-rerun-2026-06-18/family_combined_directional_v1/export`, then `python3 scripts/train_boxing_punch_mlp_baseline.py --dataset .temp/qa-retimed-yaml-rerun-2026-06-18/family_combined_directional_v1/export/dataset.json --output-dir .temp/qa-retimed-yaml-rerun-2026-06-18/family_combined_directional_v1/mlp`, then `python3 scripts/train_boxing_punch_temporal_cnn.py --dataset .temp/qa-retimed-yaml-rerun-2026-06-18/family_combined_directional_v1/export/dataset.json --mlp-result .temp/qa-retimed-yaml-rerun-2026-06-18/family_combined_directional_v1/mlp/mlp-result.json --output-dir .temp/qa-retimed-yaml-rerun-2026-06-18/family_combined_directional_v1/cnn`, followed by the same export→MLP→CNN derivation for `straight_family_mask_v1` and `hook_uppercut_family_mask_v1` from that rerun source dataset. The rerun matched the checked-in test records exactly for the full family MLP/CNN plus both masked CNNs; JSON diffs are limited to expected non-semantic fields like timestamps/absolute output paths. The refreshed subset-baseline comparisons are fair: both masked heads derive from the same rerun `family_combined_directional_v1` source dataset, preserve the same held-out IDs as the checked-in artifacts (`25` straight test windows, `27` hook/uppercut test windows), and the benchmark summary’s projected subset baselines recompute exactly (`straight 0.7600 / 0.2879`, `hook/uppercut 0.8889 / 0.5872`). QA judgment: the straight-family masking win over the refreshed straight subset baseline is real (`0.8800 / 0.6990` vs `0.7600 / 0.2879`), the hook/uppercut masking loss relative to its refreshed subset baseline is also real (`0.8519 / 0.5159` vs `0.8889 / 0.5872`), and audit is ready. The retimed truth windows materially weaken prior blanket conclusions drawn from the pre-retime branch—especially any statement that family masking broadly failed or that hook-family recovery remained uniformly poor—while leaving the narrower hook/uppercut-specific “current cues still trail the fair subset baseline” conclusion intact.
+
+---
+
+### Task 18: Audit retimed-YAML rerun conclusions and refresh the branch judgment
+
+**Bead ID:** `aerobeat-input-camera-tracking-vf1s`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the refreshed family-specific source benchmark plus the retimed-truth straight and hook/uppercut masked heads. Confirm which pre-retime conclusions are still trustworthy, which ones are invalidated or weakened by the retimed truth windows, and whether the straight-family masked result should now be treated as a real win on the fair refreshed subset comparison.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed. I independently truth-checked the checked-in retimed rerun artifacts from commit `05606b0` against the refreshed family-specific source benchmark and the refreshed masked benchmark summary. `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/{export,mlp,cnn}` is internally consistent with the top-level family benchmark summary, and `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/summary.{json,md}` is internally consistent with each masked variant’s `export/export-summary.json`, `mlp/mlp-result.json`, and `cnn/cnn-result.json`.
+
+The refreshed subset-baseline comparisons are fair and exact. For both masked heads, the benchmark summary’s `shared_vector_subset_baseline.records` match the exact masked-head CNN `test_records` sample IDs (`25` straight windows and `27` hook/uppercut windows respectively). The checked-in metrics reproduce the QA judgment exactly: refreshed full shared-vector `family_combined_directional_v1` is `MLP 0.8276 / 0.7215`, `CNN 0.6897 / 0.3550`; refreshed straight masked head is `MLP 0.8800 / 0.6990`, `CNN 0.8800 / 0.6990` against a refreshed straight subset baseline of `0.7600 / 0.2879`; refreshed hook/uppercut masked head is `MLP 0.7037 / 0.3792`, `CNN 0.8519 / 0.5159` against a refreshed hook/uppercut subset baseline of `0.8889 / 0.5872`.
+
+Updated audit judgment: the old blanket conclusion that “family masking is not helping” is no longer trustworthy after the retimed truth shift. Straight-family masking should now be treated as a real apples-to-apples win on the refreshed fair subset comparison, because it beats the refreshed shared-vector subset baseline by `+0.1200` accuracy and `+0.4111` macro-F1. However, the hook/uppercut branch is still the weak branch even after retiming: its masked CNN improved materially in absolute terms versus the pre-retime artifact, but it still loses the fair subset comparison by `-0.0370` accuracy and `-0.0713` macro-F1. The pre-retime story that hook-family recovery was uniformly poor is also weakened, because the refreshed full-source MLP/CNN recover hook positives better than before; the narrower conclusion that current hook/uppercut-specific cues still trail the fair subset baseline remains trustworthy. Recommended next slice: before inventing brand-new hook/uppercut features, re-evaluate the older hook/uppercut-focused experiment artifacts and conclusions against the retimed truth basis so Derrick can separate “truth-window artifact” from “feature weakness,” then resume diagnosis on the still-losing hook/uppercut branch.
+
+---
+
+### Task 19: Research which prior hook/uppercut experiments must be re-evaluated under retimed punch truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-pa7m`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Now that retimed punch YAML windows materially changed the learned-classifier conclusions, identify which prior hook/uppercut-focused experiment branches are most decision-relevant to rerun under the new truth basis before inventing more hook/uppercut features. Be pragmatic: rank the old experiments by how likely their conclusions were distorted by recovery-inclusive timing windows, and recommend the narrowest rerun set that will tell Derrick which old hook/uppercut conclusions survive retimed truth.
+
+**Folders Created/Deleted/Modified:**
+- relevant benchmark artifact paths / plans discovered during review
+
+**Files Created/Deleted/Modified:**
+- plan updates / research notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Reviewed the branch’s prior hook/uppercut-focused paths against the post-retime findings from Tasks 17–18. The key split is: some old conclusions are already re-evaluated under retimed truth, while others still exist only on the old recovery-inclusive timing basis. `family_combined_directional_v1` and the masked hook/uppercut control head `hook_uppercut_family_mask_v1` already have refreshed retimed-truth evidence, so they should not be rerun again as standalone tasks. The unresolved pre-retime-only conclusions are the older camera-vs-body family directional ablations and the hook/uppercut motion-shape variants.
+
+Ranked rerun value:
+1. `hook_uppercut_motion_shape_variant_a_v1` — highest-value old rerun. It was the strongest hook/uppercut-specific new-feature pass we tried (`0.8519` accuracy, `0.1840` macro-F1 on the old truth basis), and its forearm-orbit / tangential-motion cues are exactly the kind most likely to have been distorted by recovery-inclusive windows. If this variant improves materially under retimed truth, then part of the old “motion-shape still weak” conclusion was timing-noise, not just bad features.
+2. `family_camera_directional_v1` — next most decision-relevant. The retimed truth already improved hook recovery inside `family_combined_directional_v1`, so this rerun would tell us whether camera-space wrist direction alone was unfairly penalized by the old recovery tail or whether it still collapses to `no_punch` under cleaner timing.
+3. `family_body_directional_v1` — worth rerunning only after camera-space if Derrick wants to settle the camera-vs-body interpretation question before any new feature work. It tests the athlete-space sign hypothesis directly, but it is less likely than Variant A or camera-only to change the next coding decision.
+4. `hook_uppercut_motion_shape_variant_b_v1` — lowest value / redundant for the first pass. It was already strictly worse than Variant A on the old truth basis, adds more elbow↔wrist trajectory features on top of Variant A, and is unlikely to reverse the story if Variant A still loses under retimed truth.
+
+Skip as low-value or already answered for now:
+- `hook_uppercut_family_mask_v1` as a standalone rerun, because Task 17 already refreshed it under retimed truth and Task 18 already audited the fair subset-baseline loss.
+- `family_combined_directional_v1` as a standalone rerun, because Task 17 already refreshed it and showed hook recovery improved materially under retimed truth.
+- Straight-only diagnosis variants (`straight_family_mask_v1`, straight reduced variants) because they do not answer the hook/uppercut question Derrick wants resolved before more feature invention.
+- `hook_uppercut_motion_shape_variant_b_v1` in the first slice unless Variant A unexpectedly turns into a clear win.
+
+Recommended narrowest first rerun set: rerun the old hook/uppercut motion-shape benchmark on retimed truth, but only the minimum honest subset: source export `family_combined_directional_hook_motion_shape_v1`, derived control `hook_uppercut_family_mask_v1`, and `hook_uppercut_motion_shape_variant_a_v1`. Keep the original CNN gate: only run a new CNN for Variant A if its retimed-truth MLP macro-F1 beats the retimed control MLP. This smallest set tells us whether the strongest old hook/uppercut-specific feature pass survives, weakens, or reverses under the new truth basis without spending time on the already-worse Variant B.
+
+Why this is the right next step: it isolates the one old hook/uppercut experiment that was both closest to promising and most timing-sensitive, while reusing the already-established retimed control story instead of re-litigating straight-family wins or already-rerun masked control conclusions. If Variant A still loses cleanly, we can keep the current diagnosis that hook/uppercut needs genuinely stronger cues. If Variant A improves enough to beat the retimed control or fair subset baseline, then the old negative motion-shape read was partially a truth-window artifact and should be weakened before inventing a new cue family.
+
+Coder readiness: yes. Task 20 is ready next with a narrow brief: retime/rerun the motion-shape benchmark’s control + Variant A only, compare against the fair retimed hook/uppercut subset baseline, and only expand to Variant B if Variant A produces an unexpected positive signal that changes the decision surface.
+
+---
+
+### Task 20: Rerun highest-value prior hook/uppercut experiments under retimed punch truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-f8nl`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Rerun the highest-value prior hook/uppercut-focused learned-classifier experiment subset under the new retimed punch YAML truth, using the minimal set recommended by Task 19. Keep the comparison fair and explicit about which old conclusions survive, weaken, or reverse under the retimed windows.
+
+**Folders Created/Deleted/Modified:**
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/`
+
+**Files Created/Deleted/Modified:**
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/family_combined_directional_hook_motion_shape_v1/export/dataset.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/family_combined_directional_hook_motion_shape_v1/export/export-summary.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/family_combined_directional_hook_motion_shape_v1/export/export-summary.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/family_combined_directional_hook_motion_shape_v1/export/threshold-baseline.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/dataset.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/export-summary.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/export-summary.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/threshold-baseline.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/mlp/mlp-model.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/mlp/mlp-result.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/mlp/mlp-result.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/cnn/cnn-model.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/cnn/cnn-result.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/cnn/cnn-result.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/export/dataset.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/export/export-summary.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/export/export-summary.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/export/threshold-baseline.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/mlp/mlp-model.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/mlp/mlp-result.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/mlp/mlp-result.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/cnn/cnn-model.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/cnn/cnn-result.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/cnn/cnn-result.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/summary.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/summary.md`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Reran exactly the narrow retimed-truth subset recommended by Task 19 and nothing broader: refreshed source export `family_combined_directional_hook_motion_shape_v1`, refreshed control `hook_uppercut_family_mask_v1`, refreshed `hook_uppercut_motion_shape_variant_a_v1`, then ran MLP for control + Variant A, ran the control CNN unconditionally, and ran the Variant A CNN only because the retimed Variant A MLP beat the retimed control MLP on macro-F1. `hook_uppercut_motion_shape_variant_b_v1` was intentionally not rerun in this slice.
+
+Sample/window counts did **not** change versus the pre-retime motion-shape run. The source export stayed at `96` samples with `67 train / 29 test`; both the control and Variant A hook/uppercut masked datasets stayed at `88` samples with `61 train / 27 test`. The material change was the retimed punch-window truth itself and therefore which held-out windows / frame content landed in those fixed buckets, not the bucket totals.
+
+The retimed control improved materially over its old pre-retime motion-shape result. Control MLP moved from `0.8148 accuracy / 0.3159 macro-F1` to `0.7037 / 0.3792` — a slight accuracy drop but a `+0.0632` macro-F1 gain. Control CNN improved much more sharply from `0.8148 / 0.1796` to `0.8519 / 0.5159`, which confirms the retimed truth windows materially changed the hook/uppercut story for the old control itself.
+
+Variant A is where the old conclusion changed most. Pre-retime, Variant A MLP was `0.8519 / 0.1840` and lost badly enough on macro-F1 that the CNN gate stayed closed. Under retimed truth, Variant A MLP improved to `0.8148 / 0.4778`, beating the retimed control MLP by `+0.0986` macro-F1 and legitimately opening the old CNN gate. After running the now-allowed Variant A CNN, though, the broader decision still did **not** reverse: Variant A CNN landed at `0.8148 / 0.3121`, which is worse than the retimed control CNN `0.8519 / 0.5159` and still well below the fair retimed shared-vector hook/uppercut subset baseline `0.8889 / 0.5872`.
+
+So the old negative motion-shape conclusion **weakens but does not reverse** under retimed truth. What no longer survives: the narrower pre-retime claim that no new motion-shape variant could beat the control MLP or justify a CNN run. What still survives: the current hook/uppercut motion-shape cue family is still not strong enough to beat the fair retimed hook/uppercut subset baseline or even the retimed control branch once the full gated comparison is run. QA is ready next on the refreshed checked-in artifacts.
+---
+
+### Task 21: QA retimed-truth re-evaluation of prior hook/uppercut experiments
+
+**Bead ID:** `aerobeat-input-camera-tracking-qg1z`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Verify the selected retimed-truth reruns of prior hook/uppercut experiments are reproducible and compared fairly. Confirm which old hook/uppercut conclusions remain valid versus which were artifacts of the old recovery-inclusive truth windows.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 22: Audit retimed-truth re-evaluation conclusions for hook/uppercut experiments
+
+**Bead ID:** `aerobeat-input-camera-tracking-gnjw`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the retimed-truth reruns of prior hook/uppercut experiments and state which old conclusions should be kept, weakened, or discarded before any new hook/uppercut feature design work begins.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial / Design Review Hold
+**Status:** ⚠️ Partial / Awaiting next benchmark slice
 
-**What We Built:** We designed and ran a first family-specific benchmark branch and proved that the current implementation did not beat the baseline CNN. More importantly, Derrick’s review surfaced a material design mismatch: although the feature names were family-specific, the benchmark still fed one shared feature vector to one shared classifier. That means the branch is best treated as a design checkpoint, not a validated answer to the intended experiment.
+**What We Built:** This branch progressed from the original flat shared-vector family-specific feature test into family-masked topology checks, reduced straight-family diagnosis, hook/uppercut motion-shape diagnosis, and finally a retimed-truth rerun after Derrick corrected the punch YAML windows to cover windup + punch while cutting off recovery. The design-review caveat still matters: this is still harness evidence, not runtime-ready routing. But the refreshed retimed-truth artifacts materially changed the branch judgment.
 
-**Reference Check:** `REF-02`/`REF-03` captured the candidate straight-specific elbow features and hook/uppercut wrist-direction features; `REF-05` documents the benchmark outcomes of that first attempt; the next slice should revisit the feature-family isolation idea before trusting those results as the definitive answer.
+**Reference Check:** `REF-02`/`REF-03` still anchor the harness/runtime context and feature implementation surface. `REF-05` now reflects the refreshed branch story only partially because later masked-topology conclusions had to be re-read through the retimed-truth rerun. The trustworthy updated read is: straight-family masking now wins fairly against the refreshed shared-vector straight subset baseline, while hook/uppercut masking still loses fairly against the refreshed shared-vector hook/uppercut subset baseline.
 
 **Commits:**
 - `c4386cf` - `Benchmark family-specific learned punch features`
+- `05606b0` - `Refresh family benchmarks for retimed punch truth`
 
-**Lessons Learned:** The distinction between “adding family-specific feature groups to one shared classifier input” and “actually isolating family-specific information so unrelated cue groups do not compete” is material. The next branch should continue this same test by reviewing modifications that reduce unrelated per-family data being available at once, and should also revisit the proposed solutions for making the classifier less confused by mixed family signals.
+**Lessons Learned:** Two things turned out to be separately material. First, “family-specific named features inside one shared classifier” is not the same thing as true family isolation. Second, truth-window definition itself was strong enough to change the benchmark story: pre-retime blanket conclusions about masking were too broad. After retiming, straight-family isolation looks genuinely promising on the fair subset comparison, while hook/uppercut remains the weak branch and should be re-evaluated against the retimed truth basis before inventing another new feature family.
 
 ---
 
