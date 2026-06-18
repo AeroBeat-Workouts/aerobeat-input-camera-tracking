@@ -279,7 +279,7 @@ learned_classifier:
 - `prototype_matcher.debug.show_scores: true`
 - `prototype_matcher.debug.show_event_gate_state: true`
 - `learned_classifier.enabled: false`
-- `learned_classifier.model.artifact_path: res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json`
+- `learned_classifier.model.artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json`
 - `learned_classifier.thresholds.match_score_min: 0.70`
 - `learned_classifier.timing.emit_cooldown_ms: 250`
 - `learned_classifier.timing.emit_hold_ms: 100`

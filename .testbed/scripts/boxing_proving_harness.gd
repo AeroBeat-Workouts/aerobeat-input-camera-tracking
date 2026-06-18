@@ -1554,6 +1554,9 @@ func _build_classifier_requirement_row(row_spec: Dictionary, classifier_debug: D
 		"gate_reason":
 			if bool(classifier_debug.get("show_event_gate_state", false)):
 				current_text = String(classifier_debug.get("reason", "idle"))
+				var model_error := String(classifier_debug.get("model_error", ""))
+				if backend == "learned_classifier" and not model_error.is_empty():
+					current_text += " (%s)" % model_error
 			else:
 				current_text = "hidden (show_event_gate_state=false)"
 			passed = true
@@ -2275,8 +2278,12 @@ func _build_boxing_event_feed_text() -> String:
 	else:
 		lines.append("Class scores: hidden (show_scores=false)")
 	if bool(classifier_debug.get("show_event_gate_state", false)):
+		var gate_reason := String(classifier_debug.get("reason", "idle"))
+		var model_error := String(classifier_debug.get("model_error", ""))
+		if classifier_backend == "learned_classifier" and not model_error.is_empty():
+			gate_reason += " (%s)" % model_error
 		lines.append("Gate reason / hold / cooldown / active event: %s / %dms / %dms / %s" % [
-			String(classifier_debug.get("reason", "idle")),
+			gate_reason,
 			int(classifier_debug.get("hold_ms_remaining", 0)),
 			int(classifier_debug.get("cooldown_ms_remaining", 0)),
 			String(classifier_debug.get("active_event_class", "no_punch")),

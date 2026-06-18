@@ -1584,6 +1584,18 @@ func test_learned_classifier_backend_emits_and_surfaces_truthful_debug_state() -
 	assert_eq(String(learned_debug.get("model_path", "")), model_path)
 	assert_true(float(learned_debug.get("best_score", 0.0)) >= 0.70)
 
+func test_learned_classifier_repo_root_docs_path_falls_back_to_addon_mount_in_testbed() -> void:
+	_enable_learned_classifier_backend({
+		"model_path": "res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json",
+	})
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	assert_true(bool(learned_debug.get("model_loaded", false)))
+	assert_eq(String(learned_debug.get("model_error", "")), "")
+	assert_eq(String(learned_debug.get("model_path", "")), "res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json")
+	assert_ne(String(learned_debug.get("reason", "")), "model_unavailable")
+
 func test_learned_classifier_selection_does_not_fall_back_to_threshold_backend_when_disabled() -> void:
 	config.tracker_profile_document = {
 		"tracking": {

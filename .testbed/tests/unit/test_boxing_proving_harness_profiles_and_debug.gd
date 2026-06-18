@@ -677,6 +677,46 @@ func test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvi
 	assert_string_contains(text_body, "Backend resolution: selected_backend_disabled")
 	assert_string_contains(text_body, "Learned model path: res://docs/models/test-mlp-result.json (loaded=false)")
 
+func test_boxing_learned_classifier_ui_surfaces_model_open_error_alongside_model_unavailable() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"punch_detection": {
+				"backend": "learned_classifier",
+			},
+			"learned_classifier": {
+				"selected_backend": "learned_classifier",
+				"active_backend": "learned_classifier",
+				"model_path": "res://docs/models/missing-mlp-result.json",
+				"model_loaded": false,
+				"model_error": "model_open_failed",
+				"best_class": "no_punch",
+				"best_score": 0.0,
+				"required_score": 0.700,
+				"result_class": "no_punch",
+				"emitted_event_name": "",
+				"show_scores": true,
+				"show_event_gate_state": true,
+				"class_scores": {},
+				"reason": "model_unavailable",
+				"hold_ms_remaining": 0,
+				"cooldown_ms_remaining": 0,
+				"active_event_class": "no_punch",
+			}
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(rows[15].get("current_text", "")), "model_unavailable (model_open_failed)")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Gate / rejection reason - model_unavailable (model_open_failed)")
+
+	var text_body := String(harness._build_boxing_event_feed_text())
+	assert_string_contains(text_body, "Gate reason / hold / cooldown / active event: model_unavailable (model_open_failed) / 0ms / 0ms / no_punch")
+
 func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake_threshold_equality() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {

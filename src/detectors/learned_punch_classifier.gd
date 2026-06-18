@@ -9,7 +9,10 @@ const LEARNED_DEFAULT_EMIT_COOLDOWN_MS := 250
 const LEARNED_DEFAULT_EMIT_HOLD_MS := 100
 const LEARNED_DEFAULT_SHOW_SCORES := true
 const LEARNED_DEFAULT_SHOW_EVENT_GATE_STATE := true
-const DEFAULT_MODEL_ARTIFACT_PATH := "res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json"
+const ADDON_ROOT_PATH := "res://addons/aerobeat-input-camera-tracking"
+const REPO_ROOT_DOCS_PREFIX := "res://docs/"
+const ADDON_ROOT_DOCS_PREFIX := "res://addons/aerobeat-input-camera-tracking/docs/"
+const DEFAULT_MODEL_ARTIFACT_PATH := "res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json"
 const EXPECTED_SCHEMA := "aerobeat.boxing_punch_classifier_mlp_result"
 const DEFAULT_CLASS_ORDER := [
 	"straight_left",
@@ -428,9 +431,15 @@ func _dense_softmax(hidden: Array) -> Array:
 	return probabilities
 
 func _resolve_model_path(path: String) -> String:
-	if path.begins_with("res://") or path.begins_with("user://") or path.is_absolute_path():
-		return path
-	return _get_addon_root_path().path_join(path)
+	var resolved_path := path
+	if not (resolved_path.begins_with("res://") or resolved_path.begins_with("user://") or resolved_path.is_absolute_path()):
+		resolved_path = _get_addon_root_path().path_join(resolved_path)
+	if resolved_path.begins_with(REPO_ROOT_DOCS_PREFIX) and not FileAccess.file_exists(resolved_path):
+		var addon_relative_docs_path := resolved_path.substr(REPO_ROOT_DOCS_PREFIX.length())
+		var addon_docs_candidate := ADDON_ROOT_DOCS_PREFIX + addon_relative_docs_path
+		if FileAccess.file_exists(addon_docs_candidate):
+			return addon_docs_candidate
+	return resolved_path
 
 func _get_gesture_profile_document() -> Dictionary:
 	if _config == null:
