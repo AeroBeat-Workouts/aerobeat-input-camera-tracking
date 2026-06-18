@@ -623,9 +623,16 @@ func _normalize_backend_name(backend_name: String) -> String:
 
 func _get_model_artifact_path() -> String:
 	var gesture_profile_document := _get_gesture_profile_document()
+	if _get_selected_backend() == BACKEND_MIXED_FAMILY:
+		var mixed_family: Dictionary = gesture_profile_document.get(BACKEND_MIXED_FAMILY, {}) if gesture_profile_document.get(BACKEND_MIXED_FAMILY, {}) is Dictionary else {}
+		var straight: Dictionary = mixed_family.get("straight", {}) if mixed_family.get("straight", {}) is Dictionary else {}
+		var mixed_model: Dictionary = straight.get("model", {}) if straight.get("model", {}) is Dictionary else {}
+		var mixed_path := String(mixed_model.get("artifact_path", "")).strip_edges()
+		if not mixed_path.is_empty():
+			return mixed_path
 	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
 	var model: Dictionary = learned.get("model", {}) if learned.get("model", {}) is Dictionary else {}
-	var path := String(model.get("artifact_path", DEFAULT_MODEL_ARTIFACT_PATH))
+	var path := String(model.get("artifact_path", DEFAULT_MODEL_ARTIFACT_PATH)).strip_edges()
 	return path if not path.is_empty() else DEFAULT_MODEL_ARTIFACT_PATH
 
 func _get_window_ms() -> int:

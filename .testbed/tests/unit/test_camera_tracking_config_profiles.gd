@@ -54,6 +54,7 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(int(bundle.get("testbed_debug", {}).get("refresh", {}).get("inspector_live_refresh_interval_ms", -1)), 120)
 	assert_eq(String(bundle.get("gesture_detection", {}).get("punch_detection", {}).get("backend", "")), "threshold_gates")
 	assert_true(bool(bundle.get("gesture_detection", {}).get("threshold_gates", {}).get("enabled", false)))
+	assert_eq(String(bundle.get("gesture_detection", {}).get("mixed_family", {}).get("straight", {}).get("model", {}).get("artifact_path", "")), "res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json")
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).get("window_ms", -1)), 250)
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).has("wrist_velocity_window_ms"))
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("evaluation", {}).has("bbox_area_growth_window_ms"))

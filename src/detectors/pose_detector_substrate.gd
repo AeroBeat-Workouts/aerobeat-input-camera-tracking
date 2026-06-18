@@ -618,7 +618,7 @@ func _build_punch_detection_debug_state() -> Dictionary:
 		"straight_backend": straight_backend,
 		"hook_backend": hook_backend,
 		"uppercut_backend": uppercut_backend,
-		"hook_uppercut_backend_note": "hook/uppercut stay on threshold_gates in mixed_family proving mode" if active_backend == PUNCH_BACKEND_MIXED_FAMILY else "",
+		"hook_uppercut_backend_note": "hook/uppercut stay on threshold_gates in mixed_family routing" if active_backend == PUNCH_BACKEND_MIXED_FAMILY else "",
 		"straight_model_path": String(_learned_punch_classifier.get_debug_state().get("model_path", "")) if active_backend == PUNCH_BACKEND_MIXED_FAMILY else "",
 		"threshold_gates_enabled": _threshold_gates_enabled(),
 		"prototype_matcher_enabled": _prototype_matcher_backend_enabled(),

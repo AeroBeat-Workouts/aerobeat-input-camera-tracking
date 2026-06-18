@@ -1197,14 +1197,18 @@ func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript)
 			elif backend_override == "learned_classifier" or backend_override == PROVING_MIXED_FAMILY_BACKEND:
 				var learned_config: Dictionary = gesture_profile.get("learned_classifier", {}) if gesture_profile.get("learned_classifier", {}) is Dictionary else {}
 				learned_config["enabled"] = true
+				gesture_profile["learned_classifier"] = learned_config
 				if backend_override == PROVING_MIXED_FAMILY_BACKEND:
-					var model_config: Dictionary = learned_config.get("model", {}) if learned_config.get("model", {}) is Dictionary else {}
 					var mixed_model_path := OS.get_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE").strip_edges()
 					if mixed_model_path.is_empty():
 						mixed_model_path = PROVING_MIXED_STRAIGHT_MODEL_PATH
+					var mixed_family: Dictionary = gesture_profile.get(PROVING_MIXED_FAMILY_BACKEND, {}) if gesture_profile.get(PROVING_MIXED_FAMILY_BACKEND, {}) is Dictionary else {}
+					var straight_config: Dictionary = mixed_family.get("straight", {}) if mixed_family.get("straight", {}) is Dictionary else {}
+					var model_config: Dictionary = straight_config.get("model", {}) if straight_config.get("model", {}) is Dictionary else {}
 					model_config["artifact_path"] = mixed_model_path
-					learned_config["model"] = model_config
-				gesture_profile["learned_classifier"] = learned_config
+					straight_config["model"] = model_config
+					mixed_family["straight"] = straight_config
+					gesture_profile[PROVING_MIXED_FAMILY_BACKEND] = mixed_family
 	var library_id_override := OS.get_environment("AEROBEAT_PROTOTYPE_LIBRARY_ID_OVERRIDE").strip_edges()
 	if not library_id_override.is_empty():
 		var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}

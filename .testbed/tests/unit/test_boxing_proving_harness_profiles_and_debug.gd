@@ -227,7 +227,7 @@ func test_proving_runtime_config_can_force_mixed_family_backend_for_fixture_benc
 	assert_eq(String(gesture_profile.get("punch_detection", {}).get("backend", "")), "mixed_family")
 	assert_true(bool(gesture_profile.get("threshold_gates", {}).get("enabled", false)))
 	assert_true(bool(gesture_profile.get("learned_classifier", {}).get("enabled", false)))
-	assert_eq(String(gesture_profile.get("learned_classifier", {}).get("model", {}).get("artifact_path", "")), "res://docs/models/straight-family-test.json")
+	assert_eq(String(gesture_profile.get("mixed_family", {}).get("straight", {}).get("model", {}).get("artifact_path", "")), "res://docs/models/straight-family-test.json")
 
 func test_proving_runtime_config_can_force_learned_classifier_backend_for_fixture_benchmarks() -> void:
 	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
@@ -672,7 +672,7 @@ func test_boxing_event_feed_reports_mixed_family_routing_truth() -> void:
 				"straight_backend": "learned_classifier",
 				"hook_backend": "threshold_gates",
 				"uppercut_backend": "threshold_gates",
-				"hook_uppercut_backend_note": "hook/uppercut stay on threshold_gates in mixed_family proving mode",
+				"hook_uppercut_backend_note": "hook/uppercut stay on threshold_gates in mixed_family routing",
 			},
 			"learned_classifier": {
 				"model_path": "res://docs/models/straight-family-test.json",
@@ -690,7 +690,7 @@ func test_boxing_event_feed_reports_mixed_family_routing_truth() -> void:
 	var text_body := String(harness._build_boxing_event_feed_text())
 	assert_string_contains(text_body, "Routing mode: mixed_family")
 	assert_string_contains(text_body, "Per-family backends: straight=learned_classifier hook=threshold_gates uppercut=threshold_gates")
-	assert_string_contains(text_body, "Hook/uppercut routing note: hook/uppercut stay on threshold_gates in mixed_family proving mode")
+	assert_string_contains(text_body, "Hook/uppercut routing note: hook/uppercut stay on threshold_gates in mixed_family routing")
 	assert_string_contains(text_body, "Event/backend truth: punch_left=learned_classifier punch_right=learned_classifier hook_left=threshold_gates")
 
 func test_boxing_learned_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels() -> void:

@@ -2,8 +2,8 @@ schema: aerobeat/gesture_detection_config
 version: 1
 profile: boxing
 punch_detection:
-  # [threshold_gates, prototype_matcher, learned_classifier] Pick which punch-detection family is active for boxing. input.
-  backend: learned_classifier
+  # [threshold_gates, prototype_matcher, learned_classifier, mixed_family] Pick which punch-detection family is active for boxing. input.
+  backend: threshold_gates
 
 threshold_gates:
   # Keep the current threshold-based straight/hook/uppercut punch backend active. input.
@@ -164,9 +164,9 @@ prototype_matcher:
 
 learned_classifier:
   # Turn the threshold-windowed learned punch classifier on or off. input.
-  enabled: true
+  enabled: false
   model:
-    # Exported learned-classifier artifact to load for runtime punch inference. input.
+    # Exported learned-classifier artifact to load when the full learned-classifier backend is selected. input.
     artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
   thresholds:
     # Require the best learned positive-class score to reach at least this 0..1 value or emit no_punch. input.
@@ -181,3 +181,9 @@ learned_classifier:
     show_scores: true
     # Show duplicate-suppression / hold state in proving/debug views. input presentation.
     show_event_gate_state: true
+
+mixed_family:
+  straight:
+    model:
+      # Exported learned-classifier artifact to load for straight punches when punch_detection.backend = mixed_family. input.
+      artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json

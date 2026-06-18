@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 16:40 EDT  
-**Blocked Reason:** None; Task 29 QA reproduced the targeted hook/uppercut pocket-exit rerun cleanly and Task 30 audit is ready.  
+**Last Updated:** 2026-06-18 17:51 EDT  
+**Blocked Reason:** None; Task 36 landed the smallest honest global mixed-family rollout, restored the boxing profile’s safe default backend contract, and handed a focused validation bundle to QA.  
 **Agent:** `pico`
 
 ---
@@ -930,6 +930,137 @@ Recommended narrow implementation path for Task 32: keep this **proving-only fir
 **Prompt:** Verify the mixed per-family runtime proving path works truthfully in the highest-fidelity proving flow available and that the debug/proving surfaces make the active family routing explicit.
 
 **Folders Created/Deleted/Modified:**
+- `.testbed/tests/unit/`
+- `.testbed/scripts/`
+- `src/detectors/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `src/detectors/pose_detector_substrate.gd`
+- `src/detectors/prototype_punch_matcher.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Re-ran the focused mixed-family QA coverage on commit `0ba32df` with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`. Output reproduced cleanly: `108/108` tests passed, including `test_mixed_family_backend_routes_straights_to_learned_classifier_and_surfaces_truth`, `test_mixed_family_backend_filters_non_straight_learned_events`, `test_proving_runtime_config_can_force_mixed_family_backend_for_fixture_benchmarks`, and `test_boxing_event_feed_reports_mixed_family_routing_truth`. QA confirmed the intended proving-only behavior is internally consistent: straights route to `learned_classifier`, hooks/uppercuts stay on `threshold_gates`, the substrate debug state exposes `routing_mode`, `straight_backend`, `hook_backend`, `uppercut_backend`, and `straight_model_path`, and the proving/event-feed surface makes the routing split explicit plus includes the hook/uppercut note and per-event backend truth. Caveat: the proving event-feed text for `mixed_family` does not appear to print the exact substrate field name `straight_model_path` directly; instead the proving UI exposes the active learned model path via learned-classifier labels/panels, while the explicit `straight_model_path` key remains available in substrate debug state. Also noted non-blocking pre-existing GUT orphan/leaked-RID warnings in the proving harness suite plus addon UID fallback warnings; they did not fail the run. QA pass and ready for audit.
+
+---
+
+### Task 34: Audit mixed per-family runtime punch-classifier path
+
+**Bead ID:** `aerobeat-input-camera-tracking-4hpa`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the mixed per-family runtime proving path and confirm whether it is ready for Derrick’s replay/live testing feedback loop.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit independently re-checked commit `0ba32df` against the landed code, the focused proving/runtime tests, and the active plan claims. I reran `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`, and the focused suite reproduced cleanly at `108/108` passing. The checked-in routing is internally consistent with QA’s summary: in `src/detectors/pose_detector_substrate.gd`, `mixed_family` explicitly runs `LearnedPunchClassifier.process_window(...)`, filters those learned events down to `punch_left` / `punch_right` only, and then separately runs `_process_hook(...)` and `_process_uppercut(...)` from the threshold-gate path. That means the implementation is honest about using learned straights while keeping hook/uppercut on the existing threshold backend, and it also prevents non-straight learned outputs from leaking through in mixed mode. The proving/runtime surface is also truthful enough for replay/live debugging: the substrate debug state exposes `routing_mode`, `straight_backend`, `hook_backend`, `uppercut_backend`, `selected_backend[_enabled]`, `active_backend_resolution`, `hook_uppercut_backend_note`, and `straight_model_path`; the proving harness can force `mixed_family` through `AEROBEAT_PUNCH_BACKEND_OVERRIDE`; and the boxing proving event feed/hover-card routing now resolves per-event backend truth instead of pretending one backend owns every punch family. The added runtime feature support for `elbow_shoulder_radial_velocity_over_shoulder_width` is present in `src/detectors/prototype_punch_matcher.gd`, so the proving-only straight-family model path is supported by the shipped runtime extractor. Caveats remain non-blocking but worth remembering during Derrick’s replay/live loop: this is still a proving-only mixed route (wired through proving runtime override, not a broader product rollout), the default mixed straight model path points at the straight-family masked MLP artifact, the event-feed text does not print the literal `straight_model_path` field name even though the path is present in debug state / learned-classifier panels, and the focused GUT run still emits pre-existing orphan/leaked-RID plus addon UID fallback warnings that did not affect pass/fail. Audit passes, and the mixed-family path is ready for Derrick’s replay/live Godot testing feedback loop.
+
+---
+
+### Task 35: Research broader global mixed per-family punch backend rollout
+
+**Bead ID:** `aerobeat-input-camera-tracking-ekp4`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Derrick wants to use the current proving-only mixed-family success as a stepping stone toward a broader global rollout. Research the narrowest honest path to move from proving-only mixed routing to a broader runtime/config rollout without lying about hook/uppercut readiness. Be explicit about config shape, migration risk, compatibility with existing punch backend selection, and what should remain proving-only versus what can safely become general runtime behavior.
+
+**Folders Created/Deleted/Modified:**
+- relevant runtime/config/proving paths discovered during research
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Research completed. The runtime core is already closer than the proving-only label suggested: `src/detectors/pose_detector_substrate.gd` and `src/detectors/learned_punch_classifier.gd` already understand `mixed_family` as a real backend selection, route straights through learned classification, keep hook/uppercut on `threshold_gates`, and surface honest per-family debug truth (`routing_mode`, `straight_backend`, `hook_backend`, `uppercut_backend`, `hook_uppercut_backend_note`, `straight_model_path`). The part that is still proving-shaped is the config contract: today `mixed_family` is mainly injected by `.testbed/scripts/proving_harness.gd` through `AEROBEAT_PUNCH_BACKEND_OVERRIDE`, and the straight-family artifact path is also proving-defaulted there.
+
+Ranked rollout options:
+1. **Recommended / narrowest honest global path:** officially globalize `punch_detection.backend: mixed_family` in the normal gesture config, keep the existing single backend selector contract, and add one small backend-specific config section for the straight learned artifact path (for example `mixed_family.straight.model.artifact_path`, with optional fallback to `learned_classifier.model.artifact_path`). This preserves existing `threshold_gates` / `prototype_matcher` / `learned_classifier` behavior unchanged while making the already-landed mixed router selectable outside proving.
+2. **Acceptable but broader:** add a generic per-family backend map (for example `punch_detection.family_backends.{straight,hook,uppercut}`) plus per-family model config. This is flexible, but it is more migration surface than the branch truth currently needs and weakens rollback simplicity.
+3. **Not recommended yet:** promote a global multi-learned-artifact family system for hook/uppercut too. Current runtime feature extraction still does not honestly support the hook/uppercut specialized artifacts, so this would overstate readiness.
+
+Recommended config shape for the smallest honest rollout:
+- Keep `punch_detection.backend` as the top-level selector and officially allow `mixed_family` alongside `threshold_gates`, `prototype_matcher`, and `learned_classifier`.
+- Add a narrow backend-owned subtree such as:
+  - `mixed_family.enabled: true` (optional/redundant; could be omitted if backend selection alone is authoritative)
+  - `mixed_family.straight.model.artifact_path: <straight masked MLP artifact>`
+  - optional `mixed_family.debug.show_routing_truth: true` only if we want presentation-level control later, not required for the first slice.
+- Leave `learned_classifier.model.artifact_path` owning the full learned backend so existing full-learned configs do not silently become straight-only configs.
+
+Compatibility / migration judgment:
+- This is highly compatible with the existing punch backend selection model because the substrate already expects one normalized backend string and already computes `selected_backend_enabled` / `active_backend_resolution` for `mixed_family`.
+- The safest implementation is to teach `LearnedPunchClassifier` to resolve a mixed-family-specific straight artifact path when `punch_detection.backend == mixed_family`, then fall back cleanly to the current learned artifact behavior when that path is absent.
+- Rollback stays trivial: switch `punch_detection.backend` back to `threshold_gates` or `learned_classifier`, or remove the new mixed-family config block entirely. No data migration is required.
+
+What can safely become general runtime behavior now:
+- official config/schema support for selecting `mixed_family`
+- non-proving runtime/backend resolution for `mixed_family`
+- substrate/global debug truth for per-family routing and the straight model path
+- tests that validate global config loading, backend resolution, and truthful debug state outside proving overrides
+
+What should stay proving-only or explicitly not be globalized yet:
+- proving-harness environment override defaults (`AEROBEAT_PUNCH_BACKEND_OVERRIDE`, proving default straight artifact path) should remain a proving convenience, not the main product contract
+- any claim that hook/uppercut have learned-specialized runtime support
+- any generic family-backend matrix or hook/uppercut learned artifact config until runtime feature extraction honestly supports those benchmark artifacts
+- any silent reuse of `learned_classifier.model.artifact_path` as the global mixed straight model without an explicit mixed-family config path or explicit documented fallback, because that would blur full-learned versus straight-only-learned intent
+
+Likely files/components for the next coder slice: `assets/boxing.gesture_detection.yaml` for schema/commented config shape, `src/detectors/learned_punch_classifier.gd` for mixed-family-specific artifact-path resolution, `src/detectors/pose_detector_substrate.gd` for any wording cleanup from “proving mode” to honest general mixed-family routing, `.testbed/scripts/proving_harness.gd` to stop carrying more responsibility than necessary once the config contract is real, and unit coverage under `.testbed/tests/unit/` for config/profile loading plus substrate/proving debug truth. Coder readiness: **yes** — the narrow next move is a config-contract/global-selection pass, not another model/routing invention.
+
+---
+
+### Task 36: Implement broader global mixed per-family punch backend rollout
+
+**Bead ID:** `aerobeat-input-camera-tracking-qfti`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Implement the agreed broader global mixed per-family punch backend rollout with the smallest honest change set. Preserve truthful backend/debug state, keep hook/uppercut on the existing path until truly ready, and make the global config/runtime behavior explicit and safe.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `src/detectors/learned_punch_classifier.gd`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the narrow global mixed-family rollout without globalizing hook/uppercut learned specialization. The canonical boxing gesture profile now treats `mixed_family` as an official `punch_detection.backend` option, restores the default shipping backend contract to `threshold_gates`, and adds an explicit `mixed_family.straight.model.artifact_path` path for the straight learned artifact. Runtime model-path resolution in `learned_punch_classifier.gd` now prefers that mixed-family straight artifact only when `punch_detection.backend = mixed_family`, then falls back to the existing `learned_classifier.model.artifact_path` contract for normal learned-classifier selection and compatibility. `pose_detector_substrate.gd` keeps truthful global routing/debug fields (`routing_mode`, `straight_backend`, `hook_backend`, `uppercut_backend`, `straight_model_path`, `selected_backend`, `selected_backend_enabled`, `active_backend_resolution`) while updating the hook/uppercut note from proving-only wording to honest runtime wording. The proving harness mixed-family override now writes through the real mixed-family straight-artifact path instead of mutating the generic learned-classifier model slot. Added focused unit coverage for the new config shape plus a precedence test proving mixed-family uses its explicit straight artifact over the generic learned-classifier artifact. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → **113/113 passed** (existing proving-harness orphan/leak warnings remained, exit code 0).
+
+---
+
+### Task 37: QA broader global mixed per-family punch backend rollout
+
+**Bead ID:** `aerobeat-input-camera-tracking-xmj1`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the broader global mixed per-family punch backend rollout works truthfully, remains compatible with existing punch backend selection expectations, and exposes the correct backend/routing truth outside the proving-only path.
+
+**Folders Created/Deleted/Modified:**
 - relevant repo paths used during QA
 
 **Files Created/Deleted/Modified:**
@@ -941,13 +1072,13 @@ Recommended narrow implementation path for Task 32: keep this **proving-only fir
 
 ---
 
-### Task 34: Audit mixed per-family runtime punch-classifier path
+### Task 38: Audit broader global mixed per-family punch backend rollout
 
-**Bead ID:** `aerobeat-input-camera-tracking-4hpa`  
+**Bead ID:** `aerobeat-input-camera-tracking-718u`  
 **SubAgent:** `primary` (for `auditor`)  
 **Role:** `auditor`  
 **References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
-**Prompt:** Independently truth-check the mixed per-family runtime proving path and confirm whether it is ready for Derrick’s replay/live testing feedback loop.
+**Prompt:** Independently truth-check the broader global mixed per-family rollout and confirm whether it is safe, honest, and ready beyond proving-only use.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo paths used during audit

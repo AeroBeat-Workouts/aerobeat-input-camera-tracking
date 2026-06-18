@@ -1739,6 +1739,50 @@ func test_mixed_family_backend_filters_non_straight_learned_events() -> void:
 	assert_false(event_names.has("punch_left"))
 	assert_eq(String(state.get("gesture_debug", {}).get("learned_classifier", {}).get("best_class", "")), "hook_left")
 
+func test_mixed_family_backend_prefers_explicit_straight_artifact_path_over_learned_classifier_model_path() -> void:
+	var mixed_model_path := _write_test_learned_classifier_model("straight_left", 10.0)
+	var learned_model_path := _write_test_learned_classifier_model("hook_left", 10.0)
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"punch_detection": {
+			"backend": "mixed_family",
+		},
+		"threshold_gates": {
+			"enabled": true,
+		},
+		"learned_classifier": {
+			"enabled": true,
+			"model": {
+				"artifact_path": learned_model_path,
+			},
+			"thresholds": {
+				"match_score_min": 0.70,
+			},
+		},
+		"mixed_family": {
+			"straight": {
+				"model": {
+					"artifact_path": mixed_model_path,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	var punch_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
+	assert_eq(String(learned_debug.get("model_path", "")), mixed_model_path)
+	assert_eq(String(punch_debug.get("straight_model_path", "")), mixed_model_path)
+	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
+
 func test_learned_classifier_selection_does_not_fall_back_to_threshold_backend_when_disabled() -> void:
 	config.tracker_profile_document = {
 		"tracking": {
@@ -1955,9 +1999,6 @@ func _enable_mixed_family_backend(options: Dictionary = {}) -> void:
 		},
 		"learned_classifier": {
 			"enabled": true,
-			"model": {
-				"artifact_path": String(options.get("model_path", "")),
-			},
 			"thresholds": {
 				"match_score_min": float(options.get("match_score_min", 0.70)),
 			},
@@ -1968,6 +2009,13 @@ func _enable_mixed_family_backend(options: Dictionary = {}) -> void:
 			"debug": {
 				"show_scores": true,
 				"show_event_gate_state": true,
+			},
+		},
+		"mixed_family": {
+			"straight": {
+				"model": {
+					"artifact_path": String(options.get("model_path", "")),
+				},
 			},
 		},
 	}
