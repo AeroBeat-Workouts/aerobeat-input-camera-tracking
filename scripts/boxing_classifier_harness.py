@@ -45,6 +45,7 @@ MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_B_V1 = "straight_family_reduced_var
 MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_A_V1 = "hook_uppercut_motion_shape_variant_a_v1"
 MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_B_V1 = "hook_uppercut_motion_shape_variant_b_v1"
 MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_C_V1 = "hook_uppercut_motion_shape_variant_c_v1"
+MASK_PROFILE_HOOK_UPPERCUT_POCKET_EXIT_VARIANT_V1 = "hook_uppercut_pocket_exit_variant_v1"
 MASK_PROFILE_TO_CLASS_ORDER = {
     MASK_PROFILE_STRAIGHT_FAMILY_V1: ["straight_left", "straight_right", "no_punch"],
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
@@ -53,6 +54,7 @@ MASK_PROFILE_TO_CLASS_ORDER = {
     MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_A_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
     MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_B_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
     MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_C_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
+    MASK_PROFILE_HOOK_UPPERCUT_POCKET_EXIT_VARIANT_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
 }
 PUNCH_GESTURE_NAMES = set(PUNCH_CLASS_TO_EVENT.keys())
 LANDMARK_IDS = {
@@ -154,6 +156,11 @@ HOOK_UPPERCUT_ORBIT_PHASE_LEAD_FEATURE_NAMES_PER_SIDE = [
     "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
     "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width",
 ]
+HOOK_UPPERCUT_POCKET_EXIT_PHASE_FEATURE_NAMES_PER_SIDE = [
+    "wrist_from_elbow_vertical_range_over_shoulder_width",
+    "elbow_shoulder_distance_range_over_shoulder_width",
+    "wrist_from_elbow_vertical_peak_phase",
+]
 MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES = {
     MASK_PROFILE_STRAIGHT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE + STRAIGHT_FAMILY_FEATURE_NAMES_PER_SIDE,
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE
@@ -179,6 +186,12 @@ MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES = {
     + BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
     + HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE
     + HOOK_UPPERCUT_ORBIT_PHASE_LEAD_FEATURE_NAMES_PER_SIDE,
+    MASK_PROFILE_HOOK_UPPERCUT_POCKET_EXIT_VARIANT_V1: BASELINE_FEATURE_NAMES_PER_SIDE
+    + CAMERA_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE
+    + HOOK_UPPERCUT_ORBIT_PHASE_LEAD_FEATURE_NAMES_PER_SIDE
+    + HOOK_UPPERCUT_POCKET_EXIT_PHASE_FEATURE_NAMES_PER_SIDE,
 }
 MASK_PROFILES = list(MASK_PROFILE_TO_CLASS_ORDER.keys())
 
@@ -309,6 +322,50 @@ def summarize_dataset_alignment(samples: list[dict]) -> dict:
     }
 
 
+def _compute_pocket_exit_phase_features(
+    frames: list[list[float]],
+    source_side_feature_names: list[str],
+) -> dict[str, dict[str, float]]:
+    if not frames:
+        zero_values = {
+            "wrist_from_elbow_vertical_range_over_shoulder_width": 0.0,
+            "elbow_shoulder_distance_range_over_shoulder_width": 0.0,
+            "wrist_from_elbow_vertical_peak_phase": 0.0,
+        }
+        return {"left": dict(zero_values), "right": dict(zero_values)}
+
+    side_count = len(source_side_feature_names)
+    name_to_index = {name: idx for idx, name in enumerate(source_side_feature_names)}
+    wrist_y_index = name_to_index.get("wrist_y_from_elbow_over_shoulder_width")
+    elbow_distance_index = name_to_index.get("elbow_shoulder_xy_distance_over_shoulder_width")
+    if wrist_y_index is None or elbow_distance_index is None:
+        missing = [
+            name
+            for name, idx in {
+                "wrist_y_from_elbow_over_shoulder_width": wrist_y_index,
+                "elbow_shoulder_xy_distance_over_shoulder_width": elbow_distance_index,
+            }.items()
+            if idx is None
+        ]
+        raise ValueError(f"source dataset missing prerequisites for pocket-exit feature derivation: {missing}")
+
+    derived_by_side: dict[str, dict[str, float]] = {}
+    for side, offset in (("left", 0), ("right", side_count)):
+        wrist_vertical_series = [-(float(frame[offset + wrist_y_index])) for frame in frames]
+        elbow_distance_series = [float(frame[offset + elbow_distance_index]) for frame in frames]
+        peak_index = max(range(len(wrist_vertical_series)), key=lambda idx: wrist_vertical_series[idx]) if wrist_vertical_series else 0
+        phase_denominator = max(len(wrist_vertical_series) - 1, 1)
+        derived_by_side[side] = {
+            "wrist_from_elbow_vertical_range_over_shoulder_width": max(wrist_vertical_series) - min(wrist_vertical_series),
+            "elbow_shoulder_distance_range_over_shoulder_width": max(elbow_distance_series) - min(elbow_distance_series),
+            "wrist_from_elbow_vertical_peak_phase": float(peak_index) / float(phase_denominator),
+        }
+    return derived_by_side
+
+
+POCKET_EXIT_DERIVED_SIDE_FEATURES = set(HOOK_UPPERCUT_POCKET_EXIT_PHASE_FEATURE_NAMES_PER_SIDE)
+
+
 def derive_masked_dataset(source_dataset: dict, mask_profile: str, derived_feature_set: str | None = None) -> tuple[dict, dict]:
     class_order = masked_class_order(mask_profile)
     active_side_names = masked_active_side_feature_names(mask_profile)
@@ -317,14 +374,15 @@ def derive_masked_dataset(source_dataset: dict, mask_profile: str, derived_featu
     if not source_side_feature_names or not source_frame_feature_names:
         raise ValueError("source dataset missing side/frame feature metadata required for masking")
 
-    missing = [name for name in active_side_names if name not in source_side_feature_names]
-    if missing:
-        raise ValueError(f"source dataset missing active side features for {mask_profile}: {missing}")
+    direct_active_side_names = [name for name in active_side_names if name in source_side_feature_names]
+    derived_active_side_names = [name for name in active_side_names if name not in source_side_feature_names]
+    unsupported_missing = [name for name in derived_active_side_names if name not in POCKET_EXIT_DERIVED_SIDE_FEATURES]
+    if unsupported_missing:
+        raise ValueError(f"source dataset missing active side features for {mask_profile}: {unsupported_missing}")
 
-    active_indices = [source_side_feature_names.index(name) for name in active_side_names]
     side_count = len(source_side_feature_names)
-    frame_indices = active_indices + [side_count + index for index in active_indices]
-    derived_frame_feature_names = [source_frame_feature_names[index] for index in frame_indices]
+    source_side_index_by_name = {name: idx for idx, name in enumerate(source_side_feature_names)}
+    derived_frame_feature_names = [f"left_{name}" for name in active_side_names] + [f"right_{name}" for name in active_side_names]
     derived_samples = []
 
     for sample in source_dataset.get("samples", []):
@@ -332,15 +390,25 @@ def derive_masked_dataset(source_dataset: dict, mask_profile: str, derived_featu
         if label not in class_order:
             continue
         derived_sample = json.loads(json.dumps(sample))
-        derived_sample["frames"] = [
-            [float(frame[index]) for index in frame_indices]
-            for frame in sample.get("frames", [])
-        ]
+        source_frames = [[float(value) for value in frame] for frame in sample.get("frames", [])]
+        pocket_exit_features_by_side = _compute_pocket_exit_phase_features(source_frames, source_side_feature_names)
+        derived_frames = []
+        for frame in source_frames:
+            derived_frame = []
+            for side, offset in (("left", 0), ("right", side_count)):
+                for feature_name in active_side_names:
+                    if feature_name in source_side_index_by_name:
+                        derived_frame.append(float(frame[offset + source_side_index_by_name[feature_name]]))
+                    else:
+                        derived_frame.append(float(pocket_exit_features_by_side[side][feature_name]))
+            derived_frames.append(derived_frame)
+        derived_sample["frames"] = derived_frames
         derived_sample["label"] = label
         derived_sample["feature_set"] = derived_feature_set or mask_profile
         derived_sample["side_feature_names"] = list(active_side_names)
         derived_sample["feature_names"] = list(derived_frame_feature_names)
         derived_sample["frame_feature_count"] = len(derived_frame_feature_names)
+        derived_sample["derived_side_feature_values"] = pocket_exit_features_by_side if derived_active_side_names else {}
         threshold_baseline = derived_sample.get("threshold_baseline", {}) if isinstance(derived_sample.get("threshold_baseline", {}), dict) else {}
         original_predicted_label = str(threshold_baseline.get("predicted_label", "")).strip()
         threshold_baseline["original_predicted_label"] = original_predicted_label
@@ -360,7 +428,9 @@ def derive_masked_dataset(source_dataset: dict, mask_profile: str, derived_featu
         "mask_profile": mask_profile,
         "class_order": class_order,
         "active_side_feature_names": list(active_side_names),
-        "masked_side_feature_names": [name for name in source_side_feature_names if name not in active_side_names],
+        "direct_source_side_feature_names": list(direct_active_side_names),
+        "derived_side_feature_names": list(derived_active_side_names),
+        "masked_side_feature_names": [name for name in source_side_feature_names if name not in direct_active_side_names],
         "active_frame_feature_names": list(derived_frame_feature_names),
         "source_feature_set": str(source_dataset.get("feature_set", "")),
         "source_class_order": dataset_class_order(source_dataset),

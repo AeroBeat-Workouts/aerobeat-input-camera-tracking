@@ -721,6 +721,110 @@ Coder readiness: **yes**. The next coder brief is now narrow and explicit: add o
 **Prompt:** Verify the next hook/uppercut cue-design benchmark is reproducible and compared fairly against retimed control and the fair retimed hook/uppercut subset baseline. Confirm exact variable inventories and summarize whether the new cues finally improve hook/uppercut separation enough to matter.
 
 **Folders Created/Deleted/Modified:**
+- `.temp/qa-variant-c-rerun-2026-06-18/`
+- relevant checked-in benchmark artifact paths under `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.temp/qa-variant-c-rerun-2026-06-18/family_combined_directional_hook_motion_shape_v1/{export,mlp,cnn}`
+- `.temp/qa-variant-c-rerun-2026-06-18/hook_uppercut_family_mask_v1/{export,mlp,cnn}`
+- `.temp/qa-variant-c-rerun-2026-06-18/hook_uppercut_motion_shape_variant_c_v1/{export,mlp,cnn}`
+
+**Status:** ✅ Complete
+
+**Results:** QA reran the narrow Variant C slice from scratch into `.temp/qa-variant-c-rerun-2026-06-18/` using the live retimed benchmark manifest plus the frozen hardened capture reports: `python3 scripts/export_boxing_punch_classifier_dataset.py --manifest .testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json --captures-dir .temp/boxing-punch-classifier-export/hardened-captures-2026-06-16 --feature-set family_combined_directional_hook_motion_shape_v1 --skip-captures --output-dir .../family_combined_directional_hook_motion_shape_v1/export`, then `python3 scripts/train_boxing_punch_mlp_baseline.py` and `python3 scripts/train_boxing_punch_temporal_cnn.py` for that source export, then derived `hook_uppercut_family_mask_v1` and `hook_uppercut_motion_shape_variant_c_v1` from the same source dataset with `scripts/export_boxing_punch_classifier_dataset.py --source-dataset ... --mask-profile <profile>` followed by fresh MLP/CNN runs for each. The rerun reproduced the checked-in semantic outputs exactly for control + Variant C: export counts/inventories matched, model class orders matched, test-record sample IDs matched, and metric values matched exactly (`control MLP 0.7037 / 0.3792`, `control CNN 0.8519 / 0.5159`, `Variant C MLP 0.8148 / 0.4778`, `Variant C CNN 0.8519 / 0.5159`).
+
+QA also confirmed the fair subset-baseline comparison independently instead of trusting the summary. Re-projecting `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json` onto the exact same 27 held-out hook/uppercut/no-punch sample IDs used by the control/Variant C CNN test records reproduced the documented shared-vector subset baseline exactly: `0.8889 accuracy / 0.5872 macro-F1`. Variant C inventory is exactly as intended relative to Variant A: it keeps the Variant A control+orbit bundle and adds only `forearm_angular_velocity_rad_per_s`, `body_wrist_minus_elbow_velocity_lateral_over_shoulder_width`, and `body_wrist_minus_elbow_velocity_vertical_over_shoulder_width`, with no accidental removals. The gated MLP/CNN policy was followed correctly: Variant C really does beat the retimed control MLP gate (`0.4778 > 0.3792`), only ties the retimed Variant A MLP reference (`0.4778 == 0.4778`), and the resulting Variant C CNN exactly matches the retimed control CNN record-for-record while still trailing the fair shared-vector subset baseline. Standing caveat unchanged: this refresh still uses the hardened capture-report package rather than a fully frozen snapshot because the retimed fixture YAML hashes no longer verify against the older sealed snapshot manifest. QA passes and audit is ready.
+
+---
+
+### Task 26: Audit the next stronger hook/uppercut cue-design benchmark conclusions
+
+**Bead ID:** `aerobeat-input-camera-tracking-1a4v`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the next hook/uppercut cue-design benchmark and state whether the new cues finally justify further specialization or still leave hook/uppercut as the weak branch. Keep exact variable inventories explicit in the audit summary.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed. I independently truth-checked commit `85d2d7b` and the checked-in Variant C artifacts under `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/` against the source family benchmark baseline at `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json`. The benchmark summary is internally consistent with each variant’s `export/export-summary.json`, `mlp/mlp-result.json`, and `cnn/cnn-result.json`.
+
+The exact inventories and benchmark claims check out. Variant C is exactly Variant A plus the three approved per-side phase/lead cues: `forearm_angular_velocity_rad_per_s`, `body_wrist_minus_elbow_velocity_lateral_over_shoulder_width`, and `body_wrist_minus_elbow_velocity_vertical_over_shoulder_width` (62 total frame features vs Variant A’s 56). On the retimed hook/uppercut split, Variant C MLP exactly ties Variant A MLP at `0.8148 accuracy / 0.4778 macro-F1` and beats the retimed control MLP gate (`0.7037 / 0.3792`). Variant C CNN exactly matches the retimed control CNN record-for-record at `0.8519 / 0.5159`. The fair shared-vector hook/uppercut subset baseline remains stronger at `0.8889 / 0.5872` on the same 27 held-out sample IDs.
+
+Final audit judgment: Variant C does not change the hook/uppercut story in any meaningful way beyond clearing the MLP gate back up to the old Variant A level. It does not create a new best result, does not move the CNN past control, and does not close the gap to the fair shared-vector subset baseline. That weakens rather than strengthens the case for a hook/uppercut-specific runtime branch: current specialization cues are still benchmark-only, still not runtime-ready, and still unproven relative to the shared-vector baseline. Best next step: stop widening the hook/uppercut feature bundle for now and instead do diagnosis-first error analysis on the still-losing uppercut misses / no-punch confusions before proposing another narrowly targeted cue family.
+
+---
+
+### Task 27: Research hook/uppercut miss patterns and propose one targeted cue family
+
+**Bead ID:** `aerobeat-input-camera-tracking-5nx3`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Stop broad hook/uppercut feature widening and do diagnosis-first analysis. Inspect the remaining hook/uppercut misses and no-punch confusions under the current retimed truth basis, identify the dominant failure pattern(s), and propose one narrowly targeted cue family that directly addresses those exact misses. Keep the recommendation compact and benchmark-friendly, with explicit variable inventory.
+
+**Folders Created/Deleted/Modified:**
+- relevant benchmark paths / notes discovered during miss analysis
+
+**Files Created/Deleted/Modified:**
+- plan updates / research notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Diagnosis-first review of the retimed hook/uppercut holdout confirms the remaining weakness is not broad hook confusion anymore; it is late-phase / compact uppercut windows collapsing into `no_punch`, with the final CNN misses concentrated on `uppercut_left_fixture::uppercut_left::04 -> no_punch` and `uppercut_right_fixture::uppercut_right::04 -> no_punch`, plus matching boundary false positives `hook_left_fixture::no_punch::019 -> hook_left` and `uppercut_left_fixture::transition_before::03 -> uppercut_left`. The strongest shared baseline still wins partly because the masked/specialized branch never learns a compact within-window phase cue for “uppercut still rising” versus “already-raised arm in adjacent no-punch context.”
+
+I inspected the checked-in retimed QA / benchmark artifacts under `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/` and `.temp/qa-retimed-hook-uppercut-motion-shape-rerun-2026-06-18/`. The critical pattern is: left-side miss `uppercut_left::04` has a large wrist-from-elbow vertical excursion (`~1.71 shoulder-width units`) with matching elbow compaction/release inside the window, while the confusing `transition_before` / `no_punch` windows stay much flatter or rise without the same elbow-pocket change; right-side miss `uppercut_right::04` is subtler but still differs from `transition_after::04` mainly by a later in-window vertical peak and a small re-extension after compaction. That points to a narrow window-phase family rather than more raw per-frame velocity channels.
+
+Recommended single next cue family: **uppercut pocket-exit phase cues** derived from existing relative wrist/elbow trajectories, added only per side. Exact variable inventory:
+- `left_wrist_from_elbow_vertical_range_over_shoulder_width`
+- `right_wrist_from_elbow_vertical_range_over_shoulder_width`
+- `left_elbow_shoulder_distance_range_over_shoulder_width`
+- `right_elbow_shoulder_distance_range_over_shoulder_width`
+- `left_wrist_from_elbow_vertical_peak_phase`
+- `right_wrist_from_elbow_vertical_peak_phase`
+
+Narrowest next benchmark matrix: retimed fair hook/uppercut subset only, comparing (1) shared-vector retimed subset baseline, (2) current specialized control `hook_uppercut_family_mask_v1`, and (3) one new specialized variant = current best narrow specialized stack plus exactly the six pocket-exit phase variables above. Avoid broader width growth, duplicate restatements of signed velocity/direction, and generic acceleration / second-derivative additions; the misses point to missing within-window phase structure, not missing more instantaneous motion channels. Coder is ready.
+
+---
+
+### Task 28: Implement targeted hook/uppercut cue benchmark from miss analysis
+
+**Bead ID:** `aerobeat-input-camera-tracking-6hxj`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Implement the single targeted hook/uppercut cue family recommended by Task 27, keeping the benchmark narrow and directly tied to the diagnosed miss pattern. Compare fairly against retimed control and the fair retimed hook/uppercut subset baseline, with explicit variable inventories in the artifacts.
+
+**Folders Created/Deleted/Modified:**
+- refreshed hook/uppercut benchmark artifact paths for targeted cue pass
+
+**Files Created/Deleted/Modified:**
+- harness/export files discovered in Task 27
+- refreshed/new benchmark artifacts as needed
+- plan updates / notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Added a benchmark-only masked profile `hook_uppercut_pocket_exit_variant_v1` that keeps the current best narrow specialized stack and appends exactly six left/right pocket-exit cues via three new per-side derived variables: `wrist_from_elbow_vertical_range_over_shoulder_width`, `elbow_shoulder_distance_range_over_shoulder_width`, and `wrist_from_elbow_vertical_peak_phase` (materialized in frame inventories as left/right-prefixed variables). The rerun stayed narrow: fair shared-vector retimed subset baseline (reference only), rerun control `hook_uppercut_family_mask_v1` MLP/CNN, and rerun targeted variant MLP only. Actual result: the targeted MLP tied the retimed control exactly at **0.7037 accuracy / 0.3792 macro-F1**, so it did **not** beat the MLP gate and therefore no targeted CNN was run. The targeted pass also produced **zero** test prediction changes versus control, leaving the diagnosed failures unchanged (`uppercut_left_fixture::uppercut_left::04 -> no_punch`, `uppercut_right_fixture::uppercut_right::04 -> hook_left`). Artifacts were written under `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-pocket-exit-benchmark-2026-06-18/` with explicit inventories in `summary.md` / `summary.json`.
+
+---
+
+### Task 29: QA targeted hook/uppercut cue benchmark
+
+**Bead ID:** `aerobeat-input-camera-tracking-nijd`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Verify the targeted hook/uppercut cue benchmark is reproducible and compared fairly against retimed control and the fair retimed hook/uppercut subset baseline. Confirm exact variable inventory and summarize whether the targeted cue meaningfully improves the diagnosed failure mode.
+
+**Folders Created/Deleted/Modified:**
 - relevant repo paths used during QA
 
 **Files Created/Deleted/Modified:**
@@ -732,13 +836,13 @@ Coder readiness: **yes**. The next coder brief is now narrow and explicit: add o
 
 ---
 
-### Task 26: Audit the next stronger hook/uppercut cue-design benchmark conclusions
+### Task 30: Audit targeted hook/uppercut cue benchmark conclusions
 
-**Bead ID:** `aerobeat-input-camera-tracking-1a4v`  
+**Bead ID:** `aerobeat-input-camera-tracking-ds8t`  
 **SubAgent:** `primary` (for `auditor`)  
 **Role:** `auditor`  
 **References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
-**Prompt:** Independently truth-check the next hook/uppercut cue-design benchmark and state whether the new cues finally justify further specialization or still leave hook/uppercut as the weak branch. Keep exact variable inventories explicit in the audit summary.
+**Prompt:** Independently truth-check the targeted hook/uppercut cue benchmark and state whether the new cue family improves the exact diagnosed misses enough to justify continuing specialization, or whether hook/uppercut still fails to beat the fair retimed subset baseline.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo paths used during audit
