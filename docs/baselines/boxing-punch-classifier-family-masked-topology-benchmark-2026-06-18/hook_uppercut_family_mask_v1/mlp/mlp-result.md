@@ -1,6 +1,6 @@
 # Boxing Punch Classifier Temporal-MLP Baseline
 
-- Trained at: `2026-06-18T15:05:34.005492+00:00`
+- Trained at: `2026-06-18T15:23:05.151419+00:00`
 - Dataset: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/dataset.json`
 - Split strategy: `chronological_holdout_v1`
 - Model shape: `8x44 -> flatten(352) -> hidden(24) -> logits(5)`

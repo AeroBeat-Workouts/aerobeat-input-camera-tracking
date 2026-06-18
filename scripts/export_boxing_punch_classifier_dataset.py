@@ -629,9 +629,6 @@ def main() -> int:
         export_summary.setdefault("version", int(source_dataset.get("version", 1) or 1))
         export_summary.setdefault("window_frame_count", int(source_dataset.get("window_frame_count", 0) or 0))
         export_summary.setdefault("split_strategy", str(source_dataset.get("split_strategy", "unknown")))
-        export_summary.setdefault("split_counts", dict(source_dataset.get("split_counts", {})))
-        export_summary.setdefault("sample_kind_counts", dict(source_dataset.get("sample_kind_counts", {})))
-        export_summary.setdefault("negative_context_counts", dict(source_dataset.get("negative_context_counts", {})))
         export_summary["source_dataset_path"] = args.source_dataset
         write_json(output_dir / "dataset.json", export_summary)
         write_json(output_dir / "threshold-baseline.json", threshold_summary)

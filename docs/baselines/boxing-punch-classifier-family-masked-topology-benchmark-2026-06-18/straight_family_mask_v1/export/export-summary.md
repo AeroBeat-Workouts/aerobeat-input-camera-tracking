@@ -10,8 +10,8 @@
 - Window shape: `8 frames x 22 features/frame`
 - Samples: **80**
 - Label counts: `{"no_punch": 72, "straight_left": 4, "straight_right": 4}`
-- Split counts: `{"test": 29, "train": 67}`
-- Sample kinds: `{"annotated_punch_window": 24, "derived_no_punch_window": 48, "transition_after_punch": 4, "transition_before_punch": 20}`
+- Split counts: `{"test": 25, "train": 55}`
+- Sample kinds: `{"annotated_punch_window": 8, "derived_no_punch_window": 48, "transition_after_punch": 4, "transition_before_punch": 20}`
 - No-punch contexts: `{"non_punch_fixture_background": 35, "punch_fixture_background": 13, "transition_after_punch": 4, "transition_before_punch": 20}`
 - Mask profile: `straight_family_mask_v1`
 - Active side features: `["shoulder_x", "shoulder_y", "elbow_x", "elbow_y", "wrist_x", "wrist_y", "combined_elbow_wrist_velocity_xy_magnitude", "elbow_shoulder_xy_distance_over_shoulder_width", "elbow_x_from_shoulder_over_shoulder_width", "elbow_y_from_shoulder_over_shoulder_width", "elbow_shoulder_radial_velocity_over_shoulder_width"]`
@@ -26,12 +26,12 @@
 
 ## Alignment summary
 
-- Capture time-origin offset ms (min/mean/max): **1056 / 1107.0 / 1136**
-- Window start alignment error ms (min/mean/max): **0 / 18.5 / 59**
-- Window end alignment error ms (min/mean/max): **0 / 18.6 / 149**
+- Capture time-origin offset ms (min/mean/max): **1056 / 1104.6 / 1136**
+- Window start alignment error ms (min/mean/max): **0 / 18.3 / 59**
+- Window end alignment error ms (min/mean/max): **0 / 18.2 / 149**
 
-- `hook_left_fixture` offset=1080ms start_err=18.8ms end_err=16.1ms samples=10
-- `hook_right_fixture` offset=1131ms start_err=11.1ms end_err=21.2ms samples=10
+- `hook_left_fixture` offset=1080ms start_err=18.0ms end_err=21.0ms samples=6
+- `hook_right_fixture` offset=1131ms start_err=7.7ms end_err=20.3ms samples=6
 - `knee_left_fixture` offset=1133ms start_err=24.7ms end_err=12.3ms samples=3
 - `knee_right_fixture` offset=1130ms start_err=22.7ms end_err=26.3ms samples=3
 - `leg_lift_left_fixture` offset=1081ms start_err=32.0ms end_err=12.3ms samples=3
@@ -43,8 +43,8 @@
 - `stance_transition_fixture` offset=1133ms start_err=16.8ms end_err=5.2ms samples=4
 - `straight_left_fixture` offset=1056ms start_err=18.8ms end_err=14.1ms samples=10
 - `straight_right_fixture` offset=1131ms start_err=14.5ms end_err=19.0ms samples=11
-- `uppercut_left_fixture` offset=1136ms start_err=24.9ms end_err=19.7ms samples=10
-- `uppercut_right_fixture` offset=1130ms start_err=16.8ms end_err=29.2ms samples=10
+- `uppercut_left_fixture` offset=1136ms start_err=26.0ms end_err=6.2ms samples=6
+- `uppercut_right_fixture` offset=1130ms start_err=15.2ms end_err=42.0ms samples=6
 - `weave_left_fixture` offset=1088ms start_err=15.3ms end_err=12.0ms samples=3
 - `weave_right_fixture` offset=1084ms start_err=17.8ms end_err=15.8ms samples=4
 

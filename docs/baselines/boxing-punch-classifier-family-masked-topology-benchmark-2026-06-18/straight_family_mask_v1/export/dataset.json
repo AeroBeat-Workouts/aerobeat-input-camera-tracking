@@ -61,11 +61,11 @@
     "no_punch": 72
   },
   "split_counts": {
-    "train": 67,
-    "test": 29
+    "train": 55,
+    "test": 25
   },
   "sample_kind_counts": {
-    "annotated_punch_window": 24,
+    "annotated_punch_window": 8,
     "transition_before_punch": 20,
     "derived_no_punch_window": 48,
     "transition_after_punch": 4
@@ -80,7 +80,7 @@
     "capture_time_origin_offset_ms": {
       "min": 1056,
       "max": 1136,
-      "mean": 1107.0104166666667,
+      "mean": 1104.5625,
       "unique_values": [
         1056,
         1079,
@@ -101,12 +101,12 @@
     "start_alignment_error_ms": {
       "min": 0,
       "max": 59,
-      "mean": 18.541666666666668
+      "mean": 18.3125
     },
     "end_alignment_error_ms": {
       "min": 0,
       "max": 149,
-      "mean": 18.59375
+      "mean": 18.25
     },
     "by_fixture": {
       "straight_left_fixture": {
@@ -138,59 +138,31 @@
         }
       },
       "hook_left_fixture": {
-        "sample_count": 10,
+        "sample_count": 6,
         "capture_time_origin_offset_ms": 1080,
         "start_alignment_error_summary_ms": {
           "min": 4,
           "max": 50,
-          "mean": 18.8
+          "mean": 18.0
         },
         "end_alignment_error_summary_ms": {
-          "min": 1,
+          "min": 7,
           "max": 32,
-          "mean": 16.1
+          "mean": 21.0
         }
       },
       "hook_right_fixture": {
-        "sample_count": 10,
+        "sample_count": 6,
         "capture_time_origin_offset_ms": 1131,
         "start_alignment_error_summary_ms": {
           "min": 0,
-          "max": 31,
-          "mean": 11.1
+          "max": 17,
+          "mean": 7.666666666666667
         },
         "end_alignment_error_summary_ms": {
-          "min": 5,
-          "max": 46,
-          "mean": 21.2
-        }
-      },
-      "uppercut_left_fixture": {
-        "sample_count": 10,
-        "capture_time_origin_offset_ms": 1136,
-        "start_alignment_error_summary_ms": {
-          "min": 0,
-          "max": 41,
-          "mean": 24.9
-        },
-        "end_alignment_error_summary_ms": {
-          "min": 0,
-          "max": 143,
-          "mean": 19.7
-        }
-      },
-      "uppercut_right_fixture": {
-        "sample_count": 10,
-        "capture_time_origin_offset_ms": 1130,
-        "start_alignment_error_summary_ms": {
-          "min": 5,
-          "max": 43,
-          "mean": 16.8
-        },
-        "end_alignment_error_summary_ms": {
-          "min": 6,
-          "max": 110,
-          "mean": 29.2
+          "min": 7,
+          "max": 32,
+          "mean": 20.333333333333332
         }
       },
       "knee_left_fixture": {
@@ -317,6 +289,34 @@
           "min": 0,
           "max": 11,
           "mean": 5.25
+        }
+      },
+      "uppercut_left_fixture": {
+        "sample_count": 6,
+        "capture_time_origin_offset_ms": 1136,
+        "start_alignment_error_summary_ms": {
+          "min": 21,
+          "max": 40,
+          "mean": 26.0
+        },
+        "end_alignment_error_summary_ms": {
+          "min": 0,
+          "max": 15,
+          "mean": 6.166666666666667
+        }
+      },
+      "uppercut_right_fixture": {
+        "sample_count": 6,
+        "capture_time_origin_offset_ms": 1130,
+        "start_alignment_error_summary_ms": {
+          "min": 5,
+          "max": 34,
+          "mean": 15.166666666666666
+        },
+        "end_alignment_error_summary_ms": {
+          "min": 20,
+          "max": 110,
+          "mean": 42.0
         }
       },
       "weave_left_fixture": {

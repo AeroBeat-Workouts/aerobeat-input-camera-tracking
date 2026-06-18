@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 10:45 EDT  
+**Last Updated:** 2026-06-18 11:25 EDT  
 **Blocked Reason:** None currently; resumed on the approved plan with a design-review research slice to evaluate family-isolated classifier topologies before resuming QA/audit.  
 **Agent:** `pico`
 
@@ -183,13 +183,19 @@ Outcome: the masked topology did **not** beat the shared-vector baseline on the 
 
 **Folders Created/Deleted/Modified:**
 - relevant repo paths used during QA
+- `.temp/qa-masked-family-rerun-2026-06-18/`
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.temp/qa-masked-family-rerun-2026-06-18/**`
+- plan updates only; no repo artifact files changed during QA
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** QA reran the masked-family harness flow from the checked-in `family_combined_directional_v1` source export and reproduced the reported masked-head artifacts and metrics exactly for both variants. Re-run commands: (1) `python3 scripts/export_boxing_punch_classifier_dataset.py --source-dataset docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/export/dataset.json --mask-profile straight_family_mask_v1 --derived-feature-set family_combined_straight_masked_v1 --output-dir .temp/qa-masked-family-rerun-2026-06-18/straight/export`, (2) `python3 scripts/train_boxing_punch_mlp_baseline.py --dataset .temp/qa-masked-family-rerun-2026-06-18/straight/export/dataset.json --output-dir .temp/qa-masked-family-rerun-2026-06-18/straight/mlp`, (3) `python3 scripts/train_boxing_punch_temporal_cnn.py --dataset .temp/qa-masked-family-rerun-2026-06-18/straight/export/dataset.json --mlp-result .temp/qa-masked-family-rerun-2026-06-18/straight/mlp/mlp-result.json --output-dir .temp/qa-masked-family-rerun-2026-06-18/straight/cnn`, and the same three commands for `hook_uppercut_family_mask_v1` with `family_combined_hook_uppercut_masked_v1` under `.temp/qa-masked-family-rerun-2026-06-18/hook_uppercut/...`.
+
+Fairness check passed: the subset-baseline projection in `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/summary.json` uses the exact masked-dataset test sample IDs (25 for straight, 27 for hook/uppercut) and remaps baseline predictions into the reduced class order truthfully; QA found zero mismatches against `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json`.
+
+However, QA found a real artifact-truthfulness bug in the per-variant export summaries: `export/export-summary.{json,md}` for both masked variants report stale source-style `split_counts` (`67 train / 29 test`) and stale source-level sample-kind totals even though the derived datasets actually contain `55 train / 25 test` samples for `straight_family_mask_v1` and `61 train / 27 test` for `hook_uppercut_family_mask_v1`. The masked per-family variable inventory itself is correct and easy to inspect in `summary.{json,md}` and each variant’s `export/dataset.json` / `export/export-summary.json` `mask_inventory`, but because those per-variant export summary counts are misleading, QA did not close the bead and audit should wait for that artifact-summary bug to be corrected or explicitly acknowledged.
 
 ---
 
@@ -210,6 +216,43 @@ Outcome: the masked topology did **not** beat the shared-vector baseline on the 
 **Status:** ⏳ Pending
 
 **Results:** Pending.
+
+---
+
+### Task 9: Fix masked export summary metadata so benchmark artifacts stay truthful
+
+**Bead ID:** `aerobeat-input-camera-tracking-wqy8`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Fix the masked-family dataset/export summary metadata so derived export artifacts truthfully report their own sample counts, split counts, and related export-summary details instead of copied source-dataset totals. Re-run the masked-family export/train flow as needed, refresh the affected artifacts under `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/`, update the plan with actual results, and close bead `aerobeat-input-camera-tracking-wqy8` with a clear reason when complete.
+
+**Folders Created/Deleted/Modified:**
+- masked-family benchmark artifact paths
+
+**Files Created/Deleted/Modified:**
+- `scripts/boxing_classifier_harness.py`
+- `scripts/export_boxing_punch_classifier_dataset.py`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/export/dataset.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/export/export-summary.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/export/export-summary.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/cnn/cnn-result.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/cnn/cnn-result.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/dataset.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/export-summary.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/export-summary.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/mlp/mlp-result.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/mlp/mlp-result.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/cnn/cnn-result.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/hook_uppercut_family_mask_v1/cnn/cnn-result.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the derived masked-export truthfulness bug by recomputing masked dataset metadata from the derived sample set instead of inheriting source-dataset split/sample-kind counts. `scripts/boxing_classifier_harness.py` now rebuilds `split_counts`, `sample_kind_counts`, `negative_context_counts`, and `alignment_summary` for derived masked datasets, and `scripts/export_boxing_punch_classifier_dataset.py` no longer backfills those fields from the source export when writing derived artifacts.
+
+Refreshed both checked-in masked benchmark variants under `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/` by rerunning export → MLP → CNN. Truthful derived counts now read `55 train / 25 test / 80 total` for `straight_family_mask_v1` and `61 train / 27 test / 88 total` for `hook_uppercut_family_mask_v1`, with derived sample-kind totals also updated (`8` straight annotated punches vs `16` hook/uppercut annotated punches, each plus `20` transition-before, `48` derived no-punch, `4` transition-after). Model metrics stayed unchanged from the prior benchmark conclusion: straight masked CNN remained `0.9600 / 0.8815`, hook/uppercut masked CNN remained `0.8148 / 0.1796`, and the masked topology still did not beat the shared-vector subset baselines. With the artifact metadata now truthful, QA’s reproduced rerun should be ready to hand back to audit.
 
 ---
 

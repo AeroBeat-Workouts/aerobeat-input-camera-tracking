@@ -12,6 +12,7 @@ import json
 import math
 import os
 import shutil
+import statistics
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -185,6 +186,61 @@ def normalize_predicted_label_for_class_order(predicted_label: str, class_order:
     raise ValueError(f"predicted label '{predicted_label}' not present in class_order {class_order}")
 
 
+def summarize_dataset_alignment(samples: list[dict]) -> dict:
+    if not samples:
+        return {}
+    start_errors = [int(sample.get("start_alignment_error_ms", 0)) for sample in samples]
+    end_errors = [int(sample.get("end_alignment_error_ms", 0)) for sample in samples]
+    offsets = [int(sample.get("capture_time_origin_offset_ms", 0)) for sample in samples]
+    by_fixture: dict[str, dict] = {}
+    for sample in samples:
+        fixture_id = str(sample.get("source_fixture_id", "unknown_fixture"))
+        fixture_entry = by_fixture.setdefault(
+            fixture_id,
+            {
+                "sample_count": 0,
+                "capture_time_origin_offset_ms": int(sample.get("capture_time_origin_offset_ms", 0)),
+                "start_alignment_errors_ms": [],
+                "end_alignment_errors_ms": [],
+            },
+        )
+        fixture_entry["sample_count"] += 1
+        fixture_entry["start_alignment_errors_ms"].append(int(sample.get("start_alignment_error_ms", 0)))
+        fixture_entry["end_alignment_errors_ms"].append(int(sample.get("end_alignment_error_ms", 0)))
+    for fixture_entry in by_fixture.values():
+        fixture_entry["start_alignment_error_summary_ms"] = {
+            "min": min(fixture_entry["start_alignment_errors_ms"]),
+            "max": max(fixture_entry["start_alignment_errors_ms"]),
+            "mean": statistics.fmean(fixture_entry["start_alignment_errors_ms"]),
+        }
+        fixture_entry["end_alignment_error_summary_ms"] = {
+            "min": min(fixture_entry["end_alignment_errors_ms"]),
+            "max": max(fixture_entry["end_alignment_errors_ms"]),
+            "mean": statistics.fmean(fixture_entry["end_alignment_errors_ms"]),
+        }
+        del fixture_entry["start_alignment_errors_ms"]
+        del fixture_entry["end_alignment_errors_ms"]
+    return {
+        "capture_time_origin_offset_ms": {
+            "min": min(offsets),
+            "max": max(offsets),
+            "mean": statistics.fmean(offsets),
+            "unique_values": sorted(set(offsets)),
+        },
+        "start_alignment_error_ms": {
+            "min": min(start_errors),
+            "max": max(start_errors),
+            "mean": statistics.fmean(start_errors),
+        },
+        "end_alignment_error_ms": {
+            "min": min(end_errors),
+            "max": max(end_errors),
+            "mean": statistics.fmean(end_errors),
+        },
+        "by_fixture": by_fixture,
+    }
+
+
 def derive_masked_dataset(source_dataset: dict, mask_profile: str, derived_feature_set: str | None = None) -> tuple[dict, dict]:
     class_order = masked_class_order(mask_profile)
     active_side_names = masked_active_side_feature_names(mask_profile)
@@ -249,6 +305,16 @@ def derive_masked_dataset(source_dataset: dict, mask_profile: str, derived_featu
     }
     derived_dataset["sample_count"] = len(derived_samples)
     derived_dataset["label_counts"] = {label: sum(1 for sample in derived_samples if sample.get("label") == label) for label in class_order}
+    derived_dataset["split_counts"] = dict(Counter(str(sample.get("split", "")) for sample in derived_samples if str(sample.get("split", "")).strip()))
+    derived_dataset["sample_kind_counts"] = dict(Counter(str(sample.get("sample_kind", "unknown")) for sample in derived_samples))
+    derived_dataset["negative_context_counts"] = dict(
+        Counter(
+            str(sample.get("negative_context", "n/a"))
+            for sample in derived_samples
+            if str(sample.get("label", "")).strip() == "no_punch"
+        )
+    )
+    derived_dataset["alignment_summary"] = summarize_dataset_alignment(derived_samples)
 
     threshold_records = [
         {
