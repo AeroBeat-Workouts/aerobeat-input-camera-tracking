@@ -42,11 +42,15 @@ MASK_PROFILE_STRAIGHT_FAMILY_V1 = "straight_family_mask_v1"
 MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1 = "hook_uppercut_family_mask_v1"
 MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_A_V1 = "straight_family_reduced_variant_a_v1"
 MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_B_V1 = "straight_family_reduced_variant_b_v1"
+MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_A_V1 = "hook_uppercut_motion_shape_variant_a_v1"
+MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_B_V1 = "hook_uppercut_motion_shape_variant_b_v1"
 MASK_PROFILE_TO_CLASS_ORDER = {
     MASK_PROFILE_STRAIGHT_FAMILY_V1: ["straight_left", "straight_right", "no_punch"],
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
     MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_A_V1: ["straight_left", "straight_right", "no_punch"],
     MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_B_V1: ["straight_left", "straight_right", "no_punch"],
+    MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_A_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
+    MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_B_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
 }
 PUNCH_GESTURE_NAMES = set(PUNCH_CLASS_TO_EVENT.keys())
 LANDMARK_IDS = {
@@ -64,6 +68,7 @@ FEATURE_SET_COMBINED_DIRECTIONAL_V1 = "combined_directional_v1"
 FEATURE_SET_FAMILY_CAMERA_DIRECTIONAL_V1 = "family_camera_directional_v1"
 FEATURE_SET_FAMILY_BODY_DIRECTIONAL_V1 = "family_body_directional_v1"
 FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_V1 = "family_combined_directional_v1"
+FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_HOOK_MOTION_SHAPE_V1 = "family_combined_directional_hook_motion_shape_v1"
 SUPPORTED_FEATURE_SETS = [
     FEATURE_SET_BASELINE_V1,
     FEATURE_SET_CAMERA_DIRECTIONAL_V1,
@@ -72,6 +77,7 @@ SUPPORTED_FEATURE_SETS = [
     FEATURE_SET_FAMILY_CAMERA_DIRECTIONAL_V1,
     FEATURE_SET_FAMILY_BODY_DIRECTIONAL_V1,
     FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_V1,
+    FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_HOOK_MOTION_SHAPE_V1,
 ]
 BASELINE_FEATURE_NAMES_PER_SIDE = [
     "shoulder_x",
@@ -124,6 +130,20 @@ BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE = [
     "body_wrist_direction_left",
     "body_wrist_direction_right",
 ]
+HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE = [
+    "wrist_x_from_elbow_over_shoulder_width",
+    "wrist_y_from_elbow_over_shoulder_width",
+    "forearm_unit_x",
+    "forearm_unit_y",
+    "wrist_elbow_radial_velocity_over_shoulder_width",
+    "wrist_elbow_tangential_velocity_over_shoulder_width",
+]
+HOOK_UPPERCUT_RELATIVE_ELBOW_WRIST_TRAJECTORY_FEATURE_NAMES_PER_SIDE = [
+    "wrist_minus_elbow_velocity_x_over_shoulder_width",
+    "wrist_minus_elbow_velocity_y_over_shoulder_width",
+    "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
+    "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width",
+]
 MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES = {
     MASK_PROFILE_STRAIGHT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE + STRAIGHT_FAMILY_FEATURE_NAMES_PER_SIDE,
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE
@@ -135,6 +155,15 @@ MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES = {
         "elbow_shoulder_xy_distance_over_shoulder_width",
         "elbow_shoulder_radial_velocity_over_shoulder_width",
     ],
+    MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_A_V1: BASELINE_FEATURE_NAMES_PER_SIDE
+    + CAMERA_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE,
+    MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_B_V1: BASELINE_FEATURE_NAMES_PER_SIDE
+    + CAMERA_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE
+    + HOOK_UPPERCUT_RELATIVE_ELBOW_WRIST_TRAJECTORY_FEATURE_NAMES_PER_SIDE,
 }
 MASK_PROFILES = list(MASK_PROFILE_TO_CLASS_ORDER.keys())
 
@@ -153,16 +182,28 @@ def feature_names_per_side(feature_set: str | None = None) -> list[str]:
         FEATURE_SET_FAMILY_CAMERA_DIRECTIONAL_V1,
         FEATURE_SET_FAMILY_BODY_DIRECTIONAL_V1,
         FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_V1,
+        FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_HOOK_MOTION_SHAPE_V1,
     ):
         names.extend(STRAIGHT_FAMILY_FEATURE_NAMES_PER_SIDE)
     if resolved in (FEATURE_SET_CAMERA_DIRECTIONAL_V1, FEATURE_SET_COMBINED_DIRECTIONAL_V1):
         names.extend(CAMERA_DIRECTIONAL_FEATURE_NAMES_PER_SIDE)
     if resolved in (FEATURE_SET_BODY_DIRECTIONAL_V1, FEATURE_SET_COMBINED_DIRECTIONAL_V1):
         names.extend(BODY_DIRECTIONAL_FEATURE_NAMES_PER_SIDE)
-    if resolved in (FEATURE_SET_FAMILY_CAMERA_DIRECTIONAL_V1, FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_V1):
+    if resolved in (
+        FEATURE_SET_FAMILY_CAMERA_DIRECTIONAL_V1,
+        FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_V1,
+        FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_HOOK_MOTION_SHAPE_V1,
+    ):
         names.extend(CAMERA_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE)
-    if resolved in (FEATURE_SET_FAMILY_BODY_DIRECTIONAL_V1, FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_V1):
+    if resolved in (
+        FEATURE_SET_FAMILY_BODY_DIRECTIONAL_V1,
+        FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_V1,
+        FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_HOOK_MOTION_SHAPE_V1,
+    ):
         names.extend(BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE)
+    if resolved == FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_HOOK_MOTION_SHAPE_V1:
+        names.extend(HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE)
+        names.extend(HOOK_UPPERCUT_RELATIVE_ELBOW_WRIST_TRAJECTORY_FEATURE_NAMES_PER_SIDE)
     return names
 
 
@@ -690,6 +731,33 @@ def extract_side_features(
     body_signed_vy = camera_signed_vy
     body_wrist_signed_vx = (wrist_velocity_x * lateral_axis_x) + (wrist_velocity_y * lateral_axis_y)
     body_wrist_signed_vy = camera_wrist_signed_vy
+    wrist_minus_elbow_velocity_x = wrist_velocity_x - elbow_velocity_x
+    wrist_minus_elbow_velocity_y = wrist_velocity_y - elbow_velocity_y
+    body_wrist_minus_elbow_velocity_lateral_over_shoulder_width = (
+        (wrist_minus_elbow_velocity_x * lateral_axis_x) + (wrist_minus_elbow_velocity_y * lateral_axis_y)
+    ) / shoulder_width
+    body_wrist_minus_elbow_velocity_vertical_over_shoulder_width = (-wrist_minus_elbow_velocity_y) / shoulder_width
+    wrist_x_from_elbow_over_shoulder_width = (float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0))) / shoulder_width
+    wrist_y_from_elbow_over_shoulder_width = (float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0))) / shoulder_width
+    forearm_x = float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0))
+    forearm_y = float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0))
+    forearm_length = math.hypot(forearm_x, forearm_y)
+    if forearm_length <= 1e-8:
+        forearm_unit_x = 0.0
+        forearm_unit_y = 0.0
+        wrist_elbow_radial_velocity_over_shoulder_width = 0.0
+        wrist_elbow_tangential_velocity_over_shoulder_width = 0.0
+    else:
+        forearm_unit_x = forearm_x / forearm_length
+        forearm_unit_y = forearm_y / forearm_length
+        tangential_unit_x = -forearm_unit_y
+        tangential_unit_y = forearm_unit_x
+        wrist_elbow_radial_velocity_over_shoulder_width = (
+            (wrist_minus_elbow_velocity_x * forearm_unit_x) + (wrist_minus_elbow_velocity_y * forearm_unit_y)
+        ) / shoulder_width
+        wrist_elbow_tangential_velocity_over_shoulder_width = (
+            (wrist_minus_elbow_velocity_x * tangential_unit_x) + (wrist_minus_elbow_velocity_y * tangential_unit_y)
+        ) / shoulder_width
     camera_direction = _coarse_direction_buckets(camera_signed_vx, camera_signed_vy)
     body_direction = _coarse_direction_buckets(body_signed_vx, body_signed_vy)
     camera_wrist_direction = _coarse_direction_buckets(camera_wrist_signed_vx, camera_wrist_signed_vy)
@@ -745,6 +813,16 @@ def extract_side_features(
         "body_wrist_direction_down": body_wrist_direction["down"],
         "body_wrist_direction_left": body_wrist_direction["left"],
         "body_wrist_direction_right": body_wrist_direction["right"],
+        "wrist_x_from_elbow_over_shoulder_width": wrist_x_from_elbow_over_shoulder_width,
+        "wrist_y_from_elbow_over_shoulder_width": wrist_y_from_elbow_over_shoulder_width,
+        "forearm_unit_x": forearm_unit_x,
+        "forearm_unit_y": forearm_unit_y,
+        "wrist_elbow_radial_velocity_over_shoulder_width": wrist_elbow_radial_velocity_over_shoulder_width,
+        "wrist_elbow_tangential_velocity_over_shoulder_width": wrist_elbow_tangential_velocity_over_shoulder_width,
+        "wrist_minus_elbow_velocity_x_over_shoulder_width": wrist_minus_elbow_velocity_x / shoulder_width,
+        "wrist_minus_elbow_velocity_y_over_shoulder_width": wrist_minus_elbow_velocity_y / shoulder_width,
+        "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width": body_wrist_minus_elbow_velocity_lateral_over_shoulder_width,
+        "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width": body_wrist_minus_elbow_velocity_vertical_over_shoulder_width,
     }
     return {
         "feature_set": resolved_feature_set,

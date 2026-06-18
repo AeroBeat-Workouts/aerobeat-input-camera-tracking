@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 11:42 EDT  
-**Blocked Reason:** None; Task 7 QA rerun passed on the refreshed masked-family artifacts and audit is ready to proceed.  
+**Last Updated:** 2026-06-18 12:26 EDT  
+**Blocked Reason:** None; Task 12 audit passed on the reduced straight-family variants and the next slice is ready to plan.  
 **Agent:** `pico`
 
 ---
@@ -297,13 +297,19 @@ Result: neither reduced straight-family variant beat the same projected straight
 
 **Folders Created/Deleted/Modified:**
 - relevant repo paths used during QA
+- `.temp/qa-straight-reduced-rerun-2026-06-18/`
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.temp/qa-straight-reduced-rerun-2026-06-18/**`
+- plan updates only; no checked-in benchmark artifacts changed during QA
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA reran the two reduced straight-family minimal-variable variants from the checked-in `family_combined_directional_v1` source dataset into `.temp/qa-straight-reduced-rerun-2026-06-18/` using the repo’s current export → MLP → CNN flow. Reproduction was exact for both variants: rerun export summaries matched the committed `export/export-summary.json` inventories and counts, rerun MLP/CNN test metrics matched the committed `mlp/mlp-result.json` and `cnn/cnn-result.json`, and the rerun CNN `test_records` sample IDs matched both the checked-in variant artifacts and the benchmark-level `shared_vector_subset_baseline.records` used for comparison.
+
+The subset-baseline comparison is fair. Both reduced variants were derived from the same checked-in `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/export/dataset.json` source, both preserve the same straight-family reduced class order and 55 train / 25 test split, and the projected shared-vector subset baseline uses the exact same 25 test window IDs as the reduced-head reruns. Variable inventories are also exactly as intended: Variant A keeps the baseline coordinate/velocity context plus `elbow_shoulder_xy_distance_over_shoulder_width` and `elbow_shoulder_radial_velocity_over_shoulder_width` while excluding `elbow_x_from_shoulder_over_shoulder_width` and `elbow_y_from_shoulder_over_shoulder_width`; Variant B keeps only those two specialized elbow↔shoulder values per side.
+
+Benchmark conclusion remains unchanged after QA: neither reduced straight-family variant beats the projected shared-vector straight-family subset baseline (`1.0000 accuracy / 1.0000 macro-F1` on 25 test windows). Variant A exactly reproduces `0.9600 accuracy / 0.8815 macro-F1` for both MLP and CNN, so removing the elbow x/y relative offsets did not help. Variant B reproduces the sharper degradation (`MLP 0.8800 / 0.5333`, `CNN 0.9200 / 0.5411`), confirming that stripping the straight head down to only the two specialized values removes too much useful context. QA passes and audit is ready.
 
 ---
 
@@ -314,6 +320,106 @@ Result: neither reduced straight-family variant beat the same projected straight
 **Role:** `auditor`  
 **References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
 **Prompt:** Independently truth-check the reduced straight-family minimal-variable benchmark variants. Confirm whether shrinking the straight-family head toward only extension-style cues improves the straight-family subset benchmark enough to justify further specialization, or whether straight performance degrades once shared baseline context is removed. Keep the exact straight-family variable inventory explicit in the audit summary.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed. I independently truth-checked the checked-in reduced straight-family artifacts under `docs/baselines/boxing-punch-classifier-family-masked-topology-straight-reduced-benchmark-2026-06-18/` against the source shared-vector baseline artifact at `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json`. The benchmark-level `summary.{json,md}` is internally consistent with each variant’s `export/export-summary.json`, `mlp/mlp-result.json`, and `cnn/cnn-result.json`, and the projected `shared_vector_subset_baseline.records` match the exact same 25 test-window sample IDs used by both reduced straight-family variants.
+
+Variant A inventory is explicit and truthful: per side it keeps `shoulder_x`, `shoulder_y`, `elbow_x`, `elbow_y`, `wrist_x`, `wrist_y`, `combined_elbow_wrist_velocity_xy_magnitude`, `elbow_shoulder_xy_distance_over_shoulder_width`, and `elbow_shoulder_radial_velocity_over_shoulder_width`, while masking `elbow_x_from_shoulder_over_shoulder_width`, `elbow_y_from_shoulder_over_shoulder_width`, and the full camera/body wrist-direction bundle. Variant B inventory is also explicit and truthful: per side it keeps only `elbow_shoulder_xy_distance_over_shoulder_width` and `elbow_shoulder_radial_velocity_over_shoulder_width`, while masking the baseline coordinate/velocity context, the elbow x/y offset pair, and the full wrist-direction bundle.
+
+The truthful result matches QA’s read. Variant A reproduces the earlier straight masked result instead of improving it: both MLP and CNN remain `0.9600 accuracy / 0.8815 macro-F1`, still below the projected shared-vector straight-family subset baseline of `1.0000 / 1.0000` on the same 25 test windows. Variant B degrades materially: MLP falls to `0.8800 / 0.5333`, and CNN reaches only `0.9200 / 0.5411`. The CNN error pattern confirms the loss of useful context: Variant A makes one false positive no-punch→straight-left mistake, while Variant B adds a missed true straight-left plus a false positive no-punch→straight-right mistake. Final audit judgment: shrinking the straight-family head toward only extension-style cues does **not** help; removing too much shared baseline context makes the straight-family head weaker, not stronger. The next honest slice is to diagnose stronger discriminative cues for the weak non-straight families—especially hook/uppercut confusion—rather than further stripping straight-family inputs.
+
+---
+
+### Task 13: Research stronger hook/uppercut motion-shape feature candidates
+
+**Bead ID:** `aerobeat-input-camera-tracking-yzoj`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Research the next honest hook/uppercut diagnosis slice. The current masked-family results suggest wrist-direction alone is too weak to separate hook vs uppercut cleanly. Review the current harness/export flow and propose stronger hook/uppercut motion-shape feature candidates that still fit this repo’s benchmark architecture. Prioritize features like forearm angle/orbit, wrist-vs-elbow path curvature, relative elbow-to-wrist trajectory, punch-plane/arc cues, or other compact motion-shape signals that could distinguish lateral sweep from upward drive better than wrist direction alone. Recommend the narrowest benchmark matrix to test first, keeping variable inventories explicit.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths discovered during research
+
+**Files Created/Deleted/Modified:**
+- plan updates / notes / research artifacts as needed
+
+**Status:** ✅ Complete
+
+**Results:** Reviewed the current classifier harness/export flow plus the 2026-06-18 family-masked/family-specific benchmark artifacts. Confirmed that the current hook/uppercut masked head uses a 44-feature/frame dataset derived from `family_combined_directional_v1`, with active per-side features limited to the 8-feature baseline bundle plus camera/body wrist-direction bundles (`camera_wrist_*`, `body_wrist_*`). The current masked hook/uppercut head still misses both hook test positives in both model families, while the threshold baseline remains better on macro-F1, which supports the diagnosis that wrist-direction-only cues are too weak and that hook/uppercut work now needs stronger motion-shape variables rather than more straight-family pruning. Recommended the next benchmark seam as compact elbow-relative/forearm-shape features first: (1) a forearm-orbit bundle centered on wrist-vs-elbow geometry and tangential/radial motion, (2) a relative wrist-vs-elbow trajectory bundle, (3) a small punch-plane/arc bundle, and only then (4) curvature-style follow-ups if the simpler orbit features fail. Also documented the main harness constraints: new features must be added to the full export feature inventory before masking can reuse them, the exporter resamples to fixed 8-frame windows so short-horizon scalars are a better fit than long-sequence descriptors, and the current benchmark path still reuses the hardened capture-report package rather than the stricter frozen snapshot because of the known `straight_right` hash drift.
+
+---
+
+### Task 14: Implement hook/uppercut motion-shape benchmark variants
+
+**Bead ID:** `aerobeat-input-camera-tracking-qx6i`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Implement the agreed hook/uppercut motion-shape benchmark variants from Task 13 inside the existing harness/export flow. Keep this harness-only, benchmark fairly against the same hook/uppercut subset baseline, and keep exact variable inventories explicit in the artifacts and summary.
+
+**Folders Created/Deleted/Modified:**
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/`
+
+**Files Created/Deleted/Modified:**
+- `scripts/boxing_classifier_harness.py`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/README.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/summary.json`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/summary.md`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/family_combined_directional_hook_motion_shape_v1/export/**`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/**`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/mlp/**`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/cnn/**`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/export/**`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/mlp/**`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_b_v1/export/**`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_b_v1/mlp/**`
+- plan updates / notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Added a new full-export feature schema in `scripts/boxing_classifier_harness.py` for the narrow hook/uppercut motion-shape pass: `family_combined_directional_hook_motion_shape_v1` now extends the full per-side inventory with the agreed forearm-orbit bundle (`wrist_x_from_elbow_over_shoulder_width`, `wrist_y_from_elbow_over_shoulder_width`, `forearm_unit_x`, `forearm_unit_y`, `wrist_elbow_radial_velocity_over_shoulder_width`, `wrist_elbow_tangential_velocity_over_shoulder_width`) plus the relative elbow-to-wrist trajectory bundle (`wrist_minus_elbow_velocity_x_over_shoulder_width`, `wrist_minus_elbow_velocity_y_over_shoulder_width`, `body_wrist_minus_elbow_velocity_lateral_over_shoulder_width`, `body_wrist_minus_elbow_velocity_vertical_over_shoulder_width`). I also added two new masked hook/uppercut variants that reuse that full export inventory: `hook_uppercut_motion_shape_variant_a_v1` (control + forearm orbit) and `hook_uppercut_motion_shape_variant_b_v1` (Variant A + relative trajectory).
+
+Generated a new artifact set at `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/` with the full source export, per-variant `export/` + `mlp/` artifacts for all three variants, control-only `cnn/` artifacts, and benchmark-level `README.md` + `summary.{json,md}`. The top-level summary keeps the full source export inventory explicit and records each variant’s active/masked side-feature inventory.
+
+Outcome: the new motion-shape cues did **not** produce a clear hook/uppercut win in this first narrow pass. Control reproduced the prior masked-head behavior (`MLP 0.8148 accuracy / 0.3159 macro-F1`, `CNN 0.8148 / 0.1796`) against the same projected shared-vector hook/uppercut subset baseline (`0.8519 / 0.1878`). Variant A improved MLP accuracy to `0.8519`, matching the projected shared-vector subset baseline on accuracy, but its macro-F1 fell to `0.1840`, slightly below the subset baseline and well below the control MLP’s `0.3159`. Variant B regressed more sharply to `0.7407 / 0.1739`. Following the agreed narrow matrix, I ran CNN only for the control: no new motion-shape MLP variant improved macro-F1 over the control MLP, so the CNN gate stayed closed for Variants A/B. The honest read stays narrow: these compact forearm-orbit and elbow-relative trajectory cues were reusable and benchmarkable, but they did not yet beat the same hook/uppercut subset baseline or the existing masked control on the metric that matters for class separation.
+
+---
+
+### Task 15: QA hook/uppercut motion-shape benchmark variants
+
+**Bead ID:** `aerobeat-input-camera-tracking-m9p2`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Verify the hook/uppercut motion-shape benchmark variants are reproducible and compared fairly against the same hook/uppercut subset baseline. Confirm exact variable inventories and summarize whether the new motion-shape cues improve hook/uppercut separation.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 16: Audit hook/uppercut motion-shape benchmark conclusions
+
+**Bead ID:** `aerobeat-input-camera-tracking-qd77`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the hook/uppercut motion-shape benchmark conclusions. Confirm whether the new cues actually improve hook/uppercut separation enough to justify further specialization or more data collection, and keep the exact variable inventories explicit in the audit summary.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo paths used during audit
