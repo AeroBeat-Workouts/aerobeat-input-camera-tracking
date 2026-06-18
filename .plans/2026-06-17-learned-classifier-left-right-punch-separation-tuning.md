@@ -72,11 +72,15 @@ This branch should stay evidence-driven and fixture-based. We already know the U
 - relevant repo paths discovered in Task 1
 
 **Files Created/Deleted/Modified:**
-- relevant repo files discovered in Task 1
+- `.testbed/assets/fixtures/boxing/straight_right/boxing_guard->straight_right_repeat_04_take_01.yaml`
+- `.testbed/assets/fixtures/boxing/hook_left/boxing_guard->hook_left_repeat_04_take_01.yaml`
+- `.testbed/assets/fixtures/boxing/hook_right/boxing_guard->hook_right_repeat_04_take_01.yaml`
+- `.testbed/assets/fixtures/boxing/uppercut_right/boxing_guard->uppercut_right_repeat_04_take_01.yaml`
+- export/benchmark outputs under `.temp/boxing-punch-classifier-export/left-right-window-audit-2026-06-18/`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Completed the fixture/window-audit slice and pushed `104d28f` (`Audit learned-classifier punch truth windows`). Adjusted the hardest mislabeled windows after comparing them against the hardened capture timing with `time_origin_offset_ms`: `straight_right::01` moved `400-600 -> 625-825`, `straight_right::04` moved `4400-4900 -> 5200-5450`, `hook_left::04` moved `5500-5800 -> 5075-5225`, `hook_right::04` moved `5300-5900 -> 5730-5860`, and `uppercut_right::04` moved `5700-6450 -> 5175-5350`. Reran dataset export plus the frozen benchmark into `.temp/boxing-punch-classifier-export/left-right-window-audit-2026-06-18/`. This materially improved benchmark results: MLP moved from `0.655 accuracy / 0.210 macro-F1` to `0.759 / 0.362`; CNN moved from `0.724 / 0.264` to `0.828 / 0.417`; threshold baseline moved from `0.621 / 0.259` to `0.655 / 0.341`. The audit was sufficient to fix meaningful truth-window problems, especially for `straight_right`, but it was not sufficient to solve remaining hook/uppercut collapse: `hook_left::04`, `hook_right::04`, and `uppercut_right::04` still collapse to `no_punch` in learned models. Current truthful checkpoint: window correction helped significantly, but deeper model/data tuning still remains for those classes.
 
 ---
 
@@ -94,9 +98,9 @@ This branch should stay evidence-driven and fixture-based. We already know the U
 **Files Created/Deleted/Modified:**
 - QA notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA MOSTLY PASS with two caveats for commit `104d28f`. The corrected truth windows materially improved learned-classifier behavior, especially `straight_right`: branch-local reruns reproduced the audited-window metrics (`MLP 0.759 accuracy / 0.362 macro-F1`, `CNN 0.828 / 0.417`, `threshold 0.655 / 0.341`), and `straight_right::04` flipped from `no_punch` to `straight_right` in both learned models. Remaining failures are now truthfully characterized as deeper hook/uppercut model collapse rather than still-bad straight-right windows: `hook_left`, `hook_right`, `uppercut_left`, and `uppercut_right` remain weak in learned models after the window audit. Two caveats remain: (1) the old frozen-snapshot rerun command now correctly fails hash verification because this branch intentionally changed fixture YAML truth windows, so reproducibility must be described as same benchmark manifest plus archived hardened captures rerun without frozen-snapshot hash enforcement; and (2) a broader config-profile test still expects boxing backend `threshold_gates` while this branch resolves boxing backend to `learned_classifier`, leaving focused validation at `107/108` and indicating a stale expectation rather than a learned-classifier runtime break.
 
 ---
 
@@ -114,25 +118,25 @@ This branch should stay evidence-driven and fixture-based. We already know the U
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit PASS. This branch is complete as a window-audit checkpoint, not as the final left/right tuning solution. Independent audit confirmed the truth-window corrections materially improved the intended seam, especially `straight_right::04`, which flipped from `no_punch` to `straight_right` in both learned models. The remaining misses are now clearly separate from that fixed seam: `hook_left`, `hook_right`, `uppercut_left`, and `uppercut_right` still show deeper learned-model weakness or collapse. Audit also confirmed that reproducibility claims must stay narrow and precise: the branch reruns use the same benchmark manifest and same archived hardened captures, but they are not frozen-snapshot hash-identical because the branch intentionally changed fixture YAML truth windows. The stale config-profile expectation (`threshold_gates` vs `learned_classifier`) is a test/story caveat rather than a runtime break in this branch.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete (Checkpoint)
 
-**What We Built:** Pending.
+**What We Built:** We completed the first checkpoint of learned-classifier left/right punch tuning by auditing and correcting the hardest exported truth windows before attempting deeper model changes. This materially improved right-straight behavior and boosted all benchmark families, while preserving the recent proving/runtime/debug fixes.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02` remains the active learned backend config; `REF-03` and `REF-04` were not changed in this checkpoint because research showed the remaining problem was not a runtime left/right code bug; `REF-06` benchmark outputs improved materially after the fixture-window audit; `REF-07` remains valid as an early-window screenshot but is no longer evidence of full straight-right no-fire across the fixture.
 
 **Commits:**
-- Pending.
+- `104d28f` - `Audit learned-classifier punch truth windows`
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** Bad truth windows were materially hurting learned-classifier evaluation, especially for straight-right, and fixing them was necessary before any honest model-tuning conclusions could be drawn. But the hook/uppercut misses that remain after window correction are now much more clearly model/data problems rather than mislabeled-fixture problems. Reproducibility claims also need to be precise once truth YAML changes: same manifest + archived captures rerun is still valid, but frozen-snapshot hash identity is not.
 
 ---
 
-*Completed on Pending*
+*Completed on 2026-06-18*
