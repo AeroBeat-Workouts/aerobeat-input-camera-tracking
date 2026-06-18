@@ -2272,6 +2272,10 @@ func _build_boxing_event_feed_text() -> String:
 		classifier_debug = learned_classifier_debug
 		classifier_title = "Learned classifier truth"
 		classifier_loaded_label = "Learned model path"
+	elif classifier_backend == "mixed_family":
+		classifier_debug = learned_classifier_debug
+		classifier_title = "Mixed-family straight-classifier truth"
+		classifier_loaded_label = "Straight learned model path"
 	elif classifier_backend == "threshold_gates":
 		classifier_debug = {}
 		classifier_title = "Threshold gates truth"
@@ -2330,7 +2334,7 @@ func _build_boxing_event_feed_text() -> String:
 	if bool(classifier_debug.get("show_event_gate_state", false)):
 		var gate_reason := String(classifier_debug.get("reason", "idle"))
 		var model_error := String(classifier_debug.get("model_error", ""))
-		if classifier_backend == "learned_classifier" and not model_error.is_empty():
+		if (classifier_backend == "learned_classifier" or classifier_backend == "mixed_family") and not model_error.is_empty():
 			gate_reason += " (%s)" % model_error
 		lines.append("Gate reason / hold / cooldown / active event: %s / %dms / %dms / %s" % [
 			gate_reason,

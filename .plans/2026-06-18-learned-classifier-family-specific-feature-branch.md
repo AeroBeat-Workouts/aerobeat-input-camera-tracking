@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 17:51 EDT  
+**Last Updated:** 2026-06-18 18:49 EDT  
 **Blocked Reason:** None; Task 36 landed the smallest honest global mixed-family rollout, restored the boxing profile’s safe default backend contract, and handed a focused validation bundle to QA.  
 **Agent:** `pico`
 
@@ -1140,6 +1140,88 @@ Likely files/components for the next coder slice: `assets/boxing.gesture_detecti
 **Role:** `auditor`  
 **References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
 **Prompt:** Independently truth-check the mixed-family YAML comment/config-contract cleanup and confirm the docs/comments now honestly match the shipped runtime behavior.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 42: Terminal-side mixed-family proving verification and bugfixes
+
+**Bead ID:** `aerobeat-input-camera-tracking-erwp`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Run a terminal-side verification pass against the mixed-family proving/runtime path to confirm backend/event truth is behaving as expected under replay/headless-friendly checks. If concrete bugs are found, fix them immediately, keep scope narrow, and document exactly what failed versus what was corrected.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/.temp/mixed-family-terminal-check/`
+- proving/runtime/test paths used during verification
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Ran a terminal-side mixed-family verification pass using both focused repo-local unit coverage and real headless proving replays.
+
+Checks run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit`
+- Headless replay captures via `res://scripts/capture_fixture_proving.gd` with `AEROBEAT_PUNCH_BACKEND_OVERRIDE=mixed_family` and `AEROBEAT_FIXTURE_STATE_TIMELINE_MODE=full` across the representative boxing fixtures from `.testbed/assets/benchmarks/prototype_matcher_boxing_v1.benchmark.json`.
+- Replay summaries written under `.testbed/.temp/mixed-family-terminal-check/full/summary.json` for straight/hook/uppercut left+right plus the run-in-place negative control.
+
+Concrete bug found and fixed:
+- The proving harness attack-event payload truth used the top-level `punch_detection.backend` string instead of the per-family routing truth, so emitted mixed-family events dropped their actual backend metadata. In practice that meant threshold-routed hook/uppercut emits and learned-routed straight emits could show no `backend` payload even though `gesture_debug.punch_detection` already knew the correct routing.
+- Fixed by teaching `.testbed/scripts/proving_harness.gd` to resolve event backend per signal family (`straight_backend` / `hook_backend` / `uppercut_backend`) and by returning explicit `threshold_gates` payload truth for threshold-routed mixed-family emits.
+- Also corrected `.testbed/scripts/boxing_proving_harness.gd` so the mixed-family event-feed text no longer falls through to prototype-matcher truth; it now labels the section as mixed-family straight-classifier truth and surfaces the learned straight model path honestly.
+- Added focused coverage in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` for both the mixed-family event-feed text and per-family backend payload resolution.
+
+What the terminal-side pass proved:
+- Mixed-family backend activation is real in runtime/proving: replay captures consistently reported `active_backend=mixed_family`, `routing_mode=mixed_family`, `straight_backend=learned_classifier`, and `hook_backend/uppercut_backend=threshold_gates`.
+- After the bugfix, emitted replay attack events now truthfully carry their routed backend in payloads, so terminal-side event/backend truth surfaces are internally consistent.
+- The underlying replay behavior is not yet clean enough for signoff: the straight-right replay did emit `punch_right` events from the learned path, but the straight-left replay missed learned straight emits entirely; multiple straight/hook/uppercut fixtures also still showed extra threshold hook/uppercut false positives, and even the run-in-place negative control produced threshold-routed attack events. This looks like a behavior-quality/runtime-tuning problem rather than the proving-truth-surface bug that was fixed here.
+
+Bottom line: terminal-side truth plumbing is now more honest, but QA is **not** ready to pass the mixed-family rollout yet because the real replay behavior still shows misses/false positives that require follow-up validation and likely more code/runtime tuning before GUI/manual signoff.
+
+---
+
+### Task 43: QA terminal-side mixed-family proving verification
+
+**Bead ID:** `aerobeat-input-camera-tracking-7qte`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the terminal-side mixed-family proving checks (and any bugfixes from Task 42) are reproducible, truthful, and explicit about what terminal-side validation can and cannot prove versus later manual GUI testing.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 44: Audit terminal-side mixed-family proving verification
+
+**Bead ID:** `aerobeat-input-camera-tracking-n3c9`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the terminal-side mixed-family proving verification and any resulting fixes, and state what is now proven versus what still requires Derrick’s manual GUI replay/live test.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo paths used during audit

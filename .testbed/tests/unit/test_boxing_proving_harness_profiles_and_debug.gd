@@ -688,10 +688,45 @@ func test_boxing_event_feed_reports_mixed_family_routing_truth() -> void:
 		},
 	})
 	var text_body := String(harness._build_boxing_event_feed_text())
+	assert_string_contains(text_body, "Mixed-family straight-classifier truth")
 	assert_string_contains(text_body, "Routing mode: mixed_family")
 	assert_string_contains(text_body, "Per-family backends: straight=learned_classifier hook=threshold_gates uppercut=threshold_gates")
 	assert_string_contains(text_body, "Hook/uppercut routing note: hook/uppercut stay on threshold_gates in mixed_family routing")
+	assert_string_contains(text_body, "Straight learned model path: res://docs/models/straight-family-test.json (loaded=true)")
 	assert_string_contains(text_body, "Event/backend truth: punch_left=learned_classifier punch_right=learned_classifier hook_left=threshold_gates")
+
+func test_mixed_family_classifier_match_payload_uses_per_family_backend_truth() -> void:
+	var harness: Variant = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"punch_detection": {
+				"active_backend": "mixed_family",
+				"backend": "mixed_family",
+				"straight_backend": "learned_classifier",
+				"hook_backend": "threshold_gates",
+				"uppercut_backend": "threshold_gates",
+			},
+			"learned_classifier": {
+				"emitted_event_name": "punch_left",
+				"result_class": "straight_left",
+				"best_score": 0.91,
+				"runner_up_class": "no_punch",
+				"runner_up_score": 0.05,
+				"required_score": 0.70,
+				"model_path": "res://docs/models/straight-family-test.json",
+				"reason": "emitted",
+			},
+		},
+	})
+	var straight_payload: Dictionary = harness._classifier_match_payload_for_signal("punch_left")
+	assert_eq(String(straight_payload.get("backend", "")), "learned_classifier")
+	assert_eq(String((straight_payload.get("payload", {}) as Dictionary).get("class_name", "")), "straight_left")
+	var hook_payload: Dictionary = harness._classifier_match_payload_for_signal("hook_left")
+	assert_eq(String(hook_payload.get("backend", "")), "threshold_gates")
+	assert_true(((hook_payload.get("payload", {}) as Dictionary)).is_empty())
+	var uppercut_payload: Dictionary = harness._classifier_match_payload_for_signal("uppercut_right")
+	assert_eq(String(uppercut_payload.get("backend", "")), "threshold_gates")
+	assert_true(((uppercut_payload.get("payload", {}) as Dictionary)).is_empty())
 
 func test_boxing_learned_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels() -> void:
 	var harness = _new_harness()

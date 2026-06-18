@@ -1313,7 +1313,7 @@ func _connect_flow_signal(signal_name: String) -> void:
 func _classifier_match_payload_for_signal(signal_name: String) -> Dictionary:
 	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
 	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
-	var backend := String(punch_detection.get("backend", "")).strip_edges().to_lower()
+	var backend := _punch_backend_for_signal(signal_name, punch_detection)
 	if backend == "prototype_matcher":
 		var matcher_debug: Dictionary = (gesture_debug.get("prototype_matcher", {}) as Dictionary)
 		if String(matcher_debug.get("emitted_event_name", "")) != signal_name:
@@ -1350,7 +1350,22 @@ func _classifier_match_payload_for_signal(signal_name: String) -> Dictionary:
 				"reason": String(learned_debug.get("reason", "")),
 			},
 		}
+	if backend == "threshold_gates":
+		return {
+			"backend": "threshold_gates",
+			"payload": {},
+		}
 	return {}
+
+func _punch_backend_for_signal(signal_name: String, punch_detection: Dictionary) -> String:
+	var active_backend := String(punch_detection.get("active_backend", punch_detection.get("backend", ""))).strip_edges().to_lower()
+	if signal_name.begins_with("punch_"):
+		return String(punch_detection.get("straight_backend", active_backend)).strip_edges().to_lower()
+	if signal_name.begins_with("hook_"):
+		return String(punch_detection.get("hook_backend", active_backend)).strip_edges().to_lower()
+	if signal_name.begins_with("uppercut_"):
+		return String(punch_detection.get("uppercut_backend", active_backend)).strip_edges().to_lower()
+	return active_backend
 
 func _on_pose_updated(landmarks: Array) -> void:
 	if _is_preview_only_mode():
