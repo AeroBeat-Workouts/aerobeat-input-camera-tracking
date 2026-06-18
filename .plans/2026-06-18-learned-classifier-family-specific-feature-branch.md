@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 11:25 EDT  
-**Blocked Reason:** None currently; resumed on the approved plan with a design-review research slice to evaluate family-isolated classifier topologies before resuming QA/audit.  
+**Last Updated:** 2026-06-18 11:36 EDT  
+**Blocked Reason:** None currently; Task 9 coder follow-up refreshed the checked-in masked-family artifacts truthfully and QA can resume from the approved plan.  
 **Agent:** `pico`
 
 ---
@@ -213,9 +213,11 @@ However, QA found a real artifact-truthfulness bug in the per-variant export sum
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Verified the masked-export truthfulness patch is present in `scripts/boxing_classifier_harness.py` and `scripts/export_boxing_punch_classifier_dataset.py`: the derived dataset now carries its own `sample_count`, `split_counts`, `sample_kind_counts`, `negative_context_counts`, and alignment summary, and the export-summary writer no longer backfills stale source-dataset totals over the derived metadata. Re-ran both checked-in masked benchmark branches directly into `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/{straight_family_mask_v1,hook_uppercut_family_mask_v1}/` using the same source export QA validated earlier, including refreshed `export/`, `mlp/`, and `cnn/` outputs.
+
+The affected per-branch export summaries are now truthful: `straight_family_mask_v1` reports `sample_count: 80`, `split_counts: {train: 55, test: 25}`, `sample_kind_counts: {annotated_punch_window: 8, transition_before_punch: 20, derived_no_punch_window: 48, transition_after_punch: 4}`, and `label_counts: {straight_left: 4, straight_right: 4, no_punch: 72}`; `hook_uppercut_family_mask_v1` reports `sample_count: 88`, `split_counts: {train: 61, test: 27}`, `sample_kind_counts: {annotated_punch_window: 16, transition_before_punch: 20, derived_no_punch_window: 48, transition_after_punch: 4}`, and `label_counts: {hook_left: 4, hook_right: 4, uppercut_left: 4, uppercut_right: 4, no_punch: 72}`. Benchmark conclusion did not change: the straight masked CNN still trails the shared-vector subset baseline (`0.9600 / 0.8815` vs `1.0000 / 1.0000`), and the hook/uppercut masked CNN still trails its subset baseline (`0.8148 / 0.1796` vs `0.8519 / 0.1878`), with masked MLP only improving hook/uppercut macro-F1 relative to the masked CNN, not enough to overturn the overall conclusion. QA is now unblocked to rerun against truthful artifacts.
 
 ---
 
