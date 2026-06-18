@@ -1,7 +1,7 @@
 {
   "schema": "aerobeat.boxing_punch_classifier_mlp_result",
   "version": 1,
-  "trained_at": "2026-06-18T15:22:16.375505+00:00",
+  "trained_at": "2026-06-18T15:27:01.332656+00:00",
   "dataset_path": "/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/export/dataset.json",
   "class_order": [
     "straight_left",
