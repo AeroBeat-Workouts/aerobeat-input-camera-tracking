@@ -1092,6 +1092,67 @@ Likely files/components for the next coder slice: `assets/boxing.gesture_detecti
 
 ---
 
+### Task 39: Clarify mixed-family YAML comments and config contract
+
+**Bead ID:** `aerobeat-input-camera-tracking-x2t3`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Tighten the YAML comments around the new mixed-family runtime rollout so the config contract is explicit, not just technically present. Clarify that `punch_detection.backend: mixed_family` routes straights through the learned straight artifact while hooks/uppercuts stay on threshold gates for now, and document the artifact-path resolution/fallback behavior well enough to avoid future confusion.
+
+**Folders Created/Deleted/Modified:**
+- config/comment paths in `assets/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- plan updates / notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Tightened the boxing YAML comments so the mixed-family rollout contract is explicit at both the top-level backend selector and the `mixed_family` block. Documented that `punch_detection.backend: mixed_family` routes straights through `mixed_family.straight.model.artifact_path`, keeps hooks/uppercuts on `threshold_gates`, and falls back to `learned_classifier.model.artifact_path` and then the built-in default artifact when the mixed-family straight artifact path is blank or omitted. Commit: `ebe0b75` (`Clarify mixed-family config comments`).
+
+---
+
+### Task 40: QA mixed-family YAML comment/config-contract cleanup
+
+**Bead ID:** `aerobeat-input-camera-tracking-lqyx`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the mixed-family YAML comments/config-contract cleanup is accurate, consistent with the landed runtime behavior, and explicit enough to prevent future misconfiguration.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 41: Audit mixed-family YAML comment/config-contract cleanup
+
+**Bead ID:** `aerobeat-input-camera-tracking-qnzy`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the mixed-family YAML comment/config-contract cleanup and confirm the docs/comments now honestly match the shipped runtime behavior.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 ## Final Results
 
 **Status:** ⚠️ Partial / Awaiting next benchmark slice

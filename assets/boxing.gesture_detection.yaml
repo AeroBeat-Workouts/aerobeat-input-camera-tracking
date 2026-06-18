@@ -2,7 +2,7 @@ schema: aerobeat/gesture_detection_config
 version: 1
 profile: boxing
 punch_detection:
-  # [threshold_gates, prototype_matcher, learned_classifier, mixed_family] Pick which punch-detection family is active for boxing. input.
+  # [threshold_gates, prototype_matcher, learned_classifier, mixed_family] Pick which punch-detection family is active for boxing. `mixed_family` is the current split rollout: straights use the learned straight artifact below, while hooks/uppercuts still stay on threshold gates. input.
   backend: threshold_gates
 
 threshold_gates:
@@ -183,7 +183,8 @@ learned_classifier:
     show_event_gate_state: true
 
 mixed_family:
+  # Split-family routing contract for the current staged rollout. Only straight punches use the learned classifier from this block; hooks and uppercuts continue to use the threshold_gates config above until they earn their own runtime path. input.
   straight:
     model:
-      # Exported learned-classifier artifact to load for straight punches when punch_detection.backend = mixed_family. input.
+      # Exported learned straight-classifier artifact used when punch_detection.backend = mixed_family. If this path is blank or omitted, runtime falls back to learned_classifier.model.artifact_path, and if that is also blank it falls back again to the built-in default model artifact. input.
       artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
