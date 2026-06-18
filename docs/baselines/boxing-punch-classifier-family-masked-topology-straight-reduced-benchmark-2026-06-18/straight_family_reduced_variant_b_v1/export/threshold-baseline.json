@@ -1,0 +1,655 @@
+{
+  "schema": "aerobeat.boxing_punch_classifier_threshold_baseline",
+  "version": 3,
+  "feature_set": "straight_family_reduced_variant_b_v1",
+  "class_order": [
+    "straight_left",
+    "straight_right",
+    "no_punch"
+  ],
+  "mask_inventory": {
+    "mask_profile": "straight_family_reduced_variant_b_v1",
+    "class_order": [
+      "straight_left",
+      "straight_right",
+      "no_punch"
+    ],
+    "active_side_feature_names": [
+      "elbow_shoulder_xy_distance_over_shoulder_width",
+      "elbow_shoulder_radial_velocity_over_shoulder_width"
+    ],
+    "masked_side_feature_names": [
+      "shoulder_x",
+      "shoulder_y",
+      "elbow_x",
+      "elbow_y",
+      "wrist_x",
+      "wrist_y",
+      "combined_elbow_wrist_velocity_xy_magnitude",
+      "elbow_x_from_shoulder_over_shoulder_width",
+      "elbow_y_from_shoulder_over_shoulder_width",
+      "camera_wrist_signed_vx",
+      "camera_wrist_signed_vy",
+      "camera_wrist_direction_none",
+      "camera_wrist_direction_up",
+      "camera_wrist_direction_down",
+      "camera_wrist_direction_left",
+      "camera_wrist_direction_right",
+      "body_wrist_signed_vx",
+      "body_wrist_signed_vy",
+      "body_wrist_direction_none",
+      "body_wrist_direction_up",
+      "body_wrist_direction_down",
+      "body_wrist_direction_left",
+      "body_wrist_direction_right"
+    ],
+    "active_frame_feature_names": [
+      "left_elbow_shoulder_xy_distance_over_shoulder_width",
+      "left_elbow_shoulder_radial_velocity_over_shoulder_width",
+      "right_elbow_shoulder_xy_distance_over_shoulder_width",
+      "right_elbow_shoulder_radial_velocity_over_shoulder_width"
+    ],
+    "source_feature_set": "family_combined_directional_v1",
+    "source_class_order": [
+      "straight_left",
+      "straight_right",
+      "hook_left",
+      "hook_right",
+      "uppercut_left",
+      "uppercut_right",
+      "no_punch"
+    ]
+  },
+  "metrics_by_split": {
+    "train": {
+      "sample_count": 55,
+      "accuracy": 0.7818181818181819,
+      "macro_precision": 0.2925170068027211,
+      "macro_recall": 0.2925170068027211,
+      "macro_f1": 0.292517006802721,
+      "actual_counts": {
+        "straight_left": 3,
+        "straight_right": 3,
+        "no_punch": 49
+      },
+      "predicted_counts": {
+        "straight_left": 5,
+        "straight_right": 1,
+        "no_punch": 49
+      },
+      "per_class": {
+        "straight_left": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 3
+        },
+        "straight_right": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 3
+        },
+        "no_punch": {
+          "precision": 0.8775510204081632,
+          "recall": 0.8775510204081632,
+          "f1": 0.8775510204081631,
+          "support": 49
+        }
+      },
+      "confusion": {
+        "straight_left": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "no_punch": 3
+        },
+        "straight_right": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "no_punch": 3
+        },
+        "no_punch": {
+          "straight_left": 5,
+          "straight_right": 1,
+          "no_punch": 43
+        }
+      }
+    },
+    "test": {
+      "sample_count": 25,
+      "accuracy": 0.84,
+      "macro_precision": 0.3043478260869565,
+      "macro_recall": 0.3043478260869565,
+      "macro_f1": 0.3043478260869565,
+      "actual_counts": {
+        "straight_left": 1,
+        "straight_right": 1,
+        "no_punch": 23
+      },
+      "predicted_counts": {
+        "straight_left": 1,
+        "straight_right": 1,
+        "no_punch": 23
+      },
+      "per_class": {
+        "straight_left": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "straight_right": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "support": 1
+        },
+        "no_punch": {
+          "precision": 0.9130434782608695,
+          "recall": 0.9130434782608695,
+          "f1": 0.9130434782608695,
+          "support": 23
+        }
+      },
+      "confusion": {
+        "straight_left": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "no_punch": 1
+        },
+        "straight_right": {
+          "straight_left": 0,
+          "straight_right": 0,
+          "no_punch": 1
+        },
+        "no_punch": {
+          "straight_left": 1,
+          "straight_right": 1,
+          "no_punch": 21
+        }
+      }
+    }
+  },
+  "records": [
+    {
+      "sample_id": "straight_left_fixture::straight_left::01",
+      "split": "train",
+      "actual": "straight_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_left_fixture::straight_left::02",
+      "split": "train",
+      "actual": "straight_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_left_fixture::straight_left::03",
+      "split": "train",
+      "actual": "straight_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_left_fixture::straight_left::04",
+      "split": "test",
+      "actual": "straight_left",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::straight_right::01",
+      "split": "train",
+      "actual": "straight_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::straight_right::02",
+      "split": "train",
+      "actual": "straight_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::straight_right::03",
+      "split": "train",
+      "actual": "straight_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::straight_right::04",
+      "split": "test",
+      "actual": "straight_right",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::transition_before::01",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::transition_before::02",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "hook_left_fixture::no_punch::009",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::transition_before::03",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "hook_left_fixture::transition_before::04",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_left_fixture::no_punch::017",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_right_fixture::transition_before::01",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_right_fixture::no_punch::005",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_right_fixture::transition_before::02",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_right_fixture::transition_before::03",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "hook_right_fixture::no_punch::014",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "straight_right"
+    },
+    {
+      "sample_id": "hook_right_fixture::transition_before::04",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "knee_left_fixture::no_punch::002",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "knee_left_fixture::no_punch::010",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "knee_left_fixture::no_punch::019",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "knee_right_fixture::no_punch::003",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "knee_right_fixture::no_punch::011",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "knee_right_fixture::no_punch::020",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_left_fixture::no_punch::008",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_left_fixture::no_punch::016",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_left_fixture::no_punch::025",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_right_fixture::no_punch::005",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_right_fixture::no_punch::013",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "leg_lift_right_fixture::no_punch::022",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "run_in_place_fixture::no_punch::005",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "run_in_place_fixture::no_punch::014",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_left_fixture::no_punch::006",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_left_fixture::no_punch::014",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_left_fixture::no_punch::022",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_right_fixture::no_punch::003",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_right_fixture::no_punch::011",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_right_fixture::no_punch::019",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "sidestep_right_fixture::no_punch::028",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "squat_fixture::no_punch::008",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "squat_fixture::no_punch::017",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "squat_fixture::no_punch::025",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "stance_transition_fixture::no_punch::002",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "stance_transition_fixture::no_punch::010",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "stance_transition_fixture::no_punch::019",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "stance_transition_fixture::no_punch::027",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_left_fixture::no_punch::001",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_left_fixture::transition_before::01",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_left_fixture::transition_before::02",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "straight_left_fixture::no_punch::009",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "straight_left_fixture::transition_before::03",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "straight_left"
+    },
+    {
+      "sample_id": "straight_left_fixture::transition_before::04",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::no_punch::002",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::transition_before::01",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::transition_before::02",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::transition_before::03",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::no_punch::010",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::transition_before::04",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "straight_right_fixture::no_punch::018",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::no_punch::003",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::transition_before::01",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::transition_before::02",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::no_punch::011",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::transition_before::03",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_left_fixture::transition_before::04",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::no_punch::004",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::transition_after::01",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::transition_after::02",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::transition_after::03",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::no_punch::012",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "uppercut_right_fixture::transition_after::04",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_left_fixture::no_punch::004",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_left_fixture::no_punch::012",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_left_fixture::no_punch::021",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_right_fixture::no_punch::001",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "straight_right"
+    },
+    {
+      "sample_id": "weave_right_fixture::no_punch::009",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_right_fixture::no_punch::018",
+      "split": "train",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    },
+    {
+      "sample_id": "weave_right_fixture::no_punch::026",
+      "split": "test",
+      "actual": "no_punch",
+      "predicted": "no_punch"
+    }
+  ]
+}

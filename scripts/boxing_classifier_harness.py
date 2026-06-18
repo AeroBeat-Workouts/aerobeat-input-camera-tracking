@@ -40,9 +40,13 @@ PUNCH_CLASS_ORDER = [
 ]
 MASK_PROFILE_STRAIGHT_FAMILY_V1 = "straight_family_mask_v1"
 MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1 = "hook_uppercut_family_mask_v1"
+MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_A_V1 = "straight_family_reduced_variant_a_v1"
+MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_B_V1 = "straight_family_reduced_variant_b_v1"
 MASK_PROFILE_TO_CLASS_ORDER = {
     MASK_PROFILE_STRAIGHT_FAMILY_V1: ["straight_left", "straight_right", "no_punch"],
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
+    MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_A_V1: ["straight_left", "straight_right", "no_punch"],
+    MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_B_V1: ["straight_left", "straight_right", "no_punch"],
 }
 PUNCH_GESTURE_NAMES = set(PUNCH_CLASS_TO_EVENT.keys())
 LANDMARK_IDS = {
@@ -125,7 +129,14 @@ MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES = {
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE
     + CAMERA_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
     + BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE,
+    MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_A_V1: BASELINE_FEATURE_NAMES_PER_SIDE
+    + ["elbow_shoulder_radial_velocity_over_shoulder_width"],
+    MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_B_V1: [
+        "elbow_shoulder_xy_distance_over_shoulder_width",
+        "elbow_shoulder_radial_velocity_over_shoulder_width",
+    ],
 }
+MASK_PROFILES = list(MASK_PROFILE_TO_CLASS_ORDER.keys())
 
 
 def normalize_feature_set(feature_set: str | None) -> str:

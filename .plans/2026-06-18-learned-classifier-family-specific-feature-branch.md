@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 11:36 EDT  
-**Blocked Reason:** None currently; Task 9 coder follow-up refreshed the checked-in masked-family artifacts truthfully and QA can resume from the approved plan.  
+**Last Updated:** 2026-06-18 11:42 EDT  
+**Blocked Reason:** None; Task 7 QA rerun passed on the refreshed masked-family artifacts and audit is ready to proceed.  
 **Agent:** `pico`
 
 ---
@@ -189,13 +189,13 @@ Outcome: the masked topology did **not** beat the shared-vector baseline on the 
 - `.temp/qa-masked-family-rerun-2026-06-18/**`
 - plan updates only; no repo artifact files changed during QA
 
-**Status:** ❌ Failed
+**Status:** ✅ Complete
 
-**Results:** QA reran the masked-family harness flow from the checked-in `family_combined_directional_v1` source export and reproduced the reported masked-head artifacts and metrics exactly for both variants. Re-run commands: (1) `python3 scripts/export_boxing_punch_classifier_dataset.py --source-dataset docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/export/dataset.json --mask-profile straight_family_mask_v1 --derived-feature-set family_combined_straight_masked_v1 --output-dir .temp/qa-masked-family-rerun-2026-06-18/straight/export`, (2) `python3 scripts/train_boxing_punch_mlp_baseline.py --dataset .temp/qa-masked-family-rerun-2026-06-18/straight/export/dataset.json --output-dir .temp/qa-masked-family-rerun-2026-06-18/straight/mlp`, (3) `python3 scripts/train_boxing_punch_temporal_cnn.py --dataset .temp/qa-masked-family-rerun-2026-06-18/straight/export/dataset.json --mlp-result .temp/qa-masked-family-rerun-2026-06-18/straight/mlp/mlp-result.json --output-dir .temp/qa-masked-family-rerun-2026-06-18/straight/cnn`, and the same three commands for `hook_uppercut_family_mask_v1` with `family_combined_hook_uppercut_masked_v1` under `.temp/qa-masked-family-rerun-2026-06-18/hook_uppercut/...`.
+**Results:** QA re-checked the refreshed checked-in masked benchmark artifacts under `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/` after the truthfulness fix/refresh commits (`18befd6`, `efc5f23`, `c4c75bd`, `05fe7e4`, `fc48d78`). The per-variant export summaries are now truthful for both branches: `straight_family_mask_v1` reports `sample_count: 80` with `split_counts: {train: 55, test: 25}`, and `hook_uppercut_family_mask_v1` reports `sample_count: 88` with `split_counts: {train: 61, test: 27}`. Derived sample-kind totals are also now correct in the checked-in export summaries (`8/20/48/4` for straight annotated/transition-before/no-punch/transition-after and `16/20/48/4` for hook-uppercut).
 
-Fairness check passed: the subset-baseline projection in `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/summary.json` uses the exact masked-dataset test sample IDs (25 for straight, 27 for hook/uppercut) and remaps baseline predictions into the reduced class order truthfully; QA found zero mismatches against `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json`.
+Variable inventory remains correct and explicit. `straight_family_mask_v1` still exposes only the elbow/shoulder straight-family cue bundle plus core joint coordinates/velocity context, while masking the wrist-direction features; `hook_uppercut_family_mask_v1` still exposes the wrist-direction bundle in both camera/body space plus core joint coordinates/velocity context, while masking the straight-only elbow radial/alignment trio. The benchmark-level `summary.{json,md}` remains internally consistent with each branch export’s `mask_inventory`.
 
-However, QA found a real artifact-truthfulness bug in the per-variant export summaries: `export/export-summary.{json,md}` for both masked variants report stale source-style `split_counts` (`67 train / 29 test`) and stale source-level sample-kind totals even though the derived datasets actually contain `55 train / 25 test` samples for `straight_family_mask_v1` and `61 train / 27 test` for `hook_uppercut_family_mask_v1`. The masked per-family variable inventory itself is correct and easy to inspect in `summary.{json,md}` and each variant’s `export/dataset.json` / `export/export-summary.json` `mask_inventory`, but because those per-variant export summary counts are misleading, QA did not close the bead and audit should wait for that artifact-summary bug to be corrected or explicitly acknowledged.
+Benchmark conclusion still stands unchanged: the masked-family topology did **not** beat the shared-vector subset baseline. Straight masked CNN remains `0.9600 accuracy / 0.8815 macro-F1` versus a `1.0000 / 1.0000` shared-vector subset baseline, and hook/uppercut masked CNN remains `0.8148 / 0.1796` versus a `0.8519 / 0.1878` shared-vector subset baseline (with masked MLP only improving hook/uppercut macro-F1 relative to the masked CNN, not enough to overturn the overall result). QA now passes on the refreshed artifacts, so audit is ready.
 
 ---
 
@@ -215,9 +215,11 @@ However, QA found a real artifact-truthfulness bug in the per-variant export sum
 
 **Status:** ✅ Complete
 
-**Results:** Verified the masked-export truthfulness patch is present in `scripts/boxing_classifier_harness.py` and `scripts/export_boxing_punch_classifier_dataset.py`: the derived dataset now carries its own `sample_count`, `split_counts`, `sample_kind_counts`, `negative_context_counts`, and alignment summary, and the export-summary writer no longer backfills stale source-dataset totals over the derived metadata. Re-ran both checked-in masked benchmark branches directly into `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/{straight_family_mask_v1,hook_uppercut_family_mask_v1}/` using the same source export QA validated earlier, including refreshed `export/`, `mlp/`, and `cnn/` outputs.
+**Results:** Audit reran the truth check against the refreshed checked-in artifacts rather than the stale pre-fix state. `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/summary.{json,md}` is internally consistent with each branch’s `export/export-summary.json`, `mlp/mlp-result.json`, and `cnn/cnn-result.json`. The refreshed exports are now truthful: `straight_family_mask_v1` reports `sample_count: 80`, `split_counts: {train: 55, test: 25}`, `sample_kind_counts: {annotated_punch_window: 8, transition_before_punch: 20, derived_no_punch_window: 48, transition_after_punch: 4}`, and `label_counts: {straight_left: 4, straight_right: 4, no_punch: 72}`; `hook_uppercut_family_mask_v1` reports `sample_count: 88`, `split_counts: {train: 61, test: 27}`, `sample_kind_counts: {annotated_punch_window: 16, transition_before_punch: 20, derived_no_punch_window: 48, transition_after_punch: 4}`, and `label_counts: {hook_left: 4, hook_right: 4, uppercut_left: 4, uppercut_right: 4, no_punch: 72}`.
 
-The affected per-branch export summaries are now truthful: `straight_family_mask_v1` reports `sample_count: 80`, `split_counts: {train: 55, test: 25}`, `sample_kind_counts: {annotated_punch_window: 8, transition_before_punch: 20, derived_no_punch_window: 48, transition_after_punch: 4}`, and `label_counts: {straight_left: 4, straight_right: 4, no_punch: 72}`; `hook_uppercut_family_mask_v1` reports `sample_count: 88`, `split_counts: {train: 61, test: 27}`, `sample_kind_counts: {annotated_punch_window: 16, transition_before_punch: 20, derived_no_punch_window: 48, transition_after_punch: 4}`, and `label_counts: {hook_left: 4, hook_right: 4, uppercut_left: 4, uppercut_right: 4, no_punch: 72}`. Benchmark conclusion did not change: the straight masked CNN still trails the shared-vector subset baseline (`0.9600 / 0.8815` vs `1.0000 / 1.0000`), and the hook/uppercut masked CNN still trails its subset baseline (`0.8148 / 0.1796` vs `0.8519 / 0.1878`), with masked MLP only improving hook/uppercut macro-F1 relative to the masked CNN, not enough to overturn the overall conclusion. QA is now unblocked to rerun against truthful artifacts.
+The benchmark conclusion still holds after the refresh. Straight masked CNN remains below the shared-vector subset baseline (`0.9600 / 0.8815` vs `1.0000 / 1.0000`), and hook/uppercut masked CNN also remains below its shared-vector subset baseline (`0.8148 / 0.1796` vs `0.8519 / 0.1878`). The hook/uppercut masked MLP does raise macro-F1 over the masked CNN (`0.3159` vs `0.1796`), but it still does not beat the shared-vector subset baseline on either accuracy or the topology question Derrick asked. So the honest read is that feature isolation by itself did not rescue this branch.
+
+The per-family variable inventory stays explicit for follow-up diagnosis. `straight_family_mask_v1` keeps the core shoulder/elbow/wrist coordinates plus the straight-only elbow bundle active (`elbow_x_from_shoulder_over_shoulder_width`, `elbow_y_from_shoulder_over_shoulder_width`, `elbow_shoulder_radial_velocity_over_shoulder_width`) while masking all wrist-direction features. `hook_uppercut_family_mask_v1` keeps the core shoulder/elbow/wrist coordinates plus the wrist-direction bundle active (`camera_wrist_signed_vx`, `camera_wrist_signed_vy`, `camera_wrist_direction_{none,up,down,left,right}`, `body_wrist_signed_vx`, `body_wrist_signed_vy`, `body_wrist_direction_{none,up,down,left,right}`) while masking the straight-only elbow alignment/radial trio. Final audit judgment: the current family-specific variable choices still look weak, especially for hook/uppercut separation, so this does not yet justify staged routing on its own. The next slice should be diagnosis-first: inspect the hook/uppercut confusion cases and engineer a stronger hook/uppercut cue family (for example forearm angle/orbit or wrist-vs-elbow path curvature features) before spending effort on broader data collection or runtime promotion.
 
 ---
 
@@ -255,6 +257,73 @@ The affected per-branch export summaries are now truthful: `straight_family_mask
 **Results:** Fixed the derived masked-export truthfulness bug by recomputing masked dataset metadata from the derived sample set instead of inheriting source-dataset split/sample-kind counts. `scripts/boxing_classifier_harness.py` now rebuilds `split_counts`, `sample_kind_counts`, `negative_context_counts`, and `alignment_summary` for derived masked datasets, and `scripts/export_boxing_punch_classifier_dataset.py` no longer backfills those fields from the source export when writing derived artifacts.
 
 Refreshed both checked-in masked benchmark variants under `docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/` by rerunning export → MLP → CNN. Truthful derived counts now read `55 train / 25 test / 80 total` for `straight_family_mask_v1` and `61 train / 27 test / 88 total` for `hook_uppercut_family_mask_v1`, with derived sample-kind totals also updated (`8` straight annotated punches vs `16` hook/uppercut annotated punches, each plus `20` transition-before, `48` derived no-punch, `4` transition-after). Model metrics stayed unchanged from the prior benchmark conclusion: straight masked CNN remained `0.9600 / 0.8815`, hook/uppercut masked CNN remained `0.8148 / 0.1796`, and the masked topology still did not beat the shared-vector subset baselines. With the artifact metadata now truthful, QA’s reproduced rerun should be ready to hand back to audit.
+
+---
+
+### Task 10: Implement reduced straight-family minimal-variable benchmark variants
+
+**Bead ID:** `aerobeat-input-camera-tracking-ijg3`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Implement the next straight-family diagnosis benchmark as two narrow masked-family variants inside the existing harness/export flow. Variant A: remove `elbow_shoulder_xy_distance_over_shoulder_width` from the shared baseline pool, add it only to the straight-family head, remove `elbow_x_from_shoulder_over_shoulder_width` and `elbow_y_from_shoulder_over_shoulder_width`, and keep `elbow_shoulder_radial_velocity_over_shoulder_width` for the straight-family head. Variant B: same straight-family target, but strip away the remaining baseline family values too so the straight head sees only the two specialized values `elbow_shoulder_xy_distance_over_shoulder_width` and `elbow_shoulder_radial_velocity_over_shoulder_width`. Re-run the benchmark fairly against the same straight-family subset baseline and keep the variable inventory explicit in the artifacts.
+
+**Folders Created/Deleted/Modified:**
+- masked-family benchmark artifact paths for new straight-minimal variants
+
+**Files Created/Deleted/Modified:**
+- `scripts/boxing_classifier_harness.py`
+- `scripts/export_boxing_punch_classifier_dataset.py`
+- refreshed/new benchmark artifacts under a new dated baseline folder as needed
+- plan updates / notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Added two new harness-only masked straight-family profiles in `scripts/boxing_classifier_harness.py` and exposed them through `scripts/export_boxing_punch_classifier_dataset.py`: `straight_family_reduced_variant_a_v1` and `straight_family_reduced_variant_b_v1`. Variant A keeps the baseline coordinate/velocity context plus `elbow_shoulder_xy_distance_over_shoulder_width` and `elbow_shoulder_radial_velocity_over_shoulder_width`, while explicitly removing `elbow_x_from_shoulder_over_shoulder_width` and `elbow_y_from_shoulder_over_shoulder_width`. Variant B strips the straight head down to only `elbow_shoulder_xy_distance_over_shoulder_width` and `elbow_shoulder_radial_velocity_over_shoulder_width` per side.
+
+Generated fresh artifacts under `docs/baselines/boxing-punch-classifier-family-masked-topology-straight-reduced-benchmark-2026-06-18/` with `export/`, `mlp/`, and `cnn/` outputs for both variants plus benchmark-level `summary.{json,md}`. The artifact metadata keeps the exact variable inventory explicit in each variant `export/export-summary.json` and in the benchmark summary.
+
+Result: neither reduced straight-family variant beat the same projected straight-family subset of the shared-vector baseline CNN (`1.0000 accuracy / 1.0000 macro-F1` on 25 test windows). Variant A matched the earlier straight-mask result at `0.9600 accuracy / 0.8815 macro-F1` for both MLP and CNN, so removing the elbow x/y offset terms did not improve the benchmark. Variant B degraded materially: MLP fell to `0.8800 / 0.5333`, and CNN reached only `0.9200 / 0.5411`, indicating that reducing the straight head to only extension-distance plus radial-velocity cues removes too much useful context even inside the masked-family harness.
+
+---
+
+### Task 11: QA reduced straight-family minimal-variable benchmark variants
+
+**Bead ID:** `aerobeat-input-camera-tracking-eytr`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Verify the reduced straight-family minimal-variable benchmark variants are reproducible and compared fairly against the same straight-family subset baseline. Confirm that Variant A and Variant B use the intended variable inventories exactly, and summarize whether aggressively removing baseline/shared values improves or worsens straight-family performance.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 12: Audit reduced straight-family minimal-variable benchmark conclusions
+
+**Bead ID:** `aerobeat-input-camera-tracking-ozoo`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the reduced straight-family minimal-variable benchmark variants. Confirm whether shrinking the straight-family head toward only extension-style cues improves the straight-family subset benchmark enough to justify further specialization, or whether straight performance degrades once shared baseline context is removed. Keep the exact straight-family variable inventory explicit in the audit summary.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 

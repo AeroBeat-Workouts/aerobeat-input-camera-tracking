@@ -1,0 +1,485 @@
+{
+  "schema": "aerobeat.boxing_punch_classifier_family_masked_benchmark_summary",
+  "version": 1,
+  "shared_vector_baseline": {
+    "artifact": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json",
+    "test_accuracy": 0.8620689655172413,
+    "test_macro_f1": 0.41982507288629733
+  },
+  "variants": {
+    "straight_family_reduced_variant_a_v1": {
+      "label": "Straight family reduced Variant A",
+      "artifact_dir": "docs/baselines/boxing-punch-classifier-family-masked-topology-straight-reduced-benchmark-2026-06-18/straight_family_reduced_variant_a_v1",
+      "class_order": [
+        "straight_left",
+        "straight_right",
+        "no_punch"
+      ],
+      "sample_count": 80,
+      "frame_feature_count": 18,
+      "mask_inventory": {
+        "mask_profile": "straight_family_reduced_variant_a_v1",
+        "class_order": [
+          "straight_left",
+          "straight_right",
+          "no_punch"
+        ],
+        "active_side_feature_names": [
+          "shoulder_x",
+          "shoulder_y",
+          "elbow_x",
+          "elbow_y",
+          "wrist_x",
+          "wrist_y",
+          "combined_elbow_wrist_velocity_xy_magnitude",
+          "elbow_shoulder_xy_distance_over_shoulder_width",
+          "elbow_shoulder_radial_velocity_over_shoulder_width"
+        ],
+        "masked_side_feature_names": [
+          "elbow_x_from_shoulder_over_shoulder_width",
+          "elbow_y_from_shoulder_over_shoulder_width",
+          "camera_wrist_signed_vx",
+          "camera_wrist_signed_vy",
+          "camera_wrist_direction_none",
+          "camera_wrist_direction_up",
+          "camera_wrist_direction_down",
+          "camera_wrist_direction_left",
+          "camera_wrist_direction_right",
+          "body_wrist_signed_vx",
+          "body_wrist_signed_vy",
+          "body_wrist_direction_none",
+          "body_wrist_direction_up",
+          "body_wrist_direction_down",
+          "body_wrist_direction_left",
+          "body_wrist_direction_right"
+        ],
+        "active_frame_feature_names": [
+          "left_shoulder_x",
+          "left_shoulder_y",
+          "left_elbow_x",
+          "left_elbow_y",
+          "left_wrist_x",
+          "left_wrist_y",
+          "left_combined_elbow_wrist_velocity_xy_magnitude",
+          "left_elbow_shoulder_xy_distance_over_shoulder_width",
+          "left_elbow_shoulder_radial_velocity_over_shoulder_width",
+          "right_shoulder_x",
+          "right_shoulder_y",
+          "right_elbow_x",
+          "right_elbow_y",
+          "right_wrist_x",
+          "right_wrist_y",
+          "right_combined_elbow_wrist_velocity_xy_magnitude",
+          "right_elbow_shoulder_xy_distance_over_shoulder_width",
+          "right_elbow_shoulder_radial_velocity_over_shoulder_width"
+        ],
+        "source_feature_set": "family_combined_directional_v1",
+        "source_class_order": [
+          "straight_left",
+          "straight_right",
+          "hook_left",
+          "hook_right",
+          "uppercut_left",
+          "uppercut_right",
+          "no_punch"
+        ]
+      },
+      "mlp": {
+        "test_accuracy": 0.96,
+        "test_macro_f1": 0.8814814814814814
+      },
+      "cnn": {
+        "test_accuracy": 0.96,
+        "test_macro_f1": 0.8814814814814814
+      },
+      "shared_vector_subset_baseline": {
+        "test_accuracy": 1.0,
+        "test_macro_f1": 1.0,
+        "test_sample_count": 25,
+        "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json",
+        "records": [
+          {
+            "sample_id": "straight_left_fixture::straight_left::04",
+            "split": "test",
+            "actual": "straight_left",
+            "predicted": "straight_left"
+          },
+          {
+            "sample_id": "straight_right_fixture::straight_right::04",
+            "split": "test",
+            "actual": "straight_right",
+            "predicted": "straight_right"
+          },
+          {
+            "sample_id": "hook_left_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "hook_left_fixture::no_punch::017",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "hook_right_fixture::no_punch::014",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "hook_right_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "knee_left_fixture::no_punch::019",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "knee_right_fixture::no_punch::020",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "leg_lift_left_fixture::no_punch::025",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "leg_lift_right_fixture::no_punch::022",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "run_in_place_fixture::no_punch::014",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "sidestep_left_fixture::no_punch::022",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "sidestep_right_fixture::no_punch::028",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "squat_fixture::no_punch::025",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "stance_transition_fixture::no_punch::027",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "straight_left_fixture::transition_before::03",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "straight_left_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "straight_right_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "straight_right_fixture::no_punch::018",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "uppercut_left_fixture::transition_before::03",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "uppercut_left_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "uppercut_right_fixture::no_punch::012",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "uppercut_right_fixture::transition_after::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "weave_left_fixture::no_punch::021",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "weave_right_fixture::no_punch::026",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          }
+        ]
+      }
+    },
+    "straight_family_reduced_variant_b_v1": {
+      "label": "Straight family reduced Variant B",
+      "artifact_dir": "docs/baselines/boxing-punch-classifier-family-masked-topology-straight-reduced-benchmark-2026-06-18/straight_family_reduced_variant_b_v1",
+      "class_order": [
+        "straight_left",
+        "straight_right",
+        "no_punch"
+      ],
+      "sample_count": 80,
+      "frame_feature_count": 4,
+      "mask_inventory": {
+        "mask_profile": "straight_family_reduced_variant_b_v1",
+        "class_order": [
+          "straight_left",
+          "straight_right",
+          "no_punch"
+        ],
+        "active_side_feature_names": [
+          "elbow_shoulder_xy_distance_over_shoulder_width",
+          "elbow_shoulder_radial_velocity_over_shoulder_width"
+        ],
+        "masked_side_feature_names": [
+          "shoulder_x",
+          "shoulder_y",
+          "elbow_x",
+          "elbow_y",
+          "wrist_x",
+          "wrist_y",
+          "combined_elbow_wrist_velocity_xy_magnitude",
+          "elbow_x_from_shoulder_over_shoulder_width",
+          "elbow_y_from_shoulder_over_shoulder_width",
+          "camera_wrist_signed_vx",
+          "camera_wrist_signed_vy",
+          "camera_wrist_direction_none",
+          "camera_wrist_direction_up",
+          "camera_wrist_direction_down",
+          "camera_wrist_direction_left",
+          "camera_wrist_direction_right",
+          "body_wrist_signed_vx",
+          "body_wrist_signed_vy",
+          "body_wrist_direction_none",
+          "body_wrist_direction_up",
+          "body_wrist_direction_down",
+          "body_wrist_direction_left",
+          "body_wrist_direction_right"
+        ],
+        "active_frame_feature_names": [
+          "left_elbow_shoulder_xy_distance_over_shoulder_width",
+          "left_elbow_shoulder_radial_velocity_over_shoulder_width",
+          "right_elbow_shoulder_xy_distance_over_shoulder_width",
+          "right_elbow_shoulder_radial_velocity_over_shoulder_width"
+        ],
+        "source_feature_set": "family_combined_directional_v1",
+        "source_class_order": [
+          "straight_left",
+          "straight_right",
+          "hook_left",
+          "hook_right",
+          "uppercut_left",
+          "uppercut_right",
+          "no_punch"
+        ]
+      },
+      "mlp": {
+        "test_accuracy": 0.88,
+        "test_macro_f1": 0.5333333333333333
+      },
+      "cnn": {
+        "test_accuracy": 0.92,
+        "test_macro_f1": 0.5410628019323672
+      },
+      "shared_vector_subset_baseline": {
+        "test_accuracy": 1.0,
+        "test_macro_f1": 1.0,
+        "test_sample_count": 25,
+        "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/baseline_v1/cnn/cnn-result.json",
+        "records": [
+          {
+            "sample_id": "straight_left_fixture::straight_left::04",
+            "split": "test",
+            "actual": "straight_left",
+            "predicted": "straight_left"
+          },
+          {
+            "sample_id": "straight_right_fixture::straight_right::04",
+            "split": "test",
+            "actual": "straight_right",
+            "predicted": "straight_right"
+          },
+          {
+            "sample_id": "hook_left_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "hook_left_fixture::no_punch::017",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "hook_right_fixture::no_punch::014",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "hook_right_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "knee_left_fixture::no_punch::019",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "knee_right_fixture::no_punch::020",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "leg_lift_left_fixture::no_punch::025",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "leg_lift_right_fixture::no_punch::022",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "run_in_place_fixture::no_punch::014",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "sidestep_left_fixture::no_punch::022",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "sidestep_right_fixture::no_punch::028",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "squat_fixture::no_punch::025",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "stance_transition_fixture::no_punch::027",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "straight_left_fixture::transition_before::03",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "straight_left_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "straight_right_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "straight_right_fixture::no_punch::018",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "uppercut_left_fixture::transition_before::03",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "uppercut_left_fixture::transition_before::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "uppercut_right_fixture::no_punch::012",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "uppercut_right_fixture::transition_after::04",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "weave_left_fixture::no_punch::021",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          },
+          {
+            "sample_id": "weave_right_fixture::no_punch::026",
+            "split": "test",
+            "actual": "no_punch",
+            "predicted": "no_punch"
+          }
+        ]
+      }
+    }
+  }
+}

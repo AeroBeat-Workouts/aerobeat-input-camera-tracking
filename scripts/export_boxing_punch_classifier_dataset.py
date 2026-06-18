@@ -19,6 +19,7 @@ from boxing_classifier_harness import (
     FEATURE_SET_BASELINE_V1,
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1,
     MASK_PROFILE_STRAIGHT_FAMILY_V1,
+    MASK_PROFILES,
     SUPPORTED_FEATURE_SETS,
     PUNCH_CLASS_ORDER,
     PUNCH_GESTURE_NAMES,
@@ -595,7 +596,7 @@ def main() -> int:
     parser.add_argument("--captures-dir", default=".temp/boxing-punch-classifier-export/captures")
     parser.add_argument("--snapshot-manifest", help="Frozen snapshot manifest JSON relative to the repo root. When set, manifest/captures/export parameters are resolved from the snapshot unless explicitly overridden later in code.")
     parser.add_argument("--source-dataset", help="Existing dataset.json relative to the repo root. When set, derive a masked family/head export from that dataset instead of rerunning capture export.")
-    parser.add_argument("--mask-profile", choices=[MASK_PROFILE_STRAIGHT_FAMILY_V1, MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1], help="Family/head mask profile to derive from --source-dataset.")
+    parser.add_argument("--mask-profile", choices=MASK_PROFILES, help="Family/head mask profile to derive from --source-dataset.")
     parser.add_argument("--derived-feature-set", help="Optional metadata name for a derived masked dataset feature_set.")
     parser.add_argument("--output-dir", required=True, help="Directory for export-summary.{json,md} and dataset.json")
     parser.add_argument("--godot", default=DEFAULT_GODOT_BIN)
