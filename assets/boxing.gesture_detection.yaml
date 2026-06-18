@@ -3,7 +3,7 @@ version: 1
 profile: boxing
 punch_detection:
   # [threshold_gates, prototype_matcher, learned_classifier] Pick which punch-detection family is active for boxing. input.
-  backend: threshold_gates
+  backend: learned_classifier
 
 threshold_gates:
   # Keep the current threshold-based straight/hook/uppercut punch backend active. input.
@@ -164,7 +164,7 @@ prototype_matcher:
 
 learned_classifier:
   # Turn the threshold-windowed learned punch classifier on or off. input.
-  enabled: false
+  enabled: true
   model:
     # Exported learned-classifier artifact to load for runtime punch inference. input.
     artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
