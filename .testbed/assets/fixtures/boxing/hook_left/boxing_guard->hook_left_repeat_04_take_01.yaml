@@ -9,14 +9,14 @@ notes:
 expected_gestures:
 - name: hook_left
   windows:
-  - start_ms: 1200
+  - start_ms: 900
     end_ms: 1450
-  - start_ms: 2500
+  - start_ms: 2800
     end_ms: 3000
   - start_ms: 4000
-    end_ms: 4600
-  - start_ms: 5075
-    end_ms: 5225
+    end_ms: 4583
+  - start_ms: 5583 
+    end_ms: 6000
 - name: guard
   surface: state
   windows:

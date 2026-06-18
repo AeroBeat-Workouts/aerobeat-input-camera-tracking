@@ -9,12 +9,12 @@ notes:
 expected_gestures:
 - name: uppercut_left
   windows:
-  - start_ms: 900
+  - start_ms: 650
     end_ms: 1200
-  - start_ms: 2900
+  - start_ms: 2650
     end_ms: 3200
   - start_ms: 4600
-    end_ms: 5400
+    end_ms: 5150
   - start_ms: 6000
     end_ms: 7000
 - name: guard

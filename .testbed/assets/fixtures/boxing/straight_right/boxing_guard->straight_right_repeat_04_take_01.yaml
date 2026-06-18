@@ -9,14 +9,14 @@ notes:
 expected_gestures:
 - name: straight_right
   windows:
-  - start_ms: 625
-    end_ms: 825
+  - start_ms: 50
+    end_ms: 400
   - start_ms: 1700
     end_ms: 2000
-  - start_ms: 3100
-    end_ms: 3400
-  - start_ms: 5200
-    end_ms: 5450
+  - start_ms: 2650
+    end_ms: 3150
+  - start_ms: 4150
+    end_ms: 4400
 - name: guard
   surface: state
   windows:
