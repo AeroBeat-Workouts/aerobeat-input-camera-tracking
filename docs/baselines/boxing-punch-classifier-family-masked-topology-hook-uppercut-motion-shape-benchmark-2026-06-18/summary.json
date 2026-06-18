@@ -1,23 +1,342 @@
 {
-  "benchmark": "Hook/uppercut motion-shape benchmark (retimed rerun subset)",
-  "date": "2026-06-18",
+  "title": "Hook/uppercut motion-shape benchmark (Variant C gated rerun, 2026-06-18)",
   "artifact_root": "docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18",
-  "retimed_truth_basis": {
-    "benchmark_manifest": ".testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json",
-    "captures_dir": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16",
-    "note": "Retimed punch fixture YAML windows are now active truth and this rerun intentionally refreshes only the high-value subset: source export + control + Variant A.",
-    "rerun_variants": [
-      "hook_uppercut_family_mask_v1",
-      "hook_uppercut_motion_shape_variant_a_v1"
+  "comparison_baselines": {
+    "shared_vector_subset_baseline": {
+      "test_accuracy": 0.8888888888888888,
+      "test_macro_f1": 0.5872340425531914,
+      "test_sample_count": 27,
+      "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json",
+      "records": [
+        {
+          "sample_id": "hook_left_fixture::hook_left::04",
+          "split": "test",
+          "actual": "hook_left",
+          "predicted": "hook_left"
+        },
+        {
+          "sample_id": "hook_right_fixture::hook_right::04",
+          "split": "test",
+          "actual": "hook_right",
+          "predicted": "hook_right"
+        },
+        {
+          "sample_id": "uppercut_left_fixture::uppercut_left::04",
+          "split": "test",
+          "actual": "uppercut_left",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "uppercut_right_fixture::uppercut_right::04",
+          "split": "test",
+          "actual": "uppercut_right",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "hook_left_fixture::transition_before::04",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "hook_left_fixture::no_punch::019",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "hook_right_fixture::no_punch::016",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "hook_right_fixture::transition_before::04",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "knee_left_fixture::no_punch::019",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "knee_right_fixture::no_punch::020",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "leg_lift_left_fixture::no_punch::025",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "leg_lift_right_fixture::no_punch::022",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "run_in_place_fixture::no_punch::014",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "sidestep_left_fixture::no_punch::022",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "sidestep_right_fixture::no_punch::028",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "squat_fixture::no_punch::025",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "stance_transition_fixture::no_punch::027",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "straight_left_fixture::no_punch::009",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "straight_left_fixture::transition_before::04",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "straight_right_fixture::no_punch::011",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "straight_right_fixture::transition_before::04",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "uppercut_left_fixture::transition_before::03",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "uppercut_left"
+        },
+        {
+          "sample_id": "uppercut_left_fixture::transition_before::04",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "uppercut_right_fixture::no_punch::014",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "uppercut_right_fixture::transition_after::04",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "weave_left_fixture::no_punch::021",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        },
+        {
+          "sample_id": "weave_right_fixture::no_punch::026",
+          "split": "test",
+          "actual": "no_punch",
+          "predicted": "no_punch"
+        }
+      ],
+      "metrics": {
+        "test_metrics": {
+          "sample_count": 27,
+          "accuracy": 0.8888888888888888,
+          "macro_precision": 0.5833333333333333,
+          "macro_recall": 0.5913043478260869,
+          "macro_f1": 0.5872340425531914,
+          "actual_counts": {
+            "hook_left": 1,
+            "hook_right": 1,
+            "uppercut_left": 1,
+            "uppercut_right": 1,
+            "no_punch": 23
+          },
+          "predicted_counts": {
+            "hook_left": 1,
+            "hook_right": 1,
+            "uppercut_left": 1,
+            "uppercut_right": 0,
+            "no_punch": 24
+          },
+          "per_class": {
+            "hook_left": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 1
+            },
+            "hook_right": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 1
+            },
+            "uppercut_left": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 1
+            },
+            "uppercut_right": {
+              "precision": 0.0,
+              "recall": 0.0,
+              "f1": 0.0,
+              "support": 1
+            },
+            "no_punch": {
+              "precision": 0.9166666666666666,
+              "recall": 0.9565217391304348,
+              "f1": 0.9361702127659574,
+              "support": 23
+            }
+          },
+          "confusion": {
+            "hook_left": {
+              "hook_left": 1,
+              "hook_right": 0,
+              "uppercut_left": 0,
+              "uppercut_right": 0,
+              "no_punch": 0
+            },
+            "hook_right": {
+              "hook_left": 0,
+              "hook_right": 1,
+              "uppercut_left": 0,
+              "uppercut_right": 0,
+              "no_punch": 0
+            },
+            "uppercut_left": {
+              "hook_left": 0,
+              "hook_right": 0,
+              "uppercut_left": 0,
+              "uppercut_right": 0,
+              "no_punch": 1
+            },
+            "uppercut_right": {
+              "hook_left": 0,
+              "hook_right": 0,
+              "uppercut_left": 0,
+              "uppercut_right": 0,
+              "no_punch": 1
+            },
+            "no_punch": {
+              "hook_left": 0,
+              "hook_right": 0,
+              "uppercut_left": 1,
+              "uppercut_right": 0,
+              "no_punch": 22
+            }
+          }
+        }
+      }
+    },
+    "retimed_control_mlp_gate_macro_f1": 0.3791869918699187,
+    "retimed_variant_a_mlp_reference_macro_f1": 0.47777777777777775
+  },
+  "rerun_scope": {
+    "source_export_refreshed_from": {
+      "manifest": ".testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json",
+      "captures_dir": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16",
+      "frame_count": 8,
+      "no_punch_window_ms": 250,
+      "no_punch_stride_ms": 250,
+      "max_no_punch_samples": 48,
+      "max_transition_no_punch_samples": 24,
+      "note": "Frozen snapshot manifest verification no longer matches retimed fixture YAML hashes, so the refresh reuses the hardened captures against the current retimed benchmark manifest."
+    },
+    "reran": [
+      "family_combined_directional_hook_motion_shape_v1 export",
+      "hook_uppercut_family_mask_v1 export + MLP + CNN",
+      "hook_uppercut_motion_shape_variant_c_v1 export + MLP + CNN"
     ],
-    "skipped_variants": [
-      "hook_uppercut_motion_shape_variant_b_v1"
+    "reference_only": [
+      "hook_uppercut_motion_shape_variant_a_v1 prior retimed MLP/CNN results",
+      "hook_uppercut_motion_shape_variant_b_v1 not rerun"
     ]
   },
-  "source_export": {
-    "feature_set": "family_combined_directional_hook_motion_shape_v1",
-    "frame_feature_count": 70,
-    "side_feature_names": [
+  "inventories": {
+    "source_export": {
+      "feature_set": "family_combined_directional_hook_motion_shape_v1",
+      "sample_count": 96,
+      "split_counts": {
+        "train": 67,
+        "test": 29
+      },
+      "frame_feature_count": 72,
+      "side_feature_names": [
+        "shoulder_x",
+        "shoulder_y",
+        "elbow_x",
+        "elbow_y",
+        "wrist_x",
+        "wrist_y",
+        "combined_elbow_wrist_velocity_xy_magnitude",
+        "elbow_shoulder_xy_distance_over_shoulder_width",
+        "elbow_x_from_shoulder_over_shoulder_width",
+        "elbow_y_from_shoulder_over_shoulder_width",
+        "elbow_shoulder_radial_velocity_over_shoulder_width",
+        "camera_wrist_signed_vx",
+        "camera_wrist_signed_vy",
+        "camera_wrist_direction_none",
+        "camera_wrist_direction_up",
+        "camera_wrist_direction_down",
+        "camera_wrist_direction_left",
+        "camera_wrist_direction_right",
+        "body_wrist_signed_vx",
+        "body_wrist_signed_vy",
+        "body_wrist_direction_none",
+        "body_wrist_direction_up",
+        "body_wrist_direction_down",
+        "body_wrist_direction_left",
+        "body_wrist_direction_right",
+        "wrist_x_from_elbow_over_shoulder_width",
+        "wrist_y_from_elbow_over_shoulder_width",
+        "forearm_unit_x",
+        "forearm_unit_y",
+        "wrist_elbow_radial_velocity_over_shoulder_width",
+        "wrist_elbow_tangential_velocity_over_shoulder_width",
+        "wrist_minus_elbow_velocity_x_over_shoulder_width",
+        "wrist_minus_elbow_velocity_y_over_shoulder_width",
+        "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
+        "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width",
+        "forearm_angular_velocity_rad_per_s"
+      ]
+    },
+    "control_active_side_features": [
       "shoulder_x",
       "shoulder_y",
       "elbow_x",
@@ -26,9 +345,30 @@
       "wrist_y",
       "combined_elbow_wrist_velocity_xy_magnitude",
       "elbow_shoulder_xy_distance_over_shoulder_width",
-      "elbow_x_from_shoulder_over_shoulder_width",
-      "elbow_y_from_shoulder_over_shoulder_width",
-      "elbow_shoulder_radial_velocity_over_shoulder_width",
+      "camera_wrist_signed_vx",
+      "camera_wrist_signed_vy",
+      "camera_wrist_direction_none",
+      "camera_wrist_direction_up",
+      "camera_wrist_direction_down",
+      "camera_wrist_direction_left",
+      "camera_wrist_direction_right",
+      "body_wrist_signed_vx",
+      "body_wrist_signed_vy",
+      "body_wrist_direction_none",
+      "body_wrist_direction_up",
+      "body_wrist_direction_down",
+      "body_wrist_direction_left",
+      "body_wrist_direction_right"
+    ],
+    "variant_c_active_side_features": [
+      "shoulder_x",
+      "shoulder_y",
+      "elbow_x",
+      "elbow_y",
+      "wrist_x",
+      "wrist_y",
+      "combined_elbow_wrist_velocity_xy_magnitude",
+      "elbow_shoulder_xy_distance_over_shoulder_width",
       "camera_wrist_signed_vx",
       "camera_wrist_signed_vy",
       "camera_wrist_direction_none",
@@ -49,1228 +389,86 @@
       "forearm_unit_y",
       "wrist_elbow_radial_velocity_over_shoulder_width",
       "wrist_elbow_tangential_velocity_over_shoulder_width",
-      "wrist_minus_elbow_velocity_x_over_shoulder_width",
-      "wrist_minus_elbow_velocity_y_over_shoulder_width",
+      "forearm_angular_velocity_rad_per_s",
       "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
       "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width"
     ],
-    "class_order": [
-      "straight_left",
-      "straight_right",
-      "hook_left",
-      "hook_right",
-      "uppercut_left",
-      "uppercut_right",
-      "no_punch"
-    ],
-    "sample_count": 96,
-    "split_counts": {
-      "train": 67,
-      "test": 29
-    },
-    "label_counts": {
-      "straight_left": 4,
-      "straight_right": 4,
-      "hook_left": 4,
-      "hook_right": 4,
-      "uppercut_left": 4,
-      "uppercut_right": 4,
-      "no_punch": 72
-    },
-    "sample_kind_counts": {
-      "annotated_punch_window": 24,
-      "derived_no_punch_window": 48,
-      "transition_before_punch": 20,
-      "transition_after_punch": 4
-    },
-    "captures_dir": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16",
-    "manifest_path": ".testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json"
-  },
-  "shared_vector_subset_baseline": {
-    "test_accuracy": 0.8888888888888888,
-    "test_macro_f1": 0.5872340425531914,
-    "test_sample_count": 27,
-    "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json",
-    "records": [
-      {
-        "sample_id": "hook_left_fixture::hook_left::04",
-        "split": "test",
-        "actual": "hook_left",
-        "predicted": "hook_left"
-      },
-      {
-        "sample_id": "hook_right_fixture::hook_right::04",
-        "split": "test",
-        "actual": "hook_right",
-        "predicted": "hook_right"
-      },
-      {
-        "sample_id": "uppercut_left_fixture::uppercut_left::04",
-        "split": "test",
-        "actual": "uppercut_left",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "uppercut_right_fixture::uppercut_right::04",
-        "split": "test",
-        "actual": "uppercut_right",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "hook_left_fixture::transition_before::04",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "hook_left_fixture::no_punch::019",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "hook_right_fixture::no_punch::016",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "hook_right_fixture::transition_before::04",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "knee_left_fixture::no_punch::019",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "knee_right_fixture::no_punch::020",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "leg_lift_left_fixture::no_punch::025",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "leg_lift_right_fixture::no_punch::022",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "run_in_place_fixture::no_punch::014",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "sidestep_left_fixture::no_punch::022",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "sidestep_right_fixture::no_punch::028",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "squat_fixture::no_punch::025",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "stance_transition_fixture::no_punch::027",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "straight_left_fixture::no_punch::009",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "straight_left_fixture::transition_before::04",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "straight_right_fixture::no_punch::011",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "straight_right_fixture::transition_before::04",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "uppercut_left_fixture::transition_before::03",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "uppercut_left"
-      },
-      {
-        "sample_id": "uppercut_left_fixture::transition_before::04",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "uppercut_right_fixture::no_punch::014",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "uppercut_right_fixture::transition_after::04",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "weave_left_fixture::no_punch::021",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      },
-      {
-        "sample_id": "weave_right_fixture::no_punch::026",
-        "split": "test",
-        "actual": "no_punch",
-        "predicted": "no_punch"
-      }
-    ],
-    "metrics": {
-      "test_metrics": {
-        "sample_count": 27,
-        "accuracy": 0.8888888888888888,
-        "macro_precision": 0.5833333333333333,
-        "macro_recall": 0.5913043478260869,
-        "macro_f1": 0.5872340425531914,
-        "actual_counts": {
-          "hook_left": 1,
-          "hook_right": 1,
-          "uppercut_left": 1,
-          "uppercut_right": 1,
-          "no_punch": 23
-        },
-        "predicted_counts": {
-          "hook_left": 1,
-          "hook_right": 1,
-          "uppercut_left": 1,
-          "uppercut_right": 0,
-          "no_punch": 24
-        },
-        "per_class": {
-          "hook_left": {
-            "precision": 1.0,
-            "recall": 1.0,
-            "f1": 1.0,
-            "support": 1
-          },
-          "hook_right": {
-            "precision": 1.0,
-            "recall": 1.0,
-            "f1": 1.0,
-            "support": 1
-          },
-          "uppercut_left": {
-            "precision": 0.0,
-            "recall": 0.0,
-            "f1": 0.0,
-            "support": 1
-          },
-          "uppercut_right": {
-            "precision": 0.0,
-            "recall": 0.0,
-            "f1": 0.0,
-            "support": 1
-          },
-          "no_punch": {
-            "precision": 0.9166666666666666,
-            "recall": 0.9565217391304348,
-            "f1": 0.9361702127659574,
-            "support": 23
-          }
-        },
-        "confusion": {
-          "hook_left": {
-            "hook_left": 1,
-            "hook_right": 0,
-            "uppercut_left": 0,
-            "uppercut_right": 0,
-            "no_punch": 0
-          },
-          "hook_right": {
-            "hook_left": 0,
-            "hook_right": 1,
-            "uppercut_left": 0,
-            "uppercut_right": 0,
-            "no_punch": 0
-          },
-          "uppercut_left": {
-            "hook_left": 0,
-            "hook_right": 0,
-            "uppercut_left": 0,
-            "uppercut_right": 0,
-            "no_punch": 1
-          },
-          "uppercut_right": {
-            "hook_left": 0,
-            "hook_right": 0,
-            "uppercut_left": 0,
-            "uppercut_right": 0,
-            "no_punch": 1
-          },
-          "no_punch": {
-            "hook_left": 0,
-            "hook_right": 0,
-            "uppercut_left": 1,
-            "uppercut_right": 0,
-            "no_punch": 22
-          }
-        }
-      }
-    }
-  },
-  "cnn_gate": {
-    "rule": "Run CNN on control and on Variant A only if Variant A MLP macro-F1 beats the retimed control MLP macro-F1.",
-    "control_mlp_macro_f1": 0.3791869918699187,
-    "best_new_variant_by_mlp_macro_f1": "hook_uppercut_motion_shape_variant_a_v1",
-    "best_new_variant_mlp_macro_f1": 0.47777777777777775,
-    "triggered": true
-  },
-  "sample_window_count_deltas_vs_preretime": {
-    "source_export_sample_delta": 0,
-    "control_sample_delta": 0,
-    "variant_a_sample_delta": 0,
-    "source_split_delta": {
-      "train": 0,
-      "test": 0
-    },
-    "control_split_delta": {
-      "train": 0,
-      "test": 0
-    },
-    "variant_a_split_delta": {
-      "train": 0,
-      "test": 0
-    },
-    "note": "Counts stayed constant; the material change is window identity / timing truth, not bucket totals."
+    "variant_c_added_per_side_vs_variant_a": [
+      "forearm_angular_velocity_rad_per_s",
+      "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
+      "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width"
+    ]
   },
   "variants": {
     "hook_uppercut_family_mask_v1": {
-      "label": "Control",
       "artifact_dir": "docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1",
-      "class_order": [
-        "hook_left",
-        "hook_right",
-        "uppercut_left",
-        "uppercut_right",
-        "no_punch"
-      ],
-      "sample_count": 88,
-      "frame_feature_count": 44,
-      "mask_inventory": {
-        "mask_profile": "hook_uppercut_family_mask_v1",
-        "class_order": [
-          "hook_left",
-          "hook_right",
-          "uppercut_left",
-          "uppercut_right",
-          "no_punch"
-        ],
-        "active_side_feature_names": [
-          "shoulder_x",
-          "shoulder_y",
-          "elbow_x",
-          "elbow_y",
-          "wrist_x",
-          "wrist_y",
-          "combined_elbow_wrist_velocity_xy_magnitude",
-          "elbow_shoulder_xy_distance_over_shoulder_width",
-          "camera_wrist_signed_vx",
-          "camera_wrist_signed_vy",
-          "camera_wrist_direction_none",
-          "camera_wrist_direction_up",
-          "camera_wrist_direction_down",
-          "camera_wrist_direction_left",
-          "camera_wrist_direction_right",
-          "body_wrist_signed_vx",
-          "body_wrist_signed_vy",
-          "body_wrist_direction_none",
-          "body_wrist_direction_up",
-          "body_wrist_direction_down",
-          "body_wrist_direction_left",
-          "body_wrist_direction_right"
-        ],
-        "masked_side_feature_names": [
-          "elbow_x_from_shoulder_over_shoulder_width",
-          "elbow_y_from_shoulder_over_shoulder_width",
-          "elbow_shoulder_radial_velocity_over_shoulder_width",
-          "wrist_x_from_elbow_over_shoulder_width",
-          "wrist_y_from_elbow_over_shoulder_width",
-          "forearm_unit_x",
-          "forearm_unit_y",
-          "wrist_elbow_radial_velocity_over_shoulder_width",
-          "wrist_elbow_tangential_velocity_over_shoulder_width",
-          "wrist_minus_elbow_velocity_x_over_shoulder_width",
-          "wrist_minus_elbow_velocity_y_over_shoulder_width",
-          "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
-          "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width"
-        ],
-        "active_frame_feature_names": [
-          "left_shoulder_x",
-          "left_shoulder_y",
-          "left_elbow_x",
-          "left_elbow_y",
-          "left_wrist_x",
-          "left_wrist_y",
-          "left_combined_elbow_wrist_velocity_xy_magnitude",
-          "left_elbow_shoulder_xy_distance_over_shoulder_width",
-          "left_camera_wrist_signed_vx",
-          "left_camera_wrist_signed_vy",
-          "left_camera_wrist_direction_none",
-          "left_camera_wrist_direction_up",
-          "left_camera_wrist_direction_down",
-          "left_camera_wrist_direction_left",
-          "left_camera_wrist_direction_right",
-          "left_body_wrist_signed_vx",
-          "left_body_wrist_signed_vy",
-          "left_body_wrist_direction_none",
-          "left_body_wrist_direction_up",
-          "left_body_wrist_direction_down",
-          "left_body_wrist_direction_left",
-          "left_body_wrist_direction_right",
-          "right_shoulder_x",
-          "right_shoulder_y",
-          "right_elbow_x",
-          "right_elbow_y",
-          "right_wrist_x",
-          "right_wrist_y",
-          "right_combined_elbow_wrist_velocity_xy_magnitude",
-          "right_elbow_shoulder_xy_distance_over_shoulder_width",
-          "right_camera_wrist_signed_vx",
-          "right_camera_wrist_signed_vy",
-          "right_camera_wrist_direction_none",
-          "right_camera_wrist_direction_up",
-          "right_camera_wrist_direction_down",
-          "right_camera_wrist_direction_left",
-          "right_camera_wrist_direction_right",
-          "right_body_wrist_signed_vx",
-          "right_body_wrist_signed_vy",
-          "right_body_wrist_direction_none",
-          "right_body_wrist_direction_up",
-          "right_body_wrist_direction_down",
-          "right_body_wrist_direction_left",
-          "right_body_wrist_direction_right"
-        ],
-        "source_feature_set": "family_combined_directional_hook_motion_shape_v1",
-        "source_class_order": [
-          "straight_left",
-          "straight_right",
-          "hook_left",
-          "hook_right",
-          "uppercut_left",
-          "uppercut_right",
-          "no_punch"
-        ]
-      },
+      "feature_count": 44,
       "mlp": {
-        "test_accuracy": 0.7037037037037037,
-        "test_macro_precision": 0.3388888888888889,
-        "test_macro_recall": 0.5478260869565217,
-        "test_macro_f1": 0.3791869918699187,
-        "predicted_counts": {
-          "hook_left": 4,
-          "hook_right": 2,
-          "uppercut_left": 1,
-          "uppercut_right": 2,
-          "no_punch": 18
-        },
-        "actual_counts": {
-          "hook_left": 1,
-          "hook_right": 1,
-          "uppercut_left": 1,
-          "uppercut_right": 1,
-          "no_punch": 23
-        }
+        "accuracy": 0.7037037037037037,
+        "macro_f1": 0.3791869918699187
       },
       "cnn": {
-        "test_accuracy": 0.8518518518518519,
-        "test_macro_precision": 0.4826086956521739,
-        "test_macro_recall": 0.5826086956521739,
-        "test_macro_f1": 0.5159420289855072,
-        "predicted_counts": {
-          "hook_left": 2,
-          "hook_right": 1,
-          "uppercut_left": 1,
-          "uppercut_right": 0,
-          "no_punch": 23
-        },
-        "actual_counts": {
-          "hook_left": 1,
-          "hook_right": 1,
-          "uppercut_left": 1,
-          "uppercut_right": 1,
-          "no_punch": 23
-        }
-      },
-      "shared_vector_subset_baseline": {
-        "test_accuracy": 0.8888888888888888,
-        "test_macro_f1": 0.5872340425531914,
-        "test_sample_count": 27,
-        "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json",
-        "records": [
-          {
-            "sample_id": "hook_left_fixture::hook_left::04",
-            "split": "test",
-            "actual": "hook_left",
-            "predicted": "hook_left"
-          },
-          {
-            "sample_id": "hook_right_fixture::hook_right::04",
-            "split": "test",
-            "actual": "hook_right",
-            "predicted": "hook_right"
-          },
-          {
-            "sample_id": "uppercut_left_fixture::uppercut_left::04",
-            "split": "test",
-            "actual": "uppercut_left",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "uppercut_right_fixture::uppercut_right::04",
-            "split": "test",
-            "actual": "uppercut_right",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "hook_left_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "hook_left_fixture::no_punch::019",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "hook_right_fixture::no_punch::016",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "hook_right_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "knee_left_fixture::no_punch::019",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "knee_right_fixture::no_punch::020",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "leg_lift_left_fixture::no_punch::025",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "leg_lift_right_fixture::no_punch::022",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "run_in_place_fixture::no_punch::014",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "sidestep_left_fixture::no_punch::022",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "sidestep_right_fixture::no_punch::028",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "squat_fixture::no_punch::025",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "stance_transition_fixture::no_punch::027",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_left_fixture::no_punch::009",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_left_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_right_fixture::no_punch::011",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_right_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "uppercut_left_fixture::transition_before::03",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "uppercut_left"
-          },
-          {
-            "sample_id": "uppercut_left_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "uppercut_right_fixture::no_punch::014",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "uppercut_right_fixture::transition_after::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "weave_left_fixture::no_punch::021",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "weave_right_fixture::no_punch::026",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          }
-        ],
-        "metrics": {
-          "test_metrics": {
-            "sample_count": 27,
-            "accuracy": 0.8888888888888888,
-            "macro_precision": 0.5833333333333333,
-            "macro_recall": 0.5913043478260869,
-            "macro_f1": 0.5872340425531914,
-            "actual_counts": {
-              "hook_left": 1,
-              "hook_right": 1,
-              "uppercut_left": 1,
-              "uppercut_right": 1,
-              "no_punch": 23
-            },
-            "predicted_counts": {
-              "hook_left": 1,
-              "hook_right": 1,
-              "uppercut_left": 1,
-              "uppercut_right": 0,
-              "no_punch": 24
-            },
-            "per_class": {
-              "hook_left": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 1
-              },
-              "hook_right": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 1
-              },
-              "uppercut_left": {
-                "precision": 0.0,
-                "recall": 0.0,
-                "f1": 0.0,
-                "support": 1
-              },
-              "uppercut_right": {
-                "precision": 0.0,
-                "recall": 0.0,
-                "f1": 0.0,
-                "support": 1
-              },
-              "no_punch": {
-                "precision": 0.9166666666666666,
-                "recall": 0.9565217391304348,
-                "f1": 0.9361702127659574,
-                "support": 23
-              }
-            },
-            "confusion": {
-              "hook_left": {
-                "hook_left": 1,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 0
-              },
-              "hook_right": {
-                "hook_left": 0,
-                "hook_right": 1,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 0
-              },
-              "uppercut_left": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 1
-              },
-              "uppercut_right": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 1
-              },
-              "no_punch": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 1,
-                "uppercut_right": 0,
-                "no_punch": 22
-              }
-            }
-          }
-        }
+        "accuracy": 0.8518518518518519,
+        "macro_f1": 0.5159420289855072
       },
       "delta_vs_shared_vector_subset_baseline": {
-        "mlp_accuracy_delta": -0.18518518518518512,
-        "mlp_macro_f1_delta": -0.20804705068327273,
-        "cnn_accuracy_delta": -0.03703703703703698,
-        "cnn_macro_f1_delta": -0.07129201356768422
-      },
-      "retimed_delta_vs_preretime": {
-        "mlp_accuracy_delta": -0.11111111111111105,
-        "mlp_macro_f1_delta": 0.0632449628844115,
-        "cnn_accuracy_delta": 0.03703703703703709,
-        "cnn_macro_f1_delta": 0.3363501922508133
+        "mlp_accuracy": -0.18518518518518512,
+        "mlp_macro_f1": -0.20804705068327273,
+        "cnn_accuracy": -0.03703703703703698,
+        "cnn_macro_f1": -0.07129201356768422
       }
     },
-    "hook_uppercut_motion_shape_variant_a_v1": {
-      "label": "Variant A",
+    "hook_uppercut_motion_shape_variant_a_v1_reference": {
       "artifact_dir": "docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_a_v1",
-      "class_order": [
-        "hook_left",
-        "hook_right",
-        "uppercut_left",
-        "uppercut_right",
-        "no_punch"
-      ],
-      "sample_count": 88,
-      "frame_feature_count": 56,
-      "mask_inventory": {
-        "mask_profile": "hook_uppercut_motion_shape_variant_a_v1",
-        "class_order": [
-          "hook_left",
-          "hook_right",
-          "uppercut_left",
-          "uppercut_right",
-          "no_punch"
-        ],
-        "active_side_feature_names": [
-          "shoulder_x",
-          "shoulder_y",
-          "elbow_x",
-          "elbow_y",
-          "wrist_x",
-          "wrist_y",
-          "combined_elbow_wrist_velocity_xy_magnitude",
-          "elbow_shoulder_xy_distance_over_shoulder_width",
-          "camera_wrist_signed_vx",
-          "camera_wrist_signed_vy",
-          "camera_wrist_direction_none",
-          "camera_wrist_direction_up",
-          "camera_wrist_direction_down",
-          "camera_wrist_direction_left",
-          "camera_wrist_direction_right",
-          "body_wrist_signed_vx",
-          "body_wrist_signed_vy",
-          "body_wrist_direction_none",
-          "body_wrist_direction_up",
-          "body_wrist_direction_down",
-          "body_wrist_direction_left",
-          "body_wrist_direction_right",
-          "wrist_x_from_elbow_over_shoulder_width",
-          "wrist_y_from_elbow_over_shoulder_width",
-          "forearm_unit_x",
-          "forearm_unit_y",
-          "wrist_elbow_radial_velocity_over_shoulder_width",
-          "wrist_elbow_tangential_velocity_over_shoulder_width"
-        ],
-        "masked_side_feature_names": [
-          "elbow_x_from_shoulder_over_shoulder_width",
-          "elbow_y_from_shoulder_over_shoulder_width",
-          "elbow_shoulder_radial_velocity_over_shoulder_width",
-          "wrist_minus_elbow_velocity_x_over_shoulder_width",
-          "wrist_minus_elbow_velocity_y_over_shoulder_width",
-          "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
-          "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width"
-        ],
-        "active_frame_feature_names": [
-          "left_shoulder_x",
-          "left_shoulder_y",
-          "left_elbow_x",
-          "left_elbow_y",
-          "left_wrist_x",
-          "left_wrist_y",
-          "left_combined_elbow_wrist_velocity_xy_magnitude",
-          "left_elbow_shoulder_xy_distance_over_shoulder_width",
-          "left_camera_wrist_signed_vx",
-          "left_camera_wrist_signed_vy",
-          "left_camera_wrist_direction_none",
-          "left_camera_wrist_direction_up",
-          "left_camera_wrist_direction_down",
-          "left_camera_wrist_direction_left",
-          "left_camera_wrist_direction_right",
-          "left_body_wrist_signed_vx",
-          "left_body_wrist_signed_vy",
-          "left_body_wrist_direction_none",
-          "left_body_wrist_direction_up",
-          "left_body_wrist_direction_down",
-          "left_body_wrist_direction_left",
-          "left_body_wrist_direction_right",
-          "left_wrist_x_from_elbow_over_shoulder_width",
-          "left_wrist_y_from_elbow_over_shoulder_width",
-          "left_forearm_unit_x",
-          "left_forearm_unit_y",
-          "left_wrist_elbow_radial_velocity_over_shoulder_width",
-          "left_wrist_elbow_tangential_velocity_over_shoulder_width",
-          "right_shoulder_x",
-          "right_shoulder_y",
-          "right_elbow_x",
-          "right_elbow_y",
-          "right_wrist_x",
-          "right_wrist_y",
-          "right_combined_elbow_wrist_velocity_xy_magnitude",
-          "right_elbow_shoulder_xy_distance_over_shoulder_width",
-          "right_camera_wrist_signed_vx",
-          "right_camera_wrist_signed_vy",
-          "right_camera_wrist_direction_none",
-          "right_camera_wrist_direction_up",
-          "right_camera_wrist_direction_down",
-          "right_camera_wrist_direction_left",
-          "right_camera_wrist_direction_right",
-          "right_body_wrist_signed_vx",
-          "right_body_wrist_signed_vy",
-          "right_body_wrist_direction_none",
-          "right_body_wrist_direction_up",
-          "right_body_wrist_direction_down",
-          "right_body_wrist_direction_left",
-          "right_body_wrist_direction_right",
-          "right_wrist_x_from_elbow_over_shoulder_width",
-          "right_wrist_y_from_elbow_over_shoulder_width",
-          "right_forearm_unit_x",
-          "right_forearm_unit_y",
-          "right_wrist_elbow_radial_velocity_over_shoulder_width",
-          "right_wrist_elbow_tangential_velocity_over_shoulder_width"
-        ],
-        "source_feature_set": "family_combined_directional_hook_motion_shape_v1",
-        "source_class_order": [
-          "straight_left",
-          "straight_right",
-          "hook_left",
-          "hook_right",
-          "uppercut_left",
-          "uppercut_right",
-          "no_punch"
-        ]
-      },
+      "rerun_in_this_slice": false,
+      "feature_count": 56,
       "mlp": {
-        "test_accuracy": 0.8148148148148148,
-        "test_macro_precision": 0.44848484848484843,
-        "test_macro_recall": 0.5739130434782609,
-        "test_macro_f1": 0.47777777777777775,
-        "predicted_counts": {
-          "hook_left": 3,
-          "hook_right": 1,
-          "uppercut_left": 1,
-          "uppercut_right": 0,
-          "no_punch": 22
-        },
-        "actual_counts": {
-          "hook_left": 1,
-          "hook_right": 1,
-          "uppercut_left": 1,
-          "uppercut_right": 1,
-          "no_punch": 23
-        }
+        "accuracy": 0.8148148148148148,
+        "macro_f1": 0.47777777777777775
       },
       "cnn": {
-        "test_accuracy": 0.8148148148148148,
-        "test_macro_precision": 0.275,
-        "test_macro_recall": 0.3826086956521739,
-        "test_macro_f1": 0.3120567375886525,
-        "predicted_counts": {
-          "hook_left": 2,
-          "hook_right": 0,
-          "uppercut_left": 1,
-          "uppercut_right": 0,
-          "no_punch": 24
-        },
-        "actual_counts": {
-          "hook_left": 1,
-          "hook_right": 1,
-          "uppercut_left": 1,
-          "uppercut_right": 1,
-          "no_punch": 23
-        }
+        "accuracy": 0.8148148148148148,
+        "macro_f1": 0.3120567375886525
+      }
+    },
+    "hook_uppercut_motion_shape_variant_c_v1": {
+      "artifact_dir": "docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_c_v1",
+      "feature_count": 62,
+      "mlp": {
+        "accuracy": 0.8148148148148148,
+        "macro_f1": 0.47777777777777775
       },
-      "shared_vector_subset_baseline": {
-        "test_accuracy": 0.8888888888888888,
-        "test_macro_f1": 0.5872340425531914,
-        "test_sample_count": 27,
-        "projected_from": "docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json",
-        "records": [
-          {
-            "sample_id": "hook_left_fixture::hook_left::04",
-            "split": "test",
-            "actual": "hook_left",
-            "predicted": "hook_left"
-          },
-          {
-            "sample_id": "hook_right_fixture::hook_right::04",
-            "split": "test",
-            "actual": "hook_right",
-            "predicted": "hook_right"
-          },
-          {
-            "sample_id": "uppercut_left_fixture::uppercut_left::04",
-            "split": "test",
-            "actual": "uppercut_left",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "uppercut_right_fixture::uppercut_right::04",
-            "split": "test",
-            "actual": "uppercut_right",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "hook_left_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "hook_left_fixture::no_punch::019",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "hook_right_fixture::no_punch::016",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "hook_right_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "knee_left_fixture::no_punch::019",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "knee_right_fixture::no_punch::020",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "leg_lift_left_fixture::no_punch::025",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "leg_lift_right_fixture::no_punch::022",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "run_in_place_fixture::no_punch::014",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "sidestep_left_fixture::no_punch::022",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "sidestep_right_fixture::no_punch::028",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "squat_fixture::no_punch::025",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "stance_transition_fixture::no_punch::027",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_left_fixture::no_punch::009",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_left_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_right_fixture::no_punch::011",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "straight_right_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "uppercut_left_fixture::transition_before::03",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "uppercut_left"
-          },
-          {
-            "sample_id": "uppercut_left_fixture::transition_before::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "uppercut_right_fixture::no_punch::014",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "uppercut_right_fixture::transition_after::04",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "weave_left_fixture::no_punch::021",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          },
-          {
-            "sample_id": "weave_right_fixture::no_punch::026",
-            "split": "test",
-            "actual": "no_punch",
-            "predicted": "no_punch"
-          }
-        ],
-        "metrics": {
-          "test_metrics": {
-            "sample_count": 27,
-            "accuracy": 0.8888888888888888,
-            "macro_precision": 0.5833333333333333,
-            "macro_recall": 0.5913043478260869,
-            "macro_f1": 0.5872340425531914,
-            "actual_counts": {
-              "hook_left": 1,
-              "hook_right": 1,
-              "uppercut_left": 1,
-              "uppercut_right": 1,
-              "no_punch": 23
-            },
-            "predicted_counts": {
-              "hook_left": 1,
-              "hook_right": 1,
-              "uppercut_left": 1,
-              "uppercut_right": 0,
-              "no_punch": 24
-            },
-            "per_class": {
-              "hook_left": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 1
-              },
-              "hook_right": {
-                "precision": 1.0,
-                "recall": 1.0,
-                "f1": 1.0,
-                "support": 1
-              },
-              "uppercut_left": {
-                "precision": 0.0,
-                "recall": 0.0,
-                "f1": 0.0,
-                "support": 1
-              },
-              "uppercut_right": {
-                "precision": 0.0,
-                "recall": 0.0,
-                "f1": 0.0,
-                "support": 1
-              },
-              "no_punch": {
-                "precision": 0.9166666666666666,
-                "recall": 0.9565217391304348,
-                "f1": 0.9361702127659574,
-                "support": 23
-              }
-            },
-            "confusion": {
-              "hook_left": {
-                "hook_left": 1,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 0
-              },
-              "hook_right": {
-                "hook_left": 0,
-                "hook_right": 1,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 0
-              },
-              "uppercut_left": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 1
-              },
-              "uppercut_right": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 0,
-                "uppercut_right": 0,
-                "no_punch": 1
-              },
-              "no_punch": {
-                "hook_left": 0,
-                "hook_right": 0,
-                "uppercut_left": 1,
-                "uppercut_right": 0,
-                "no_punch": 22
-              }
-            }
-          }
-        }
-      },
-      "delta_vs_shared_vector_subset_baseline": {
-        "mlp_accuracy_delta": -0.07407407407407407,
-        "mlp_macro_f1_delta": -0.1094562647754137,
-        "cnn_accuracy_delta": -0.07407407407407407,
-        "cnn_macro_f1_delta": -0.27517730496453896
-      },
-      "retimed_delta_vs_preretime": {
-        "mlp_accuracy_delta": -0.03703703703703709,
-        "mlp_macro_f1_delta": 0.29377777777777775
+      "cnn": {
+        "accuracy": 0.8518518518518519,
+        "macro_f1": 0.5159420289855072
       },
       "delta_vs_control": {
-        "mlp_accuracy_delta": 0.11111111111111105,
-        "mlp_macro_f1_delta": 0.09859078590785902,
-        "cnn_accuracy_delta": -0.03703703703703709,
-        "cnn_macro_f1_delta": -0.20388529139685474
+        "mlp_accuracy": 0.11111111111111105,
+        "mlp_macro_f1": 0.09859078590785902,
+        "cnn_accuracy": 0.0,
+        "cnn_macro_f1": 0.0
+      },
+      "delta_vs_shared_vector_subset_baseline": {
+        "mlp_accuracy": -0.07407407407407407,
+        "mlp_macro_f1": -0.1094562647754137,
+        "cnn_accuracy": -0.03703703703703698,
+        "cnn_macro_f1": -0.07129201356768422
+      },
+      "delta_vs_variant_a_reference": {
+        "mlp_accuracy": 0.0,
+        "mlp_macro_f1": 0.0,
+        "cnn_accuracy": 0.03703703703703709,
+        "cnn_macro_f1": 0.20388529139685474
       }
-    },
-    "hook_uppercut_motion_shape_variant_b_v1": {
-      "label": "Variant B",
-      "artifact_dir": "docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_b_v1",
-      "status": "not_rerun_under_retimed_truth",
-      "reason": "Task 19 recommended skipping Variant B unless Variant A produced an unexpected positive signal. Variant A did improve enough to open the CNN gate, but its CNN still lost badly enough versus the fair retimed subset baseline that rerunning Variant B would have been redundant for this slice."
     }
   },
-  "conclusion": {
-    "old_negative_motion_shape_conclusion": "weakened_but_not_reversed",
-    "summary": "Retimed truth reversed the old gate result for Variant A at the MLP stage: Variant A now beats the retimed control MLP on macro-F1 and therefore earned a CNN run. But the broader negative motion-shape conclusion still survives at the fair-subset benchmark level: the retimed control CNN remains stronger than the retimed Variant A CNN, and both remain below the fair retimed shared-vector hook/uppercut subset baseline.",
-    "survives": [
-      "Current hook/uppercut-specific motion-shape cues still do not beat the fair retimed shared-vector hook/uppercut subset baseline.",
-      "Variant A is not yet strong enough to justify promotion over the control branch or the shared-vector subset route."
-    ],
-    "weakens_or_reverses": [
-      "The pre-retime claim that no new motion-shape variant could beat the control MLP no longer holds; under retimed truth, Variant A MLP beats the retimed control MLP and opens the CNN gate.",
-      "The blanket negative read on motion-shape features is weaker than before because retimed truth materially improved Variant A at the MLP stage."
-    ]
+  "gates": {
+    "variant_c_mlp_beats_control_gate": true,
+    "variant_c_mlp_beats_variant_a_reference": false,
+    "variant_c_cnn_ran": true
+  },
+  "decision": {
+    "specialized_classifier_case": "weakened_for_hook_uppercut_branch",
+    "summary": "Variant C only ties Variant A at the MLP stage and the Variant C CNN exactly matches the retimed control CNN while still trailing the fair shared-vector hook/uppercut subset baseline. This keeps straight-family specialization attractive, but leaves hook/uppercut specialization unproven and still not runtime-ready."
   }
 }

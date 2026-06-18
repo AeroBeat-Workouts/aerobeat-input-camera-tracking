@@ -1,10 +1,10 @@
 # Boxing Punch Classifier 1D Temporal CNN Baseline
 
-- Trained at: `2026-06-18T19:44:07.253179+00:00`
-- Dataset: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/export/dataset.json`
-- MLP baseline: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_family_mask_v1/mlp/mlp-result.json`
+- Trained at: `2026-06-18T19:46:08.303846+00:00`
+- Dataset: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_c_v1/export/dataset.json`
+- MLP baseline: `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/hook_uppercut_motion_shape_variant_c_v1/mlp/mlp-result.json`
 - Split strategy: `chronological_holdout_v1`
-- Model shape: `8x44 -> conv1d(44->12, k=3, same) -> relu -> conv1d(12->12, k=3, same) -> relu -> flatten(96) -> logits(5)`
+- Model shape: `8x62 -> conv1d(62->12, k=3, same) -> relu -> conv1d(12->12, k=3, same) -> relu -> flatten(96) -> logits(5)`
 - Epochs: **500**
 - Learning rate: **0.02**
 - Weight decay: **0.0005**
@@ -13,8 +13,8 @@
 
 - Temporal CNN accuracy: **0.852**
 - Temporal CNN macro F1: **0.516**
-- Temporal MLP accuracy: **0.704**
-- Temporal MLP macro F1: **0.379**
+- Temporal MLP accuracy: **0.815**
+- Temporal MLP macro F1: **0.478**
 - Threshold baseline accuracy: **0.704**
 - Threshold baseline macro F1: **0.399**
 
@@ -35,8 +35,8 @@
 | hook_left | 1 | 0 | 0 | 0 | 0 |
 | hook_right | 0 | 1 | 0 | 0 | 0 |
 | uppercut_left | 0 | 0 | 0 | 0 | 1 |
-| uppercut_right | 1 | 0 | 0 | 0 | 0 |
-| no_punch | 2 | 1 | 1 | 2 | 17 |
+| uppercut_right | 0 | 0 | 0 | 0 | 1 |
+| no_punch | 2 | 0 | 1 | 0 | 20 |
 
 ## Threshold confusion (test)
 

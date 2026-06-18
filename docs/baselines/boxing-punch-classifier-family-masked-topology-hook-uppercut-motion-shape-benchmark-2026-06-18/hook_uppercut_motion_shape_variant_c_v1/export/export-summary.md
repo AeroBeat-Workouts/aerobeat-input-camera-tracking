@@ -7,15 +7,15 @@
 - Snapshot manifest: `none`
 - Class order: `hook_left, hook_right, uppercut_left, uppercut_right, no_punch`
 - Split strategy: `chronological_holdout_v1`
-- Window shape: `8 frames x 44 features/frame`
+- Window shape: `8 frames x 62 features/frame`
 - Samples: **88**
 - Label counts: `{"hook_left": 4, "hook_right": 4, "no_punch": 72, "uppercut_left": 4, "uppercut_right": 4}`
 - Split counts: `{"test": 27, "train": 61}`
 - Sample kinds: `{"annotated_punch_window": 16, "derived_no_punch_window": 48, "transition_after_punch": 4, "transition_before_punch": 20}`
 - No-punch contexts: `{"non_punch_fixture_background": 35, "punch_fixture_background": 13, "transition_after_punch": 4, "transition_before_punch": 20}`
-- Mask profile: `hook_uppercut_family_mask_v1`
-- Active side features: `["shoulder_x", "shoulder_y", "elbow_x", "elbow_y", "wrist_x", "wrist_y", "combined_elbow_wrist_velocity_xy_magnitude", "elbow_shoulder_xy_distance_over_shoulder_width", "camera_wrist_signed_vx", "camera_wrist_signed_vy", "camera_wrist_direction_none", "camera_wrist_direction_up", "camera_wrist_direction_down", "camera_wrist_direction_left", "camera_wrist_direction_right", "body_wrist_signed_vx", "body_wrist_signed_vy", "body_wrist_direction_none", "body_wrist_direction_up", "body_wrist_direction_down", "body_wrist_direction_left", "body_wrist_direction_right"]`
-- Masked side features: `["elbow_x_from_shoulder_over_shoulder_width", "elbow_y_from_shoulder_over_shoulder_width", "elbow_shoulder_radial_velocity_over_shoulder_width", "wrist_x_from_elbow_over_shoulder_width", "wrist_y_from_elbow_over_shoulder_width", "forearm_unit_x", "forearm_unit_y", "wrist_elbow_radial_velocity_over_shoulder_width", "wrist_elbow_tangential_velocity_over_shoulder_width", "wrist_minus_elbow_velocity_x_over_shoulder_width", "wrist_minus_elbow_velocity_y_over_shoulder_width", "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width", "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width", "forearm_angular_velocity_rad_per_s"]`
+- Mask profile: `hook_uppercut_motion_shape_variant_c_v1`
+- Active side features: `["shoulder_x", "shoulder_y", "elbow_x", "elbow_y", "wrist_x", "wrist_y", "combined_elbow_wrist_velocity_xy_magnitude", "elbow_shoulder_xy_distance_over_shoulder_width", "camera_wrist_signed_vx", "camera_wrist_signed_vy", "camera_wrist_direction_none", "camera_wrist_direction_up", "camera_wrist_direction_down", "camera_wrist_direction_left", "camera_wrist_direction_right", "body_wrist_signed_vx", "body_wrist_signed_vy", "body_wrist_direction_none", "body_wrist_direction_up", "body_wrist_direction_down", "body_wrist_direction_left", "body_wrist_direction_right", "wrist_x_from_elbow_over_shoulder_width", "wrist_y_from_elbow_over_shoulder_width", "forearm_unit_x", "forearm_unit_y", "wrist_elbow_radial_velocity_over_shoulder_width", "wrist_elbow_tangential_velocity_over_shoulder_width", "forearm_angular_velocity_rad_per_s", "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width", "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width"]`
+- Masked side features: `["elbow_x_from_shoulder_over_shoulder_width", "elbow_y_from_shoulder_over_shoulder_width", "elbow_shoulder_radial_velocity_over_shoulder_width", "wrist_minus_elbow_velocity_x_over_shoulder_width", "wrist_minus_elbow_velocity_y_over_shoulder_width"]`
 - Derived from feature set: `family_combined_directional_hook_motion_shape_v1`
 - Derived from frame feature count: **72**
 - Derived from sample count: **96**

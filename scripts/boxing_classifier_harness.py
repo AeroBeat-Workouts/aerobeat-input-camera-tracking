@@ -44,6 +44,7 @@ MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_A_V1 = "straight_family_reduced_var
 MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_B_V1 = "straight_family_reduced_variant_b_v1"
 MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_A_V1 = "hook_uppercut_motion_shape_variant_a_v1"
 MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_B_V1 = "hook_uppercut_motion_shape_variant_b_v1"
+MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_C_V1 = "hook_uppercut_motion_shape_variant_c_v1"
 MASK_PROFILE_TO_CLASS_ORDER = {
     MASK_PROFILE_STRAIGHT_FAMILY_V1: ["straight_left", "straight_right", "no_punch"],
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
@@ -51,6 +52,7 @@ MASK_PROFILE_TO_CLASS_ORDER = {
     MASK_PROFILE_STRAIGHT_FAMILY_REDUCED_VARIANT_B_V1: ["straight_left", "straight_right", "no_punch"],
     MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_A_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
     MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_B_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
+    MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_C_V1: ["hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"],
 }
 PUNCH_GESTURE_NAMES = set(PUNCH_CLASS_TO_EVENT.keys())
 LANDMARK_IDS = {
@@ -144,6 +146,14 @@ HOOK_UPPERCUT_RELATIVE_ELBOW_WRIST_TRAJECTORY_FEATURE_NAMES_PER_SIDE = [
     "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
     "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width",
 ]
+HOOK_UPPERCUT_ORBIT_PHASE_FEATURE_NAMES_PER_SIDE = [
+    "forearm_angular_velocity_rad_per_s",
+]
+HOOK_UPPERCUT_ORBIT_PHASE_LEAD_FEATURE_NAMES_PER_SIDE = [
+    "forearm_angular_velocity_rad_per_s",
+    "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
+    "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width",
+]
 MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES = {
     MASK_PROFILE_STRAIGHT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE + STRAIGHT_FAMILY_FEATURE_NAMES_PER_SIDE,
     MASK_PROFILE_HOOK_UPPERCUT_FAMILY_V1: BASELINE_FEATURE_NAMES_PER_SIDE
@@ -164,6 +174,11 @@ MASK_PROFILE_TO_ACTIVE_SIDE_FEATURES = {
     + BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
     + HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE
     + HOOK_UPPERCUT_RELATIVE_ELBOW_WRIST_TRAJECTORY_FEATURE_NAMES_PER_SIDE,
+    MASK_PROFILE_HOOK_UPPERCUT_MOTION_SHAPE_VARIANT_C_V1: BASELINE_FEATURE_NAMES_PER_SIDE
+    + CAMERA_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + BODY_WRIST_DIRECTIONAL_FEATURE_NAMES_PER_SIDE
+    + HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE
+    + HOOK_UPPERCUT_ORBIT_PHASE_LEAD_FEATURE_NAMES_PER_SIDE,
 }
 MASK_PROFILES = list(MASK_PROFILE_TO_CLASS_ORDER.keys())
 
@@ -204,6 +219,7 @@ def feature_names_per_side(feature_set: str | None = None) -> list[str]:
     if resolved == FEATURE_SET_FAMILY_COMBINED_DIRECTIONAL_HOOK_MOTION_SHAPE_V1:
         names.extend(HOOK_UPPERCUT_FOREARM_ORBIT_FEATURE_NAMES_PER_SIDE)
         names.extend(HOOK_UPPERCUT_RELATIVE_ELBOW_WRIST_TRAJECTORY_FEATURE_NAMES_PER_SIDE)
+        names.extend(HOOK_UPPERCUT_ORBIT_PHASE_FEATURE_NAMES_PER_SIDE)
     return names
 
 
@@ -674,6 +690,31 @@ def _radial_velocity_over_shoulder_width(
     return radial_velocity / max(float(shoulder_width), 1e-6)
 
 
+def _forearm_angular_velocity_rad_per_s(
+    forearm_history: list[dict],
+    timestamp_ms: int,
+    forearm_unit_x: float,
+    forearm_unit_y: float,
+) -> float:
+    if not forearm_history:
+        return 0.0
+    previous = forearm_history[-1]
+    previous_timestamp_ms = int(previous.get("timestamp_ms", timestamp_ms))
+    dt_ms = int(timestamp_ms) - previous_timestamp_ms
+    if dt_ms <= 0:
+        return 0.0
+    previous_unit_x = float(previous.get("forearm_unit_x", 0.0))
+    previous_unit_y = float(previous.get("forearm_unit_y", 0.0))
+    previous_norm = math.hypot(previous_unit_x, previous_unit_y)
+    current_norm = math.hypot(forearm_unit_x, forearm_unit_y)
+    if previous_norm <= 1e-8 or current_norm <= 1e-8:
+        return 0.0
+    cross_z = (previous_unit_x * forearm_unit_y) - (previous_unit_y * forearm_unit_x)
+    dot = (previous_unit_x * forearm_unit_x) + (previous_unit_y * forearm_unit_y)
+    signed_angle_rad = math.atan2(cross_z, dot)
+    return signed_angle_rad / (float(dt_ms) / 1000.0)
+
+
 def extract_side_features(
     landmarks_by_id: dict,
     metrics: dict,
@@ -698,7 +739,7 @@ def extract_side_features(
     measurements = metrics.get("measurements", {}) if isinstance(metrics.get("measurements", {}), dict) else {}
     shoulder_width = max(float(measurements.get("shoulder_width", 0.0)), 0.000001)
 
-    side_histories = signal_history_by_side.setdefault(side, {"combined": [], "elbow": [], "wrist": []})
+    side_histories = signal_history_by_side.setdefault(side, {"combined": [], "elbow": [], "wrist": [], "forearm": []})
     combined_signal_position = _resolve_combined_elbow_wrist_signal_position(elbow, wrist)
     elbow_signal_position = _resolve_signal_position(elbow)
     wrist_signal_position = _resolve_signal_position(wrist)
@@ -758,6 +799,12 @@ def extract_side_features(
         wrist_elbow_tangential_velocity_over_shoulder_width = (
             (wrist_minus_elbow_velocity_x * tangential_unit_x) + (wrist_minus_elbow_velocity_y * tangential_unit_y)
         ) / shoulder_width
+    forearm_angular_velocity_rad_per_s = _forearm_angular_velocity_rad_per_s(
+        side_histories.setdefault("forearm", []),
+        timestamp_ms,
+        forearm_unit_x,
+        forearm_unit_y,
+    )
     camera_direction = _coarse_direction_buckets(camera_signed_vx, camera_signed_vy)
     body_direction = _coarse_direction_buckets(body_signed_vx, body_signed_vy)
     camera_wrist_direction = _coarse_direction_buckets(camera_wrist_signed_vx, camera_wrist_signed_vy)
@@ -817,6 +864,7 @@ def extract_side_features(
         "wrist_y_from_elbow_over_shoulder_width": wrist_y_from_elbow_over_shoulder_width,
         "forearm_unit_x": forearm_unit_x,
         "forearm_unit_y": forearm_unit_y,
+        "forearm_angular_velocity_rad_per_s": forearm_angular_velocity_rad_per_s,
         "wrist_elbow_radial_velocity_over_shoulder_width": wrist_elbow_radial_velocity_over_shoulder_width,
         "wrist_elbow_tangential_velocity_over_shoulder_width": wrist_elbow_tangential_velocity_over_shoulder_width,
         "wrist_minus_elbow_velocity_x_over_shoulder_width": wrist_minus_elbow_velocity_x / shoulder_width,
@@ -833,6 +881,10 @@ def extract_side_features(
             "elbow": elbow_signal_position,
             "wrist": wrist_signal_position,
         },
+        "forearm_state": {
+            "forearm_unit_x": forearm_unit_x,
+            "forearm_unit_y": forearm_unit_y,
+        },
     }
 
 
@@ -842,8 +894,8 @@ def build_feature_snapshots(capture_report: dict, feature_set: str = FEATURE_SET
     resolved_frame_feature_names = frame_feature_names(resolved_feature_set)
     snapshots = []
     signal_history_by_side: dict[str, dict[str, list[dict]]] = {
-        "left": {"combined": [], "elbow": [], "wrist": []},
-        "right": {"combined": [], "elbow": [], "wrist": []},
+        "left": {"combined": [], "elbow": [], "wrist": [], "forearm": []},
+        "right": {"combined": [], "elbow": [], "wrist": [], "forearm": []},
     }
     for snapshot in pose_snapshots(capture_report):
         pose_snapshot = snapshot["pose_snapshot"]
@@ -855,9 +907,11 @@ def build_feature_snapshots(capture_report: dict, feature_set: str = FEATURE_SET
         if left is not None:
             for signal_name, signal_position in left["signal_positions"].items():
                 signal_history_by_side["left"].setdefault(signal_name, []).append({"timestamp_ms": timestamp_ms, "signal_position": signal_position})
+            signal_history_by_side["left"].setdefault("forearm", []).append({"timestamp_ms": timestamp_ms, **left["forearm_state"]})
         if right is not None:
             for signal_name, signal_position in right["signal_positions"].items():
                 signal_history_by_side["right"].setdefault(signal_name, []).append({"timestamp_ms": timestamp_ms, "signal_position": signal_position})
+            signal_history_by_side["right"].setdefault("forearm", []).append({"timestamp_ms": timestamp_ms, **right["forearm_state"]})
         if left is None or right is None:
             continue
         snapshots.append(

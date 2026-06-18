@@ -1,7 +1,7 @@
 {
   "schema": "aerobeat.boxing_punch_classifier_export",
   "version": 3,
-  "exported_at": "2026-06-18T18:20:34.016541+00:00",
+  "exported_at": "2026-06-18T19:42:41.547644+00:00",
   "manifest_path": ".testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json",
   "capture_dir": ".temp/boxing-punch-classifier-export/hardened-captures-2026-06-16",
   "window_frame_count": 8,
@@ -1162,7 +1162,8 @@
       "wrist_minus_elbow_velocity_x_over_shoulder_width",
       "wrist_minus_elbow_velocity_y_over_shoulder_width",
       "body_wrist_minus_elbow_velocity_lateral_over_shoulder_width",
-      "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width"
+      "body_wrist_minus_elbow_velocity_vertical_over_shoulder_width",
+      "forearm_angular_velocity_rad_per_s"
     ],
     "active_frame_feature_names": [
       "left_shoulder_x",
@@ -1232,7 +1233,7 @@
       "uppercut_right",
       "no_punch"
     ],
-    "source_frame_feature_count": 70,
+    "source_frame_feature_count": 72,
     "source_sample_count": 96
   },
   "source_dataset_path": "docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/family_combined_directional_hook_motion_shape_v1/export/dataset.json"

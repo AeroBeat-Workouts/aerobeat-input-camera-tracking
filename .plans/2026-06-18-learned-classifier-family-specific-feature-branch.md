@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-18 14:24 EDT  
-**Blocked Reason:** None; Task 18 audit passed on the retimed-truth rerun and the next slice is ready to choose.  
+**Last Updated:** 2026-06-18 15:08 EDT  
+**Blocked Reason:** None; Task 21 QA reproduced the refreshed retimed hook/uppercut motion-shape subset cleanly and Task 22 audit is ready.  
 **Agent:** `pico`
 
 ---
@@ -602,6 +602,125 @@ So the old negative motion-shape conclusion **weakens but does not reverse** und
 **Prompt:** Verify the selected retimed-truth reruns of prior hook/uppercut experiments are reproducible and compared fairly. Confirm which old hook/uppercut conclusions remain valid versus which were artifacts of the old recovery-inclusive truth windows.
 
 **Folders Created/Deleted/Modified:**
+- `.temp/qa-retimed-hook-uppercut-motion-shape-rerun-2026-06-18/`
+- `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.temp/qa-retimed-hook-uppercut-motion-shape-rerun-2026-06-18/family_combined_directional_hook_motion_shape_v1/{export,dataset,mlp,cnn}`
+- `.temp/qa-retimed-hook-uppercut-motion-shape-rerun-2026-06-18/hook_uppercut_family_mask_v1/{export,dataset,mlp,cnn}`
+- `.temp/qa-retimed-hook-uppercut-motion-shape-rerun-2026-06-18/hook_uppercut_motion_shape_variant_a_v1/{export,dataset,mlp,cnn}`
+
+**Status:** ✅ Complete
+
+**Results:** Re-ran the refreshed retimed-truth hook/uppercut motion-shape subset from scratch into `.temp/qa-retimed-hook-uppercut-motion-shape-rerun-2026-06-18/` using the live benchmark manifest and hardened capture package: (1) `python3 scripts/export_boxing_punch_classifier_dataset.py --manifest .testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json --captures-dir .temp/boxing-punch-classifier-export/hardened-captures-2026-06-16 --feature-set family_combined_directional_hook_motion_shape_v1 --skip-captures --output-dir .../family_combined_directional_hook_motion_shape_v1/export`, (2) `python3 scripts/train_boxing_punch_mlp_baseline.py --dataset .../family_combined_directional_hook_motion_shape_v1/export/dataset.json --output-dir .../family_combined_directional_hook_motion_shape_v1/mlp`, (3) `python3 scripts/train_boxing_punch_temporal_cnn.py --dataset .../family_combined_directional_hook_motion_shape_v1/export/dataset.json --mlp-result .../family_combined_directional_hook_motion_shape_v1/mlp/mlp-result.json --output-dir .../family_combined_directional_hook_motion_shape_v1/cnn`, then (4) derived `hook_uppercut_family_mask_v1` and `hook_uppercut_motion_shape_variant_a_v1` from that same source dataset with `scripts/export_boxing_punch_classifier_dataset.py --source-dataset ... --mask-profile <profile>`, followed by fresh MLP and CNN runs for each derived variant. The rerun reproduced the checked-in semantic outputs exactly for both selected retimed variants: control export `88 samples / 61 train / 27 test`, control MLP `0.7037 accuracy / 0.3792 macro-F1`, control CNN `0.8519 / 0.5159`; Variant A export `88 / 61 / 27`, Variant A MLP `0.8148 / 0.4778`, Variant A CNN `0.8148 / 0.3121`. Exact test-record sample IDs also matched between the rerun and the checked-in artifacts for control + Variant A; differences were limited to expected timestamp/output-path metadata.
+
+The fair subset-baseline comparison remains truthful. For both selected variants, the benchmark summary’s projected shared-vector subset baseline uses the exact same 27 hook/uppercut/no-punch test sample IDs as the masked-head CNN test records, and the shared baseline still computes to `0.8889 accuracy / 0.5872 macro-F1` on that same held-out set. Under that apples-to-apples comparison, the conclusion shift is real but still not enough overall: Variant A genuinely improves relative to the retimed control at the MLP stage (`0.4778` vs `0.3792` macro-F1), which means the old pre-retime “gate stays closed” conclusion no longer survives, and the coder correctly opened the CNN gate for Variant A. But the broader branch judgment does not reverse after the gated CNN pass: Variant A CNN still loses to the retimed control CNN (`0.8148 / 0.3121` vs `0.8519 / 0.5159`) and both still trail the fair retimed shared-vector hook/uppercut subset baseline (`0.8889 / 0.5872`). QA therefore passes with one standing caveat already documented elsewhere in the branch: this benchmark still uses the hardened capture-report package rather than a fully frozen snapshot because of known `straight_right` fixture-YAML hash drift. Audit is ready.
+
+---
+
+### Task 22: Audit retimed-truth re-evaluation conclusions for hook/uppercut experiments
+
+**Bead ID:** `aerobeat-input-camera-tracking-gnjw`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the retimed-truth reruns of prior hook/uppercut experiments and state which old conclusions should be kept, weakened, or discarded before any new hook/uppercut feature design work begins.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed. I independently truth-checked the checked-in retimed rerun artifacts from commit `d15e746` under `docs/baselines/boxing-punch-classifier-family-masked-topology-hook-uppercut-motion-shape-benchmark-2026-06-18/` against the underlying per-variant JSON artifacts and the refreshed shared-vector hook/uppercut subset baseline projected from `docs/baselines/boxing-punch-classifier-family-specific-feature-benchmark-2026-06-18/family_combined_directional_v1/cnn/cnn-result.json`. The benchmark-level `summary.{json,md}` is internally consistent with the source export plus the control/Variant A `export/export-summary.json`, `mlp/mlp-result.json`, and `cnn/cnn-result.json` files.
+
+The refreshed retimed-truth comparison is fair and exact. Source export counts stayed `96 total / 67 train / 29 test`; both the control and Variant A hook/uppercut masked exports stayed `88 total / 61 train / 27 test`, with unchanged label/sample-kind totals and only the truth-timed window identities shifting. The projected shared-vector subset baseline still uses the exact same 27 held-out sample IDs as both retimed control and Variant A CNN test records, and it still computes to `0.8889 accuracy / 0.5872 macro-F1`.
+
+QA’s key claims all hold under audit. Retimed control reproduces `MLP 0.7037 / 0.3792` and `CNN 0.8519 / 0.5159`. Retimed Variant A reproduces `MLP 0.8148 / 0.4778` and `CNN 0.8148 / 0.3121`. The old pre-retime claim that Variant A could not beat the control MLP or open the CNN gate is no longer trustworthy: under retimed truth, Variant A MLP really does beat the retimed control MLP on macro-F1 (`0.4778` vs `0.3792`), so the coder correctly ran the Variant A CNN. But the broader hook/uppercut branch judgment does **not** reverse: Variant A CNN still loses to the retimed control CNN (`0.8148 / 0.3121` vs `0.8519 / 0.5159`) and both still trail the fair retimed shared-vector subset baseline (`0.8889 / 0.5872`).
+
+Final audit judgment: the old negative motion-shape conclusion is weakened but not reversed. Keep: current hook/uppercut-specific motion-shape cues still do not beat the fair retimed shared-vector hook/uppercut subset baseline, and Variant A is still only harness evidence rather than a runtime-promotion candidate. Discard/weaken: the pre-retime “gate stays closed / no variant beats control MLP” conclusion. No internal consistency discrepancies found beyond the already-documented branch caveat that these benchmarks still use the hardened capture-report package rather than a fully frozen snapshot because of known `straight_right` fixture-YAML hash drift. Recommended next step: do not promote hook/uppercut Variant A to runtime yet; use the updated retimed truth read to guide one more diagnosis-first benchmark slice for stronger hook/uppercut cues, while treating the separate straight-family masking win as the only part of this branch that is currently strong enough to inform any runtime-topology discussion.
+
+---
+
+### Task 23: Research the next stronger hook/uppercut cue-design benchmark after retimed Variant A
+
+**Bead ID:** `aerobeat-input-camera-tracking-8260`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Variant A became more promising under retimed punch truth, but it still lost at the final CNN and fair subset-baseline comparison. Research the next strongest hook/uppercut cue-design benchmark slice that is most likely to improve on retimed control and retimed Variant A. Prioritize compact signals around arc/phase/timing rather than generic extra width: forearm angle/orbit phase, elbow-leading vs wrist-leading timing, path curvature, punch-plane/arc cues, or similarly expressive motion-shape signals. Recommend the narrowest next matrix worth running and keep exact variable inventories explicit.
+
+**Folders Created/Deleted/Modified:**
+- relevant benchmark paths / notes discovered during research
+
+**Files Created/Deleted/Modified:**
+- plan updates / research notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Research completed against the retimed hook/uppercut control + Variant A artifacts. The key diagnostic read is now sharper: on the retimed fair hook/uppercut subset, the control CNN (`0.8519 / 0.5159`) and Variant A CNN (`0.8148 / 0.3121`) both still trail the shared-vector subset baseline (`0.8889 / 0.5872`), and both CNNs still miss both uppercut positives as `no_punch`. Variant A’s static forearm-orbit bundle *does* help at the MLP stage (`0.4778` macro-F1 vs control `0.3792`), but it does not survive the CNN gate; it also newly loses the held-out `hook_right` positive. That means the next honest cue-design slice should stop widening generic wrist-path geometry and instead add a compact phase/timing bundle that answers the unresolved question directly: is this motion an elbow-led upward drive or a wrist-led lateral sweep?
+
+Ranked next cue bundles:
+1. **Variant C: Variant A + compact orbit-phase / elbow-vs-wrist lead bundle** (best next slice). Add only per-side `forearm_angular_velocity_rad_per_s`, `body_wrist_minus_elbow_velocity_lateral_over_shoulder_width`, and `body_wrist_minus_elbow_velocity_vertical_over_shoulder_width` on top of the current Variant A inventory. Rationale: Variant A already supplies static forearm orientation + tangential/radial wrist motion around the elbow, but it does not expose *phase change* or whether the elbow or wrist is leading the action in the punch plane. Those three added signals are the narrowest expressive way to tell hook sweep from uppercut rise without repeating existing raw x/y trajectory width.
+2. **Variant D: Variant C + elbow-arc / punch-plane cue** (runner-up only if Variant C shows a real MLP win). Add per-side `elbow_shoulder_tangential_velocity_over_shoulder_width` and `elbow_shoulder_vertical_velocity_over_shoulder_width`. Rationale: if Variant C still misses uppercuts as `no_punch`, the next likely missing signal is that uppercuts are elbow-led upward arcs while hooks keep stronger lateral elbow sweep. This is still compact, but it is a second step, not the first.
+3. **Curvature-heavy follow-up** (do not run yet). Any bundle centered on second-derivative / multi-axis curvature terms should wait until the simpler phase/lead cues are tested; with only four positives per hook/uppercut class, higher-order curvature is more likely to amplify noise than resolve the current miss pattern.
+
+Recommended narrowest next matrix:
+- Keep the already-established retimed control `hook_uppercut_family_mask_v1` as the comparison baseline.
+- Implement and run exactly **one** new benchmark variant first: `hook_uppercut_motion_shape_variant_c_v1 = Variant A + {forearm_angular_velocity_rad_per_s, body_wrist_minus_elbow_velocity_lateral_over_shoulder_width, body_wrist_minus_elbow_velocity_vertical_over_shoulder_width}`.
+- Use the same gated policy as before: always run control CNN; run Variant C CNN only if Variant C MLP macro-F1 beats the retimed control MLP (`0.3792`) and ideally also beats retimed Variant A MLP (`0.4778`).
+- Only if Variant C clears that gate and still misses the fair subset baseline should coder add Variant D as the sole expansion.
+
+Exact variable inventories for the recommended next slice:
+- **Retimed control active side features (22):** `shoulder_x`, `shoulder_y`, `elbow_x`, `elbow_y`, `wrist_x`, `wrist_y`, `combined_elbow_wrist_velocity_xy_magnitude`, `elbow_shoulder_xy_distance_over_shoulder_width`, `camera_wrist_signed_vx`, `camera_wrist_signed_vy`, `camera_wrist_direction_none`, `camera_wrist_direction_up`, `camera_wrist_direction_down`, `camera_wrist_direction_left`, `camera_wrist_direction_right`, `body_wrist_signed_vx`, `body_wrist_signed_vy`, `body_wrist_direction_none`, `body_wrist_direction_up`, `body_wrist_direction_down`, `body_wrist_direction_left`, `body_wrist_direction_right`.
+- **Retimed Variant A incremental side features (6):** `wrist_x_from_elbow_over_shoulder_width`, `wrist_y_from_elbow_over_shoulder_width`, `forearm_unit_x`, `forearm_unit_y`, `wrist_elbow_radial_velocity_over_shoulder_width`, `wrist_elbow_tangential_velocity_over_shoulder_width`.
+- **Recommended Variant C incremental side features (3 new only):** `forearm_angular_velocity_rad_per_s`, `body_wrist_minus_elbow_velocity_lateral_over_shoulder_width`, `body_wrist_minus_elbow_velocity_vertical_over_shoulder_width`.
+- **Recommended Variant D incremental side features (2 add-on only, not first-pass):** `elbow_shoulder_tangential_velocity_over_shoulder_width`, `elbow_shoulder_vertical_velocity_over_shoulder_width`.
+
+What to explicitly avoid because it is likely redundant/noisy:
+- Do **not** add `forearm_angle` as a raw scalar if represented via `sin/cos`; current Variant A already carries the same static orientation information through `forearm_unit_x` and `forearm_unit_y`.
+- Do **not** rerun Variant B as-is first; its extra raw relative x/y bundle widened the feature space without isolating the lead/phase question and already regressed pre-retime.
+- Do **not** add camera-space and body-space duplicates of the same relative wrist↔elbow terms in the first pass; prefer the body-space lateral/vertical pair only.
+- Do **not** jump to second-derivative curvature / acceleration bundles yet; they are the most likely to be unstable on this tiny hook/uppercut positive set.
+
+Coder readiness: **yes**. The next coder brief is now narrow and explicit: add one new hook/uppercut benchmark variant centered on orbit-phase + elbow-vs-wrist lead timing, compare it against the retimed control and fair retimed hook/uppercut subset baseline, and only widen to the elbow-arc follow-up if that first compact bundle produces a real gated win.
+
+---
+
+### Task 24: Implement the next stronger hook/uppercut cue-design benchmark
+
+**Bead ID:** `aerobeat-input-camera-tracking-g3wf`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Implement the strongest next hook/uppercut cue-design benchmark recommended by Task 23, keeping scope narrow and benchmark-only. Compare fairly against retimed control and the retimed fair hook/uppercut subset baseline, and keep exact variable inventories explicit in the artifacts.
+
+**Folders Created/Deleted/Modified:**
+- refreshed hook/uppercut benchmark artifact paths for the next cue-design pass
+
+**Files Created/Deleted/Modified:**
+- harness/export files discovered in Task 23
+- refreshed/new benchmark artifacts as needed
+- plan updates / notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Added `forearm_angular_velocity_rad_per_s` to the full `family_combined_directional_hook_motion_shape_v1` source export, introduced the benchmark-only `hook_uppercut_motion_shape_variant_c_v1` mask profile, refreshed the source export from the current retimed benchmark manifest plus the frozen hardened capture reports (the older snapshot manifest now fails verification because the retimed fixture YAML hashes changed), reran the retimed control export/MLP/CNN, and ran the gated Variant C export/MLP/CNN. Exact active Variant C additions vs Variant A were kept explicit in the updated summary/artifacts: `forearm_angular_velocity_rad_per_s`, `body_wrist_minus_elbow_velocity_lateral_over_shoulder_width`, and `body_wrist_minus_elbow_velocity_vertical_over_shoulder_width`. Results: control MLP/CNN = `0.7037 / 0.3792` and `0.8519 / 0.5159`; Variant C MLP/CNN = `0.8148 / 0.4778` and `0.8519 / 0.5159`; fair retimed shared-vector hook/uppercut subset baseline remained `0.8889 / 0.5872`. Variant C beat the retimed control MLP gate but only tied the retimed Variant A MLP reference (`0.4778`), so the required Variant C CNN was run and it exactly matched the control CNN while still trailing the fair shared-vector subset baseline. Net: this weakens, rather than strengthens, the case that hook/uppercut-specific specialization is ready for runtime integration.
+
+---
+
+### Task 25: QA the next stronger hook/uppercut cue-design benchmark
+
+**Bead ID:** `aerobeat-input-camera-tracking-s666`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Prompt:** Verify the next hook/uppercut cue-design benchmark is reproducible and compared fairly against retimed control and the fair retimed hook/uppercut subset baseline. Confirm exact variable inventories and summarize whether the new cues finally improve hook/uppercut separation enough to matter.
+
+**Folders Created/Deleted/Modified:**
 - relevant repo paths used during QA
 
 **Files Created/Deleted/Modified:**
@@ -613,13 +732,13 @@ So the old negative motion-shape conclusion **weakens but does not reverse** und
 
 ---
 
-### Task 22: Audit retimed-truth re-evaluation conclusions for hook/uppercut experiments
+### Task 26: Audit the next stronger hook/uppercut cue-design benchmark conclusions
 
-**Bead ID:** `aerobeat-input-camera-tracking-gnjw`  
+**Bead ID:** `aerobeat-input-camera-tracking-1a4v`  
 **SubAgent:** `primary` (for `auditor`)  
 **Role:** `auditor`  
 **References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
-**Prompt:** Independently truth-check the retimed-truth reruns of prior hook/uppercut experiments and state which old conclusions should be kept, weakened, or discarded before any new hook/uppercut feature design work begins.
+**Prompt:** Independently truth-check the next hook/uppercut cue-design benchmark and state whether the new cues finally justify further specialization or still leave hook/uppercut as the weak branch. Keep exact variable inventories explicit in the audit summary.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo paths used during audit

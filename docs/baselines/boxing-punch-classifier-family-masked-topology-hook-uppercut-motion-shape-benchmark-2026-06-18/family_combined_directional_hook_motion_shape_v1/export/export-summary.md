@@ -1,13 +1,13 @@
 # Boxing Punch Classifier Export
 
-- Exported at: `2026-06-18T18:20:34.016541+00:00`
+- Exported at: `2026-06-18T19:42:41.547644+00:00`
 - Manifest: `.testbed/assets/benchmarks/boxing_punch_classifier_v1.benchmark.json`
 - Capture dir: `.temp/boxing-punch-classifier-export/hardened-captures-2026-06-16`
 - Snapshot ID: `none`
 - Snapshot manifest: `none`
 - Class order: `straight_left, straight_right, hook_left, hook_right, uppercut_left, uppercut_right, no_punch`
 - Split strategy: `chronological_holdout_v1`
-- Window shape: `8 frames x 70 features/frame`
+- Window shape: `8 frames x 72 features/frame`
 - Samples: **96**
 - Label counts: `{"hook_left": 4, "hook_right": 4, "no_punch": 72, "straight_left": 4, "straight_right": 4, "uppercut_left": 4, "uppercut_right": 4}`
 - Split counts: `{"test": 29, "train": 67}`
