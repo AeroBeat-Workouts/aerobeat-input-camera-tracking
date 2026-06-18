@@ -520,13 +520,17 @@ func _get_show_scores() -> bool:
 	var gesture_profile_document := _get_gesture_profile_document()
 	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
 	var debug_config: Dictionary = learned.get("debug", {}) if learned.get("debug", {}) is Dictionary else {}
-	return bool(debug_config.get("show_scores", LEARNED_DEFAULT_SHOW_SCORES))
+	return _get_debug_bool(debug_config, "show_scores", LEARNED_DEFAULT_SHOW_SCORES)
 
 func _get_show_event_gate_state() -> bool:
 	var gesture_profile_document := _get_gesture_profile_document()
 	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
 	var debug_config: Dictionary = learned.get("debug", {}) if learned.get("debug", {}) is Dictionary else {}
-	return bool(debug_config.get("show_event_gate_state", LEARNED_DEFAULT_SHOW_EVENT_GATE_STATE))
+	return _get_debug_bool(debug_config, "show_event_gate_state", LEARNED_DEFAULT_SHOW_EVENT_GATE_STATE)
+
+func _get_debug_bool(debug_config: Dictionary, key: String, default_value: bool) -> bool:
+	var raw_value = debug_config.get(key, default_value)
+	return raw_value if raw_value is bool else default_value
 
 func _get_feature_names() -> Array:
 	return DEFAULT_FEATURE_NAMES.duplicate(true)
