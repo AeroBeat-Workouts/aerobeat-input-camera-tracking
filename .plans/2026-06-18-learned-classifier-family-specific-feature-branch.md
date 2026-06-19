@@ -1,9 +1,9 @@
 # AeroBeat Learned Classifier Family-Specific Feature Branch
 
 **Date:** 2026-06-18  
-**Status:** In Progress  
-**Last Updated:** 2026-06-19 17:06 EDT  
-**Blocked Reason:** None. Derrick approved the hook/uppercut threshold-contract rewrite and added the final geometric validity rules: hooks must keep the wrist on the correct camera-space side of the elbow, and uppercuts must keep the wrist above the elbow in camera space.  
+**Status:** Blocked  
+**Last Updated:** 2026-06-19 19:49 EDT  
+**Blocked Reason:** Paused for Derrick’s manual replay/live review. Latest landed slices are committed and validated in repo-local automation, and the next step depends on Derrick’s later feedback on real-device behavior/tuning rather than an already-approved autonomous change.  
 **Agent:** `pico`
 
 ---
@@ -1915,14 +1915,16 @@ Added focused threshold-contract tests in `.testbed/tests/unit/test_pose_detecto
 **Prompt:** Verify the new hook/uppercut elbow-ray alignment threshold contract after implementation. Confirm the old dominance/direction variables are gone, confirm the new alignment thresholds participate honestly in the threshold decision paths, and confirm the YAML/comment shape matches the approved contract.
 
 **Folders Created/Deleted/Modified:**
-- relevant repo/test/artifact paths used during QA
+- `.testbed/test-results/task65-qa-20260619/`
+- `.plans/`
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.testbed/test-results/task65-qa-20260619/gut-hook-uppercut-threshold-contract.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
 
-**Status:** ⏳ Pending approval
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA ran against landed commit `6821df4` at repo `HEAD`. Static runtime inspection in `src/detectors/pose_detector_substrate.gd` verified the live hook threshold path now arms on `speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side`, with `wrist_horizontal_angle_gate_passed` computed from `max_wrist_angle_from_elbow_horizontal_deg`; the live uppercut path now arms on `speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed`, with `wrist_vertical_angle_gate_passed` computed from `max_wrist_angle_from_elbow_vertical_deg`. The superseded hook/uppercut dominance + direction threshold keys (`min_lateral_dominance_ratio`, `min_horizontal_direction_ratio`, `min_vertical_dominance_ratio`, `min_upward_direction_ratio`) do not appear anywhere under `src/`, `.testbed/tests/`, or the live YAML contract; remaining hits are confined to archived historical `test-results/` artifacts only, so they are no longer part of the live threshold decision path. Contract-shape QA on `assets/boxing.gesture_detection.yaml` confirmed the approved YAML/comment surface now exposes only the elbow-ray alignment threshold for hook and uppercut, with the matching explanatory comments for mirrored hook-side validity and uppercut wrist-above-elbow validity. Focused repo-local automation passed via headless Godot GUT after `godotenv-sync`: `res://tests/unit/test_pose_detector_substrate.gd` and `res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` (116/116 passing; log at `.testbed/test-results/task65-qa-20260619/gut-hook-uppercut-threshold-contract.log`). The strongest direct proofs came from `test_hook_requires_wrist_on_correct_mirrored_elbow_side`, `test_uppercut_requires_wrist_above_elbow_in_camera_space`, `test_hook_alignment_angle_gate_participates_honestly`, `test_uppercut_alignment_angle_gate_participates_honestly`, `test_hook_alignment_angle_gate_blocks_even_when_velocity_is_high`, `test_uppercut_alignment_angle_gate_blocks_even_when_velocity_is_high`, plus proving-harness contract checks `test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections` and `test_hook_hover_card_reports_simplified_pose_trigger_contract`. Automation proves the shipped runtime/config/debug contract for this patch is wired honestly inside the repo-local detector + proving harness. It does not prove real camera replay feel, false-positive/false-negative balance on Derrick’s live movement, or whether the new angle windows are the final good gameplay values; Derrick still needs live replay/manual validation for those human-motion acceptance questions.
 
 ---
 
@@ -1935,24 +1937,30 @@ Added focused threshold-contract tests in `.testbed/tests/unit/test_pose_detecto
 **Prompt:** Independently truth-check the hook/uppercut elbow-ray alignment threshold contract. Confirm the runtime no longer depends on the superseded dominance/direction thresholds for hook/uppercut threshold routing, and confirm the new alignment variables are implemented and documented honestly.
 
 **Folders Created/Deleted/Modified:**
-- relevant repo/test/artifact paths used during audit
+- `.testbed/test-results/task66-audit-20260619/`
+- `.plans/`
 
 **Files Created/Deleted/Modified:**
-- audit notes/artifacts as needed
+- `.testbed/test-results/task66-audit-20260619/gut-hook-uppercut-threshold-contract-audit.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
 
-**Status:** ⏳ Pending approval
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit passed against landed commit `6821df4` using fresh repo inspection plus a new targeted headless GUT rerun logged at `.testbed/test-results/task66-audit-20260619/gut-hook-uppercut-threshold-contract-audit.log` (`116/116` passing). Runtime truth-check in `src/detectors/pose_detector_substrate.gd` confirmed the live threshold-routing decision no longer depends on the superseded hook/uppercut dominance or direction thresholds: in `_process_pose_strike`, hook now arms only on `speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side`, while uppercut now arms only on `speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed`. The new angle gates are computed directly from `max_wrist_angle_from_elbow_horizontal_deg` / `max_wrist_angle_from_elbow_vertical_deg`, and the mirrored hook-side / wrist-above-elbow helpers are explicit in `_is_wrist_on_required_hook_side` and `_is_wrist_above_elbow_in_camera_space`.
+
+Static search truth-checks also passed. The superseded live config/debug keys (`min_lateral_dominance_ratio`, `min_horizontal_direction_ratio`, `min_vertical_dominance_ratio`, `min_upward_direction_ratio`) no longer appear in the live runtime/config/test/proving surfaces under `src/`, `assets/`, `.testbed/scripts/`, or `.testbed/tests/`. Remaining hits in the repo are confined to older captured `docs/baselines/**/report.json` artifacts, which document historical runs but are not consulted by the live threshold-routing code path. YAML/comments in `assets/boxing.gesture_detection.yaml` match the approved contract: hook exposes only `max_wrist_angle_from_elbow_horizontal_deg` with horizontal-ray guidance, and uppercut exposes only `max_wrist_angle_from_elbow_vertical_deg` with vertical-ray guidance. Proving/debug surfaces also match the contract: `.testbed/scripts/boxing_proving_harness.gd` now renders the hover-card gate rows as elbow-ray angle + mirrored-side/above-elbow truth, and the event-feed tuning text reports the new angle thresholds plus the required spatial-validity rule for each family.
+
+The strongest code/test proof points are: `test_hook_requires_wrist_on_correct_mirrored_elbow_side`, `test_uppercut_requires_wrist_above_elbow_in_camera_space`, `test_hook_alignment_angle_gate_participates_honestly`, `test_uppercut_alignment_angle_gate_participates_honestly`, `test_hook_alignment_angle_gate_blocks_even_when_velocity_is_high`, `test_uppercut_alignment_angle_gate_blocks_even_when_velocity_is_high`, `test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections`, and `test_hook_hover_card_reports_simplified_pose_trigger_contract`. What is proven: repo-local runtime routing, config comments, debug surfaces, and focused automation all agree on the new elbow-ray threshold contract. What is **not** proven by this audit: whether these angle windows feel best in real motion, how they behave on Derrick’s live replay set beyond the synthetic/unit fixtures, or whether the false-positive / false-negative tradeoff is now good enough for gameplay. Derrick still needs live replay/manual validation for that acceptance layer.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial / Awaiting Derrick replay/live feedback
+**Status:** ⚠️ Partial / Paused for Derrick replay/live review
 
-**What We Built:** This branch progressed from the original flat shared-vector family-specific feature test into family-masked topology checks, reduced straight-family diagnosis, multiple hook/uppercut cue-design passes, retimed-truth reruns after Derrick corrected the punch YAML windows, and then a proving/runtime rollout that lets Godot use a mixed-family path: learned straights plus threshold-gated hook/uppercut. The terminal-side routing/provenance surfaces are now honest, and the broader runtime/config contract for `mixed_family` is explicit, but behavior quality is not yet clean enough to call the rollout accepted.
+**What We Built:** This branch progressed from the original flat shared-vector family-specific feature test into family-masked topology checks, reduced straight-family diagnosis, multiple hook/uppercut cue-design passes, retimed-truth reruns after Derrick corrected the punch YAML windows, and then a broader boxing runtime/config rewrite. The shipped state now uses a family-first gesture YAML contract (`disabled` / `threshold` / `prototype` / `classifier` per family), truthful proving/debug backend surfaces, real disabled-backend obedience for punch and non-punch families, same-family boxing co-fire suppression, a straight-punch lateral-angle guard-raise filter, and new hook/uppercut elbow-ray alignment threshold gates. Repo-local coder → QA → audit loops passed for those slices, but final acceptance still depends on Derrick’s manual replay/live review and later tuning feedback.
 
-**Reference Check:** `REF-02`/`REF-03` still anchor the runtime/harness implementation surface, and `REF-06` remains the fixture-manifest truth source. The trustworthy updated read after the retimed-YAML reruns is: straight-family masking wins fairly against the refreshed shared-vector straight subset baseline, hook/uppercut specialization still fails to beat the refreshed hook/uppercut subset baseline, and the honest near-term runtime move is mixed-family routing rather than hook/uppercut learned promotion.
+**Reference Check:** `REF-02`/`REF-03` still anchor the runtime/harness implementation surface, and `REF-06` remains the fixture-manifest truth source. The trustworthy updated read after the retimed-YAML reruns is: straight-family masking wins fairly against the refreshed shared-vector straight subset baseline, hook/uppercut specialization still fails to beat the refreshed hook/uppercut subset baseline, and the later family-first runtime contract work stayed honest by keeping tuning/acceptance decisions gated on Derrick’s real replay/live review rather than pretending repo-local automation alone can sign off gameplay behavior.
 
 **Commits:**
 - `05606b0` - `Refresh family benchmarks for retimed punch truth`
@@ -1960,6 +1968,13 @@ Added focused threshold-contract tests in `.testbed/tests/unit/test_pose_detecto
 - `44705f2` - `Globalize mixed-family straight artifact selection`
 - `1049634` - `Clarify mixed-family config comments`
 - `be4b0bf` - `Fix mixed-family proving backend truth surfaces`
+- `6e4cd00` - `Implement family-first punch backend contract`
+- `831d9bc` - `Tighten family backend config and proving routing`
+- `dadab1a` - `Add same-family boxing gesture exclusion gate`
+- `a3bf13c` - `Fix proving harness family override iterator typing`
+- `7a4cc60` - `Fix straight threshold co-fire and lateral angle gate`
+- `f67ddfe` - `Honor disabled non-punch gesture backends`
+- `6821df4` - `Replace hook and uppercut ratio gates with elbow alignment`
 
 **Lessons Learned:** Two things turned out to be separately material. First, “family-specific named features inside one shared classifier” is not the same thing as true family isolation. Second, truth-window definition itself was strong enough to change the benchmark story: pre-retime blanket conclusions about masking were too broad. After retiming, straight-family isolation looks genuinely promising on the fair subset comparison, while hook/uppercut remains the weak branch. Terminal-side verification then showed a separate truth-plumbing issue in mixed-family proving that was worth fixing, but also confirmed behavior quality still needs Derrick’s manual replay/live judgment before the next bug-squash slice.
 
