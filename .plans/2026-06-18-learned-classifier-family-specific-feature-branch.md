@@ -1705,13 +1705,108 @@ What is proven now vs. what still needs Derrick on Cookie:
 
 ---
 
-### Task 59: QA straight threshold co-fire fix and elbow angle threshold
+### Task 59: QA straight threshold co-fire fix and wrist lateral-angle threshold
 
 **Bead ID:** `aerobeat-input-camera-tracking-o7zp`  
 **SubAgent:** `primary` (for `qa`)  
 **Role:** `qa`  
 **References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
-**Prompt:** Verify the straight-threshold same-family co-fire fix and the new `max_elbow_joint_angle_deg` variable. Confirm opposite-side straight punches are suppressed during the active same-family window in the threshold path, and confirm the new elbow-angle threshold truthfully blocks over-straight guard-raise style motion in the repo-local validation path.
+**Prompt:** Verify the straight-threshold same-family co-fire fix and the new `min_wrist_lateral_angle_from_elbow_vertical_deg` variable. Confirm opposite-side straight punches are suppressed during the active same-family window in the threshold path, confirm the new lateral-angle threshold truthfully participates in the straight-threshold decision path, and confirm the YAML comment/name/style landed as approved in the repo-local validation path.
+
+**Folders Created/Deleted/Modified:**
+- `.temp/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.temp/qa-task59-gut.log`
+- `.temp/qa-task59-static-scan.txt`
+- inspected runtime/config/test sources only: `src/detectors/pose_detector_substrate.gd`, `assets/boxing.gesture_detection.yaml`, `.testbed/tests/unit/test_pose_detector_substrate.gd`, `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+
+**Status:** ✅ Complete
+
+**Results:** Focused threshold-path QA passed on landed commit `7a4cc60`. Highest-fidelity repo-local automation for this narrow patch was the focused headless Godot unit path plus static source/config inspection. I reran `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit`, saving the log to `.temp/qa-task59-gut.log`.
+
+Patch-specific proof points passed cleanly inside `test_pose_detector_substrate.gd` (`77/77` passing in that file):
+- `test_straight_same_family_trigger_exposes_threshold_blocking_truth_while_blocking_side_is_not_ready` proves the threshold straight path now suppresses `punch_right` while the opposite-side straight family member is still active in `not_ready`, with truthful debug metadata (`same_family_blocked=true`, `blocking_family=straight_punch`, `blocking_side=left`, `blocking_event_name=punch_left`, `blocking_phase=not_ready`). This directly covers Derrick’s reported co-fire hole where the opposite-side straight could previously slip through during the active same-family window.
+- `test_straight_punch_requires_wrist_lateral_angle_from_elbow_vertical_gate_before_triggering` proves the new `min_wrist_lateral_angle_from_elbow_vertical_deg` variable is not cosmetic: with velocity, bbox-growth, and elbow/shoulder distance already passing, the straight still does **not** emit because the measured `wrist_lateral_angle_from_elbow_vertical_deg` stays below the configured minimum and `wrist_lateral_angle_gate_passed=false`.
+
+Static inspection captured in `.temp/qa-task59-static-scan.txt` confirmed the runtime wiring is honest, not just test-shaped. In `src/detectors/pose_detector_substrate.gd`, the threshold path reads `min_wrist_lateral_angle_from_elbow_vertical_deg`, compares it against the measured `wrist_lateral_angle_from_elbow_vertical_deg`, and folds `wrist_lateral_angle_gate_passed` into the trigger decision before a straight can fire. The same scan also confirms `_get_same_family_threshold_blocking_state(...)` now blocks straight-family opposite-side candidates while the blocker is in either `triggered` **or** `not_ready`, matching the intended fix.
+
+YAML naming/comment/style for the new variable looks landed correctly in `assets/boxing.gesture_detection.yaml`: the shipped threshold field is named exactly `min_wrist_lateral_angle_from_elbow_vertical_deg`, and the nearby comment truthfully describes the elbow-anchored vertical-ray interpretation in camera-space XY. One adjacent broad-profile check did fail: `test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_paths` still expects `hook` and `uppercut` backends to equal `threshold`, but the current canonical boxing YAML sets both to `disabled`. That failure is visible in `.temp/qa-task59-gut.log` and appears to be a pre-existing/stale expectation unrelated to this straight-threshold patch itself.
+
+What automation proves now: the threshold same-family straight suppression fix is real in the landed code/testbed path; the new lateral-angle variable is actually consumed by the straight-threshold decision path and can block an otherwise qualifying straight; and the shipped YAML field/comment for that variable are present and truthful. What still needs Derrick’s replay/live validation: whether the guard-raise rejection feels right on real replay/live camera footage, whether the chosen default angle threshold is tuned well enough in practice, and whether opposite-side straight suppression behaves correctly under real motion timing/noise rather than only the controlled repo-local test sequence.
+
+---
+
+### Task 60: Audit straight threshold co-fire fix and wrist lateral-angle threshold
+
+**Bead ID:** `aerobeat-input-camera-tracking-hv4m`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the straight-threshold same-family co-fire fix and the new `min_wrist_lateral_angle_from_elbow_vertical_deg` threshold. Confirm the threshold path no longer allows opposite-side same-family straight co-fire during the active window, confirm the new lateral-angle gate is implemented/documented honestly, and separate what code/tests prove from what still needs Derrick replay/live validation.
+
+**Folders Created/Deleted/Modified:**
+- `.temp/audit-task60/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `.temp/audit-task60/gut-task60.log`
+- `.temp/audit-task60/static-scan-task60.txt`
+- `.temp/audit-task60/verify_task60.gd`
+- `.temp/audit-task60/verify-task60.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed on landed commit `7a4cc60` after an independent rerun plus direct code/static inspection. I reran `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` and saved the output to `.temp/audit-task60/gut-task60.log`. Result: `test_pose_detector_substrate.gd` passed **77/77**, including the two patch-specific checks; `test_camera_tracking_config_profiles.gd` passed **3/4** because its canonical-path expectation for `hook.backend` and `uppercut.backend` is stale (`threshold` expected, `disabled` actual), which is unrelated to this straight-threshold patch and reproduces the pre-existing QA note from Task 59.
+
+Patch-specific proof points from the rerun and static scan (`.temp/audit-task60/static-scan-task60.txt`):
+- `test_straight_same_family_trigger_exposes_threshold_blocking_truth_while_blocking_side_is_not_ready` proves the threshold straight path no longer allows opposite-side same-family co-fire while the blocker is still in the active post-trigger window. The right side stays non-emitting and truthfully reports `same_family_blocked=true`, `blocking_family=straight_punch`, `blocking_side=left`, `blocking_event_name=punch_left`, `blocking_phase=not_ready`.
+- Code inspection confirms why that now holds: `src/detectors/pose_detector_substrate.gd` `_get_same_family_threshold_blocking_state(...)` now treats `straight_punch` as blocking in both `triggered` and `not_ready`, while hook/uppercut remain limited to `triggered` grace-window blocking.
+- `test_straight_punch_requires_wrist_lateral_angle_from_elbow_vertical_gate_before_triggering` proves `min_wrist_lateral_angle_from_elbow_vertical_deg` is active in the trigger decision, not cosmetic. In the test, velocity, bbox growth, and elbow/shoulder distance all pass, but the straight still does not emit because measured `wrist_lateral_angle_from_elbow_vertical_deg` stays below the configured minimum and `wrist_lateral_angle_gate_passed=false`.
+- Static inspection confirms the implementation/documentation is honest: `_compute_wrist_lateral_angle_from_elbow_vertical_deg(...)` measures the elbow→wrist 2D vector against an elbow-anchored vertical ray via `atan2(abs(x), abs(y))`; the parsed config value is folded into `ready_to_trigger`; and the measured angle, configured minimum, and pass/fail bit are surfaced in straight debug/state-change payloads.
+- The shipped YAML landed in the approved shape as far as this repo shows: field name is exactly `min_wrist_lateral_angle_from_elbow_vertical_deg`, the comment describes left/right deflection away from the elbow-anchored vertical ray in camera-space XY, and the canonical boxing profile value is `15.0`.
+
+I also ran an independent disposable verifier at `.temp/audit-task60/verify_task60.gd`, captured in `.temp/audit-task60/verify-task60.log` with result `AUDIT_TASK60_OK`. That direct helper-level check re-proved two critical truths without relying only on GUT assertions: (1) the straight-family threshold helper reports `blocking_phase=not_ready` for the opposite side, and (2) the new lateral-angle helper returns a small positive angle (`3.90049°` for the audit fixture pose), consistent with the guard-raise rejection story.
+
+What is proven now vs. what still needs Derrick:
+- **Proven by code/tests/audit artifacts:** opposite-side same-family straight threshold co-fire is blocked through the blocker’s `triggered` + `not_ready` active window in the landed repo-local path; `min_wrist_lateral_angle_from_elbow_vertical_deg` is parsed, measured, enforced, and exposed honestly in debug/state payloads; and the YAML field/comment/value are present in the expected shape.
+- **Still needs Derrick replay/live validation:** whether `15.0°` is the right practical tuning on real replay/live camera footage, whether real guard raises are rejected without suppressing legitimate straights, and whether same-family straight suppression still feels correct under live timing/noise outside the controlled headless fixture sequence.
+
+---
+
+### Task 61: Make non-punch gesture families obey disabled backend
+
+**Bead ID:** `aerobeat-input-camera-tracking-i26a`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Derrick’s latest live testing found a contract violation: some non-punch gesture families still fire even when `backend: disabled`, specifically `leg_lift`, `knee_strike`, and `side_step`. Implement a narrow runtime fix so non-punch gesture families actually obey the approved family-first `disabled` setting, keeping runtime/debug/proving truth honest and preserving the existing comment/config contract.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the runtime contract hole by making the non-punch threshold detectors for `side_step`, `knee_strike`, and `leg_lift` respect their per-family backend selection before they run, so `backend: disabled` now truly suppresses those families instead of letting the legacy threshold path emit anyway. Kept the proving/debug surface honest by adding explicit non-punch debug entries for `side_step`, `knee_strike`, and `leg_lift` that report each family’s backend, enabled state, and current live state/measurements rather than implying the family is active when it is disabled. Added focused substrate coverage that proves all three reported families stay silent under `backend: disabled` while their debug payloads report `backend="disabled"` and `enabled=false`. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (78/78 passed) and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` (38/38 passed).
+
+---
+
+### Task 62: QA non-punch disabled backend obedience
+
+**Bead ID:** `aerobeat-input-camera-tracking-u6ff`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify that non-punch gesture families obey `backend: disabled`, with concrete coverage for at least `leg_lift`, `knee_strike`, and `side_step`. Confirm the family-first disabled contract now matches runtime behavior and that any proving/debug truth stays honest.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo/test/artifact paths used during QA
@@ -1725,13 +1820,13 @@ What is proven now vs. what still needs Derrick on Cookie:
 
 ---
 
-### Task 60: Audit straight threshold co-fire fix and elbow angle threshold
+### Task 63: Audit non-punch disabled backend obedience
 
-**Bead ID:** `aerobeat-input-camera-tracking-hv4m`  
+**Bead ID:** `aerobeat-input-camera-tracking-d4m9`  
 **SubAgent:** `primary` (for `auditor`)  
 **Role:** `auditor`  
 **References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
-**Prompt:** Independently truth-check the straight-threshold same-family co-fire fix and the new `max_elbow_joint_angle_deg` threshold. Confirm the threshold path no longer allows opposite-side same-family straight co-fire during the active window, and confirm the new angle gate is implemented/documented honestly.
+**Prompt:** Independently truth-check that non-punch gesture families now obey `backend: disabled`, with explicit attention to `leg_lift`, `knee_strike`, and `side_step`. Confirm the runtime no longer violates the approved disabled contract for those families.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo/test/artifact paths used during audit

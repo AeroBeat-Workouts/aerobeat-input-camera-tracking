@@ -596,6 +596,9 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		"guard": _build_guard_debug_state(),
 		"squat": _build_squat_debug_state(metrics),
 		"weave": _build_weave_debug_state(metrics),
+		"side_step": _build_side_step_debug_state(metrics),
+		"knee_strike": _build_knee_strike_debug_state(metrics),
+		"leg_lift": _build_leg_lift_debug_state(metrics),
 		"punch_detection": _build_punch_detection_debug_state(),
 		"straight_punch": _build_straight_punch_debug_state(metrics),
 		"hook": _build_pose_strike_debug_state("hook", metrics),
@@ -691,6 +694,49 @@ func _build_weave_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	weave_debug["exit_head_lateral_offset_max"] = float(weave_config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX))
 	weave_debug["exit_relative_head_hip_offset_max"] = float(weave_config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX))
 	return weave_debug
+
+func _build_side_step_debug_state(metrics: Dictionary = {}) -> Dictionary:
+	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+	var state_name := "inactive"
+	if bool(_get_state("sidestep_left")):
+		state_name = "left"
+	elif bool(_get_state("sidestep_right")):
+		state_name = "right"
+	var backend := _get_non_punch_backend_for_family("side_step")
+	return {
+		"backend": backend,
+		"enabled": backend == BACKEND_THRESHOLD,
+		"state": state_name,
+		"lateral_offset": float(measurements.get("lateral_offset", 0.0)),
+		"head_lateral_offset": float(measurements.get("head_lateral_offset", 0.0)),
+		"hip_lateral_offset": float(measurements.get("hip_lateral_offset", 0.0)),
+	}
+
+func _build_knee_strike_debug_state(metrics: Dictionary = {}) -> Dictionary:
+	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+	var backend := _get_non_punch_backend_for_family("knee_strike")
+	return {
+		"backend": backend,
+		"enabled": backend == BACKEND_THRESHOLD,
+		"left_ready": _is_ready("knee_left"),
+		"right_ready": _is_ready("knee_right"),
+		"left_knee_rise": float(measurements.get("left_knee_rise", 0.0)),
+		"right_knee_rise": float(measurements.get("right_knee_rise", 0.0)),
+		"left_foot_rise": float(measurements.get("left_foot_rise", 0.0)),
+		"right_foot_rise": float(measurements.get("right_foot_rise", 0.0)),
+	}
+
+func _build_leg_lift_debug_state(metrics: Dictionary = {}) -> Dictionary:
+	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+	var backend := _get_non_punch_backend_for_family("leg_lift")
+	return {
+		"backend": backend,
+		"enabled": backend == BACKEND_THRESHOLD,
+		"left_state": bool(_get_state("leg_lift_left")),
+		"right_state": bool(_get_state("leg_lift_right")),
+		"left_leg_angle_from_core_deg": float(measurements.get("left_leg_angle_from_core_deg", 0.0)),
+		"right_leg_angle_from_core_deg": float(measurements.get("right_leg_angle_from_core_deg", 0.0)),
+	}
 
 func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
@@ -1050,13 +1096,18 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if torso_confidence >= lower_body_confidence_gate:
 		_process_squat(events, float(measurements.get("height_ratio", 1.0)))
 	_process_weave(events, float(measurements.get("head_lateral_offset", 0.0)), float(measurements.get("hip_lateral_offset", 0.0)), float(measurements.get("head_drop_ratio", 0.0)))
-	_process_sidestep(events, float(measurements.get("lateral_offset", 0.0)), float(measurements.get("head_lateral_offset", 0.0)), float(measurements.get("hip_lateral_offset", 0.0)))
-	if left_foot_confidence >= lower_body_confidence_gate:
-		_process_knee(events, "left", float(measurements.get("left_knee_rise", 0.0)), float(measurements.get("left_foot_rise", 0.0)), float(measurements.get("right_knee_rise", 0.0)), left_hip, left_ankle, torso_height)
-		_process_leg_lift(events, "left", float(measurements.get("left_leg_angle_from_core_deg", 0.0)), left_hip, left_ankle, torso_height)
-	if right_foot_confidence >= lower_body_confidence_gate:
-		_process_knee(events, "right", float(measurements.get("right_knee_rise", 0.0)), float(measurements.get("right_foot_rise", 0.0)), float(measurements.get("left_knee_rise", 0.0)), right_hip, right_ankle, torso_height)
-		_process_leg_lift(events, "right", float(measurements.get("right_leg_angle_from_core_deg", 0.0)), right_hip, right_ankle, torso_height)
+	if _get_non_punch_backend_for_family("side_step") == BACKEND_THRESHOLD:
+		_process_sidestep(events, float(measurements.get("lateral_offset", 0.0)), float(measurements.get("head_lateral_offset", 0.0)), float(measurements.get("hip_lateral_offset", 0.0)))
+	if _get_non_punch_backend_for_family("knee_strike") == BACKEND_THRESHOLD:
+		if left_foot_confidence >= lower_body_confidence_gate:
+			_process_knee(events, "left", float(measurements.get("left_knee_rise", 0.0)), float(measurements.get("left_foot_rise", 0.0)), float(measurements.get("right_knee_rise", 0.0)), left_hip, left_ankle, torso_height)
+		if right_foot_confidence >= lower_body_confidence_gate:
+			_process_knee(events, "right", float(measurements.get("right_knee_rise", 0.0)), float(measurements.get("right_foot_rise", 0.0)), float(measurements.get("left_knee_rise", 0.0)), right_hip, right_ankle, torso_height)
+	if _get_non_punch_backend_for_family("leg_lift") == BACKEND_THRESHOLD:
+		if left_foot_confidence >= lower_body_confidence_gate:
+			_process_leg_lift(events, "left", float(measurements.get("left_leg_angle_from_core_deg", 0.0)), left_hip, left_ankle, torso_height)
+		if right_foot_confidence >= lower_body_confidence_gate:
+			_process_leg_lift(events, "right", float(measurements.get("right_leg_angle_from_core_deg", 0.0)), right_hip, right_ankle, torso_height)
 	if _any_punch_family_uses_backend(BACKEND_PROTOTYPE):
 		events.append_array(_filter_events_for_backend(_prototype_punch_matcher.process_window(landmarks_by_id, metrics, timestamp_ms), BACKEND_PROTOTYPE))
 	if _any_punch_family_uses_backend(BACKEND_CLASSIFIER):

@@ -1962,6 +1962,40 @@ func test_disabled_straight_family_suppresses_punch_events_while_threshold_famil
 	assert_eq(String(punch_detection_debug.get("straight_backend", "")), "disabled")
 	assert_true(bool(punch_detection_debug.get("threshold_enabled", false)))
 
+func test_disabled_non_punch_families_suppress_knee_leg_lift_and_side_step_events() -> void:
+	config.gesture_profile_document = {
+		"knee_strike": {"backend": "disabled"},
+		"leg_lift": {"backend": "disabled"},
+		"side_step": {"backend": "disabled"},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+
+	var knee_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_KNEE: {"x": 0.44, "y": 0.34},
+		PoseLandmarkIds.LEFT_ANKLE: {"x": 0.46, "y": 0.18},
+	}), 1200)
+	assert_false(_event_names(knee_state.get("events", [])).has("knee_left"))
+	var knee_debug: Dictionary = knee_state.get("gesture_debug", {}).get("knee_strike", {})
+	assert_eq(String(knee_debug.get("backend", "")), "disabled")
+	assert_false(bool(knee_debug.get("enabled", true)))
+
+	var leg_lift_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_ANKLE: {"x": 0.73, "y": 0.20},
+	}), 1300)
+	assert_false(_event_names(leg_lift_state.get("events", [])).has("leg_lift_right_start"))
+	var leg_lift_debug: Dictionary = leg_lift_state.get("gesture_debug", {}).get("leg_lift", {})
+	assert_eq(String(leg_lift_debug.get("backend", "")), "disabled")
+	assert_false(bool(leg_lift_debug.get("enabled", true)))
+	assert_false(bool(leg_lift_debug.get("right_state", true)))
+
+	var side_step_state := substrate.process_landmarks(_make_pose_frame({}, 0.60, 1.0), 1400)
+	assert_false(_event_names(side_step_state.get("events", [])).has("sidestep_right_start"))
+	var side_step_debug: Dictionary = side_step_state.get("gesture_debug", {}).get("side_step", {})
+	assert_eq(String(side_step_debug.get("backend", "")), "disabled")
+	assert_false(bool(side_step_debug.get("enabled", true)))
+	assert_eq(String(side_step_debug.get("state", "")), "inactive")
+
 func _calibrate_stance() -> void:
 	for idx in range(5):
 		var state := substrate.process_landmarks(_make_pose_frame(), 1000 + idx * 16)
