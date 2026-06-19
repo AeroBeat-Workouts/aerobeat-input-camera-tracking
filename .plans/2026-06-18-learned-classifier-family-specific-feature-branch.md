@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-19 15:08 EDT  
-**Blocked Reason:** None. Active branch is now carrying the Task 55 same-family mutual exclusion slice for boxing gesture families, with coder validation complete and QA/audit still pending.  
+**Last Updated:** 2026-06-19 17:06 EDT  
+**Blocked Reason:** None. Derrick approved the hook/uppercut threshold-contract rewrite and added the final geometric validity rules: hooks must keep the wrist on the correct camera-space side of the elbow, and uppercuts must keep the wrist above the elbow in camera space.  
 **Agent:** `pico`
 
 ---
@@ -1809,14 +1809,38 @@ What is proven now vs. what still needs Derrick:
 **Prompt:** Verify that non-punch gesture families obey `backend: disabled`, with concrete coverage for at least `leg_lift`, `knee_strike`, and `side_step`. Confirm the family-first disabled contract now matches runtime behavior and that any proving/debug truth stays honest.
 
 **Folders Created/Deleted/Modified:**
-- relevant repo/test/artifact paths used during QA
+- `.testbed/test-results/task62-qa-20260619/`
+- `.testbed/test-results/task62-qa-20260619/runtime-probe/`
+- `.testbed/test-results/task62-qa-20260619/fixture-captures/`
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.testbed/test-results/task62-qa-20260619/gut-pose-detector-disabled.log`
+- `.testbed/test-results/task62-qa-20260619/gut-proving-harness.log`
+- `.testbed/test-results/task62-qa-20260619/runtime-probe.log`
+- `.testbed/test-results/task62-qa-20260619/task62_disabled_backend_runtime_probe.gd`
+- `.testbed/test-results/task62-qa-20260619/task62_disabled_backend_boxing_probe.gd`
+- `.testbed/test-results/task62-qa-20260619/task62_disabled_backend_boxing_probe.tscn`
+- `.testbed/test-results/task62-qa-20260619/runtime-probe/runtime_probe_results.json`
+- `.testbed/test-results/task62-qa-20260619/runtime-probe/runtime_probe_summary.md`
+- `.testbed/test-results/task62-qa-20260619/fixture-captures/knee_left/report.json`
+- `.testbed/test-results/task62-qa-20260619/fixture-captures/knee_left/report.md`
+- `.testbed/test-results/task62-qa-20260619/fixture-captures/sidestep_left/report.json`
+- `.testbed/test-results/task62-qa-20260619/fixture-captures/sidestep_left/report.md`
+- `.testbed/test-results/task62-qa-20260619/fixture-captures/leg_lift_left/report.json`
+- `.testbed/test-results/task62-qa-20260619/fixture-captures/leg_lift_left/report.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA passed for the landed `f67ddfe` non-punch disabled-backend fix.
+
+- **Automated runtime-path proof:** `res://tests/unit/test_pose_detector_substrate.gd` passed (`78/78`), including `test_disabled_non_punch_families_suppress_knee_leg_lift_and_side_step_events`, which directly exercises the detector runtime path and confirms `knee_left`, `leg_lift_right_start`, and `sidestep_right_start` are suppressed while `gesture_debug` reports `backend=disabled` / `enabled=false` for `knee_strike`, `leg_lift`, and `side_step`.
+- **Automated proving/debug proof:** `res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` passed (`38/38`). That file does not add a family-specific replay oracle for these three non-punch families, so I added a QA-only proving-scene override (`task62_disabled_backend_boxing_probe.gd/.tscn`) and captured boxing fixture reports for representative `knee_left`, `sidestep_left`, and `leg_lift_left` clips through `capture_fixture_proving.gd`.
+- **Fixture-capture findings:** across 357 tracking snapshots (`knee_left`), 721 tracking snapshots (`sidestep_left`), and 453 tracking snapshots (`leg_lift_left`), the custom proving timeline shows `knee_strike`, `leg_lift`, and `side_step` all settle to `backend=disabled` and `enabled=false` once tracking is live; no blocked-family events (`knee_*`, `leg_lift_*`, `sidestep_*`) appear in either the proving event timeline or the per-snapshot event lists; `side_step.state` stays `inactive`; `leg_lift.left_state/right_state` stay `false`.
+- **Important debug nuance:** `knee_strike.left_ready/right_ready` still remain `true` in the proving timeline when the athlete pose satisfies the raw knee posture, even while the family is disabled. I am treating that as honest debug, not a regression, because the same snapshots also surface `backend=disabled` and `enabled=false`, and no knee events fire. The fix goal here was disabled-backend obedience plus truthful disabled routing, not zeroing every raw posture metric.
+- **Runtime-path dead end documented:** the first QA-only direct `AeroCameraTracking` replay probe (`task62_disabled_backend_runtime_probe.gd`) fell back to an OpenCV replay path outside the proving harness contract and failed with `opencv_unavailable` (`No module named 'cv2'`). I kept that artifact/log for traceability, then switched to the higher-fidelity repo-local proving capture path that actually replays fixtures successfully in this repo.
+- **Renderer caveat:** `capture_fixture_proving.gd` wrote the JSON/Markdown reports successfully, but dummy-renderer screenshot capture returned a null texture (`proving.png` warnings). That did not block the report JSON used for QA verdicts.
+- **What automation proves vs. what still needs Derrick:** automation now proves repo-local disabled-backend obedience in detector runtime code plus proving-scene runtime/debug state for representative `knee_left`, `sidestep_left`, and `leg_lift_left` fixtures. Derrick should still do one live replay/manual check in the actual proving UI (or a real camera/live replay session) if he wants human confirmation that the visible hover-card/event-feed wording for these three families reads naturally end-to-end under his normal workflow, since this QA pass validated the underlying report/state truth rather than a screenshot-perfect UI oracle.
 
 ---
 
@@ -1829,12 +1853,94 @@ What is proven now vs. what still needs Derrick:
 **Prompt:** Independently truth-check that non-punch gesture families now obey `backend: disabled`, with explicit attention to `leg_lift`, `knee_strike`, and `side_step`. Confirm the runtime no longer violates the approved disabled contract for those families.
 
 **Folders Created/Deleted/Modified:**
+- `.testbed/test-results/task63-audit-20260619/`
+
+**Files Created/Deleted/Modified:**
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.testbed/test-results/task63-audit-20260619/gut-pose-detector-disabled.log`
+- `.testbed/test-results/task63-audit-20260619/gut-proving-harness.log`
+- `.testbed/test-results/task63-audit-20260619/fixture-timeline-audit.json`
+- `.testbed/test-results/task63-audit-20260619/fixture-timeline-audit.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed on landed commit `f67ddfe` after an independent code+artifact truth-check and targeted reruns. I reran `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`; both passed cleanly and were captured at `.testbed/test-results/task63-audit-20260619/gut-pose-detector-disabled.log` (**78/78**) and `.testbed/test-results/task63-audit-20260619/gut-proving-harness.log` (**38/38**).
+
+Code truth-check: `src/detectors/pose_detector_substrate.gd:2051-2056` now resolves non-punch family backend directly from the gesture-profile family document, `src/detectors/pose_detector_substrate.gd:1099-1110` only runs `_process_sidestep`, `_process_knee`, and `_process_leg_lift` when that family backend resolves to `threshold`, and `src/detectors/pose_detector_substrate.gd:698-739` stamps debug state for `side_step`, `knee_strike`, and `leg_lift` with the same backend plus `enabled = backend == BACKEND_THRESHOLD`. The focused substrate unit `test_disabled_non_punch_families_suppress_knee_leg_lift_and_side_step_events()` (`.testbed/tests/unit/test_pose_detector_substrate.gd:1965-1997`) directly proves the runtime contract: with `backend: disabled`, no `knee_left`, `leg_lift_right_start`, or `sidestep_right_start` events fire, and the corresponding debug dictionaries report `backend = disabled`, `enabled = false`, plus inactive state for side-step/leg-lift.
+
+QA-artifact truth-check: I independently re-audited Task 62’s proving captures using `.testbed/test-results/task62-qa-20260619/fixture-captures/{knee_left,sidestep_left,leg_lift_left}/report.json` and wrote the extracted summary to `.testbed/test-results/task63-audit-20260619/fixture-timeline-audit.{json,md}`. Across all three captures, there are **zero blocked-family events** during tracking and **zero backend mismatches once tracking samples begin**; the only mismatches are three early frame-0 `tracking_state = lost` warm-up samples per capture where the proving harness snapshot still shows threshold defaults before the disabled config is reflected in tracked pose-updated samples. That means the landed fix is obeyed in the actual tracked runtime path, and the proving/debug surface is honest once the run is live.
+
+Important debug nuance: `knee_strike.left_ready/right_ready` can still be `true` while the family backend is disabled, and the leg/offset metrics continue updating. I audited that as honest debug rather than a regression because the same snapshots simultaneously report `backend = disabled`, `enabled = false`, `side_step.state = inactive`, `leg_lift.left_state/right_state = false`, and no blocked-family events. What is proven by automation is runtime disabled-backend obedience plus truthful disabled routing/state surfacing after startup. What still needs Derrick is a manual replay/live proving-UI check for end-to-end wording/UX judgment and confirmation that the brief pre-tracking warm-up snapshots are not confusing in his normal workflow.
+
+---
+
+### Task 64: Replace hook/uppercut dominance thresholds with elbow-ray alignment thresholds
+
+**Bead ID:** `aerobeat-input-camera-tracking-0x43`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Replace the current threshold-only hook/uppercut directional ratio gates with simpler elbow-anchored camera-space alignment thresholds, while preserving `min_velocity`. For hook, add `max_wrist_angle_from_elbow_horizontal_deg` and require the wrist to stay within that many degrees of an elbow-anchored horizontal ray in 2D camera space. Also require hook threshold validity to keep the wrist on the correct camera-space side of the elbow (left hook wrist on one side, right hook wrist on the mirrored side, accounting for the camera-facing athlete view). For uppercut, add `max_wrist_angle_from_elbow_vertical_deg` and require the wrist to stay within that many degrees of an elbow-anchored vertical ray in 2D camera space, while also requiring the wrist to stay above the elbow in camera space. Remove the old threshold variables this new contract supersedes (`min_lateral_dominance_ratio`, `min_horizontal_direction_ratio`, `min_vertical_dominance_ratio`, `min_upward_direction_ratio`), update YAML comments in the existing style, and keep runtime/debug/proving truth explicit.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.testbed/scripts/` (if proving/debug truth needs updates)
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Replaced the hook/uppercut threshold path’s old dominance/direction ratio gates with elbow-ray alignment gates while preserving `min_velocity`. `src/detectors/pose_detector_substrate.gd` now removes the superseded hook/uppercut config keys, adds `max_wrist_angle_from_elbow_horizontal_deg` + `max_wrist_angle_from_elbow_vertical_deg`, computes explicit elbow-anchored wrist angles in camera-space XY, and gates hook triggers on both horizontal-ray alignment and the mirrored wrist-vs-elbow side check while gating uppercuts on vertical-ray alignment plus wrist-above-elbow truth. The same file now also surfaces the new alignment truth in runtime/debug state and state-change payloads so proving/debug consumers can show the real active contract.
+
+Updated the shipped YAML comments in `assets/boxing.gesture_detection.yaml` in the existing style, replacing the old ratio descriptions with the new angle-threshold descriptions and removing the dead threshold keys entirely. Updated `.testbed/scripts/boxing_proving_harness.gd` and `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` so hook/uppercut hover cards and config text report the new elbow-ray alignment thresholds and gate truth instead of stale dominance/direction threshold copy.
+
+Added focused threshold-contract tests in `.testbed/tests/unit/test_pose_detector_substrate.gd` that prove: valid hook/uppercut events pass when the new elbow-ray angle gates are satisfied, hooks fail when the wrist crosses to the wrong mirrored elbow side, uppercuts fail when the wrist is not above the elbow, and both families can still be blocked by the new angle gates even when `min_velocity` is satisfied. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅. I also ran the full repo-local GUT suite once; it still has pre-existing unrelated failures in `test_aero_camera_tracking_coerce_runtime_config_preserves_preloaded_profile_overrides` and `test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_paths`, both expecting `hook/uppercut backend == threshold` while the current checked-in profile still says `backend: disabled`.
+
+---
+
+### Task 65: QA hook/uppercut elbow-ray alignment threshold contract
+
+**Bead ID:** `aerobeat-input-camera-tracking-8qjs`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the new hook/uppercut elbow-ray alignment threshold contract after implementation. Confirm the old dominance/direction variables are gone, confirm the new alignment thresholds participate honestly in the threshold decision paths, and confirm the YAML/comment shape matches the approved contract.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo/test/artifact paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending approval
+
+**Results:** Pending.
+
+---
+
+### Task 66: Audit hook/uppercut elbow-ray alignment threshold contract
+
+**Bead ID:** `aerobeat-input-camera-tracking-v4qp`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the hook/uppercut elbow-ray alignment threshold contract. Confirm the runtime no longer depends on the superseded dominance/direction thresholds for hook/uppercut threshold routing, and confirm the new alignment variables are implemented and documented honestly.
+
+**Folders Created/Deleted/Modified:**
 - relevant repo/test/artifact paths used during audit
 
 **Files Created/Deleted/Modified:**
 - audit notes/artifacts as needed
 
-**Status:** ⏳ Pending
+**Status:** ⏳ Pending approval
 
 **Results:** Pending.
 

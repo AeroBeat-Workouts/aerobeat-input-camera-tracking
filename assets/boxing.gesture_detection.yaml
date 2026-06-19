@@ -135,18 +135,11 @@ hook:
     thresholds:
       # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as a hook. input.
       min_velocity: 0.4
-      # Windowed hook motion must stay at least this much more lateral than vertical. input.
-      #- `0` = don’t care about lateral dominance
-      #- `1` = horizontal must be at least as big as vertical
-      #- `2` = horizontal must be twice vertical
-      #- very large = almost purely horizontal
-      min_lateral_dominance_ratio: .25
-      # Correct-direction horizontal hook travel across the motion window must be at least this large relative to total motion. input.
-      #- `0` = don’t care whether horizontal hook motion is going the correct left/right direction
-      #- `0.5` = at least half of the total motion magnitude must be in the correct horizontal direction
-      #- `1` = all of the measured motion magnitude must be in the correct horizontal direction
-      #- larger values are impossible with the current math
-      min_horizontal_direction_ratio: .15
+      # Wrist must stay within this many degrees of an elbow-anchored horizontal ray in camera-space XY for the hook threshold path to arm. input.
+      #- `0` = wrist must be almost perfectly horizontal from the elbow
+      #- `45` = wrist can drift up/down within a moderate horizontal arc
+      #- `90` = angle no longer constrains hook-vs-vertical alignment
+      max_wrist_angle_from_elbow_horizontal_deg: 25.0
     timing:
       # Keep the hook in its triggered state for this long after it fires. input.
       triggered_grace_ms: 500
@@ -209,18 +202,11 @@ uppercut:
     thresholds:
       # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as an uppercut. input.
       min_velocity: 0.5
-      # Windowed uppercut motion must stay at least this much more vertical than lateral. input.
-      # `0` = ignore vertical-vs-lateral balance
-      # `1` = vertical must be at least as large as lateral
-      # `2` = vertical must be twice lateral
-      # larger values = more purely vertical motion
-      min_vertical_dominance_ratio: 0.25
-      # Correct-direction upward travel across the motion window must be at least this large relative to total motion. input.
-      #- `0` = don’t care whether uppercut motion is going upward
-      #- `0.5` = at least half of the total motion magnitude must be upward
-      #- `1` = all of the measured motion magnitude must be upward
-      #- larger values are impossible with the current math
-      min_upward_direction_ratio: 0.15
+      # Wrist must stay within this many degrees of an elbow-anchored vertical ray in camera-space XY for the uppercut threshold path to arm. input.
+      #- `0` = wrist must be almost perfectly vertical from the elbow
+      #- `45` = wrist can drift sideways within a moderate vertical arc
+      #- `90` = angle no longer constrains uppercut-vs-horizontal alignment
+      max_wrist_angle_from_elbow_vertical_deg: 25.0
     timing:
       # Keep the uppercut in its triggered state for this long after it fires. input.
       triggered_grace_ms: 500

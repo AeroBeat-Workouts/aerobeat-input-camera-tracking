@@ -976,11 +976,11 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	var text_body := String(harness._build_boxing_event_feed_text())
 	assert_string_contains(text_body, "Hook tuning")
 	assert_string_contains(text_body, "Min velocity")
-	assert_string_contains(text_body, "Min lateral dominance")
-	assert_string_contains(text_body, "Min horizontal direction share of total motion")
+	assert_string_contains(text_body, "Max wrist angle from elbow horizontal ray")
+	assert_string_contains(text_body, "Hook wrist must stay on mirrored preview-space side of elbow")
 	assert_string_contains(text_body, "Uppercut tuning")
-	assert_string_contains(text_body, "Min vertical dominance")
-	assert_string_contains(text_body, "Min upward direction share of total motion")
+	assert_string_contains(text_body, "Max wrist angle from elbow vertical ray")
+	assert_string_contains(text_body, "Uppercut wrist must stay above elbow in preview space")
 	assert_string_contains(text_body, "Guard tuning")
 	assert_string_contains(text_body, "Wrist separation X <=")
 	assert_string_contains(text_body, "Wrist separation Y <=")
@@ -1003,11 +1003,12 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 					"window_span_ms": 118,
 					"wrist_velocity": 0.420,
 					"min_velocity": 0.080,
-					"dominance_ratio": 0.740,
-					"min_lateral_dominance_ratio": 0.500,
-					"directionality_ratio": 0.830,
-					"min_horizontal_direction_ratio": 0.550,
+					"wrist_angle_from_elbow_horizontal_deg": 18.0,
+					"max_wrist_angle_from_elbow_horizontal_deg": 20.0,
+					"wrist_horizontal_angle_gate_passed": true,
+					"wrist_on_required_hook_side": true,
 					"required_direction_label": "rightward",
+					"required_hook_side_label": "right_of_elbow",
 					"direction_reference_frame": "preview_space_horizontal",
 					"grace_ms_remaining": 0,
 					"triggered_grace_ms": 240,
@@ -1024,11 +1025,12 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_eq(String(rows[4].get("current_text", "")), "120ms configured, 118ms averaged span")
 	assert_eq(String(rows[5].get("threshold_text", "")), "0.080")
 	assert_eq(String(rows[5].get("current_text", "")), "0.420")
-	assert_eq(String(rows[6].get("threshold_text", "")), "0.500")
-	assert_eq(String(rows[6].get("current_text", "")), "0.740")
-	assert_eq(String(rows[7].get("label", "")), "Preview-space Rightward share of total motion >= {threshold}")
-	assert_eq(String(rows[7].get("threshold_text", "")), "0.550")
-	assert_eq(String(rows[7].get("current_text", "")), "0.830")
+	assert_eq(String(rows[6].get("label", "")), "Wrist angle from elbow horizontal ray <= {threshold}°")
+	assert_eq(String(rows[6].get("threshold_text", "")), "20.000")
+	assert_eq(String(rows[6].get("current_text", "")), "18.000")
+	assert_eq(String(rows[7].get("label", "")), "Preview-space wrist stays on required mirrored hook side")
+	assert_eq(String(rows[7].get("threshold_text", "")), "true")
+	assert_eq(String(rows[7].get("current_text", "")), "true")
 	assert_string_contains(String(rows[10].get("current_text", "")), "elapsed (pose-only timer)")
 	assert_eq(String(rows[11].get("current_text", "")), "tracked / 40ms required")
 
@@ -1036,8 +1038,8 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Motion window - 120ms configured, 118ms averaged span")
 	assert_string_contains(body, "Averaged velocity >= 0.080 - 0.420")
-	assert_string_contains(body, "Dominance ratio >= 0.500 - 0.740")
-	assert_string_contains(body, "Preview-space Rightward share of total motion >= 0.550 - 0.830")
+	assert_string_contains(body, "Wrist angle from elbow horizontal ray <= 20.000° - 18.000")
+	assert_string_contains(body, "Preview-space wrist stays on required mirrored hook side - true")
 	assert_string_contains(body, "Pose-only rearm - ")
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:

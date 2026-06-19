@@ -48,11 +48,9 @@ const POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS := STRAIGHT_PUNCH_DEFAULT_TRIGGERED
 const POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS := STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS
 const POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS := STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS
 
-const HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO := 1.6
-const HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO := 0.55
+const HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG := 25.0
 
-const UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO := 1.2
-const UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO := 0.55
+const UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG := 25.0
 
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_X := 0.20
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y := 0.12
@@ -859,16 +857,19 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 	if family == "hook":
 		debug["outward_velocity"] = float(state.get("outward_velocity", 0.0))
 		debug["outward_distance"] = float(state.get("outward_distance", 0.0))
-		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
-		debug["min_lateral_dominance_ratio"] = float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))
-		debug["min_horizontal_direction_ratio"] = float(config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO))
+		debug["wrist_angle_from_elbow_horizontal_deg"] = float(state.get("wrist_angle_from_elbow_horizontal_deg", 0.0))
+		debug["max_wrist_angle_from_elbow_horizontal_deg"] = float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))
+		debug["wrist_horizontal_angle_gate_passed"] = bool(state.get("wrist_horizontal_angle_gate_passed", false))
+		debug["wrist_on_required_hook_side"] = bool(state.get("wrist_on_required_hook_side", false))
+		debug["required_hook_side_label"] = "right_of_elbow" if side == "left" else "left_of_elbow"
 		debug["required_direction_label"] = "rightward" if side == "left" else "leftward"
 		debug["direction_reference_frame"] = "preview_space_horizontal"
 	else:
 		debug["upward_velocity"] = float(state.get("upward_velocity", 0.0))
-		debug["dominance_ratio"] = float(state.get("dominance_ratio", 0.0))
-		debug["min_vertical_dominance_ratio"] = float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))
-		debug["min_upward_direction_ratio"] = float(config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO))
+		debug["wrist_angle_from_elbow_vertical_deg"] = float(state.get("wrist_angle_from_elbow_vertical_deg", 0.0))
+		debug["max_wrist_angle_from_elbow_vertical_deg"] = float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))
+		debug["wrist_vertical_angle_gate_passed"] = bool(state.get("wrist_vertical_angle_gate_passed", false))
+		debug["wrist_above_elbow_gate_passed"] = bool(state.get("wrist_above_elbow_gate_passed", false))
 		debug["required_direction_label"] = "upward"
 		debug["direction_reference_frame"] = "preview_space_vertical"
 	return debug
@@ -1409,6 +1410,10 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var wrist_elbow_vertical_offset := absf(float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0)))
 	var wrist_elbow_horizontal_offset := absf(float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0)))
 	var wrist_above_elbow_offset := float(wrist.get("y", 0.0)) - float(elbow.get("y", 0.0))
+	var wrist_angle_from_elbow_horizontal_deg := _compute_wrist_angle_from_elbow_horizontal_deg(elbow, wrist)
+	var wrist_angle_from_elbow_vertical_deg := _compute_wrist_angle_from_elbow_vertical_deg(elbow, wrist)
+	var wrist_on_required_hook_side := _is_wrist_on_required_hook_side(side, elbow, wrist)
+	var wrist_above_elbow_gate_passed := _is_wrist_above_elbow_in_camera_space(elbow, wrist)
 	state["last_wrist_velocity"] = speed
 	state["last_wrist_velocity_vector"] = motion_window.get("averaged_velocity_vector", velocity_vector)
 	state["last_lateral_velocity"] = lateral_speed
@@ -1426,6 +1431,16 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["wrist_elbow_vertical_offset"] = wrist_elbow_vertical_offset
 	state["wrist_elbow_horizontal_offset"] = wrist_elbow_horizontal_offset
 	state["wrist_above_elbow_offset"] = wrist_above_elbow_offset
+	state["wrist_angle_from_elbow_horizontal_deg"] = wrist_angle_from_elbow_horizontal_deg
+	state["wrist_angle_from_elbow_vertical_deg"] = wrist_angle_from_elbow_vertical_deg
+	state["wrist_on_required_hook_side"] = wrist_on_required_hook_side
+	state["wrist_above_elbow_gate_passed"] = wrist_above_elbow_gate_passed
+	if family == "hook":
+		var current_max_hook_angle_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
+		state["wrist_horizontal_angle_gate_passed"] = wrist_angle_from_elbow_horizontal_deg <= current_max_hook_angle_deg + 0.000001
+	else:
+		var current_max_uppercut_angle_deg := clampf(float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0, 90.0)
+		state["wrist_vertical_angle_gate_passed"] = wrist_angle_from_elbow_vertical_deg <= current_max_uppercut_angle_deg + 0.000001
 	state["dominance_ratio"] = float(motion_window.get("hook_dominance_ratio", 0.0)) if family == "hook" else float(motion_window.get("uppercut_dominance_ratio", 0.0))
 	if not pose_tracking_valid:
 		state["wrist_velocity_history"] = []
@@ -1473,13 +1488,15 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		var ready_to_trigger := false
 		var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
 		if family == "hook":
-			var min_lateral_dominance_ratio := maxf(float(config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO)), 0.0)
-			var min_horizontal_direction_ratio := clampf(float(config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO)), 0.0, 1.0)
-			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_lateral_dominance_ratio and state.get("directionality_ratio", 0.0) >= min_horizontal_direction_ratio
+			var max_wrist_angle_from_elbow_horizontal_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
+			var wrist_horizontal_angle_gate_passed := wrist_angle_from_elbow_horizontal_deg <= max_wrist_angle_from_elbow_horizontal_deg + 0.000001
+			state["wrist_horizontal_angle_gate_passed"] = wrist_horizontal_angle_gate_passed
+			ready_to_trigger = speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side
 		else:
-			var min_vertical_dominance_ratio := maxf(float(config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO)), 0.0)
-			var min_upward_direction_ratio := clampf(float(config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO)), 0.0, 1.0)
-			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_vertical_dominance_ratio and state.get("directionality_ratio", 0.0) >= min_upward_direction_ratio
+			var max_wrist_angle_from_elbow_vertical_deg := clampf(float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0, 90.0)
+			var wrist_vertical_angle_gate_passed := wrist_angle_from_elbow_vertical_deg <= max_wrist_angle_from_elbow_vertical_deg + 0.000001
+			state["wrist_vertical_angle_gate_passed"] = wrist_vertical_angle_gate_passed
+			ready_to_trigger = speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed
 		if ready_to_trigger:
 			var blocking_state := _get_same_family_threshold_blocking_state(family, side, timestamp_ms)
 			if not blocking_state.is_empty():
@@ -2231,6 +2248,12 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"wrist_elbow_vertical_offset": 0.0,
 		"wrist_elbow_horizontal_offset": 0.0,
 		"wrist_above_elbow_offset": 0.0,
+		"wrist_angle_from_elbow_horizontal_deg": 0.0,
+		"wrist_angle_from_elbow_vertical_deg": 0.0,
+		"wrist_horizontal_angle_gate_passed": false,
+		"wrist_vertical_angle_gate_passed": false,
+		"wrist_on_required_hook_side": false,
+		"wrist_above_elbow_gate_passed": false,
 		"dominance_ratio": 0.0,
 	}
 
@@ -2252,8 +2275,7 @@ func _get_hook_config() -> Dictionary:
 		"enabled": true,
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
-		"min_lateral_dominance_ratio": HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO,
-		"min_horizontal_direction_ratio": HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO,
+		"max_wrist_angle_from_elbow_horizontal_deg": HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -2269,8 +2291,7 @@ func _get_hook_config() -> Dictionary:
 	config["enabled"] = _get_punch_backend_for_family("hook") == BACKEND_THRESHOLD
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
-	config["min_lateral_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_lateral_dominance_ratio", config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))))
-	config["min_horizontal_direction_ratio"] = clampf(float(thresholds.get("min_horizontal_direction_ratio", config.get("min_horizontal_direction_ratio", HOOK_DEFAULT_MIN_HORIZONTAL_DIRECTION_RATIO))), 0.0, 1.0)
+	config["max_wrist_angle_from_elbow_horizontal_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))), 0.0, 90.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -2281,8 +2302,7 @@ func _get_uppercut_config() -> Dictionary:
 		"enabled": true,
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
-		"min_vertical_dominance_ratio": UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO,
-		"min_upward_direction_ratio": UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO,
+		"max_wrist_angle_from_elbow_vertical_deg": UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -2298,8 +2318,7 @@ func _get_uppercut_config() -> Dictionary:
 	config["enabled"] = _get_punch_backend_for_family("uppercut") == BACKEND_THRESHOLD
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
-	config["min_vertical_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_vertical_dominance_ratio", config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))))
-	config["min_upward_direction_ratio"] = clampf(float(thresholds.get("min_upward_direction_ratio", config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO))), 0.0, 1.0)
+	config["max_wrist_angle_from_elbow_vertical_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_vertical_deg", config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))), 0.0, 90.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -2332,12 +2351,34 @@ func _is_pose_valid_for_pose_strike(shoulder: Dictionary, elbow: Dictionary, wri
 	return float(shoulder.get("v", 0.0)) >= min_visibility and float(elbow.get("v", 0.0)) >= min_visibility and float(wrist.get("v", 0.0)) >= min_visibility
 
 func _compute_wrist_lateral_angle_from_elbow_vertical_deg(elbow: Dictionary, wrist: Dictionary) -> float:
+	return _compute_wrist_angle_from_elbow_vertical_deg(elbow, wrist)
+
+func _compute_wrist_angle_from_elbow_horizontal_deg(elbow: Dictionary, wrist: Dictionary) -> float:
+	if elbow.is_empty() or wrist.is_empty():
+		return 0.0
+	var elbow_to_wrist := PoseMetrics.to_vector2(wrist) - PoseMetrics.to_vector2(elbow)
+	if elbow_to_wrist.length() <= 0.000001:
+		return 0.0
+	return rad_to_deg(atan2(absf(elbow_to_wrist.y), maxf(absf(elbow_to_wrist.x), 0.000001)))
+
+func _compute_wrist_angle_from_elbow_vertical_deg(elbow: Dictionary, wrist: Dictionary) -> float:
 	if elbow.is_empty() or wrist.is_empty():
 		return 0.0
 	var elbow_to_wrist := PoseMetrics.to_vector2(wrist) - PoseMetrics.to_vector2(elbow)
 	if elbow_to_wrist.length() <= 0.000001:
 		return 0.0
 	return rad_to_deg(atan2(absf(elbow_to_wrist.x), maxf(absf(elbow_to_wrist.y), 0.000001)))
+
+func _is_wrist_on_required_hook_side(side: String, elbow: Dictionary, wrist: Dictionary) -> bool:
+	if elbow.is_empty() or wrist.is_empty():
+		return false
+	var wrist_offset_x := float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0))
+	return wrist_offset_x > 0.000001 if side == "left" else wrist_offset_x < -0.000001
+
+func _is_wrist_above_elbow_in_camera_space(elbow: Dictionary, wrist: Dictionary) -> bool:
+	if elbow.is_empty() or wrist.is_empty():
+		return false
+	return float(wrist.get("y", 0.0)) > float(elbow.get("y", 0.0)) + 0.000001
 
 func _resolve_straight_punch_velocity_signal_position(state: Dictionary, elbow: Dictionary, wrist_position: Vector3) -> Vector3:
 	if elbow.is_empty() or float(elbow.get("v", 0.0)) < _get_min_visibility():
@@ -2651,6 +2692,12 @@ func _transition_pose_strike_state(events: Array, family: String, side: String, 
 		"horizontal_direction_velocity": float(state.get("horizontal_direction_velocity", 0.0)),
 		"directionality_ratio": float(state.get("directionality_ratio", 0.0)),
 		"dominance_ratio": float(state.get("dominance_ratio", 0.0)),
+		"wrist_angle_from_elbow_horizontal_deg": float(state.get("wrist_angle_from_elbow_horizontal_deg", 0.0)),
+		"wrist_angle_from_elbow_vertical_deg": float(state.get("wrist_angle_from_elbow_vertical_deg", 0.0)),
+		"wrist_horizontal_angle_gate_passed": bool(state.get("wrist_horizontal_angle_gate_passed", false)),
+		"wrist_vertical_angle_gate_passed": bool(state.get("wrist_vertical_angle_gate_passed", false)),
+		"wrist_on_required_hook_side": bool(state.get("wrist_on_required_hook_side", false)),
+		"wrist_above_elbow_gate_passed": bool(state.get("wrist_above_elbow_gate_passed", false)),
 		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
 		"tracking_state": String(state.get("tracking_state", "pose_missing")),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),

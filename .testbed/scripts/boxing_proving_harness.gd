@@ -338,7 +338,7 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "dominance_ratio",
-		"label": "Dominance ratio >= {threshold}",
+		"label": "Alignment gate",
 	},
 	{
 		"id": "directionality_ratio",
@@ -1830,10 +1830,12 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 	var window_span_ms := int(side_debug.get("window_span_ms", 0))
 	var averaged_velocity := float(side_debug.get("wrist_velocity", 0.0))
 	var min_velocity := float(side_debug.get("min_velocity", side_debug.get("min_punch_velocity", 0.0)))
-	var dominance_ratio := float(side_debug.get("dominance_ratio", 0.0))
-	var required_dominance := float(side_debug.get("min_lateral_dominance_ratio", side_debug.get("min_vertical_dominance_ratio", 0.0)))
-	var directionality_ratio := float(side_debug.get("directionality_ratio", 0.0))
-	var required_directionality := float(side_debug.get("min_horizontal_direction_ratio", side_debug.get("min_upward_direction_ratio", 0.0)))
+	var hook_alignment_angle := float(side_debug.get("wrist_angle_from_elbow_horizontal_deg", 0.0))
+	var hook_max_alignment_angle := float(side_debug.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0))
+	var hook_side_gate_passed := bool(side_debug.get("wrist_on_required_hook_side", false))
+	var uppercut_alignment_angle := float(side_debug.get("wrist_angle_from_elbow_vertical_deg", 0.0))
+	var uppercut_max_alignment_angle := float(side_debug.get("max_wrist_angle_from_elbow_vertical_deg", 0.0))
+	var uppercut_above_elbow_gate_passed := bool(side_debug.get("wrist_above_elbow_gate_passed", false))
 	var grace_ms_remaining := int(side_debug.get("grace_ms_remaining", 0))
 	var triggered_grace_ms := int(side_debug.get("triggered_grace_ms", 0))
 	var pose_only_rearm_ms := int(side_debug.get("pose_only_rearm_ms", 0))
@@ -1859,18 +1861,26 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 			current_text = _fmt_float(averaged_velocity)
 			passed = averaged_velocity >= min_velocity
 		"dominance_ratio":
-			threshold_text = _fmt_float(required_dominance)
-			current_text = _fmt_float(dominance_ratio)
-			passed = dominance_ratio >= required_dominance
-		"directionality_ratio":
-			threshold_text = _fmt_float(required_directionality)
-			current_text = _fmt_float(directionality_ratio)
-			passed = directionality_ratio >= required_directionality
 			if family == "hook":
-				var direction_label := String(side_debug.get("required_direction_label", "signed direction")).capitalize()
-				label = "Preview-space %s share of total motion >= {threshold}" % direction_label
+				threshold_text = _fmt_float(hook_max_alignment_angle)
+				current_text = _fmt_float(hook_alignment_angle)
+				passed = bool(side_debug.get("wrist_horizontal_angle_gate_passed", false))
+				label = "Wrist angle from elbow horizontal ray <= {threshold}°"
 			else:
-				label = "%s share of total motion >= {threshold}" % String(side_debug.get("required_direction_label", "upward")).capitalize()
+				threshold_text = _fmt_float(uppercut_max_alignment_angle)
+				current_text = _fmt_float(uppercut_alignment_angle)
+				passed = bool(side_debug.get("wrist_vertical_angle_gate_passed", false))
+				label = "Wrist angle from elbow vertical ray <= {threshold}°"
+		"directionality_ratio":
+			threshold_text = _fmt_bool(true)
+			if family == "hook":
+				current_text = _fmt_bool(hook_side_gate_passed)
+				passed = hook_side_gate_passed
+				label = "Preview-space wrist stays on required mirrored hook side"
+			else:
+				current_text = _fmt_bool(uppercut_above_elbow_gate_passed)
+				passed = uppercut_above_elbow_gate_passed
+				label = "Preview-space wrist stays above elbow"
 		"grace_timer":
 			current_text = "%d/%dms remaining" % [grace_ms_remaining, triggered_grace_ms]
 			if state_name == "triggered":
@@ -2237,8 +2247,8 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Enabled: %s" % _fmt_bool(bool(hook_config.get("enabled", false))))
 	lines.append("Motion window: %dms" % int(hook_eval.get("window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
-	lines.append("Min lateral dominance: %s" % _fmt_float(hook_thresholds.get("min_lateral_dominance_ratio", 0.0)))
-	lines.append("Min horizontal direction share of total motion: %s" % _fmt_float(hook_thresholds.get("min_horizontal_direction_ratio", 0.0)))
+	lines.append("Max wrist angle from elbow horizontal ray: %s" % _fmt_float(hook_thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
+	lines.append("Hook wrist must stay on mirrored preview-space side of elbow: yes")
 	lines.append("Hook grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(hook_timing.get("triggered_grace_ms", 0)),
 		int(hook_rearm.get("pose_only_rearm_ms", 0)),
@@ -2251,8 +2261,8 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Enabled: %s" % _fmt_bool(bool(uppercut_config.get("enabled", false))))
 	lines.append("Motion window: %dms" % int(uppercut_eval.get("window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
-	lines.append("Min vertical dominance: %s" % _fmt_float(uppercut_thresholds.get("min_vertical_dominance_ratio", 0.0)))
-	lines.append("Min upward direction share of total motion: %s" % _fmt_float(uppercut_thresholds.get("min_upward_direction_ratio", 0.0)))
+	lines.append("Max wrist angle from elbow vertical ray: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_angle_from_elbow_vertical_deg", 0.0)))
+	lines.append("Uppercut wrist must stay above elbow in preview space: yes")
 	lines.append("Uppercut grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(uppercut_timing.get("triggered_grace_ms", 0)),
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),
