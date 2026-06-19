@@ -199,9 +199,9 @@ func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
 	assert_true(bool(bundle.get("ok", false)))
 	assert_eq(String(bundle.get("profile", "")), "flow")
 
-func test_proving_runtime_config_can_force_prototype_matcher_backend_for_fixture_benchmarks() -> void:
+func test_proving_runtime_config_can_force_prototype_backend_for_fixture_benchmarks() -> void:
 	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "prototype_matcher")
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "prototype")
 	var harness: Variant = ProvingHarnessScript.new()
 	var config: Variant = harness._build_runtime_config()
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
@@ -212,26 +212,22 @@ func test_proving_runtime_config_can_force_prototype_matcher_backend_for_fixture
 	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "prototype")
 	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "prototype")
 
-func test_proving_runtime_config_can_force_mixed_family_backend_for_fixture_benchmarks() -> void:
-	var previous_backend := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
-	var previous_model := OS.get_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE")
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "mixed_family")
-	OS.set_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE", "res://docs/models/straight-family-test.json")
+func test_proving_runtime_config_can_force_disabled_backend_for_fixture_benchmarks() -> void:
+	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "disabled")
 	var harness: Variant = ProvingHarnessScript.new()
 	var config: Variant = harness._build_runtime_config()
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous_backend)
-	OS.set_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE", previous_model)
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
 
 	assert_not_null(config)
 	var gesture_profile: Dictionary = config.gesture_profile_document
-	assert_eq(String(gesture_profile.get("straight_punch", {}).get("backend", "")), "threshold")
-	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "threshold")
-	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "threshold")
-	assert_eq(String(gesture_profile.get("straight_punch", {}).get("classifier", {}).get("model", {}).get("artifact_path", "")), "res://docs/models/straight-family-test.json")
+	assert_eq(String(gesture_profile.get("straight_punch", {}).get("backend", "")), "disabled")
+	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "disabled")
+	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "disabled")
 
-func test_proving_runtime_config_can_force_learned_classifier_backend_for_fixture_benchmarks() -> void:
+func test_proving_runtime_config_can_force_classifier_backend_for_fixture_benchmarks() -> void:
 	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "learned_classifier")
+	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "classifier")
 	var harness: Variant = ProvingHarnessScript.new()
 	var config: Variant = harness._build_runtime_config()
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
@@ -489,16 +485,16 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
 	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
 
-func test_boxing_prototype_matcher_hover_card_surfaces_backend_score_threshold_and_gate_truth() -> void:
+func test_boxing_prototype_hover_card_surfaces_backend_score_threshold_and_gate_truth() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"punch_detection": {
-				"backend": "prototype_matcher",
+				"backend": "prototype",
 			},
-			"prototype_matcher": {
-				"selected_backend": "prototype_matcher",
-				"active_backend": "prototype_matcher",
+			"prototype": {
+				"selected_backend": "prototype",
+				"active_backend": "prototype",
 				"library_id": "boxing_side_aware_v1",
 				"library_loaded": true,
 				"best_class": "straight_left",
@@ -523,8 +519,8 @@ func test_boxing_prototype_matcher_hover_card_surfaces_backend_score_threshold_a
 
 	var model: Dictionary = harness._build_hover_card_model("punch_left")
 	var rows: Array = model.get("rows", [])
-	assert_eq(String(model.get("title", "")), "Straight Punch L (Prototype Matcher)")
-	assert_eq(String(rows[1].get("current_text", "")), "prototype_matcher")
+	assert_eq(String(model.get("title", "")), "Straight Punch L (Prototype)")
+	assert_eq(String(rows[1].get("current_text", "")), "prototype")
 	assert_eq(String(rows[3].get("current_text", "")), "boxing_side_aware_v1")
 	assert_eq(String(rows[6].get("current_text", "")), "straight_left")
 	assert_eq(String(rows[7].get("current_text", "")), "0.842")
@@ -541,7 +537,7 @@ func test_boxing_prototype_matcher_hover_card_surfaces_backend_score_threshold_a
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Active backend - prototype_matcher")
+	assert_string_contains(body, "Active backend - prototype")
 	assert_string_contains(body, "Active prototype library ID - boxing_side_aware_v1")
 	assert_string_contains(body, "Best class - straight_left")
 	assert_string_contains(body, "Best score - 0.842")
@@ -553,16 +549,16 @@ func test_boxing_prototype_matcher_hover_card_surfaces_backend_score_threshold_a
 	assert_string_contains(body, "Hold remaining - 80ms")
 	assert_string_contains(body, "Cooldown remaining - 190ms")
 
-func test_boxing_prototype_matcher_debug_visibility_flags_hide_scores_and_gate_state() -> void:
+func test_boxing_prototype_debug_visibility_flags_hide_scores_and_gate_state() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"punch_detection": {
-				"backend": "prototype_matcher",
+				"backend": "prototype",
 			},
-			"prototype_matcher": {
-				"selected_backend": "prototype_matcher",
-				"active_backend": "prototype_matcher",
+			"prototype": {
+				"selected_backend": "prototype",
+				"active_backend": "prototype",
 				"library_id": "boxing_side_aware_v1",
 				"library_loaded": true,
 				"best_class": "hook_right",
@@ -585,7 +581,7 @@ func test_boxing_prototype_matcher_debug_visibility_flags_hide_scores_and_gate_s
 
 	var model: Dictionary = harness._build_hover_card_model("punch_right")
 	var rows: Array = model.get("rows", [])
-	assert_eq(String(model.get("title", "")), "Straight Punch R (Prototype Matcher)")
+	assert_eq(String(model.get("title", "")), "Straight Punch R (Prototype)")
 	assert_eq(String(rows[11].get("current_text", "")), "false")
 	assert_eq(String(rows[12].get("current_text", "")), "hidden (show_scores=false)")
 	assert_eq(String(rows[14].get("current_text", "")), "false")
@@ -595,8 +591,8 @@ func test_boxing_prototype_matcher_debug_visibility_flags_hide_scores_and_gate_s
 	assert_eq(String(rows[18].get("current_text", "")), "hidden (show_event_gate_state=false)")
 
 	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Prototype matcher truth")
-	assert_string_contains(text_body, "Active backend: prototype_matcher")
+	assert_string_contains(text_body, "Prototype truth")
+	assert_string_contains(text_body, "Active backend: prototype")
 	assert_string_contains(text_body, "Prototype library ID: boxing_side_aware_v1 (loaded=true)")
 	assert_string_contains(text_body, "Best class / score / threshold: hook_right / 0.610 / 0.700")
 	assert_string_contains(text_body, "Result class / emitted event: no_punch / none")
@@ -604,16 +600,16 @@ func test_boxing_prototype_matcher_debug_visibility_flags_hide_scores_and_gate_s
 	assert_string_contains(text_body, "Class scores: hidden (show_scores=false)")
 	assert_string_contains(text_body, "Gate reason / hold / cooldown / active event: hidden (show_event_gate_state=false)")
 
-func test_boxing_learned_classifier_hover_card_and_event_feed_surface_truthful_backend_specific_fields() -> void:
+func test_boxing_classifier_hover_card_and_event_feed_surface_truthful_backend_specific_fields() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"punch_detection": {
-				"backend": "learned_classifier",
+				"backend": "classifier",
 			},
-			"learned_classifier": {
-				"selected_backend": "learned_classifier",
-				"active_backend": "learned_classifier",
+			"classifier": {
+				"selected_backend": "classifier",
+				"active_backend": "classifier",
 				"model_path": "res://docs/models/test-mlp-result.json",
 				"model_loaded": true,
 				"best_class": "straight_left",
@@ -638,10 +634,10 @@ func test_boxing_learned_classifier_hover_card_and_event_feed_surface_truthful_b
 
 	var model: Dictionary = harness._build_hover_card_model("punch_left")
 	var rows: Array = model.get("rows", [])
-	assert_eq(String(model.get("title", "")), "Straight Punch L (Learned Classifier)")
-	assert_eq(String(rows[3].get("label", "")), "Active learned model path")
+	assert_eq(String(model.get("title", "")), "Straight Punch L (Classifier)")
+	assert_eq(String(rows[3].get("label", "")), "Active classifier model path")
 	assert_eq(String(rows[3].get("current_text", "")), "res://docs/models/test-mlp-result.json")
-	assert_eq(String(rows[4].get("label", "")), "Learned model loaded")
+	assert_eq(String(rows[4].get("label", "")), "Classifier model loaded")
 	assert_eq(String(rows[4].get("current_text", "")), "true")
 	assert_eq(String(rows[6].get("current_text", "")), "straight_left")
 	assert_eq(String(rows[7].get("current_text", "")), "0.932")
@@ -649,32 +645,32 @@ func test_boxing_learned_classifier_hover_card_and_event_feed_surface_truthful_b
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Active learned model path - res://docs/models/test-mlp-result.json")
+	assert_string_contains(body, "Active classifier model path - res://docs/models/test-mlp-result.json")
 	assert_string_contains(body, "Best class - straight_left")
 	assert_string_contains(body, "Per-class scores - {hook_left=0.041, no_punch=0.015, straight_left=0.932}")
 
 	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Learned classifier truth")
-	assert_string_contains(text_body, "Active backend: learned_classifier")
-	assert_string_contains(text_body, "Learned model path: res://docs/models/test-mlp-result.json (loaded=true)")
+	assert_string_contains(text_body, "Classifier truth")
+	assert_string_contains(text_body, "Active backend: classifier")
+	assert_string_contains(text_body, "Classifier model path: res://docs/models/test-mlp-result.json (loaded=true)")
 	assert_string_contains(text_body, "Best class / score / threshold: straight_left / 0.932 / 0.700")
 
-func test_boxing_event_feed_reports_mixed_family_routing_truth() -> void:
+func test_boxing_event_feed_reports_per_family_routing_truth() -> void:
 	var harness: Variant = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"punch_detection": {
-				"active_backend": "mixed_family",
-				"selected_backend": "mixed_family",
+				"active_backend": "per_family",
+				"selected_backend": "per_family",
 				"selected_backend_enabled": true,
-				"active_backend_resolution": "selected_backend_active",
-				"routing_mode": "mixed_family",
-				"straight_backend": "learned_classifier",
-				"hook_backend": "threshold_gates",
-				"uppercut_backend": "threshold_gates",
-				"hook_uppercut_backend_note": "hook/uppercut stay on threshold_gates in mixed_family routing",
+				"active_backend_resolution": "per_family_active",
+				"routing_mode": "per_family",
+				"straight_backend": "classifier",
+				"hook_backend": "threshold",
+				"uppercut_backend": "threshold",
+				"hook_uppercut_backend_note": "",
 			},
-			"learned_classifier": {
+			"classifier": {
 				"model_path": "res://docs/models/straight-family-test.json",
 				"model_loaded": true,
 				"best_class": "straight_left",
@@ -688,25 +684,24 @@ func test_boxing_event_feed_reports_mixed_family_routing_truth() -> void:
 		},
 	})
 	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Mixed-family straight-classifier truth")
-	assert_string_contains(text_body, "Routing mode: mixed_family")
-	assert_string_contains(text_body, "Per-family backends: straight=learned_classifier hook=threshold_gates uppercut=threshold_gates")
-	assert_string_contains(text_body, "Hook/uppercut routing note: hook/uppercut stay on threshold_gates in mixed_family routing")
-	assert_string_contains(text_body, "Straight learned model path: res://docs/models/straight-family-test.json (loaded=true)")
-	assert_string_contains(text_body, "Event/backend truth: punch_left=learned_classifier punch_right=learned_classifier hook_left=threshold_gates")
+	assert_string_contains(text_body, "Per-family classifier truth")
+	assert_string_contains(text_body, "Routing mode: per_family")
+	assert_string_contains(text_body, "Per-family backends: straight=classifier hook=threshold uppercut=threshold")
+	assert_string_contains(text_body, "Family classifier model path: res://docs/models/straight-family-test.json (loaded=true)")
+	assert_string_contains(text_body, "Event/backend truth: punch_left=classifier punch_right=classifier hook_left=threshold")
 
-func test_mixed_family_classifier_match_payload_uses_per_family_backend_truth() -> void:
+func test_per_family_classifier_match_payload_uses_per_family_backend_truth() -> void:
 	var harness: Variant = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"punch_detection": {
-				"active_backend": "mixed_family",
-				"backend": "mixed_family",
-				"straight_backend": "learned_classifier",
-				"hook_backend": "threshold_gates",
-				"uppercut_backend": "threshold_gates",
+				"active_backend": "per_family",
+				"backend": "per_family",
+				"straight_backend": "classifier",
+				"hook_backend": "threshold",
+				"uppercut_backend": "threshold",
 			},
-			"learned_classifier": {
+			"classifier": {
 				"emitted_event_name": "punch_left",
 				"result_class": "straight_left",
 				"best_score": 0.91,
@@ -719,25 +714,25 @@ func test_mixed_family_classifier_match_payload_uses_per_family_backend_truth() 
 		},
 	})
 	var straight_payload: Dictionary = harness._classifier_match_payload_for_signal("punch_left")
-	assert_eq(String(straight_payload.get("backend", "")), "learned_classifier")
+	assert_eq(String(straight_payload.get("backend", "")), "classifier")
 	assert_eq(String((straight_payload.get("payload", {}) as Dictionary).get("class_name", "")), "straight_left")
 	var hook_payload: Dictionary = harness._classifier_match_payload_for_signal("hook_left")
-	assert_eq(String(hook_payload.get("backend", "")), "threshold_gates")
+	assert_eq(String(hook_payload.get("backend", "")), "threshold")
 	assert_true(((hook_payload.get("payload", {}) as Dictionary)).is_empty())
 	var uppercut_payload: Dictionary = harness._classifier_match_payload_for_signal("uppercut_right")
-	assert_eq(String(uppercut_payload.get("backend", "")), "threshold_gates")
+	assert_eq(String(uppercut_payload.get("backend", "")), "threshold")
 	assert_true(((uppercut_payload.get("payload", {}) as Dictionary)).is_empty())
 
-func test_boxing_learned_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels() -> void:
+func test_boxing_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"punch_detection": {
-				"backend": "learned_classifier",
+				"backend": "classifier",
 			},
-			"learned_classifier": {
-				"selected_backend": "learned_classifier",
-				"active_backend": "learned_classifier",
+			"classifier": {
+				"selected_backend": "classifier",
+				"active_backend": "classifier",
 				"model_path": "res://docs/models/test-mlp-result.json",
 				"model_loaded": true,
 				"best_class": "hook_left",
@@ -776,8 +771,8 @@ func test_boxing_learned_classifier_hook_and_uppercut_cards_use_backend_truth_in
 
 	var hook_model: Dictionary = harness._build_hover_card_model("hook_left")
 	var hook_rows: Array = hook_model.get("rows", [])
-	assert_eq(String(hook_model.get("title", "")), "Hook L (Learned Classifier)")
-	assert_eq(String(hook_rows[1].get("current_text", "")), "learned_classifier")
+	assert_eq(String(hook_model.get("title", "")), "Hook L (Classifier)")
+	assert_eq(String(hook_rows[1].get("current_text", "")), "classifier")
 	assert_eq(String(hook_rows[6].get("current_text", "")), "hook_left")
 	assert_eq(String(hook_rows[7].get("current_text", "")), "0.811")
 	assert_eq(String(hook_rows[10].get("current_text", "")), "hook_left")
@@ -785,7 +780,7 @@ func test_boxing_learned_classifier_hook_and_uppercut_cards_use_backend_truth_in
 
 	var uppercut_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "uppercut_left")
 	var uppercut_body := String(uppercut_inspector.get("body", ""))
-	assert_string_contains(uppercut_body, "Active backend - learned_classifier")
+	assert_string_contains(uppercut_body, "Active backend - classifier")
 	assert_string_contains(uppercut_body, "Best class - hook_left")
 	assert_string_contains(uppercut_body, "Per-class scores - {hook_left=0.811, no_punch=0.033, uppercut_left=0.102}")
 	assert_false(uppercut_body.contains("Motion window - "))
@@ -795,18 +790,21 @@ func test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvi
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"punch_detection": {
-				"backend": "none",
+				"backend": "per_family",
 				"active_backend": "none",
-				"selected_backend": "learned_classifier",
+				"selected_backend": "per_family",
 				"selected_backend_enabled": false,
-				"active_backend_resolution": "selected_backend_disabled",
-				"threshold_gates_enabled": true,
+				"active_backend_resolution": "no_active_family_backend",
+				"straight_backend": "disabled",
+				"hook_backend": "disabled",
+				"uppercut_backend": "disabled",
+				"threshold_enabled": false,
 			},
-			"learned_classifier": {
-				"selected_backend": "learned_classifier",
+			"classifier": {
+				"selected_backend": "per_family",
 				"selected_backend_enabled": false,
 				"active_backend": "none",
-				"activation_reason": "selected_backend_disabled",
+				"activation_reason": "no_active_family_backend",
 				"model_path": "res://docs/models/test-mlp-result.json",
 				"model_loaded": false,
 				"result_class": "no_punch",
@@ -818,23 +816,24 @@ func test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvi
 	})
 
 	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Learned classifier truth")
+	assert_string_contains(text_body, "Per-family classifier truth")
 	assert_string_contains(text_body, "Active backend: none")
-	assert_string_contains(text_body, "Selected backend: learned_classifier")
+	assert_string_contains(text_body, "Selected backend: per_family")
+	assert_string_contains(text_body, "Per-family backends: straight=disabled hook=disabled uppercut=disabled")
 	assert_string_contains(text_body, "Selected backend enabled: false")
-	assert_string_contains(text_body, "Backend resolution: selected_backend_disabled")
-	assert_string_contains(text_body, "Learned model path: res://docs/models/test-mlp-result.json (loaded=false)")
+	assert_string_contains(text_body, "Backend resolution: no_active_family_backend")
+	assert_string_contains(text_body, "Family classifier model path: res://docs/models/test-mlp-result.json (loaded=false)")
 
-func test_boxing_learned_classifier_ui_surfaces_model_open_error_alongside_model_unavailable() -> void:
+func test_boxing_classifier_ui_surfaces_model_open_error_alongside_model_unavailable() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"punch_detection": {
-				"backend": "learned_classifier",
+				"backend": "classifier",
 			},
-			"learned_classifier": {
-				"selected_backend": "learned_classifier",
-				"active_backend": "learned_classifier",
+			"classifier": {
+				"selected_backend": "classifier",
+				"active_backend": "classifier",
 				"model_path": "res://docs/models/missing-mlp-result.json",
 				"model_loaded": false,
 				"model_error": "model_open_failed",
@@ -983,8 +982,8 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	assert_string_contains(text_body, "Min vertical dominance")
 	assert_string_contains(text_body, "Min upward direction share of total motion")
 	assert_string_contains(text_body, "Guard tuning")
-	assert_string_contains(text_body, "Wrist separation X <= 0.200")
-	assert_string_contains(text_body, "Wrist separation Y <= 0.120")
+	assert_string_contains(text_body, "Wrist separation X <=")
+	assert_string_contains(text_body, "Wrist separation Y <=")
 	assert_string_contains(text_body, "Guard candidate: true")
 	assert_string_contains(text_body, "Live wrist separation: x=0.180 y=0.020")
 

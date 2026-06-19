@@ -2,7 +2,7 @@ schema: aerobeat/gesture_detection_config
 version: 1
 profile: flow
 squat:
-  # [threshold, prototype, classifier] Pick which backend contract owns squat routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
+  # [disabled, threshold, prototype, classifier] Pick which backend contract owns squat routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
   backend: threshold
   threshold:
     # Squat uses the current calibrated torso-height threshold runtime. input.
@@ -14,9 +14,8 @@ squat:
   prototype: {}
   classifier: {}
 straight_punch:
-  # [threshold, prototype, classifier] Flow keeps straight punches inactive by selecting the threshold backend and leaving its runtime block empty. input.
-  backend: threshold
-  threshold:
-    enabled: false
+  # [disabled, threshold, prototype, classifier] Flow keeps straight punches inactive by selecting the disabled backend. input.
+  backend: disabled
+  threshold: {}
   prototype: {}
   classifier: {}

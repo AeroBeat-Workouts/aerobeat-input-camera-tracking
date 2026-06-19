@@ -2,7 +2,6 @@ class_name LearnedPunchClassifier
 extends "res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd"
 
 const BACKEND_LEARNED_CLASSIFIER := "classifier"
-const LEGACY_BACKEND_MIXED_FAMILY := "mixed_family"
 const LEARNED_DEFAULT_WINDOW_MS := 250
 const LEARNED_DEFAULT_WINDOW_STEP_MS := 33
 const LEARNED_DEFAULT_MATCH_SCORE_MIN := 0.70
@@ -596,29 +595,18 @@ func _get_activation_reason() -> String:
 	return "backend_not_selected"
 
 func _normalize_backend_name(backend_name: String) -> String:
-	if backend_name == LEGACY_BACKEND_LEARNED_CLASSIFIER:
-		return BACKEND_LEARNED_CLASSIFIER
 	return super._normalize_backend_name(backend_name)
 
 func _get_model_artifact_path() -> String:
-	var gesture_profile_document := _get_gesture_profile_document()
-	var mixed_family: Dictionary = gesture_profile_document.get(LEGACY_BACKEND_MIXED_FAMILY, {}) if gesture_profile_document.get(LEGACY_BACKEND_MIXED_FAMILY, {}) is Dictionary else {}
-	var legacy_straight: Dictionary = mixed_family.get("straight", {}) if mixed_family.get("straight", {}) is Dictionary else {}
-	var legacy_model: Dictionary = legacy_straight.get("model", {}) if legacy_straight.get("model", {}) is Dictionary else {}
-	var legacy_path := String(legacy_model.get("artifact_path", "")).strip_edges()
-	if _get_family_backend("straight_punch") == BACKEND_LEARNED_CLASSIFIER and not legacy_path.is_empty():
-		return legacy_path
 	for family in ["straight_punch", "hook", "uppercut"]:
 		if _get_family_backend(family) != BACKEND_LEARNED_CLASSIFIER:
 			continue
-		var classifier_config := _get_family_backend_config(family, BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
+		var classifier_config := _get_family_backend_config(family, BACKEND_LEARNED_CLASSIFIER)
 		var model: Dictionary = classifier_config.get("model", {}) if classifier_config.get("model", {}) is Dictionary else {}
 		var path := String(model.get("artifact_path", "")).strip_edges()
 		if not path.is_empty():
 			return path
-	if not legacy_path.is_empty():
-		return legacy_path
-	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER)
 	var model: Dictionary = learned.get("model", {}) if learned.get("model", {}) is Dictionary else {}
 	var path := String(model.get("artifact_path", DEFAULT_MODEL_ARTIFACT_PATH)).strip_edges()
 	return path if not path.is_empty() else DEFAULT_MODEL_ARTIFACT_PATH
@@ -630,27 +618,27 @@ func _get_window_step_ms() -> int:
 	return LEARNED_DEFAULT_WINDOW_STEP_MS
 
 func _get_match_score_min() -> float:
-	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER)
 	var thresholds: Dictionary = learned.get("thresholds", {}) if learned.get("thresholds", {}) is Dictionary else {}
 	return clampf(float(thresholds.get("match_score_min", LEARNED_DEFAULT_MATCH_SCORE_MIN)), 0.0, 1.0)
 
 func _get_emit_cooldown_ms() -> int:
-	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER)
 	var timing: Dictionary = learned.get("timing", {}) if learned.get("timing", {}) is Dictionary else {}
 	return max(0, int(timing.get("emit_cooldown_ms", LEARNED_DEFAULT_EMIT_COOLDOWN_MS)))
 
 func _get_emit_hold_ms() -> int:
-	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER)
 	var timing: Dictionary = learned.get("timing", {}) if learned.get("timing", {}) is Dictionary else {}
 	return max(0, int(timing.get("emit_hold_ms", LEARNED_DEFAULT_EMIT_HOLD_MS)))
 
 func _get_show_scores() -> bool:
-	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER)
 	var debug_config: Dictionary = learned.get("debug", {}) if learned.get("debug", {}) is Dictionary else {}
 	return _get_debug_bool(debug_config, "show_scores", LEARNED_DEFAULT_SHOW_SCORES)
 
 func _get_show_event_gate_state() -> bool:
-	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER)
 	var debug_config: Dictionary = learned.get("debug", {}) if learned.get("debug", {}) is Dictionary else {}
 	return _get_debug_bool(debug_config, "show_event_gate_state", LEARNED_DEFAULT_SHOW_EVENT_GATE_STATE)
 

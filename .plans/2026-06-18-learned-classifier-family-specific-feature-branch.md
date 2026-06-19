@@ -1384,6 +1384,82 @@ Validation run:
 
 ---
 
+### Task 49: Remove legacy gesture-config compatibility, add disabled backend, and tighten proving inspector backend switching
+
+**Bead ID:** `aerobeat-input-camera-tracking-3fws`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Follow up immediately on the newly landed family-first backend contract with three targeted adjustments Derrick requested after review: (1) remove compatibility holdovers for the older YAML/config shape instead of keeping the legacy migration layer, (2) add a new per-family backend value `disabled` that cleanly prevents that gesture family from firing, and (3) make sure the boxing proving scene inspectors / gesture detail panels swap truthfully with the newly selected backend per family, so a family set to `threshold` does not show classifier info and a family set to `prototype` does not show threshold/classifier panels. Keep the repo’s comment style, preserve the new `threshold` / `prototype` / `classifier` naming, and keep runtime/debug truth explicit.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `assets/flow.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `src/detectors/prototype_punch_matcher.gd`
+- `src/detectors/learned_punch_classifier.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_aero_camera_tracking.gd`
+- `.testbed/tests/unit/test_camera_tracking_provider.gd`
+- `.testbed/tests/unit/test_proving_harness_fixture_timeline.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Removed old-shape `punch_detection` / legacy backend-name compatibility reads from the detector/runtime/proving paths, added canonical `backend: disabled` handling so disabled families do not emit, and tightened the boxing proving/event-detail routing so prototype/classifier panels only render for the selected family backend with threshold/per-family disabled states reported honestly. Updated focused unit coverage for disabled-family runtime suppression, family-specific classifier artifact selection, proving override/config loading, canonical proving timeline/debug payloads, and backend-specific boxing inspector/event-feed switching. Validation passed with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gtest=res://tests/unit/test_aero_camera_tracking.gd -gtest=res://tests/unit/test_proving_harness_fixture_timeline.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` (145/145 passed; existing GUT orphan warnings remained).
+
+---
+
+### Task 50: QA disabled backend and proving inspector backend switching
+
+**Bead ID:** `aerobeat-input-camera-tracking-i1os`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the follow-up family-first contract patch in the highest-fidelity validation path available. Confirm old-shape compatibility has actually been removed, confirm `backend: disabled` prevents the relevant family from firing, and confirm the boxing proving inspectors swap cleanly with the selected backend per family so only the active backend’s panel/info is shown.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo/test/artifact paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 51: Audit disabled backend and proving inspector backend switching
+
+**Bead ID:** `aerobeat-input-camera-tracking-0hag`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the follow-up family-first contract patch. Confirm the legacy YAML compatibility layer is gone, confirm `disabled` is a real non-firing backend state rather than cosmetic config, and confirm proving inspector/backend detail surfaces now track the selected backend honestly per gesture family.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo/test/artifact paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 ## Final Results
 
 **Status:** ⚠️ Partial / Awaiting Derrick replay/live feedback

@@ -1458,8 +1458,8 @@ func test_detects_knee_and_leg_lift_events_with_reset_behavior() -> void:
 	var leg_lift_end_state := substrate.process_landmarks(_make_pose_frame(), 1700)
 	assert_eq(_event_names(leg_lift_end_state.get("events", [])), ["leg_lift_right_end"])
 
-func test_prototype_matcher_backend_emits_side_aware_straight_and_surfaces_debug_state() -> void:
-	_enable_prototype_matcher_backend({
+func test_prototype_backend_emits_side_aware_straight_and_surfaces_debug_state() -> void:
+	_enable_prototype_backend({
 		"match_score_min": 0.70,
 		"emit_cooldown_ms": 250,
 		"emit_hold_ms": 100,
@@ -1481,7 +1481,7 @@ func test_prototype_matcher_backend_emits_side_aware_straight_and_surfaces_debug
 	assert_true(saw_emit)
 	var gesture_debug: Dictionary = state.get("gesture_debug", {})
 	assert_eq(String(gesture_debug.get("punch_detection", {}).get("backend", "")), "per_family")
-	var matcher_debug: Dictionary = gesture_debug.get("prototype", gesture_debug.get("prototype_matcher", {}))
+	var matcher_debug: Dictionary = gesture_debug.get("prototype", gesture_debug.get("prototype", {}))
 	assert_eq(String(matcher_debug.get("result_class", "")), "straight_left")
 	assert_true(["emitted", "emit_hold_active"].has(String(matcher_debug.get("reason", ""))))
 	assert_eq(String(matcher_debug.get("library_id", "")), "boxing_side_aware_v1")
@@ -1492,8 +1492,8 @@ func test_prototype_matcher_backend_emits_side_aware_straight_and_surfaces_debug
 	else:
 		assert_eq(String(matcher_debug.get("active_event_class", "")), "straight_left")
 
-func test_prototype_matcher_backend_rejects_no_punch_when_threshold_is_not_met() -> void:
-	_enable_prototype_matcher_backend({
+func test_prototype_backend_rejects_no_punch_when_threshold_is_not_met() -> void:
+	_enable_prototype_backend({
 		"match_score_min": 0.99,
 		"emit_cooldown_ms": 250,
 		"emit_hold_ms": 100,
@@ -1511,14 +1511,14 @@ func test_prototype_matcher_backend_rejects_no_punch_when_threshold_is_not_met()
 	for idx in range(timestamps.size()):
 		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(timestamps[idx]))
 	assert_false(_event_names(state.get("events", [])).has("punch_left"))
-	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype_matcher", {})
+	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype", {})
 	assert_eq(String(matcher_debug.get("result_class", "")), "no_punch")
 	assert_eq(String(matcher_debug.get("reason", "")), "below_threshold")
 	assert_eq(String(matcher_debug.get("best_class", "")), "straight_left")
 	assert_true(float(matcher_debug.get("best_score", 0.0)) < 0.99)
 
-func test_prototype_matcher_backend_applies_emit_cooldown_and_hold_without_spam() -> void:
-	_enable_prototype_matcher_backend({
+func test_prototype_backend_applies_emit_cooldown_and_hold_without_spam() -> void:
+	_enable_prototype_backend({
 		"match_score_min": 0.70,
 		"emit_cooldown_ms": 250,
 		"emit_hold_ms": 100,
@@ -1540,7 +1540,7 @@ func test_prototype_matcher_backend_applies_emit_cooldown_and_hold_without_spam(
 	assert_true(saw_initial_emit)
 	state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[left_sequence.size() - 1]), 1420)
 	assert_false(_event_names(state.get("events", [])).has("punch_left"))
-	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype_matcher", {})
+	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype", {})
 	assert_true(["emit_hold_active", "emit_cooldown_active"].has(String(matcher_debug.get("reason", ""))))
 	if String(matcher_debug.get("reason", "")) == "emit_hold_active":
 		assert_true(int(matcher_debug.get("hold_ms_remaining", 0)) > 0)
@@ -1548,7 +1548,7 @@ func test_prototype_matcher_backend_applies_emit_cooldown_and_hold_without_spam(
 		assert_true(int(matcher_debug.get("cooldown_ms_remaining", 0)) > 0)
 	state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[left_sequence.size() - 1]), 1490)
 	assert_false(_event_names(state.get("events", [])).has("punch_left"))
-	matcher_debug = state.get("gesture_debug", {}).get("prototype_matcher", {})
+	matcher_debug = state.get("gesture_debug", {}).get("prototype", {})
 	assert_eq(String(matcher_debug.get("reason", "")), "emit_cooldown_active")
 	assert_true(int(matcher_debug.get("cooldown_ms_remaining", 0)) > 0)
 	var replay_times := [1660, 1725, 1790, 1855, 1910]
@@ -1557,12 +1557,12 @@ func test_prototype_matcher_backend_applies_emit_cooldown_and_hold_without_spam(
 		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(replay_times[idx]))
 		saw_replay_emit = saw_replay_emit or _event_names(state.get("events", [])).has("punch_left")
 	assert_true(saw_replay_emit)
-	matcher_debug = state.get("gesture_debug", {}).get("prototype_matcher", {})
+	matcher_debug = state.get("gesture_debug", {}).get("prototype", {})
 	assert_true(["emitted", "emit_hold_active"].has(String(matcher_debug.get("reason", ""))))
 
-func test_learned_classifier_backend_emits_and_surfaces_truthful_debug_state() -> void:
-	var model_path := _write_test_learned_classifier_model("straight_left", 10.0)
-	_enable_learned_classifier_backend({
+func test_classifier_backend_emits_and_surfaces_truthful_debug_state() -> void:
+	var model_path := _write_test_classifier_model("straight_left", 10.0)
+	_enable_classifier_backend({
 		"model_path": model_path,
 		"match_score_min": 0.70,
 		"emit_cooldown_ms": 250,
@@ -1574,7 +1574,7 @@ func test_learned_classifier_backend_emits_and_surfaces_truthful_debug_state() -
 	var gesture_debug: Dictionary = state.get("gesture_debug", {})
 	assert_eq(String(gesture_debug.get("punch_detection", {}).get("backend", "")), "per_family")
 	assert_true(bool(gesture_debug.get("punch_detection", {}).get("classifier_enabled", false)))
-	var learned_debug: Dictionary = gesture_debug.get("classifier", gesture_debug.get("learned_classifier", {}))
+	var learned_debug: Dictionary = gesture_debug.get("classifier", gesture_debug.get("classifier", {}))
 	assert_eq(String(learned_debug.get("selected_backend", "")), "classifier")
 	assert_eq(String(learned_debug.get("active_backend", "")), "classifier")
 	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
@@ -1584,9 +1584,9 @@ func test_learned_classifier_backend_emits_and_surfaces_truthful_debug_state() -
 	assert_eq(String(learned_debug.get("model_path", "")), model_path)
 	assert_true(float(learned_debug.get("best_score", 0.0)) >= 0.70)
 
-func test_learned_classifier_non_eval_frames_preserve_last_scored_debug_truth() -> void:
-	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2)
-	_enable_learned_classifier_backend({
+func test_classifier_non_eval_frames_preserve_last_scored_debug_truth() -> void:
+	var model_path := _write_test_classifier_model("straight_left", 10.0, 2)
+	_enable_classifier_backend({
 		"model_path": model_path,
 		"match_score_min": 0.70,
 		"emit_cooldown_ms": 250,
@@ -1594,10 +1594,10 @@ func test_learned_classifier_non_eval_frames_preserve_last_scored_debug_truth() 
 	})
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
-	assert_eq(String(state.get("gesture_debug", {}).get("learned_classifier", {}).get("reason", "")), "window_not_full")
+	assert_eq(String(state.get("gesture_debug", {}).get("classifier", {}).get("reason", "")), "window_not_full")
 	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
 	assert_eq(_event_names(state.get("events", [])), ["punch_left"])
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
 	var emitted_class_scores: Dictionary = learned_debug.get("class_scores", {})
 	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
 	assert_eq(String(learned_debug.get("result_class", "")), "straight_left")
@@ -1607,7 +1607,7 @@ func test_learned_classifier_non_eval_frames_preserve_last_scored_debug_truth() 
 
 	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.36, "elbow_y": 0.66, "wrist_x": 0.26, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 120)
 	assert_eq(_event_names(state.get("events", [])), [])
-	learned_debug = state.get("gesture_debug", {}).get("learned_classifier", {})
+	learned_debug = state.get("gesture_debug", {}).get("classifier", {})
 	assert_eq(String(learned_debug.get("reason", "")), "step_wait")
 	assert_false(bool(learned_debug.get("emitted", true)))
 	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
@@ -1620,9 +1620,9 @@ func test_learned_classifier_non_eval_frames_preserve_last_scored_debug_truth() 
 	var step_wait_scores: Dictionary = learned_debug.get("class_scores", {})
 	assert_true(is_equal_approx(float(step_wait_scores.get("straight_left", 0.0)), float(emitted_class_scores.get("straight_left", 0.0))))
 
-func test_learned_classifier_replay_timestamp_rewind_resets_temporal_gate_state() -> void:
-	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2)
-	_enable_learned_classifier_backend({
+func test_classifier_replay_timestamp_rewind_resets_temporal_gate_state() -> void:
+	var model_path := _write_test_classifier_model("straight_left", 10.0, 2)
+	_enable_classifier_backend({
 		"model_path": model_path,
 		"match_score_min": 0.70,
 		"emit_cooldown_ms": 250,
@@ -1630,11 +1630,11 @@ func test_learned_classifier_replay_timestamp_rewind_resets_temporal_gate_state(
 	})
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
 	assert_eq(String(learned_debug.get("reason", "")), "window_not_full")
 	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
 	assert_eq(_event_names(state.get("events", [])), ["punch_left"])
-	learned_debug = state.get("gesture_debug", {}).get("learned_classifier", {})
+	learned_debug = state.get("gesture_debug", {}).get("classifier", {})
 	assert_true(int(learned_debug.get("last_eval_timestamp_ms", 0)) > 0)
 	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
 	assert_true(int(learned_debug.get("cooldown_ms_remaining", 0)) > 0)
@@ -1642,7 +1642,7 @@ func test_learned_classifier_replay_timestamp_rewind_resets_temporal_gate_state(
 
 	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 20)
 	assert_eq(_event_names(state.get("events", [])), [])
-	learned_debug = state.get("gesture_debug", {}).get("learned_classifier", {})
+	learned_debug = state.get("gesture_debug", {}).get("classifier", {})
 	assert_eq(int(learned_debug.get("window_sample_count", -1)), 1)
 	assert_eq(int(learned_debug.get("last_eval_timestamp_ms", -1)), 0)
 	assert_eq(int(learned_debug.get("hold_ms_remaining", -1)), 0)
@@ -1650,9 +1650,9 @@ func test_learned_classifier_replay_timestamp_rewind_resets_temporal_gate_state(
 	assert_eq(String(learned_debug.get("active_event_class", "")), "no_punch")
 	assert_eq(String(learned_debug.get("reason", "")), "window_not_full")
 
-func test_learned_classifier_lost_tracking_cleanup_resets_temporal_gate_state() -> void:
-	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2)
-	_enable_learned_classifier_backend({
+func test_classifier_lost_tracking_cleanup_resets_temporal_gate_state() -> void:
+	var model_path := _write_test_classifier_model("straight_left", 10.0, 2)
+	_enable_classifier_backend({
 		"model_path": model_path,
 		"match_score_min": 0.70,
 		"emit_cooldown_ms": 250,
@@ -1661,7 +1661,7 @@ func test_learned_classifier_lost_tracking_cleanup_resets_temporal_gate_state() 
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
 	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
 	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
 	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
 	assert_true(int(learned_debug.get("cooldown_ms_remaining", 0)) > 0)
@@ -1670,7 +1670,7 @@ func test_learned_classifier_lost_tracking_cleanup_resets_temporal_gate_state() 
 	state = substrate.process_landmarks(_make_pose_frame({}, 0.50, 1.0, 0.2, 0.2), 132)
 	state = substrate.process_landmarks(_make_pose_frame({}, 0.50, 1.0, 0.2, 0.2), 148)
 	assert_eq(String(state.get("tracking_state", "")), "lost")
-	learned_debug = state.get("gesture_debug", {}).get("learned_classifier", {})
+	learned_debug = state.get("gesture_debug", {}).get("classifier", {})
 	assert_eq(int(learned_debug.get("window_sample_count", -1)), 0)
 	assert_eq(int(learned_debug.get("last_eval_timestamp_ms", -1)), 0)
 	assert_eq(int(learned_debug.get("hold_ms_remaining", -1)), 0)
@@ -1678,26 +1678,26 @@ func test_learned_classifier_lost_tracking_cleanup_resets_temporal_gate_state() 
 	assert_eq(String(learned_debug.get("active_event_class", "")), "no_punch")
 	assert_eq(String(learned_debug.get("reason", "")), "idle")
 
-func test_learned_classifier_repo_root_docs_path_falls_back_to_addon_mount_in_testbed() -> void:
-	_enable_learned_classifier_backend({
+func test_classifier_repo_root_docs_path_falls_back_to_addon_mount_in_testbed() -> void:
+	_enable_classifier_backend({
 		"model_path": "res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json",
 	})
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
 	assert_true(bool(learned_debug.get("model_loaded", false)))
 	assert_eq(String(learned_debug.get("model_error", "")), "")
 	assert_eq(String(learned_debug.get("model_path", "")), "res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json")
 	assert_ne(String(learned_debug.get("reason", "")), "model_unavailable")
 
-func test_mixed_family_backend_routes_straights_to_learned_classifier_and_surfaces_truth() -> void:
-	var model_path := _write_test_learned_classifier_model("straight_left", 10.0, 2, [
+func test_per_family_backend_routes_straights_to_classifier_and_surfaces_truth() -> void:
+	var model_path := _write_test_classifier_model("straight_left", 10.0, 2, [
 		"left_elbow_shoulder_xy_distance_over_shoulder_width",
 		"left_elbow_shoulder_radial_velocity_over_shoulder_width",
 		"right_elbow_shoulder_xy_distance_over_shoulder_width",
 		"right_elbow_shoulder_radial_velocity_over_shoulder_width",
 	])
-	_enable_mixed_family_backend({
+	_enable_per_family_backend({
 		"model_path": model_path,
 		"match_score_min": 0.70,
 		"emit_cooldown_ms": 250,
@@ -1707,7 +1707,7 @@ func test_mixed_family_backend_routes_straights_to_learned_classifier_and_surfac
 	var first_frame := _prototype_pose_frame("left", {"elbow_x": 0.42, "elbow_y": 0.67, "wrist_x": 0.32, "wrist_y": 0.62, "elbow_z": 0.00, "wrist_z": 0.00})
 	var second_frame := _prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00})
 	var state := substrate.process_landmarks(first_frame, 40)
-	assert_eq(String(state.get("gesture_debug", {}).get("classifier", state.get("gesture_debug", {}).get("learned_classifier", {})).get("reason", "")), "window_not_full")
+	assert_eq(String(state.get("gesture_debug", {}).get("classifier", state.get("gesture_debug", {}).get("classifier", {})).get("reason", "")), "window_not_full")
 	state = substrate.process_landmarks(second_frame, 100)
 	var event_names := _event_names(state.get("events", []))
 	assert_true(event_names.has("punch_left"))
@@ -1720,14 +1720,14 @@ func test_mixed_family_backend_routes_straights_to_learned_classifier_and_surfac
 	assert_eq(String(punch_detection_debug.get("hook_backend", "")), "threshold")
 	assert_eq(String(punch_detection_debug.get("uppercut_backend", "")), "threshold")
 	assert_eq(String(punch_detection_debug.get("straight_model_path", "")), model_path)
-	var learned_debug: Dictionary = gesture_debug.get("classifier", gesture_debug.get("learned_classifier", {}))
+	var learned_debug: Dictionary = gesture_debug.get("classifier", gesture_debug.get("classifier", {}))
 	assert_eq(String(learned_debug.get("selected_backend", "")), "classifier")
 	assert_eq(String(learned_debug.get("active_backend", "")), "classifier")
 	assert_true(["punch_left", "straight_left"].has(String(learned_debug.get("emitted_event_name", learned_debug.get("active_event_class", "")))))
 
-func test_mixed_family_backend_filters_non_straight_learned_events() -> void:
-	var model_path := _write_test_learned_classifier_model("hook_left", 10.0)
-	_enable_mixed_family_backend({
+func test_per_family_backend_filters_non_straight_learned_events() -> void:
+	var model_path := _write_test_classifier_model("hook_left", 10.0)
+	_enable_per_family_backend({
 		"model_path": model_path,
 		"match_score_min": 0.70,
 	})
@@ -1736,11 +1736,11 @@ func test_mixed_family_backend_filters_non_straight_learned_events() -> void:
 	var event_names := _event_names(state.get("events", []))
 	assert_false(event_names.has("hook_left"))
 	assert_false(event_names.has("punch_left"))
-	assert_eq(String(state.get("gesture_debug", {}).get("learned_classifier", {}).get("best_class", "")), "hook_left")
+	assert_eq(String(state.get("gesture_debug", {}).get("classifier", {}).get("best_class", "")), "hook_left")
 
-func test_mixed_family_backend_prefers_explicit_straight_artifact_path_over_learned_classifier_model_path() -> void:
-	var mixed_model_path := _write_test_learned_classifier_model("straight_left", 10.0)
-	var learned_model_path := _write_test_learned_classifier_model("hook_left", 10.0)
+func test_per_family_backend_prefers_straight_family_classifier_artifact_path() -> void:
+	var straight_model_path := _write_test_classifier_model("straight_left", 10.0)
+	var hook_model_path := _write_test_classifier_model("hook_left", 10.0)
 	config.tracker_profile_document = {
 		"tracking": {
 			"hands": {
@@ -1749,40 +1749,33 @@ func test_mixed_family_backend_prefers_explicit_straight_artifact_path_over_lear
 		},
 	}
 	config.gesture_profile_document = {
-		"punch_detection": {
-			"backend": "mixed_family",
-		},
-		"threshold_gates": {
-			"enabled": true,
-		},
-		"learned_classifier": {
-			"enabled": true,
-			"model": {
-				"artifact_path": learned_model_path,
-			},
-			"thresholds": {
-				"match_score_min": 0.70,
+		"straight_punch": {
+			"backend": "classifier",
+			"classifier": {
+				"model": {"artifact_path": straight_model_path},
+				"thresholds": {"match_score_min": 0.70},
 			},
 		},
-		"mixed_family": {
-			"straight": {
-				"model": {
-					"artifact_path": mixed_model_path,
-				},
+		"hook": {
+			"backend": "classifier",
+			"classifier": {
+				"model": {"artifact_path": hook_model_path},
+				"thresholds": {"match_score_min": 0.70},
 			},
 		},
+		"uppercut": {"backend": "disabled"},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
 	assert_true(_event_names(state.get("events", [])).has("punch_left"))
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("learned_classifier", {})
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
 	var punch_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
-	assert_eq(String(learned_debug.get("model_path", "")), mixed_model_path)
-	assert_eq(String(punch_debug.get("straight_model_path", "")), mixed_model_path)
+	assert_eq(String(learned_debug.get("model_path", "")), straight_model_path)
+	assert_eq(String(punch_debug.get("straight_model_path", "")), straight_model_path)
 	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
 
-func test_learned_classifier_selection_does_not_fall_back_to_threshold_backend_when_disabled() -> void:
+func test_disabled_family_backend_prevents_any_punch_runtime_activation() -> void:
 	config.tracker_profile_document = {
 		"tracking": {
 			"hands": {
@@ -1791,44 +1784,35 @@ func test_learned_classifier_selection_does_not_fall_back_to_threshold_backend_w
 		},
 	}
 	config.gesture_profile_document = {
-		"punch_detection": {
-			"backend": "learned_classifier",
-		},
-		"threshold_gates": {
-			"enabled": true,
-		},
-		"learned_classifier": {
-			"enabled": false,
-		},
+		"straight_punch": {"backend": "disabled"},
+		"hook": {"backend": "disabled"},
+		"uppercut": {"backend": "disabled"},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
 	var punch_detection_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
-	assert_eq(String(punch_detection_debug.get("selected_backend", "")), "learned_classifier")
+	assert_eq(String(punch_detection_debug.get("selected_backend", "")), "per_family")
 	assert_false(bool(punch_detection_debug.get("selected_backend_enabled", true)))
-	assert_eq(String(punch_detection_debug.get("active_backend_resolution", "")), "selected_backend_disabled")
+	assert_eq(String(punch_detection_debug.get("active_backend_resolution", "")), "no_active_family_backend")
 	assert_eq(String(punch_detection_debug.get("active_backend", "")), "none")
-	assert_eq(String(punch_detection_debug.get("backend", "")), "none")
+	assert_eq(String(punch_detection_debug.get("straight_backend", "")), "disabled")
+	assert_eq(String(punch_detection_debug.get("hook_backend", "")), "disabled")
+	assert_eq(String(punch_detection_debug.get("uppercut_backend", "")), "disabled")
 
-func test_threshold_gates_disabled_resolves_selected_backend_to_none_without_fallback() -> void:
+func test_disabled_straight_family_suppresses_punch_events_while_threshold_families_stay_live() -> void:
 	config.gesture_profile_document = {
-		"punch_detection": {
-			"backend": "threshold_gates",
-		},
-		"threshold_gates": {
-			"enabled": false,
-		},
+		"straight_punch": {"backend": "disabled"},
+		"hook": {"backend": "threshold", "threshold": _default_hook_threshold_block()},
+		"uppercut": {"backend": "threshold", "threshold": _default_uppercut_threshold_block()},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
 	var punch_detection_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
-	assert_eq(String(punch_detection_debug.get("selected_backend_raw", "")), "threshold_gates")
-	assert_eq(String(punch_detection_debug.get("selected_backend", "")), "threshold_gates")
-	assert_false(bool(punch_detection_debug.get("selected_backend_enabled", true)))
-	assert_eq(String(punch_detection_debug.get("active_backend_resolution", "")), "selected_backend_disabled")
-	assert_eq(String(punch_detection_debug.get("active_backend", "")), "none")
+	assert_eq(String(punch_detection_debug.get("straight_backend", "")), "disabled")
+	assert_true(bool(punch_detection_debug.get("threshold_enabled", false)))
 
 func _calibrate_stance() -> void:
 	for idx in range(5):
@@ -1942,7 +1926,7 @@ func _disable_hand_tracking_for_straight_punch() -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
-func _enable_prototype_matcher_backend(options: Dictionary = {}) -> void:
+func _enable_prototype_backend(options: Dictionary = {}) -> void:
 	config.tracker_profile_document = {
 		"tracking": {
 			"hands": {
@@ -1950,38 +1934,34 @@ func _enable_prototype_matcher_backend(options: Dictionary = {}) -> void:
 			},
 		},
 	}
+	var prototype_block := {
+		"prototype_library": {
+			"library_id": "boxing_side_aware_v1",
+		},
+		"evaluation": {
+			"window_ms": int(options.get("window_ms", 250)),
+			"window_step_ms": int(options.get("window_step_ms", 33)),
+		},
+		"thresholds": {
+			"match_score_min": float(options.get("match_score_min", 0.70)),
+		},
+		"timing": {
+			"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
+			"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
+		},
+		"debug": {
+			"show_scores": true,
+			"show_event_gate_state": true,
+		},
+	}
 	config.gesture_profile_document = {
-		"punch_detection": {
-			"backend": "prototype_matcher",
-		},
-		"threshold_gates": {
-			"enabled": true,
-		},
-		"prototype_matcher": {
-			"enabled": true,
-			"prototype_library": {
-				"library_id": "boxing_side_aware_v1",
-			},
-			"evaluation": {
-				"window_ms": int(options.get("window_ms", 250)),
-				"window_step_ms": int(options.get("window_step_ms", 33)),
-			},
-			"thresholds": {
-				"match_score_min": float(options.get("match_score_min", 0.70)),
-			},
-			"timing": {
-				"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
-				"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
-			},
-			"debug": {
-				"show_scores": true,
-				"show_event_gate_state": true,
-			},
-		},
+		"straight_punch": {"backend": "prototype", "prototype": prototype_block.duplicate(true)},
+		"hook": {"backend": "prototype", "prototype": prototype_block.duplicate(true)},
+		"uppercut": {"backend": "prototype", "prototype": prototype_block.duplicate(true)},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
-func _enable_mixed_family_backend(options: Dictionary = {}) -> void:
+func _enable_per_family_backend(options: Dictionary = {}) -> void:
 	config.tracker_profile_document = {
 		"tracking": {
 			"hands": {
@@ -1989,38 +1969,41 @@ func _enable_mixed_family_backend(options: Dictionary = {}) -> void:
 			},
 		},
 	}
+	var straight_threshold := {
+		"evaluation": {"window_ms": 250},
+		"thresholds": {
+			"min_velocity": 0.5,
+			"min_bbox_area_growth": 0.003,
+			"max_elbow_shoulder_xy_distance": 0.14,
+		},
+		"timing": {"triggered_grace_ms": 10},
+		"rearm": {"bbox_area_retract_epsilon": 0.0003, "pose_only_rearm_ms": 10},
+		"state_machine": {"lost_tracking_reacquire_stable_ms": 40},
+	}
+	var classifier_block := {
+		"model": {
+			"artifact_path": String(options.get("model_path", "")),
+		},
+		"thresholds": {
+			"match_score_min": float(options.get("match_score_min", 0.70)),
+		},
+		"timing": {
+			"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
+			"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
+		},
+		"debug": {
+			"show_scores": true,
+			"show_event_gate_state": true,
+		},
+	}
 	config.gesture_profile_document = {
-		"punch_detection": {
-			"backend": "mixed_family",
-		},
-		"threshold_gates": {
-			"enabled": true,
-		},
-		"learned_classifier": {
-			"enabled": true,
-			"thresholds": {
-				"match_score_min": float(options.get("match_score_min", 0.70)),
-			},
-			"timing": {
-				"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
-				"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
-			},
-			"debug": {
-				"show_scores": true,
-				"show_event_gate_state": true,
-			},
-		},
-		"mixed_family": {
-			"straight": {
-				"model": {
-					"artifact_path": String(options.get("model_path", "")),
-				},
-			},
-		},
+		"straight_punch": {"backend": "classifier", "threshold": straight_threshold.duplicate(true), "classifier": classifier_block.duplicate(true)},
+		"hook": {"backend": "threshold", "threshold": _default_hook_threshold_block()},
+		"uppercut": {"backend": "threshold", "threshold": _default_uppercut_threshold_block()},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
-func _enable_learned_classifier_backend(options: Dictionary = {}) -> void:
+func _enable_classifier_backend(options: Dictionary = {}) -> void:
 	config.tracker_profile_document = {
 		"tracking": {
 			"hands": {
@@ -2028,34 +2011,56 @@ func _enable_learned_classifier_backend(options: Dictionary = {}) -> void:
 			},
 		},
 	}
+	var classifier_block := {
+		"model": {
+			"artifact_path": String(options.get("model_path", "")),
+		},
+		"thresholds": {
+			"match_score_min": float(options.get("match_score_min", 0.70)),
+		},
+		"timing": {
+			"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
+			"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
+		},
+		"debug": {
+			"show_scores": true,
+			"show_event_gate_state": true,
+		},
+	}
 	config.gesture_profile_document = {
-		"punch_detection": {
-			"backend": "learned_classifier",
-		},
-		"threshold_gates": {
-			"enabled": true,
-		},
-		"learned_classifier": {
-			"enabled": true,
-			"model": {
-				"artifact_path": String(options.get("model_path", "")),
-			},
-			"thresholds": {
-				"match_score_min": float(options.get("match_score_min", 0.70)),
-			},
-			"timing": {
-				"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
-				"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
-			},
-			"debug": {
-				"show_scores": true,
-				"show_event_gate_state": true,
-			},
-		},
+		"straight_punch": {"backend": "classifier", "classifier": classifier_block.duplicate(true)},
+		"hook": {"backend": "classifier", "classifier": classifier_block.duplicate(true)},
+		"uppercut": {"backend": "classifier", "classifier": classifier_block.duplicate(true)},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
-func _write_test_learned_classifier_model(winner_class: String = "straight_left", confidence_logit: float = 10.0, frame_count: int = 1, frame_feature_names: Array = []) -> String:
+func _default_hook_threshold_block() -> Dictionary:
+	return {
+		"evaluation": {"window_ms": 250},
+		"thresholds": {
+			"min_velocity": 0.4,
+			"min_lateral_dominance_ratio": 0.25,
+			"min_horizontal_direction_ratio": 0.15,
+		},
+		"timing": {"triggered_grace_ms": 500},
+		"rearm": {"pose_only_rearm_ms": 50},
+		"state_machine": {"lost_tracking_reacquire_stable_ms": 40},
+	}
+
+func _default_uppercut_threshold_block() -> Dictionary:
+	return {
+		"evaluation": {"window_ms": 250},
+		"thresholds": {
+			"min_velocity": 0.5,
+			"min_vertical_dominance_ratio": 0.25,
+			"min_upward_direction_ratio": 0.15,
+		},
+		"timing": {"triggered_grace_ms": 500},
+		"rearm": {"pose_only_rearm_ms": 50},
+		"state_machine": {"lost_tracking_reacquire_stable_ms": 40},
+	}
+
+func _write_test_classifier_model(winner_class: String = "straight_left", confidence_logit: float = 10.0, frame_count: int = 1, frame_feature_names: Array = []) -> String:
 	var feature_slug := "default" if frame_feature_names.is_empty() else str(frame_feature_names.size())
 	var path := "user://test-learned-classifier-%s-%d-%s.json" % [winner_class, frame_count, feature_slug]
 	var class_order := ["straight_left", "straight_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"]

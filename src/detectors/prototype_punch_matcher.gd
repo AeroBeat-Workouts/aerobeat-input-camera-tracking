@@ -4,11 +4,9 @@ extends RefCounted
 const PoseLandmarkIds = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/pose_landmark_ids.gd")
 const PoseMetrics = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/pose_metrics.gd")
 
+const BACKEND_DISABLED := "disabled"
 const BACKEND_THRESHOLD_GATES := "threshold"
 const BACKEND_PROTOTYPE_MATCHER := "prototype"
-const LEGACY_BACKEND_THRESHOLD_GATES := "threshold_gates"
-const LEGACY_BACKEND_PROTOTYPE_MATCHER := "prototype_matcher"
-const LEGACY_BACKEND_LEARNED_CLASSIFIER := "learned_classifier"
 const BACKEND_CLASSIFIER := "classifier"
 const PUNCH_FAMILIES := ["straight_punch", "hook", "uppercut"]
 const FAMILY_EVENT_NAMES := {
@@ -812,15 +810,17 @@ func _get_activation_reason() -> String:
 	return "backend_not_selected"
 
 func _normalize_backend_name(backend_name: String) -> String:
-	match backend_name:
-		LEGACY_BACKEND_THRESHOLD_GATES:
+	match backend_name.strip_edges().to_lower():
+		BACKEND_DISABLED:
+			return BACKEND_DISABLED
+		BACKEND_THRESHOLD_GATES:
 			return BACKEND_THRESHOLD_GATES
-		LEGACY_BACKEND_PROTOTYPE_MATCHER:
+		BACKEND_PROTOTYPE_MATCHER:
 			return BACKEND_PROTOTYPE_MATCHER
-		LEGACY_BACKEND_LEARNED_CLASSIFIER:
+		BACKEND_CLASSIFIER:
 			return BACKEND_CLASSIFIER
 		_:
-			return backend_name
+			return BACKEND_THRESHOLD_GATES
 
 func _get_selected_families_for_backend(backend_name: String) -> Array[String]:
 	var result: Array[String] = []
@@ -834,74 +834,63 @@ func _get_family_backend(family: String) -> String:
 	var gesture_profile_document := _get_gesture_profile_document()
 	var family_document: Dictionary = gesture_profile_document.get(family, {}) if gesture_profile_document.get(family, {}) is Dictionary else {}
 	var backend := String(family_document.get("backend", "")).strip_edges()
-	if backend != "":
-		return _normalize_backend_name(backend)
-	var punch_detection: Dictionary = gesture_profile_document.get("punch_detection", {}) if gesture_profile_document.get("punch_detection", {}) is Dictionary else {}
-	var raw_legacy_backend := String(punch_detection.get("backend", LEGACY_BACKEND_THRESHOLD_GATES))
-	var legacy_backend := _normalize_backend_name(raw_legacy_backend)
-	if raw_legacy_backend == "mixed_family":
-		return BACKEND_CLASSIFIER if family == "straight_punch" else BACKEND_THRESHOLD_GATES
-	if legacy_backend == BACKEND_PROTOTYPE_MATCHER or legacy_backend == BACKEND_CLASSIFIER or legacy_backend == BACKEND_THRESHOLD_GATES:
-		return legacy_backend
-	return BACKEND_THRESHOLD_GATES
+	if backend == "":
+		return BACKEND_THRESHOLD_GATES
+	return _normalize_backend_name(backend)
 
-func _get_family_backend_config(family: String, backend_name: String, legacy_key: String) -> Dictionary:
+func _get_family_backend_config(family: String, backend_name: String) -> Dictionary:
 	var gesture_profile_document := _get_gesture_profile_document()
 	var family_document: Dictionary = gesture_profile_document.get(family, {}) if gesture_profile_document.get(family, {}) is Dictionary else {}
 	var backend_document: Dictionary = family_document.get(backend_name, {}) if family_document.get(backend_name, {}) is Dictionary else {}
 	if not backend_document.is_empty():
 		return backend_document
-	if legacy_key != "":
-		var legacy_document: Dictionary = gesture_profile_document.get(legacy_key, {}) if gesture_profile_document.get(legacy_key, {}) is Dictionary else {}
-		if not legacy_document.is_empty():
-			return legacy_document
 	return family_document
 
-func _get_primary_family_backend_config(backend_name: String, legacy_key: String) -> Dictionary:
+func _get_primary_family_backend_config(backend_name: String) -> Dictionary:
 	var selected_families := _get_selected_families_for_backend(backend_name)
 	for family in ["straight_punch", "hook", "uppercut"]:
 		if selected_families.has(family):
-			return _get_family_backend_config(family, backend_name, legacy_key)
-	return _get_family_backend_config("straight_punch", backend_name, legacy_key)
+			return _get_family_backend_config(family, backend_name)
+	return _get_family_backend_config("straight_punch", backend_name)
 
 func _get_library_id() -> String:
-	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER, LEGACY_BACKEND_PROTOTYPE_MATCHER)
+	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER)
 	var prototype_library: Dictionary = matcher.get("prototype_library", {}) if matcher.get("prototype_library", {}) is Dictionary else {}
 	var library_id := String(prototype_library.get("library_id", DEFAULT_LIBRARY_ID))
 	return library_id if library_id != "" else DEFAULT_LIBRARY_ID
 
 func _get_window_ms() -> int:
-	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER, LEGACY_BACKEND_PROTOTYPE_MATCHER)
+	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER)
 	var evaluation: Dictionary = matcher.get("evaluation", {}) if matcher.get("evaluation", {}) is Dictionary else {}
 	return max(1, int(evaluation.get("window_ms", DEFAULT_WINDOW_MS)))
 
 func _get_window_step_ms() -> int:
-	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER, LEGACY_BACKEND_PROTOTYPE_MATCHER)
+	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER)
 	var evaluation: Dictionary = matcher.get("evaluation", {}) if matcher.get("evaluation", {}) is Dictionary else {}
 	return max(1, int(evaluation.get("window_step_ms", DEFAULT_WINDOW_STEP_MS)))
 
 func _get_match_score_min() -> float:
-	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER, LEGACY_BACKEND_PROTOTYPE_MATCHER)
+	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER)
 	var thresholds: Dictionary = matcher.get("thresholds", {}) if matcher.get("thresholds", {}) is Dictionary else {}
 	return clampf(float(thresholds.get("match_score_min", DEFAULT_MATCH_SCORE_MIN)), 0.0, 1.0)
 
 func _get_emit_cooldown_ms() -> int:
-	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER, LEGACY_BACKEND_PROTOTYPE_MATCHER)
+	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER)
 	var timing: Dictionary = matcher.get("timing", {}) if matcher.get("timing", {}) is Dictionary else {}
 	return max(0, int(timing.get("emit_cooldown_ms", DEFAULT_EMIT_COOLDOWN_MS)))
 
 func _get_emit_hold_ms() -> int:
-	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER, LEGACY_BACKEND_PROTOTYPE_MATCHER)
+	var matcher := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER)
 	var timing: Dictionary = matcher.get("timing", {}) if matcher.get("timing", {}) is Dictionary else {}
 	return max(0, int(timing.get("emit_hold_ms", DEFAULT_EMIT_HOLD_MS)))
 
 func _get_show_scores() -> bool:
-	var matcher_config := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER, LEGACY_BACKEND_PROTOTYPE_MATCHER)
+	var matcher_config := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER)
 	var debug_config: Dictionary = matcher_config.get("debug", {}) if matcher_config.get("debug", {}) is Dictionary else {}
 	return bool(debug_config.get("show_scores", DEFAULT_SHOW_SCORES))
 
 func _get_show_event_gate_state() -> bool:
-	var matcher_config := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER, LEGACY_BACKEND_PROTOTYPE_MATCHER)
+	var matcher_config := _get_primary_family_backend_config(BACKEND_PROTOTYPE_MATCHER)
 	var debug_config: Dictionary = matcher_config.get("debug", {}) if matcher_config.get("debug", {}) is Dictionary else {}
 	return bool(debug_config.get("show_event_gate_state", DEFAULT_SHOW_EVENT_GATE_STATE))
 

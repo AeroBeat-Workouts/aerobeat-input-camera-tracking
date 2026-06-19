@@ -3,13 +3,10 @@ extends RefCounted
 
 const PrototypePunchMatcher = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd")
 const LearnedPunchClassifierScript = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/learned_punch_classifier.gd")
+const BACKEND_DISABLED := "disabled"
 const BACKEND_THRESHOLD := "threshold"
 const BACKEND_PROTOTYPE := "prototype"
 const BACKEND_CLASSIFIER := "classifier"
-const LEGACY_BACKEND_THRESHOLD := "threshold_gates"
-const LEGACY_BACKEND_PROTOTYPE := "prototype_matcher"
-const LEGACY_BACKEND_CLASSIFIER := "learned_classifier"
-const LEGACY_BACKEND_MIXED_FAMILY := "mixed_family"
 const PUNCH_FAMILIES := ["straight_punch", "hook", "uppercut"]
 const PUNCH_FAMILY_EVENT_NAMES := {
 	"straight_punch": ["punch_left", "punch_right"],
@@ -617,29 +614,29 @@ func _build_punch_detection_debug_state() -> Dictionary:
 	}
 	var active_backends: Array[String] = []
 	for family in PUNCH_FAMILIES:
-		var backend := String(family_backends.get(family, "none"))
-		if backend != "none" and not active_backends.has(backend):
+		var backend := String(family_backends.get(family, BACKEND_DISABLED))
+		if backend == BACKEND_DISABLED:
+			continue
+		if not active_backends.has(backend):
 			active_backends.append(backend)
+	var any_active_backend := not active_backends.is_empty()
 	return {
 		"backend": "per_family",
-		"active_backend": "per_family",
+		"active_backend": "per_family" if any_active_backend else "none",
 		"selected_backend": "per_family",
 		"selected_backend_raw": "per_family",
-		"selected_backend_enabled": not active_backends.is_empty(),
+		"selected_backend_enabled": any_active_backend,
 		"active_backend_resolution": _get_punch_backend_resolution_reason(),
 		"routing_mode": "per_family",
 		"active_backends": active_backends,
 		"family_backends": family_backends,
-		"straight_backend": String(family_backends.get("straight_punch", "none")),
-		"hook_backend": String(family_backends.get("hook", "none")),
-		"uppercut_backend": String(family_backends.get("uppercut", "none")),
-		"straight_model_path": String(_learned_punch_classifier.get_debug_state().get("model_path", "")) if String(family_backends.get("straight_punch", "none")) == BACKEND_CLASSIFIER else "",
+		"straight_backend": String(family_backends.get("straight_punch", BACKEND_DISABLED)),
+		"hook_backend": String(family_backends.get("hook", BACKEND_DISABLED)),
+		"uppercut_backend": String(family_backends.get("uppercut", BACKEND_DISABLED)),
+		"straight_model_path": String(_learned_punch_classifier.get_debug_state().get("model_path", "")) if String(family_backends.get("straight_punch", BACKEND_DISABLED)) == BACKEND_CLASSIFIER else "",
 		"threshold_enabled": _any_punch_family_uses_backend(BACKEND_THRESHOLD),
 		"prototype_enabled": _any_punch_family_uses_backend(BACKEND_PROTOTYPE),
 		"classifier_enabled": _any_punch_family_uses_backend(BACKEND_CLASSIFIER),
-		"threshold_gates_enabled": _any_punch_family_uses_backend(BACKEND_THRESHOLD),
-		"prototype_matcher_enabled": _any_punch_family_uses_backend(BACKEND_PROTOTYPE),
-		"learned_classifier_enabled": _any_punch_family_uses_backend(BACKEND_CLASSIFIER),
 	}
 
 func _build_guard_debug_state() -> Dictionary:
@@ -1921,21 +1918,16 @@ func _get_family_backend_document(family: String, backend_name: String) -> Dicti
 func _get_punch_backend_for_family(family: String) -> String:
 	var family_document := _get_family_document(family)
 	var backend := String(family_document.get("backend", "")).strip_edges()
-	if backend != "":
-		return _normalize_punch_backend_name(backend)
-	var gesture_profile_document := _get_gesture_profile_document()
-	var punch_detection: Dictionary = gesture_profile_document.get("punch_detection", {}) if gesture_profile_document.get("punch_detection", {}) is Dictionary else {}
-	var raw_backend := String(punch_detection.get("backend", LEGACY_BACKEND_THRESHOLD))
-	if raw_backend == LEGACY_BACKEND_MIXED_FAMILY:
-		return BACKEND_CLASSIFIER if family == "straight_punch" else BACKEND_THRESHOLD
-	return _normalize_punch_backend_name(raw_backend)
+	if backend == "":
+		return BACKEND_THRESHOLD
+	return _normalize_punch_backend_name(backend)
 
 func _get_non_punch_backend_for_family(family: String) -> String:
 	var family_document := _get_family_document(family)
 	var backend := String(family_document.get("backend", "")).strip_edges()
-	if backend != "":
-		return _normalize_punch_backend_name(backend)
-	return BACKEND_THRESHOLD
+	if backend == "":
+		return BACKEND_THRESHOLD
+	return _normalize_punch_backend_name(backend)
 
 func _threshold_gates_enabled() -> bool:
 	return _any_punch_family_uses_backend(BACKEND_THRESHOLD)
@@ -1962,17 +1954,17 @@ func _get_punch_backend_resolution_reason() -> String:
 	return "per_family_active" if _selected_punch_detection_backend_enabled() else "no_active_family_backend"
 
 func _normalize_punch_backend_name(backend_name: String) -> String:
-	match backend_name:
-		LEGACY_BACKEND_THRESHOLD:
+	match backend_name.strip_edges().to_lower():
+		BACKEND_DISABLED:
+			return BACKEND_DISABLED
+		BACKEND_THRESHOLD:
 			return BACKEND_THRESHOLD
-		LEGACY_BACKEND_PROTOTYPE:
+		BACKEND_PROTOTYPE:
 			return BACKEND_PROTOTYPE
-		LEGACY_BACKEND_CLASSIFIER:
-			return BACKEND_CLASSIFIER
-		LEGACY_BACKEND_MIXED_FAMILY:
+		BACKEND_CLASSIFIER:
 			return BACKEND_CLASSIFIER
 		_:
-			return backend_name
+			return BACKEND_THRESHOLD
 
 func _filter_events_by_names(events: Array, allowed_names: Array[String]) -> Array:
 	var filtered: Array = []
@@ -2069,7 +2061,7 @@ func _get_straight_punch_config() -> Dictionary:
 	var timing: Dictionary = straight_punch.get("timing", {}) if straight_punch.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = straight_punch.get("rearm", {}) if straight_punch.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = straight_punch.get("state_machine", {}) if straight_punch.get("state_machine", {}) is Dictionary else {}
-	config["enabled"] = _get_punch_backend_for_family("straight_punch") == BACKEND_THRESHOLD and bool(straight_punch.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_punch_backend_for_family("straight_punch") == BACKEND_THRESHOLD
 	config["fresh_samples_only"] = bool(evaluation.get("fresh_samples_only", config.get("fresh_samples_only", STRAIGHT_PUNCH_DEFAULT_FRESH_SAMPLES_ONLY)))
 	config["sample_window_size"] = max(2, int(evaluation.get("sample_window_size", config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE))))
 	config["min_positive_growth_samples"] = max(1, int(evaluation.get("min_positive_growth_samples", config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES))))
@@ -2146,7 +2138,7 @@ func _get_hook_config() -> Dictionary:
 	var timing: Dictionary = hook.get("timing", {}) if hook.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = hook.get("rearm", {}) if hook.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = hook.get("state_machine", {}) if hook.get("state_machine", {}) is Dictionary else {}
-	config["enabled"] = _get_punch_backend_for_family("hook") == BACKEND_THRESHOLD and bool(hook.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_punch_backend_for_family("hook") == BACKEND_THRESHOLD
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_lateral_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_lateral_dominance_ratio", config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))))
@@ -2175,7 +2167,7 @@ func _get_uppercut_config() -> Dictionary:
 	var timing: Dictionary = uppercut.get("timing", {}) if uppercut.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = uppercut.get("rearm", {}) if uppercut.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = uppercut.get("state_machine", {}) if uppercut.get("state_machine", {}) is Dictionary else {}
-	config["enabled"] = _get_punch_backend_for_family("uppercut") == BACKEND_THRESHOLD and bool(uppercut.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_punch_backend_for_family("uppercut") == BACKEND_THRESHOLD
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_vertical_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_vertical_dominance_ratio", config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))))

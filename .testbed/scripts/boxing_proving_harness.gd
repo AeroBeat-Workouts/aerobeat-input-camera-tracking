@@ -1156,44 +1156,44 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 	match card_key:
 		"punch_left":
 			var punch_left_backend := _punch_backend_for_event("punch_left")
-			if punch_left_backend == "prototype_matcher":
+			if punch_left_backend == "prototype":
 				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if punch_left_backend == "learned_classifier":
+			if punch_left_backend == "classifier":
 				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_punch_hover_card_model(spec, "left")
 		"punch_right":
 			var punch_right_backend := _punch_backend_for_event("punch_right")
-			if punch_right_backend == "prototype_matcher":
+			if punch_right_backend == "prototype":
 				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if punch_right_backend == "learned_classifier":
+			if punch_right_backend == "classifier":
 				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_punch_hover_card_model(spec, "right")
 		"hook_left":
 			var hook_left_backend := _punch_backend_for_event("hook_left")
-			if hook_left_backend == "prototype_matcher":
+			if hook_left_backend == "prototype":
 				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if hook_left_backend == "learned_classifier":
+			if hook_left_backend == "classifier":
 				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_pose_strike_hover_card_model(spec, "hook", "left")
 		"hook_right":
 			var hook_right_backend := _punch_backend_for_event("hook_right")
-			if hook_right_backend == "prototype_matcher":
+			if hook_right_backend == "prototype":
 				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if hook_right_backend == "learned_classifier":
+			if hook_right_backend == "classifier":
 				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_pose_strike_hover_card_model(spec, "hook", "right")
 		"uppercut_left":
 			var uppercut_left_backend := _punch_backend_for_event("uppercut_left")
-			if uppercut_left_backend == "prototype_matcher":
+			if uppercut_left_backend == "prototype":
 				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if uppercut_left_backend == "learned_classifier":
+			if uppercut_left_backend == "classifier":
 				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "left")
 		"uppercut_right":
 			var uppercut_right_backend := _punch_backend_for_event("uppercut_right")
-			if uppercut_right_backend == "prototype_matcher":
+			if uppercut_right_backend == "prototype":
 				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if uppercut_right_backend == "learned_classifier":
+			if uppercut_right_backend == "classifier":
 				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "right")
 		"guard":
@@ -1212,7 +1212,7 @@ func _active_punch_detection_backend() -> String:
 	var latest_state := _boxing_latest_state_snapshot()
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
 	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
-	return String(punch_detection.get("active_backend", punch_detection.get("backend", "threshold_gates")))
+	return String(punch_detection.get("active_backend", punch_detection.get("backend", "threshold")))
 
 func _punch_backend_for_event(event_name: String) -> String:
 	var latest_state := _boxing_latest_state_snapshot()
@@ -1229,12 +1229,12 @@ func _punch_backend_for_event(event_name: String) -> String:
 func _prototype_matcher_debug_state() -> Dictionary:
 	var latest_state := _boxing_latest_state_snapshot()
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
-	return ((gesture_debug.get("prototype_matcher", {}) as Dictionary)).duplicate(true)
+	return ((gesture_debug.get("prototype", gesture_debug.get("prototype_matcher", {})) as Dictionary)).duplicate(true)
 
 func _learned_classifier_debug_state() -> Dictionary:
 	var latest_state := _boxing_latest_state_snapshot()
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
-	return ((gesture_debug.get("learned_classifier", {}) as Dictionary)).duplicate(true)
+	return ((gesture_debug.get("classifier", gesture_debug.get("learned_classifier", {})) as Dictionary)).duplicate(true)
 
 func _merged_punch_debug_state(side: String) -> Dictionary:
 	var latest_state := _boxing_latest_state_snapshot()
@@ -1264,18 +1264,18 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 	}
 
 func _build_prototype_matcher_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
-	return _build_classifier_hover_card_model(spec, side, "prototype_matcher", _prototype_matcher_debug_state())
+	return _build_classifier_hover_card_model(spec, side, "prototype", _prototype_matcher_debug_state())
 
 func _build_learned_classifier_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
-	return _build_classifier_hover_card_model(spec, side, "learned_classifier", _learned_classifier_debug_state())
+	return _build_classifier_hover_card_model(spec, side, "classifier", _learned_classifier_debug_state())
 
 func _build_classifier_hover_card_model(spec: Dictionary, side: String, backend: String, classifier_debug: Dictionary) -> Dictionary:
 	var rows: Array[Dictionary] = []
 	for row_spec_variant: Variant in _classifier_requirement_rows_for_backend(backend):
 		var row_spec: Dictionary = row_spec_variant
 		rows.append(_build_classifier_requirement_row(row_spec, classifier_debug, backend, side))
-	var title_suffix := "Prototype Matcher" if backend == "prototype_matcher" else "Learned Classifier"
-	var footer_source := "gesture_debug.prototype_matcher" if backend == "prototype_matcher" else "gesture_debug.learned_classifier"
+	var title_suffix := "Prototype" if backend == "prototype" else "Classifier"
+	var footer_source := "gesture_debug.prototype" if backend == "prototype" else "gesture_debug.classifier"
 	return {
 		"title": "%s (%s)" % [String(spec.get("title", _display_name_for_card_key("punch_%s" % side))), title_suffix],
 		"rows": rows,
@@ -1523,7 +1523,7 @@ func _fmt_matcher_class_scores(class_scores: Dictionary) -> String:
 
 func _classifier_requirement_rows_for_backend(backend: String) -> Array:
 	var rows: Array = PROTOTYPE_MATCHER_REQUIREMENT_ROWS.duplicate(true)
-	if backend == "prototype_matcher":
+	if backend == "prototype":
 		return rows
 	for row_variant: Variant in rows:
 		if not row_variant is Dictionary:
@@ -1531,9 +1531,9 @@ func _classifier_requirement_rows_for_backend(backend: String) -> Array:
 		var row: Dictionary = row_variant
 		match String(row.get("id", "")):
 			"library_id":
-				row["label"] = "Active learned model path"
+				row["label"] = "Active classifier model path"
 			"library_loaded":
-				row["label"] = "Learned model loaded"
+				row["label"] = "Classifier model loaded"
 	return rows
 
 func _build_classifier_requirement_row(row_spec: Dictionary, classifier_debug: Dictionary, backend: String, _side: String) -> Dictionary:
@@ -1589,7 +1589,7 @@ func _build_classifier_requirement_row(row_spec: Dictionary, classifier_debug: D
 			if bool(classifier_debug.get("show_event_gate_state", false)):
 				current_text = String(classifier_debug.get("reason", "idle"))
 				var model_error := String(classifier_debug.get("model_error", ""))
-				if backend == "learned_classifier" and not model_error.is_empty():
+				if backend == "classifier" and not model_error.is_empty():
 					current_text += " (%s)" % model_error
 			else:
 				current_text = "hidden (show_event_gate_state=false)"
@@ -2260,26 +2260,28 @@ func _build_boxing_event_feed_text() -> String:
 	])
 
 	var punch_detection_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) is Dictionary) else {}
-	var prototype_matcher_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}) is Dictionary) else {}
-	var learned_classifier_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("learned_classifier", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("learned_classifier", {}) is Dictionary) else {}
-	var active_backend := String(punch_detection_debug.get("active_backend", punch_detection_debug.get("backend", "threshold_gates")))
-	var selected_backend := String(punch_detection_debug.get("selected_backend", "threshold_gates"))
+	var prototype_matcher_source: Variant = (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype", (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}))
+	var prototype_matcher_debug: Dictionary = prototype_matcher_source if prototype_matcher_source is Dictionary else {}
+	var learned_classifier_source: Variant = (_latest_state.get("gesture_debug", {}) as Dictionary).get("classifier", (_latest_state.get("gesture_debug", {}) as Dictionary).get("learned_classifier", {}))
+	var learned_classifier_debug: Dictionary = learned_classifier_source if learned_classifier_source is Dictionary else {}
+	var active_backend := String(punch_detection_debug.get("active_backend", punch_detection_debug.get("backend", "threshold")))
+	var selected_backend := String(punch_detection_debug.get("selected_backend", active_backend))
 	var classifier_backend := active_backend if active_backend != "none" else selected_backend
 	var classifier_debug := prototype_matcher_debug
-	var classifier_title := "Prototype matcher truth"
+	var classifier_title := "Prototype truth"
 	var classifier_loaded_label := "Prototype library ID"
-	if classifier_backend == "learned_classifier":
+	if classifier_backend == "classifier":
 		classifier_debug = learned_classifier_debug
-		classifier_title = "Learned classifier truth"
-		classifier_loaded_label = "Learned model path"
-	elif classifier_backend == "mixed_family":
+		classifier_title = "Classifier truth"
+		classifier_loaded_label = "Classifier model path"
+	elif classifier_backend == "per_family":
 		classifier_debug = learned_classifier_debug
-		classifier_title = "Mixed-family straight-classifier truth"
-		classifier_loaded_label = "Straight learned model path"
-	elif classifier_backend == "threshold_gates":
+		classifier_title = "Per-family classifier truth"
+		classifier_loaded_label = "Family classifier model path"
+	elif classifier_backend == "threshold":
 		classifier_debug = {}
-		classifier_title = "Threshold gates truth"
-		classifier_loaded_label = "Threshold gates"
+		classifier_title = "Threshold truth"
+		classifier_loaded_label = "Threshold"
 	lines.append("")
 	lines.append(classifier_title)
 	lines.append("-----------------------")
@@ -2295,7 +2297,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Backend resolution: %s" % String(punch_detection_debug.get("active_backend_resolution", "selected_backend_active")))
 	if not String(punch_detection_debug.get("hook_uppercut_backend_note", "")).is_empty():
 		lines.append("Hook/uppercut routing note: %s" % String(punch_detection_debug.get("hook_uppercut_backend_note", "")))
-	if classifier_backend != "threshold_gates":
+	if classifier_backend != "threshold":
 		lines.append("%s: %s (loaded=%s)" % [
 			classifier_loaded_label,
 			String(classifier_debug.get("library_id", classifier_debug.get("model_path", ""))),
@@ -2304,7 +2306,7 @@ func _build_boxing_event_feed_text() -> String:
 	else:
 		lines.append("%s: enabled=%s" % [
 			classifier_loaded_label,
-			_fmt_bool(bool(punch_detection_debug.get("threshold_gates_enabled", true))),
+			_fmt_bool(bool(punch_detection_debug.get("threshold_enabled", true))),
 		])
 	lines.append("Best class / score / threshold: %s / %s / %s" % [
 		String(classifier_debug.get("best_class", "no_punch")),
@@ -2334,7 +2336,7 @@ func _build_boxing_event_feed_text() -> String:
 	if bool(classifier_debug.get("show_event_gate_state", false)):
 		var gate_reason := String(classifier_debug.get("reason", "idle"))
 		var model_error := String(classifier_debug.get("model_error", ""))
-		if (classifier_backend == "learned_classifier" or classifier_backend == "mixed_family") and not model_error.is_empty():
+		if (classifier_backend == "classifier" or classifier_backend == "per_family") and not model_error.is_empty():
 			gate_reason += " (%s)" % model_error
 		lines.append("Gate reason / hold / cooldown / active event: %s / %dms / %dms / %s" % [
 			gate_reason,
