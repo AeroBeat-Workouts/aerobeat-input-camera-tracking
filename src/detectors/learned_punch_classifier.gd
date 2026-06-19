@@ -221,6 +221,17 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 		debug_state["reason"] = "below_threshold" if best_class != OUTCOME_NO_PUNCH else "no_punch"
 		_last_debug_state = debug_state
 		return events
+	var same_family_blocking_class := _get_same_family_blocking_class(best_class, timestamp_ms)
+	if same_family_blocking_class != "":
+		debug_state["result_class"] = best_class
+		debug_state["reason"] = "same_family_active"
+		debug_state["same_family_blocked"] = true
+		debug_state["blocking_family"] = _gesture_class_to_family(best_class)
+		debug_state["blocking_class"] = same_family_blocking_class
+		debug_state["active_event_class"] = same_family_blocking_class
+		debug_state["hold_ms_remaining"] = _emit_hold_until_ms - timestamp_ms
+		_last_debug_state = debug_state
+		return events
 	if timestamp_ms < _emit_hold_until_ms:
 		debug_state["result_class"] = best_class
 		debug_state["reason"] = "emit_hold_active"

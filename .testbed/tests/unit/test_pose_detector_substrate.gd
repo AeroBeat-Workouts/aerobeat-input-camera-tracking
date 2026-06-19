@@ -1560,6 +1560,87 @@ func test_prototype_backend_applies_emit_cooldown_and_hold_without_spam() -> voi
 	matcher_debug = state.get("gesture_debug", {}).get("prototype", {})
 	assert_true(["emitted", "emit_hold_active"].has(String(matcher_debug.get("reason", ""))))
 
+func test_prototype_backend_blocks_opposite_side_same_family_candidate_during_hold() -> void:
+	_enable_prototype_backend({
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 500,
+		"emit_hold_ms": 250,
+		"window_step_ms": 1,
+	})
+	_calibrate_stance()
+	var matcher: Variant = substrate.get("_prototype_punch_matcher")
+	matcher.set("_last_emitted_class", "straight_left")
+	matcher.set("_emit_hold_until_ms", 1400)
+	var right_sequence := [
+		{"elbow_x": 0.66, "elbow_y": 0.66, "wrist_x": 0.72, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00},
+		{"elbow_x": 0.664, "elbow_y": 0.66, "wrist_x": 0.724, "wrist_y": 0.60, "elbow_z": -0.02, "wrist_z": -0.05},
+		{"elbow_x": 0.672, "elbow_y": 0.656, "wrist_x": 0.732, "wrist_y": 0.60, "elbow_z": -0.04, "wrist_z": -0.10},
+		{"elbow_x": 0.684, "elbow_y": 0.65, "wrist_x": 0.740, "wrist_y": 0.60, "elbow_z": -0.06, "wrist_z": -0.15},
+		{"elbow_x": 0.692, "elbow_y": 0.644, "wrist_x": 0.748, "wrist_y": 0.60, "elbow_z": -0.08, "wrist_z": -0.20},
+	]
+	var timestamps := [1120, 1140, 1160, 1180, 1200]
+	var state: Dictionary = {}
+	for idx in range(timestamps.size()):
+		state = substrate.process_landmarks(_prototype_pose_frame("right", right_sequence[idx]), int(timestamps[idx]))
+	assert_false(_event_names(state.get("events", [])).has("punch_right"))
+	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype", {})
+	assert_eq(String(matcher_debug.get("best_class", "")), "straight_right")
+	assert_eq(String(matcher_debug.get("result_class", "")), "straight_right")
+	assert_eq(String(matcher_debug.get("reason", "")), "same_family_active")
+	assert_true(bool(matcher_debug.get("same_family_blocked", false)))
+	assert_eq(String(matcher_debug.get("blocking_family", "")), "straight_punch")
+	assert_eq(String(matcher_debug.get("blocking_class", "")), "straight_left")
+	assert_eq(String(matcher_debug.get("active_event_class", "")), "straight_left")
+	assert_true(int(matcher_debug.get("hold_ms_remaining", 0)) > 0)
+
+func test_classifier_backend_blocks_opposite_side_same_family_candidate_during_hold() -> void:
+	var model_path := _write_test_classifier_model("straight_right", 10.0)
+	_enable_classifier_backend({
+		"model_path": model_path,
+		"match_score_min": 0.70,
+		"emit_cooldown_ms": 500,
+		"emit_hold_ms": 250,
+	})
+	_calibrate_stance()
+	var classifier: Variant = substrate.get("_learned_punch_classifier")
+	classifier.set("_last_emitted_class", "straight_left")
+	classifier.set("_emit_hold_until_ms", 1400)
+	var state := substrate.process_landmarks(_prototype_pose_frame("right", {"elbow_x": 0.66, "elbow_y": 0.66, "wrist_x": 0.72, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1200)
+	assert_eq(_event_names(state.get("events", [])), [])
+	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
+	assert_eq(String(learned_debug.get("best_class", "")), "straight_right")
+	assert_eq(String(learned_debug.get("result_class", "")), "straight_right")
+	assert_eq(String(learned_debug.get("reason", "")), "same_family_active")
+	assert_true(bool(learned_debug.get("same_family_blocked", false)))
+	assert_eq(String(learned_debug.get("blocking_family", "")), "straight_punch")
+	assert_eq(String(learned_debug.get("blocking_class", "")), "straight_left")
+	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
+	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
+
+func test_hook_same_family_trigger_exposes_threshold_blocking_truth() -> void:
+	_calibrate_stance()
+	substrate.process_landmarks(_make_pose_frame(), 3000)
+	substrate.process_landmarks(_make_pose_frame(), 3160)
+	var right_state: Dictionary = substrate.call("_build_pose_strike_state", PoseDetectorSubstrate.POSE_STRIKE_STATE_TRIGGERED)
+	right_state["grace_deadline_timestamp_ms"] = 3400
+	right_state["grace_ms_remaining"] = 80
+	right_state["timestamp_ms"] = 3200
+	substrate.call("_set_pose_strike_state", "hook", "right", right_state)
+
+	var blocking_state: Dictionary = substrate.call("_get_same_family_threshold_blocking_state", "hook", "left", 3320)
+	assert_eq(String(blocking_state.get("family", "")), "hook")
+	assert_eq(String(blocking_state.get("blocking_side", "")), "right")
+	assert_eq(String(blocking_state.get("blocking_event_name", "")), "hook_right")
+	assert_eq(String(blocking_state.get("blocking_phase", "")), "triggered")
+
+	var left_state: Dictionary = substrate.call("_build_pose_strike_state", PoseDetectorSubstrate.POSE_STRIKE_STATE_READY)
+	substrate.call("_apply_same_family_block", left_state, blocking_state)
+	assert_true(bool(left_state.get("same_family_blocked", false)))
+	assert_eq(String(left_state.get("blocking_family", "")), "hook")
+	assert_eq(String(left_state.get("blocking_side", "")), "right")
+	assert_eq(String(left_state.get("blocking_event_name", "")), "hook_right")
+	assert_eq(String(left_state.get("blocking_phase", "")), "triggered")
+
 func test_classifier_backend_emits_and_surfaces_truthful_debug_state() -> void:
 	var model_path := _write_test_classifier_model("straight_left", 10.0)
 	_enable_classifier_backend({

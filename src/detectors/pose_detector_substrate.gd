@@ -755,6 +755,11 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"association": hand_payload.get("association", {}).duplicate(true) if hand_payload.get("association", {}) is Dictionary else {},
 		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
 		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
+		"same_family_blocked": bool(state.get("same_family_blocked", false)),
+		"blocking_family": String(state.get("blocking_family", "")),
+		"blocking_side": String(state.get("blocking_side", "")),
+		"blocking_event_name": String(state.get("blocking_event_name", "")),
+		"blocking_phase": String(state.get("blocking_phase", "")),
 	}
 
 func _build_pose_strike_debug_state(family: String, metrics: Dictionary = {}) -> Dictionary:
@@ -1076,6 +1081,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		return
 	var event_name := "punch_%s" % side
 	var state := _get_straight_punch_state(side)
+	_clear_same_family_block(state)
 	var use_hand_tracking := _straight_punch_uses_hand_tracking()
 	var pose_tracking_valid := _is_pose_valid_for_straight_punch(shoulder, wrist, shoulder_width)
 	var hand_payload := _get_tracking_hand_payload(tracking_frame, side)
@@ -1234,13 +1240,17 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			if use_hand_tracking:
 				ready_to_trigger = ready_to_trigger and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples
 			if ready_to_trigger:
-				state["trigger_bbox_area"] = bbox_area
-				var triggered_grace_ms := max(0, int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)))
-				state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
-				state["grace_ms_remaining"] = triggered_grace_ms
-				state["not_ready_started_timestamp_ms"] = -1
-				_emit_power_event(events, event_name, _compute_straight_punch_power(recent_peak_wrist_velocity, bbox_area, state, straight_punch_config, recent_peak_bbox_area_growth))
-				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRIGGERED)
+				var blocking_state := _get_same_family_threshold_blocking_state("straight_punch", side, timestamp_ms)
+				if not blocking_state.is_empty():
+					_apply_same_family_block(state, blocking_state)
+				else:
+					state["trigger_bbox_area"] = bbox_area
+					var triggered_grace_ms := max(0, int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)))
+					state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
+					state["grace_ms_remaining"] = triggered_grace_ms
+					state["not_ready_started_timestamp_ms"] = -1
+					_emit_power_event(events, event_name, _compute_straight_punch_power(recent_peak_wrist_velocity, bbox_area, state, straight_punch_config, recent_peak_bbox_area_growth))
+					_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRIGGERED)
 		_set_straight_punch_state(side, state)
 		return
 
@@ -1320,6 +1330,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		_set_pose_strike_state(family, side, _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST))
 		return
 	var state := _get_pose_strike_state(family, side)
+	_clear_same_family_block(state)
 	var pose_tracking_valid := _is_pose_valid_for_pose_strike(shoulder, elbow, wrist, shoulder_width)
 	var fresh_sample := pose_tracking_valid
 	var wrist_position := PoseMetrics.to_vector3(wrist)
@@ -1409,12 +1420,16 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			var min_upward_direction_ratio := clampf(float(config.get("min_upward_direction_ratio", UPPERCUT_DEFAULT_MIN_UPWARD_DIRECTION_RATIO)), 0.0, 1.0)
 			ready_to_trigger = speed >= min_velocity and state.get("dominance_ratio", 0.0) >= min_vertical_dominance_ratio and state.get("directionality_ratio", 0.0) >= min_upward_direction_ratio
 		if ready_to_trigger:
-			var triggered_grace_ms := max(0, int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)))
-			state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
-			state["grace_ms_remaining"] = triggered_grace_ms
-			state["not_ready_started_timestamp_ms"] = -1
-			_emit_power_event(events, event_name, _compute_pose_strike_power(family, speed, horizontal_direction_velocity, upward_velocity, config))
-			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRIGGERED)
+			var blocking_state := _get_same_family_threshold_blocking_state(family, side, timestamp_ms)
+			if not blocking_state.is_empty():
+				_apply_same_family_block(state, blocking_state)
+			else:
+				var triggered_grace_ms := max(0, int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)))
+				state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
+				state["grace_ms_remaining"] = triggered_grace_ms
+				state["not_ready_started_timestamp_ms"] = -1
+				_emit_power_event(events, event_name, _compute_pose_strike_power(family, speed, horizontal_direction_velocity, upward_velocity, config))
+				_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRIGGERED)
 		_set_pose_strike_state(family, side, state)
 		return
 	if phase == POSE_STRIKE_STATE_TRIGGERED:
@@ -1838,6 +1853,43 @@ func _set_state_toggle(events: Array, state_name: String, active: bool) -> void:
 func _build_public_gesture_states() -> Dictionary:
 	return (_gesture_state.get("states", {}) as Dictionary).duplicate(true)
 
+func _clear_same_family_block(state: Dictionary) -> void:
+	state["same_family_blocked"] = false
+	state["blocking_family"] = ""
+	state["blocking_side"] = ""
+	state["blocking_event_name"] = ""
+	state["blocking_phase"] = ""
+
+func _apply_same_family_block(state: Dictionary, blocking_state: Dictionary) -> void:
+	state["same_family_blocked"] = true
+	state["blocking_family"] = String(blocking_state.get("family", ""))
+	state["blocking_side"] = String(blocking_state.get("blocking_side", ""))
+	state["blocking_event_name"] = String(blocking_state.get("blocking_event_name", ""))
+	state["blocking_phase"] = String(blocking_state.get("blocking_phase", ""))
+
+func _family_side_to_event_name(family: String, side: String) -> String:
+	if not PUNCH_FAMILY_EVENT_NAMES.has(family):
+		return ""
+	var family_events: Array = PUNCH_FAMILY_EVENT_NAMES.get(family, [])
+	if family_events.size() < 2:
+		return ""
+	return String(family_events[0] if side == "left" else family_events[1])
+
+func _get_same_family_threshold_blocking_state(family: String, side: String, timestamp_ms: int) -> Dictionary:
+	var blocking_side := "right" if side == "left" else "left"
+	var blocking_state := _get_straight_punch_state(blocking_side) if family == "straight_punch" else _get_pose_strike_state(family, blocking_side)
+	if String(blocking_state.get("phase", "")) != POSE_STRIKE_STATE_TRIGGERED:
+		return {}
+	var grace_deadline_timestamp_ms := int(blocking_state.get("grace_deadline_timestamp_ms", 0))
+	if timestamp_ms >= grace_deadline_timestamp_ms:
+		return {}
+	return {
+		"family": family,
+		"blocking_side": blocking_side,
+		"blocking_phase": String(blocking_state.get("phase", "")),
+		"blocking_event_name": _family_side_to_event_name(family, blocking_side),
+	}
+
 func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_LOST) -> Dictionary:
 	return {
 		"phase": phase,
@@ -1879,6 +1931,11 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"stale_frames": 0,
 		"reacquire_started_timestamp_ms": -1,
 		"not_ready_started_timestamp_ms": -1,
+		"same_family_blocked": false,
+		"blocking_family": "",
+		"blocking_side": "",
+		"blocking_event_name": "",
+		"blocking_phase": "",
 	}
 
 func _get_straight_punch_state(side: String) -> Dictionary:

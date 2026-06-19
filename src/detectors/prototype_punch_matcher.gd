@@ -76,6 +76,28 @@ var _emit_cooldown_until_ms := 0
 var _emit_hold_until_ms := 0
 var _latest_landmarks_by_id: Dictionary = {}
 
+func _gesture_class_to_family(gesture_class: String) -> String:
+	if gesture_class.begins_with("straight_"):
+		return "straight_punch"
+	if gesture_class.begins_with("hook_"):
+		return "hook"
+	if gesture_class.begins_with("uppercut_"):
+		return "uppercut"
+	return ""
+
+func _get_same_family_blocking_class(candidate_class: String, timestamp_ms: int) -> String:
+	if timestamp_ms >= _emit_hold_until_ms:
+		return ""
+	if candidate_class == OUTCOME_NO_PUNCH or _last_emitted_class == OUTCOME_NO_PUNCH:
+		return ""
+	if candidate_class == _last_emitted_class:
+		return ""
+	var candidate_family := _gesture_class_to_family(candidate_class)
+	var blocking_family := _gesture_class_to_family(_last_emitted_class)
+	if candidate_family == "" or candidate_family != blocking_family:
+		return ""
+	return _last_emitted_class
+
 func configure(config) -> PrototypePunchMatcher:
 	_config = config
 	_load_library_if_needed()
@@ -220,6 +242,17 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 		debug_state["reason"] = "below_threshold"
 		_last_debug_state = debug_state
 		return events
+	var same_family_blocking_class := _get_same_family_blocking_class(best_class, timestamp_ms)
+	if same_family_blocking_class != "":
+		debug_state["result_class"] = best_class
+		debug_state["reason"] = "same_family_active"
+		debug_state["same_family_blocked"] = true
+		debug_state["blocking_family"] = _gesture_class_to_family(best_class)
+		debug_state["blocking_class"] = same_family_blocking_class
+		debug_state["active_event_class"] = same_family_blocking_class
+		debug_state["hold_ms_remaining"] = _emit_hold_until_ms - timestamp_ms
+		_last_debug_state = debug_state
+		return events
 	if timestamp_ms < _emit_hold_until_ms:
 		debug_state["result_class"] = best_class
 		debug_state["reason"] = "emit_hold_active"
@@ -308,6 +341,9 @@ func _build_debug_state() -> Dictionary:
 		"result_class": OUTCOME_NO_PUNCH,
 		"reason": "idle",
 		"class_scores": {},
+		"same_family_blocked": false,
+		"blocking_family": "",
+		"blocking_class": "",
 		"emitted": false,
 		"emitted_event_name": "",
 		"cooldown_ms_remaining": 0,

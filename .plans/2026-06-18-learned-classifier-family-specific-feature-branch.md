@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-19 12:38 EDT  
-**Blocked Reason:** None. Derrick returned with Cookie/Chip mixed-family test feedback and a screenshot showing the straight learned model failed to load under the current `mixed_family` selection; branch is now executing the next bug-squash + config-contract cleanup slice.  
+**Last Updated:** 2026-06-19 12:56 EDT  
+**Blocked Reason:** None. Active branch is now carrying the Task 55 same-family mutual exclusion slice for boxing gesture families, with coder validation complete and QA/audit still pending.  
 **Agent:** `pico`
 
 ---
@@ -1551,6 +1551,72 @@ Validation run:
 **Role:** `auditor`  
 **References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
 **Prompt:** Independently truth-check the proving_harness warning fix. Confirm the warning-producing code path is corrected, the family-backend override logic still behaves honestly, and no new ambiguity was introduced in the proving path.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo/test/artifact paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 55: Implement same-family mutual exclusion gate for boxing gesture families
+
+**Bead ID:** `aerobeat-input-camera-tracking-zxmv`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Derrick wants same-family mutual exclusion during firing: if one gesture in a family is actively firing (for example `straight_left`), the opposite-side gesture from that same family (`straight_right`) should not be allowed to fire simultaneously. Implement a narrow family-level exclusivity gate for boxing gesture families, starting with the concrete left/right family pairs where simultaneous co-fire is undesirable. Keep the behavior/debug truth explicit so proving surfaces can explain when a candidate was suppressed because another gesture in the same family was already firing.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `src/detectors/prototype_punch_matcher.gd`
+- `src/detectors/learned_punch_classifier.gd`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Added a narrow same-family exclusivity gate for boxing left/right pairs in the active firing window. The prototype matcher and learned classifier now suppress opposite-side candidates from the same family while the current family hold window is active and report truthful debug reasons (`same_family_active`) plus blocking class/family metadata. The threshold straight/hook/uppercut state machines now carry matching same-family block metadata helpers so a suppressed threshold-side candidate can be explained honestly when another side in the same family is active. Focused unit coverage was added for prototype and classifier suppression plus threshold blocking truth metadata. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (75/75 passed).
+
+---
+
+### Task 56: QA same-family mutual exclusion gate
+
+**Bead ID:** `aerobeat-input-camera-tracking-c90z`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the same-family mutual exclusion gate in the highest-fidelity repo-local path available. Confirm that when one side of a family is already firing, the opposite-side gesture from the same family is suppressed, and confirm proving/runtime truth surfaces explain that suppression honestly.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo/test/artifact paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 57: Audit same-family mutual exclusion gate
+
+**Bead ID:** `aerobeat-input-camera-tracking-6z5o`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the same-family mutual exclusion gate. Confirm the runtime no longer allows simultaneous same-family co-fire where blocked by the new rule, and confirm any suppression reasoning exposed in proving/debug surfaces matches the actual runtime behavior.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo/test/artifact paths used during audit
