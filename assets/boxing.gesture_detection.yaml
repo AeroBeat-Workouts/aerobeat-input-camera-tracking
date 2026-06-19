@@ -164,10 +164,15 @@ prototype_matcher:
 
 learned_classifier:
   # Turn the threshold-windowed learned punch classifier on or off. input.
-  enabled: false
-  model:
+  enabled: true
+  model:learned_classifier
     # Exported learned-classifier artifact to load when the full learned-classifier backend is selected. input.
     artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
+    #missing p1 #artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/mlp/mlp-result.json
+    #missing p1 artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-mlp-hardened-baseline-2026-06-16/mlp-result.json
+    #missing p1 artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
+    #missing p1 artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/cnn/cnn-result.json
+    #missing p1 artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-cnn-improvement-pass-2026-06-16/best-cnn/cnn-result.json
   thresholds:
     # Require the best learned positive-class score to reach at least this 0..1 value or emit no_punch. input.
     match_score_min: 0.70
@@ -187,4 +192,5 @@ mixed_family:
   straight:
     model:
       # Exported learned straight-classifier artifact used when punch_detection.backend = mixed_family. If this path is blank or omitted, runtime falls back to learned_classifier.model.artifact_path, and if that is also blank it falls back again to the built-in default model artifact. input.
-      artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
+      #artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
+      artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/ boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/mlp/mlp-result.json
