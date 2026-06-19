@@ -30,6 +30,7 @@ const STRAIGHT_PUNCH_DEFAULT_WRIST_VELOCITY_WINDOW_MS := 240
 const STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY := 0.18
 const STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH := 0.006
 const STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE := 0.09
+const STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG := 0.0
 const STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS := 240
 const STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON := 0.003
 const STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS := 40
@@ -716,6 +717,9 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"elbow_shoulder_xy_distance": float(state.get("elbow_shoulder_xy_distance", 0.0)),
 		"max_elbow_shoulder_xy_distance": float(straight_punch_config.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE)),
 		"elbow_shoulder_xy_gate_passed": bool(state.get("elbow_shoulder_xy_gate_passed", false)),
+		"wrist_lateral_angle_from_elbow_vertical_deg": float(state.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0)),
+		"min_wrist_lateral_angle_from_elbow_vertical_deg": float(straight_punch_config.get("min_wrist_lateral_angle_from_elbow_vertical_deg", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG)),
+		"wrist_lateral_angle_gate_passed": bool(state.get("wrist_lateral_angle_gate_passed", false)),
 		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),
 		"forward_depth_spike": float(state.get("last_forward_depth_spike", 0.0)),
 		"recent_peak_forward_depth_spike": float(state.get("recent_peak_forward_depth_spike", 0.0)),
@@ -1095,6 +1099,9 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var elbow_shoulder_xy_distance := PoseMetrics.distance_2d(elbow, shoulder)
 	var max_elbow_shoulder_xy_distance := maxf(float(straight_punch_config.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE)), 0.0)
 	var elbow_shoulder_xy_gate_passed := elbow_shoulder_xy_distance <= max_elbow_shoulder_xy_distance + 0.000001
+	var wrist_lateral_angle_from_elbow_vertical_deg := _compute_wrist_lateral_angle_from_elbow_vertical_deg(elbow, wrist)
+	var min_wrist_lateral_angle_from_elbow_vertical_deg := maxf(float(straight_punch_config.get("min_wrist_lateral_angle_from_elbow_vertical_deg", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0)
+	var wrist_lateral_angle_gate_passed := wrist_lateral_angle_from_elbow_vertical_deg + 0.000001 >= min_wrist_lateral_angle_from_elbow_vertical_deg
 	var velocity_signal_position := _resolve_straight_punch_velocity_signal_position(state, elbow, wrist_position)
 	var wrist_velocity_vector := _resolve_straight_punch_wrist_velocity(state, velocity_signal_position, timestamp_ms, fresh_sample, straight_punch_config)
 	var forward_depth_spike := _resolve_straight_punch_forward_depth_spike(state, timestamp_ms, fresh_sample, straight_punch_config)
@@ -1112,6 +1119,9 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	state["elbow_shoulder_xy_distance"] = elbow_shoulder_xy_distance
 	state["max_elbow_shoulder_xy_distance"] = max_elbow_shoulder_xy_distance
 	state["elbow_shoulder_xy_gate_passed"] = elbow_shoulder_xy_gate_passed
+	state["wrist_lateral_angle_from_elbow_vertical_deg"] = wrist_lateral_angle_from_elbow_vertical_deg
+	state["min_wrist_lateral_angle_from_elbow_vertical_deg"] = min_wrist_lateral_angle_from_elbow_vertical_deg
+	state["wrist_lateral_angle_gate_passed"] = wrist_lateral_angle_gate_passed
 	var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
 	var wrist_velocity_history: Array = (state.get("wrist_velocity_history", []) as Array).duplicate(true)
 	state["wrist_velocity_history"] = wrist_velocity_history
@@ -1236,7 +1246,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
 			var recent_peak_wrist_velocity := maxf(float(state.get("recent_peak_wrist_velocity", wrist_velocity)), wrist_velocity)
 			var recent_peak_bbox_area_growth := maxf(float(state.get("recent_peak_bbox_area_growth", state.get("last_bbox_area_growth", 0.0))), float(state.get("last_bbox_area_growth", 0.0)))
-			var ready_to_trigger := recent_peak_wrist_velocity >= min_velocity and elbow_shoulder_xy_gate_passed
+			var ready_to_trigger := recent_peak_wrist_velocity >= min_velocity and elbow_shoulder_xy_gate_passed and wrist_lateral_angle_gate_passed
 			if use_hand_tracking:
 				ready_to_trigger = ready_to_trigger and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples
 			if ready_to_trigger:
@@ -1878,11 +1888,16 @@ func _family_side_to_event_name(family: String, side: String) -> String:
 func _get_same_family_threshold_blocking_state(family: String, side: String, timestamp_ms: int) -> Dictionary:
 	var blocking_side := "right" if side == "left" else "left"
 	var blocking_state := _get_straight_punch_state(blocking_side) if family == "straight_punch" else _get_pose_strike_state(family, blocking_side)
-	if String(blocking_state.get("phase", "")) != POSE_STRIKE_STATE_TRIGGERED:
-		return {}
-	var grace_deadline_timestamp_ms := int(blocking_state.get("grace_deadline_timestamp_ms", 0))
-	if timestamp_ms >= grace_deadline_timestamp_ms:
-		return {}
+	var blocking_phase := String(blocking_state.get("phase", ""))
+	if family == "straight_punch":
+		if blocking_phase != STRAIGHT_PUNCH_STATE_TRIGGERED and blocking_phase != STRAIGHT_PUNCH_STATE_NOT_READY:
+			return {}
+	else:
+		if blocking_phase != POSE_STRIKE_STATE_TRIGGERED:
+			return {}
+		var grace_deadline_timestamp_ms := int(blocking_state.get("grace_deadline_timestamp_ms", 0))
+		if timestamp_ms >= grace_deadline_timestamp_ms:
+			return {}
 	return {
 		"family": family,
 		"blocking_side": blocking_side,
@@ -1922,6 +1937,9 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"elbow_shoulder_xy_distance": 0.0,
 		"max_elbow_shoulder_xy_distance": STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE,
 		"elbow_shoulder_xy_gate_passed": false,
+		"wrist_lateral_angle_from_elbow_vertical_deg": 0.0,
+		"min_wrist_lateral_angle_from_elbow_vertical_deg": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG,
+		"wrist_lateral_angle_gate_passed": false,
 		"last_observation_frame_index": -1,
 		"last_observation_timestamp_seconds": -1.0,
 		"hand_tracking_state": "idle",
@@ -2105,6 +2123,7 @@ func _get_straight_punch_config() -> Dictionary:
 		"min_velocity": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY,
 		"min_bbox_area_growth": STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH,
 		"max_elbow_shoulder_xy_distance": STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE,
+		"min_wrist_lateral_angle_from_elbow_vertical_deg": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG,
 		"triggered_grace_ms": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS,
 		"bbox_area_retract_epsilon": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON,
 		"pose_only_rearm_ms": STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS,
@@ -2126,6 +2145,7 @@ func _get_straight_punch_config() -> Dictionary:
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", config.get("min_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY))))
 	config["min_bbox_area_growth"] = maxf(0.0, float(thresholds.get("min_bbox_area_growth", config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH))))
 	config["max_elbow_shoulder_xy_distance"] = maxf(0.0, float(thresholds.get("max_elbow_shoulder_xy_distance", config.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE))))
+	config["min_wrist_lateral_angle_from_elbow_vertical_deg"] = maxf(0.0, float(thresholds.get("min_wrist_lateral_angle_from_elbow_vertical_deg", config.get("min_wrist_lateral_angle_from_elbow_vertical_deg", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG))))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["bbox_area_retract_epsilon"] = maxf(0.0, float(rearm.get("bbox_area_retract_epsilon", config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS))))
@@ -2259,6 +2279,14 @@ func _is_pose_valid_for_pose_strike(shoulder: Dictionary, elbow: Dictionary, wri
 		return false
 	var min_visibility := _get_min_visibility()
 	return float(shoulder.get("v", 0.0)) >= min_visibility and float(elbow.get("v", 0.0)) >= min_visibility and float(wrist.get("v", 0.0)) >= min_visibility
+
+func _compute_wrist_lateral_angle_from_elbow_vertical_deg(elbow: Dictionary, wrist: Dictionary) -> float:
+	if elbow.is_empty() or wrist.is_empty():
+		return 0.0
+	var elbow_to_wrist := PoseMetrics.to_vector2(wrist) - PoseMetrics.to_vector2(elbow)
+	if elbow_to_wrist.length() <= 0.000001:
+		return 0.0
+	return rad_to_deg(atan2(absf(elbow_to_wrist.x), maxf(absf(elbow_to_wrist.y), 0.000001)))
 
 func _resolve_straight_punch_velocity_signal_position(state: Dictionary, elbow: Dictionary, wrist_position: Vector3) -> Vector3:
 	if elbow.is_empty() or float(elbow.get("v", 0.0)) < _get_min_visibility():
@@ -2536,6 +2564,9 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"elbow_shoulder_xy_distance": float(state.get("elbow_shoulder_xy_distance", 0.0)),
 		"max_elbow_shoulder_xy_distance": float(state.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE)),
 		"elbow_shoulder_xy_gate_passed": bool(state.get("elbow_shoulder_xy_gate_passed", false)),
+		"wrist_lateral_angle_from_elbow_vertical_deg": float(state.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0)),
+		"min_wrist_lateral_angle_from_elbow_vertical_deg": float(state.get("min_wrist_lateral_angle_from_elbow_vertical_deg", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG)),
+		"wrist_lateral_angle_gate_passed": bool(state.get("wrist_lateral_angle_gate_passed", false)),
 		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
 		"bbox_area": float(state.get("last_bbox_area", 0.0)),
 		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),

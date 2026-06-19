@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-19 12:56 EDT  
+**Last Updated:** 2026-06-19 15:08 EDT  
 **Blocked Reason:** None. Active branch is now carrying the Task 55 same-family mutual exclusion slice for boxing gesture families, with coder validation complete and QA/audit still pending.  
 **Agent:** `pico`
 
@@ -1533,14 +1533,22 @@ Validation run:
 **Prompt:** Verify the proving_harness untyped-iterator warning fix. Confirm the warning is gone on reload/open, confirm family-backend override behavior still works, and state clearly what was proven in automation.
 
 **Folders Created/Deleted/Modified:**
+- `.temp/qa-task53/`
 - relevant repo/test/artifact paths used during QA
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
+- `.temp/qa-task53/gut-task53.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA reran the narrowest truthful repo-local validation path for the reported warning on current `main` (`dadab1a`, with the fix itself at `a3bf13c`): `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`, capturing the output at `.temp/qa-task53/gut-task53.log`. Result: **38/38 tests passed**.
+
+The warning-producing proving-harness load/reload path now looks clean in automation. The landed code still contains the typed shared family-name constant at the original site (`.testbed/scripts/proving_harness.gd`: `PROVING_GESTURE_FAMILY_NAMES: Array[String] = ["straight_punch", "hook", "uppercut"]`), and a direct log scan of `.temp/qa-task53/gut-task53.log` found **no** `UNTYPED_DECLARATION`, `family_name`, `GDScript::reload`, or `.testbed/scripts/proving_harness.gd:` warning lines. The run did emit unrelated pre-existing addon UID / leaked-RID warnings, but none were the reported proving-harness iterator warning.
+
+Family-backend override behavior still works after the typing fix. The same focused suite passed the three override tests `test_proving_runtime_config_can_force_prototype_backend_for_fixture_benchmarks`, `test_proving_runtime_config_can_force_disabled_backend_for_fixture_benchmarks`, and `test_proving_runtime_config_can_force_classifier_backend_for_fixture_benchmarks`, plus `test_boxing_event_feed_reports_per_family_routing_truth`, which is the narrowest existing automated proof in-repo that the family-first proving override path still mutates per-family backend selection correctly and that the proving/event-feed surface still reports the resulting routing truth.
+
+What this automation **does** prove: the proving harness script reloads/executes cleanly in the focused headless path without reproducing the specific untyped-iterator warning signature, and the family-backend override contract covered by the focused proving-harness tests still passes after the typing change. What it **does not** prove: a literal interactive Godot editor open/reload click-path outside this headless script-load path. For repo-local automation, this is the narrowest truthful pass I could make without widening scope into manual GUI work.
 
 ---
 
@@ -1553,14 +1561,22 @@ Validation run:
 **Prompt:** Independently truth-check the proving_harness warning fix. Confirm the warning-producing code path is corrected, the family-backend override logic still behaves honestly, and no new ambiguity was introduced in the proving path.
 
 **Folders Created/Deleted/Modified:**
-- relevant repo/test/artifact paths used during audit
+- `.temp/audit-task54/`
+- `.plans/`
 
 **Files Created/Deleted/Modified:**
-- audit notes/artifacts as needed
+- `.temp/audit-task54/gut-task54.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit passed on current `main` at `dadab1a` against the landed fix commit `a3bf13c` (`Fix proving harness family override iterator typing`). I inspected the exact patch with `git show a3bf13c -- .testbed/scripts/proving_harness.gd` and confirmed the runtime code change is narrowly behavioral-neutral: the two warning-site loops in `_apply_runtime_gesture_backend_override()` now iterate over a typed shared constant, `PROVING_GESTURE_FAMILY_NAMES: Array[String] = ["straight_punch", "hook", "uppercut"]`, instead of an untyped inline array literal. The family set is unchanged, the loop bodies are unchanged, and `git diff a3bf13c..HEAD -- .testbed/scripts/proving_harness.gd` is empty, so the warning fix itself is still present on current `main` with no later proving-harness drift.
+
+I then reran the focused proving-harness suite headlessly and captured the output at `.temp/audit-task54/gut-task54.log` via `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`. Result: **38/38 tests passed**. That rerun re-proved the family-backend override contract that matters for this warning seam: `test_proving_runtime_config_can_force_prototype_backend_for_fixture_benchmarks`, `test_proving_runtime_config_can_force_disabled_backend_for_fixture_benchmarks`, and `test_proving_runtime_config_can_force_classifier_backend_for_fixture_benchmarks` all passed, confirming the proving override still writes the same backend choice across `straight_punch`, `hook`, and `uppercut` after the typing change. I also scanned the captured log for `UNTYPED_DECLARATION`, `family_name`, `GDScript::reload`, and `.testbed/scripts/proving_harness.gd:` warning lines and found none. The run still emits unrelated pre-existing addon UID warnings plus orphan/leaked-RID noise, but not the reported proving-harness iterator warning.
+
+On ambiguity: I did not find any new ambiguity introduced by this patch in the proving path. The patch touches only `.testbed/scripts/proving_harness.gd`; it does not alter `boxing_proving_harness.gd`, substrate backend truth, or runtime routing behavior. The override path remains explicit and honest: `_apply_runtime_gesture_backend_override()` still applies one override value uniformly to the three punch families, still writes the straight-classifier artifact path only into `straight_punch.classifier.model.artifact_path`, and still applies prototype library overrides uniformly across the same typed family list.
+
+What this audit **does prove**: the specific warning-producing untyped iterator site was removed in committed code; the focused script-load/test path no longer reproduces the warning signature; the family-backend override behavior covered by committed proving-harness tests still behaves the same after the typing fix; and no additional proving-path behavior changes were bundled into this patch. What this audit **does not prove**: a literal manual Godot editor open/reload click-path outside the headless repo-local load/test route, or broader UX clarity beyond the existing committed proving/debug surfaces.
 
 ---
 
@@ -1599,6 +1615,105 @@ Validation run:
 **Prompt:** Verify the same-family mutual exclusion gate in the highest-fidelity repo-local path available. Confirm that when one side of a family is already firing, the opposite-side gesture from the same family is suppressed, and confirm proving/runtime truth surfaces explain that suppression honestly.
 
 **Folders Created/Deleted/Modified:**
+- `.temp/qa-task56/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `.temp/qa-task56/gut-task56.log`
+- `.temp/qa-task56/verify_same_family_gate.gd`
+- `.temp/qa-task56/verify-same-family.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** QA passed on the highest-fidelity repo-local/headless path currently available for this edge case: focused substrate/runtime unit coverage plus one disposable headless verifier for the last “unrelated families are not blocked by the new rule” gap. I reran `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` and saved the output to `.temp/qa-task56/gut-task56.log`; result: **75/75 tests passed** on commit `dadab1a`. That automated pass directly proves the three claimed supported paths from Task 55:
+- **Prototype path:** `test_prototype_backend_blocks_opposite_side_same_family_candidate_during_hold` proves a `straight_right` prototype candidate is suppressed while `straight_left` is still active, with truthful matcher debug showing `reason=same_family_active`, `same_family_blocked=true`, `blocking_family=straight_punch`, `blocking_class=straight_left`, and `active_event_class=straight_left`.
+- **Classifier path:** `test_classifier_backend_blocks_opposite_side_same_family_candidate_during_hold` proves the same suppression/truth contract for the learned classifier path, again surfacing `same_family_active`, the blocking family/class, and the active event class rather than silently swallowing the candidate.
+- **Threshold path:** `test_hook_same_family_trigger_exposes_threshold_blocking_truth` proves the threshold-side family helper returns truthful suppression metadata (`blocking_family`, `blocking_side`, `blocking_event_name`, `blocking_phase`) when the opposite side of the same family is already in the triggered/grace window.
+
+For goal (4), the focused committed suite did **not** include an explicit “unrelated family should not be marked same-family-blocked” assertion, so I added a disposable repo-local verifier at `.temp/qa-task56/verify_same_family_gate.gd` and ran it headlessly, saving output to `.temp/qa-task56/verify-same-family.log`. That verifier proved three narrower truths:
+- `PrototypePunchMatcher._get_same_family_blocking_class("hook_right", 1200)` returns empty while `straight_left` is active, so the new prototype same-family gate itself does **not** mark unrelated hook candidates as blocked.
+- `LearnedPunchClassifier._get_same_family_blocking_class("hook_right", 1200)` also returns empty while `straight_left` is active, and the resulting classifier debug does **not** report `reason=same_family_active` or populate `blocking_family` for that unrelated hook candidate. Important nuance: the classifier can still suppress that unrelated candidate for the older global `emit_hold_active` reason, so automation proves “not blocked by the new same-family rule,” not “guaranteed to emit during any existing global hold/cooldown gate.”
+- `PoseDetectorSubstrate._get_same_family_threshold_blocking_state("hook", "left", 3320)` returns empty when only `straight_punch/right` is active, so the threshold helper also keeps the family boundary honest.
+
+Truth-surface readout: runtime/proving code inspection plus the committed code paths show the suppression reason is exposed honestly where the patch claims support. `prototype_punch_matcher.gd` and `learned_punch_classifier.gd` both now stamp `same_family_active` plus `blocking_family` / `blocking_class` / `active_event_class` into debug state, `pose_detector_substrate.gd` carries matching threshold-side fields (`same_family_blocked`, `blocking_family`, `blocking_side`, `blocking_event_name`, `blocking_phase`), and `.testbed/scripts/boxing_proving_harness.gd` already surfaces gate reason / hold / cooldown / active event class in the classifier truth panels. I did **not** find an existing committed headless proving replay fixture that naturally creates simultaneous opposite-side same-family candidates, so the focused substrate path is the highest-fidelity automated route available in-repo for this particular co-fire edge case.
+
+What automated QA proves vs. what still needs Derrick on Cookie:
+- **Proven automatically now:** the new same-family gate suppresses opposite-side same-family candidates in the prototype and classifier paths; threshold-family runtime state exposes the suppression metadata truthfully; unrelated families are not mislabeled by the *new* same-family gate; and the debug/proving surfaces have the needed fields/reasons to explain the suppression instead of hiding it.
+- **Still needs Derrick’s manual Cookie validation:** real replay/live-camera behavior under human motion, whether the proving UI exposes the suppression clearly enough during actual simultaneous-ish play, and whether the remaining older global timing gates (`emit_hold_active`, cooldowns, threshold grace windows) feel correct in practice once same-family suppression is layered on top.
+
+---
+
+### Task 57: Audit same-family mutual exclusion gate
+
+**Bead ID:** `aerobeat-input-camera-tracking-6z5o`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the same-family mutual exclusion gate. Confirm the runtime no longer allows simultaneous same-family co-fire where blocked by the new rule, and confirm any suppression reasoning exposed in proving/debug surfaces matches the actual runtime behavior.
+
+**Folders Created/Deleted/Modified:**
+- `.temp/audit-task57/`
+- relevant repo/test/artifact paths inspected during audit
+
+**Files Created/Deleted/Modified:**
+- `.temp/audit-task57/gut-task57.log`
+- `.temp/audit-task57/verify_same_family_audit.gd`
+- `.temp/audit-task57/verify-same-family-audit.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit passed on landed commit `dadab1a` after an independent code+rerun check. I reran `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` and captured the log at `.temp/audit-task57/gut-task57.log`; result: **75/75 tests passed**. That committed suite directly proves the positive support claims from Task 55: prototype and learned-classifier same-family suppression both prevent opposite-side straight co-fire during the active hold window and stamp honest debug truth (`reason = same_family_active`, `same_family_blocked = true`, `blocking_family = straight_punch`, `blocking_class = straight_left`, `active_event_class = straight_left`), while the threshold-family helper/state path exposes matching same-family metadata for hook-family blocking (`blocking_family`, `blocking_side`, `blocking_event_name`, `blocking_phase`).
+
+I also added and ran a disposable independent verifier at `.temp/audit-task57/verify_same_family_audit.gd`, captured in `.temp/audit-task57/verify-same-family-audit.log` with result `AUDIT_TASK57_OK`. That verifier re-proved the same-family positive cases without trusting only the GUT assertions and closed the unrelated-family audit gap explicitly: prototype and classifier both suppress `straight_right` while `straight_left` is active and preserve truthful suppression metadata, the threshold hook helper/state metadata remain honest when `hook_right` is the active blocker, and unrelated families are **not** mislabeled by the new gate (`hook_right` is not same-family-blocked while `straight_left` is active in prototype/classifier, and `_get_same_family_threshold_blocking_state("hook", "left", ...)` stays empty while a `straight_punch` opposite side is active).
+
+Important nuance from the independent negative check: the classifier can still refuse an unrelated-family candidate for the older global timing gates (`emit_hold_active` / cooldown) depending on runtime state. What this audit proves is narrower and honest: unrelated families are not being rejected **because of the new same-family rule** when the candidate family differs from the active family.
+
+Code inspection matches the reruns. In `src/detectors/prototype_punch_matcher.gd` and `src/detectors/learned_punch_classifier.gd`, `_get_same_family_blocking_class(...)` only returns a blocker when the candidate class maps to the same gesture family as `_last_emitted_class` and the hold window is still active; both detectors then stamp `same_family_active`, `blocking_family`, `blocking_class`, and `active_event_class` into debug state. In `src/detectors/pose_detector_substrate.gd`, `_get_same_family_threshold_blocking_state(...)` only reports the opposite side inside the same family while that side is still in `triggered`, and `_apply_same_family_block(...)` copies that truth into threshold-side debug fields (`same_family_blocked`, `blocking_family`, `blocking_side`, `blocking_event_name`, `blocking_phase`). `.testbed/scripts/boxing_proving_harness.gd` already surfaces the classifier gate/hold/cooldown/active-event-class truth used for the learned path; threshold same-family metadata is present in substrate debug state but still primarily proven here via headless substrate inspection rather than a dedicated proving replay fixture.
+
+What is proven now vs. what still needs Derrick on Cookie:
+- **Proven automatically by code/tests/reruns:** same-family co-fire suppression is real for the shipped prototype and learned-classifier support paths; threshold-family block metadata is internally truthful; suppression/debug metadata is honest for the supported paths; unrelated families are not mislabeled by the new same-family rule.
+- **Still requires Derrick’s manual Cookie validation:** whether real replay/live motion produces the intended suppression feel under human timing, whether the proving UI makes the suppression easy to understand during actual play, and whether the interaction between same-family suppression and the pre-existing global timing gates feels correct in practice on device.
+
+---
+
+### Task 58: Fix straight threshold same-family co-fire and add wrist-lateral-angle guard gate
+
+**Bead ID:** `aerobeat-input-camera-tracking-6fhm`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Derrick’s latest feedback surfaced two follow-up issues from live testing: (1) the same-family mutual exclusion gate did not fully block opposite-side straight punches in the straight-right threshold test video—the first punch activated `straight_left`, then `straight_right` fired right after during the same active window; (2) replace the earlier elbow-joint-angle idea with a new straight threshold variable exactly named `min_wrist_lateral_angle_from_elbow_vertical_deg`, where the runtime measures how far the wrist deflects left/right from an elbow-anchored vertical ray in 2D camera space and rejects near-vertical guard-raise style motion when the angle is below the minimum. Implement a narrow fix for the threshold straight-family co-fire path and add the new threshold variable with truthful comment/style integration, runtime usage, and proving/debug truth as needed.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/tests/unit/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the threshold straight-family suppression path so opposite-side same-family straights stay blocked while the blocking straight remains in `triggered` or `not_ready`, closing the co-fire hole that could reopen once grace timing rolled forward but before rearm completed. Replaced the abandoned elbow-joint-angle concept with `min_wrist_lateral_angle_from_elbow_vertical_deg`, wired it into straight-threshold config parsing plus runtime gating, and surfaced the live angle/gate truth in straight debug/state-change payloads. Refreshed focused unit coverage to prove both behaviors honestly: same-family opposite-side straight suppression during the active window and rejection when wrist motion stays too close to the elbow-anchored vertical ray. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` (77/77 passed) and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` (4/4 passed).
+
+---
+
+### Task 59: QA straight threshold co-fire fix and elbow angle threshold
+
+**Bead ID:** `aerobeat-input-camera-tracking-o7zp`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the straight-threshold same-family co-fire fix and the new `max_elbow_joint_angle_deg` variable. Confirm opposite-side straight punches are suppressed during the active same-family window in the threshold path, and confirm the new elbow-angle threshold truthfully blocks over-straight guard-raise style motion in the repo-local validation path.
+
+**Folders Created/Deleted/Modified:**
 - relevant repo/test/artifact paths used during QA
 
 **Files Created/Deleted/Modified:**
@@ -1610,13 +1725,13 @@ Validation run:
 
 ---
 
-### Task 57: Audit same-family mutual exclusion gate
+### Task 60: Audit straight threshold co-fire fix and elbow angle threshold
 
-**Bead ID:** `aerobeat-input-camera-tracking-6z5o`  
+**Bead ID:** `aerobeat-input-camera-tracking-hv4m`  
 **SubAgent:** `primary` (for `auditor`)  
 **Role:** `auditor`  
 **References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
-**Prompt:** Independently truth-check the same-family mutual exclusion gate. Confirm the runtime no longer allows simultaneous same-family co-fire where blocked by the new rule, and confirm any suppression reasoning exposed in proving/debug surfaces matches the actual runtime behavior.
+**Prompt:** Independently truth-check the straight-threshold same-family co-fire fix and the new `max_elbow_joint_angle_deg` threshold. Confirm the threshold path no longer allows opposite-side same-family straight co-fire during the active window, and confirm the new angle gate is implemented/documented honestly.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo/test/artifact paths used during audit

@@ -69,6 +69,8 @@ straight_punch:
       min_bbox_area_growth: 0.003
       # Elbow and shoulder must stay at least this close together in camera-space XY for the straight-arm pose hint. input.
       max_elbow_shoulder_xy_distance: 0.140
+      # Wrist motion must deflect at least this far left/right away from the elbow-anchored vertical ray in camera-space XY. input.
+      min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
     timing:
       # Keep the punch in its triggered state for this long after it fires. input.
       triggered_grace_ms: 10
