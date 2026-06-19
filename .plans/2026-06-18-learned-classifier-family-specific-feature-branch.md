@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-18  
 **Status:** In Progress  
-**Last Updated:** 2026-06-19 10:47 EDT  
+**Last Updated:** 2026-06-19 12:38 EDT  
 **Blocked Reason:** None. Derrick returned with Cookie/Chip mixed-family test feedback and a screenshot showing the straight learned model failed to load under the current `mixed_family` selection; branch is now executing the next bug-squash + config-contract cleanup slice.  
 **Agent:** `pico`
 
@@ -1429,6 +1429,110 @@ Validation run:
 **Prompt:** Verify the follow-up family-first contract patch in the highest-fidelity validation path available. Confirm old-shape compatibility has actually been removed, confirm `backend: disabled` prevents the relevant family from firing, and confirm the boxing proving inspectors swap cleanly with the selected backend per family so only the active backend’s panel/info is shown.
 
 **Folders Created/Deleted/Modified:**
+- `.temp/qa-task50/`
+
+**Files Created/Deleted/Modified:**
+- `.temp/qa-task50/gut-task50.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** QA reran the highest-fidelity repo-local headless coverage on landed `main` at `831d9bc` with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gtest=res://tests/unit/test_aero_camera_tracking.gd -gexit` and captured the log at `.temp/qa-task50/gut-task50.log`. Result: **130/130 tests passed**.
+
+Static QA scan plus the passing config/runtime tests support that the old flat/shared punch-backend config compatibility path is gone in the landed family-first contract: `src/config/camera_tracking_config.gd` now loads `result["gesture_detection"]` directly into `gesture_profile_document`, and `src/detectors/pose_detector_substrate.gd`, `src/detectors/prototype_punch_matcher.gd`, and `src/detectors/learned_punch_classifier.gd` resolve backends from per-family documents (`straight_punch` / `hook` / `uppercut`) instead of reading a legacy top-level shared punch backend selector. Automated QA cannot prove every historical caller is migrated, but within this repo’s landed runtime/testbed path I did not find a surviving old-shape fallback read.
+
+Goal-by-goal evidence:
+- **Old-shape compatibility removed:** covered by the static scan above plus `res://tests/unit/test_camera_tracking_config_profiles.gd` and the family-first runtime assertions in `res://tests/unit/test_pose_detector_substrate.gd`.
+- **`backend: disabled` really prevents firing:** verified by passing `test_disabled_family_backend_prevents_any_punch_runtime_activation`, `test_disabled_straight_family_suppresses_punch_events_while_threshold_families_stay_live`, `test_proving_runtime_config_can_force_disabled_backend_for_fixture_benchmarks`, and `test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvious`.
+- **Boxing inspectors / gesture detail panels swap cleanly by active backend:** verified by passing `test_boxing_prototype_hover_card_surfaces_backend_score_threshold_and_gate_truth`, `test_boxing_classifier_hover_card_and_event_feed_surface_truthful_backend_specific_fields`, `test_boxing_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels`, and `test_per_family_classifier_match_payload_uses_per_family_backend_truth`. These prove only the active backend’s truth/panel fields are surfaced for the relevant family in the headless proving UI contract.
+- **Straight-family classifier path still resolves under family-first shape:** verified by passing `test_per_family_backend_routes_straights_to_classifier_and_surfaces_truth`, `test_per_family_backend_prefers_straight_family_classifier_artifact_path`, and `test_classifier_repo_root_docs_path_falls_back_to_addon_mount_in_testbed`.
+
+Honest limit: this QA pass gives strong automated confidence in the landed repo-local config/runtime/proving contract, but it does **not** replace Derrick’s manual Cookie replay/live validation for real camera behavior quality, latency, or human-visible proving UX outside the headless harness contract.
+
+---
+
+### Task 51: Audit disabled backend and proving inspector backend switching
+
+**Bead ID:** `aerobeat-input-camera-tracking-0hag`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the follow-up family-first contract patch. Confirm the legacy YAML compatibility layer is gone, confirm `disabled` is a real non-firing backend state rather than cosmetic config, and confirm proving inspector/backend detail surfaces now track the selected backend honestly per gesture family.
+
+**Folders Created/Deleted/Modified:**
+- `.temp/`
+- `src/config/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `assets/`
+
+**Files Created/Deleted/Modified:**
+- `.temp/audit-task51-gut.log`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `src/config/camera_tracking_config.gd`
+- `src/config/profile_config_loader.gd`
+- `src/detectors/pose_detector_substrate.gd`
+- `src/detectors/prototype_punch_matcher.gd`
+- `src/detectors/learned_punch_classifier.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `assets/boxing.gesture_detection.yaml`
+
+**Status:** ✅ Complete
+
+**Results:** Independent audit passed on landed `main` at `831d9bc` (`Tighten family backend config and proving routing`). I reran the same focused headless coverage the QA pass used and captured a fresh audit log at `.temp/audit-task51-gut.log` via `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gtest=res://tests/unit/test_aero_camera_tracking.gd -gexit`; result: **130/130 tests passed**.
+
+Audit findings by goal:
+- **Legacy YAML/config compatibility layer gone from the landed runtime path:** confirmed by code inspection plus passing config/runtime tests. `src/config/camera_tracking_config.gd` now stores `result["gesture_detection"]` directly as the runtime `gesture_profile_document`, and the punch runtime reads family documents directly (`straight_punch` / `hook` / `uppercut`) instead of consulting a legacy top-level shared punch backend selector. `src/detectors/pose_detector_substrate.gd` resolves routing through `_get_family_document()` / `_get_punch_backend_for_family()`. `src/detectors/prototype_punch_matcher.gd` and `src/detectors/learned_punch_classifier.gd` both enumerate selected families with `_get_selected_families_for_backend()` and read backend blocks with `_get_family_backend_config()`. In the landed runtime/proving path I did **not** find a surviving fallback read of old punch-backend YAML shape.
+- **`backend: disabled` is real, not cosmetic:** confirmed in runtime code and tests. `src/detectors/pose_detector_substrate.gd` only executes threshold/prototype/classifier work when a family actually selects those backends, and `_filter_events_for_backend()` only allows events for families mapped to that backend. When all punch families are `disabled`, `punch_detection` debug now reports `selected_backend_enabled=false`, `active_backend=none`, and `active_backend_resolution=no_active_family_backend`. Passing proof points: `test_disabled_family_backend_prevents_any_punch_runtime_activation`, `test_disabled_straight_family_suppresses_punch_events_while_threshold_families_stay_live`, `test_proving_runtime_config_can_force_disabled_backend_for_fixture_benchmarks`, and `test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvious`.
+- **Proving inspector/backend detail surfaces track the selected backend honestly per family:** confirmed by code inspection plus passing UI-contract tests. `.testbed/scripts/boxing_proving_harness.gd` now routes each punch card through `_punch_backend_for_event()` and selects threshold/prototype/classifier hover-card models per family/event instead of showing one shared punch panel. The event feed also prints per-family routing truth (`straight=%s hook=%s uppercut=%s`) plus `Selected backend enabled` and `Backend resolution`. Passing proof points: `test_boxing_prototype_hover_card_surfaces_backend_score_threshold_and_gate_truth`, `test_boxing_classifier_hover_card_and_event_feed_surface_truthful_backend_specific_fields`, `test_boxing_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels`, `test_per_family_classifier_match_payload_uses_per_family_backend_truth`, and `test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvious`.
+- **Family-first contract is now honest about readiness / unsupported combinations:** `assets/boxing.gesture_detection.yaml` explicitly limits non-punch families to threshold as the only real runtime today, while punch families document threshold/prototype/classifier as real selectable runtime surfaces. That honesty matches the runtime: non-punch families still normalize to threshold by default, while punch families resolve per-family backends and expose truthful debug about whether any active backend exists. The config comments no longer claim an unavailable mixed/shared selector path. I do not see evidence of the landed contract overstating support for unsupported punch-family/backend combinations inside this repo path.
+
+What is now proven vs. still manual:
+- **Proven by code/tests in-repo:** the legacy punch-backend compatibility read is gone from the landed runtime/testbed path; `backend: disabled` suppresses punch runtime activation and makes the non-active state explicit in debug/proving surfaces; per-family proving cards/event text now follow the selected backend truthfully; straight-family classifier artifact selection still resolves correctly under the family-first shape.
+- **Still requires Derrick’s manual Cookie validation:** real camera/replay behavior on Cookie, human-visible proving UX under live interaction, perceived latency/smoothness, and whether the selected family/backend behavior feels correct with real motion input outside the headless contract. The automated audit proves the shipped code path and UI truth contract, not the final subjective/live-device experience.
+
+---
+
+### Task 52: Fix proving_harness untyped iterator warning for family backend overrides
+
+**Bead ID:** `aerobeat-input-camera-tracking-1pqo`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Derrick reported a concrete warning when opening the boxing proving scene after the family-first backend rollout: `UNTYPED_DECLARATION` in `.testbed/scripts/proving_harness.gd` at the family-backend override loop (`for` iterator variable `family_name` has no static type). Fix that warning cleanly without regressing the new family-first backend override behavior. Update the active plan with exact files changed/results, run the narrowest truthful validation for this warning/regression, commit/push by default, and close bead `aerobeat-input-camera-tracking-1pqo` with a clear reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/scripts/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/scripts/proving_harness.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the warning by introducing a typed shared family-name constant (`PROVING_GESTURE_FAMILY_NAMES: Array[String]`) and reusing it in both family override loops inside `_apply_runtime_gesture_backend_override()`. That removes the untyped inline-array iterator at the warning site without changing the family-first contract or the set of families affected by backend/library overrides. I deliberately did **not** widen scope or add new tests because existing targeted proving-harness coverage already asserts the relevant per-family override behavior.
+
+Validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`
+- Result: **38/38 tests passed**.
+- Warning check: grep of the captured output found no `UNTYPED_DECLARATION`, `family_name`, or `GDScript::reload` warning lines, which is the narrowest truthful automated proof I could gather for the reported reload/open warning in this repo-local path.
+
+---
+
+### Task 53: QA proving_harness warning fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-i09r`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the proving_harness untyped-iterator warning fix. Confirm the warning is gone on reload/open, confirm family-backend override behavior still works, and state clearly what was proven in automation.
+
+**Folders Created/Deleted/Modified:**
 - relevant repo/test/artifact paths used during QA
 
 **Files Created/Deleted/Modified:**
@@ -1440,13 +1544,13 @@ Validation run:
 
 ---
 
-### Task 51: Audit disabled backend and proving inspector backend switching
+### Task 54: Audit proving_harness warning fix
 
-**Bead ID:** `aerobeat-input-camera-tracking-0hag`  
+**Bead ID:** `aerobeat-input-camera-tracking-xron`  
 **SubAgent:** `primary` (for `auditor`)  
 **Role:** `auditor`  
 **References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
-**Prompt:** Independently truth-check the follow-up family-first contract patch. Confirm the legacy YAML compatibility layer is gone, confirm `disabled` is a real non-firing backend state rather than cosmetic config, and confirm proving inspector/backend detail surfaces now track the selected backend honestly per gesture family.
+**Prompt:** Independently truth-check the proving_harness warning fix. Confirm the warning-producing code path is corrected, the family-backend override logic still behaves honestly, and no new ambiguity was introduced in the proving path.
 
 **Folders Created/Deleted/Modified:**
 - relevant repo/test/artifact paths used during audit

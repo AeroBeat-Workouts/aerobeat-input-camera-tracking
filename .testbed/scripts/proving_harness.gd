@@ -14,6 +14,7 @@ const VENDOR_MODEL_FULL := "models/pose_landmarker_full.task"
 const VENDOR_MODEL_HEAVY := "models/pose_landmarker_heavy.task"
 const DEFAULT_TRACKING_OVERLAY_MODE := "optimized"
 const PROVING_DEFAULT_STRAIGHT_CLASSIFIER_MODEL_PATH := "docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json"
+const PROVING_GESTURE_FAMILY_NAMES: Array[String] = ["straight_punch", "hook", "uppercut"]
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -1176,7 +1177,7 @@ func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript)
 	var gesture_profile: Dictionary = config.gesture_profile_document.duplicate(true) if config.get("gesture_profile_document") is Dictionary else {}
 	var backend_override := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE").strip_edges().to_lower()
 	if not backend_override.is_empty() and ["disabled", "threshold", "prototype", "classifier"].has(backend_override):
-		for family_name in ["straight_punch", "hook", "uppercut"]:
+		for family_name in PROVING_GESTURE_FAMILY_NAMES:
 			var family_config: Dictionary = gesture_profile.get(family_name, {}) if gesture_profile.get(family_name, {}) is Dictionary else {}
 			family_config["backend"] = backend_override
 			gesture_profile[family_name] = family_config
@@ -1193,7 +1194,7 @@ func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript)
 		gesture_profile["straight_punch"] = straight_config
 	var library_id_override := OS.get_environment("AEROBEAT_PROTOTYPE_LIBRARY_ID_OVERRIDE").strip_edges()
 	if not library_id_override.is_empty():
-		for family_name in ["straight_punch", "hook", "uppercut"]:
+		for family_name in PROVING_GESTURE_FAMILY_NAMES:
 			var family_config: Dictionary = gesture_profile.get(family_name, {}) if gesture_profile.get(family_name, {}) is Dictionary else {}
 			var prototype_config: Dictionary = family_config.get("prototype", {}) if family_config.get("prototype", {}) is Dictionary else {}
 			var prototype_library: Dictionary = prototype_config.get("prototype_library", {}) if prototype_config.get("prototype_library", {}) is Dictionary else {}
