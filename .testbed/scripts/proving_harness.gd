@@ -13,8 +13,7 @@ const VENDOR_MODEL_LITE := "models/pose_landmarker_lite.task"
 const VENDOR_MODEL_FULL := "models/pose_landmarker_full.task"
 const VENDOR_MODEL_HEAVY := "models/pose_landmarker_heavy.task"
 const DEFAULT_TRACKING_OVERLAY_MODE := "optimized"
-const PROVING_MIXED_FAMILY_BACKEND := "mixed_family"
-const PROVING_MIXED_STRAIGHT_MODEL_PATH := "docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json"
+const PROVING_DEFAULT_STRAIGHT_CLASSIFIER_MODEL_PATH := "docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json"
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -1176,47 +1175,40 @@ func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript)
 		return
 	var gesture_profile: Dictionary = config.gesture_profile_document.duplicate(true) if config.get("gesture_profile_document") is Dictionary else {}
 	var backend_override := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE").strip_edges().to_lower()
-	if not backend_override.is_empty():
-		var punch_detection: Dictionary = gesture_profile.get("punch_detection", {}) if gesture_profile.get("punch_detection", {}) is Dictionary else {}
-		var threshold_backend: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
-		var legacy_threshold_gates: Dictionary = gesture_profile.get("threshold_gates", {}) if gesture_profile.get("threshold_gates", {}) is Dictionary else {}
-		if backend_override == "threshold_gates":
-			backend_override = "threshold_gates"
-		if backend_override == "threshold_gates" or backend_override == "prototype_matcher" or backend_override == "learned_classifier" or backend_override == PROVING_MIXED_FAMILY_BACKEND:
-			punch_detection["backend"] = backend_override
-			gesture_profile["punch_detection"] = punch_detection
-			var enable_threshold_backend := backend_override == "threshold_gates" or backend_override == PROVING_MIXED_FAMILY_BACKEND
-			threshold_backend["enabled"] = enable_threshold_backend
-			legacy_threshold_gates["enabled"] = enable_threshold_backend
-			gesture_profile["threshold_gates"] = threshold_backend
-			gesture_profile["threshold_gates"] = legacy_threshold_gates
-			if backend_override == "prototype_matcher":
-				var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
-				matcher_config["enabled"] = true
-				gesture_profile["prototype_matcher"] = matcher_config
-			elif backend_override == "learned_classifier" or backend_override == PROVING_MIXED_FAMILY_BACKEND:
-				var learned_config: Dictionary = gesture_profile.get("learned_classifier", {}) if gesture_profile.get("learned_classifier", {}) is Dictionary else {}
-				learned_config["enabled"] = true
-				gesture_profile["learned_classifier"] = learned_config
-				if backend_override == PROVING_MIXED_FAMILY_BACKEND:
-					var mixed_model_path := OS.get_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE").strip_edges()
-					if mixed_model_path.is_empty():
-						mixed_model_path = PROVING_MIXED_STRAIGHT_MODEL_PATH
-					var mixed_family: Dictionary = gesture_profile.get(PROVING_MIXED_FAMILY_BACKEND, {}) if gesture_profile.get(PROVING_MIXED_FAMILY_BACKEND, {}) is Dictionary else {}
-					var straight_config: Dictionary = mixed_family.get("straight", {}) if mixed_family.get("straight", {}) is Dictionary else {}
-					var model_config: Dictionary = straight_config.get("model", {}) if straight_config.get("model", {}) is Dictionary else {}
-					model_config["artifact_path"] = mixed_model_path
-					straight_config["model"] = model_config
-					mixed_family["straight"] = straight_config
-					gesture_profile[PROVING_MIXED_FAMILY_BACKEND] = mixed_family
+	if backend_override == "threshold_gates":
+		backend_override = "threshold"
+	elif backend_override == "prototype_matcher":
+		backend_override = "prototype"
+	elif backend_override == "learned_classifier":
+		backend_override = "classifier"
+	elif backend_override == "mixed_family":
+		backend_override = ""
+	if not backend_override.is_empty() and ["threshold", "prototype", "classifier"].has(backend_override):
+		for family_name in ["straight_punch", "hook", "uppercut"]:
+			var family_config: Dictionary = gesture_profile.get(family_name, {}) if gesture_profile.get(family_name, {}) is Dictionary else {}
+			family_config["backend"] = backend_override
+			gesture_profile[family_name] = family_config
+	var model_path_override := OS.get_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE").strip_edges()
+	if model_path_override.is_empty():
+		model_path_override = PROVING_DEFAULT_STRAIGHT_CLASSIFIER_MODEL_PATH
+	if not model_path_override.is_empty():
+		var straight_config: Dictionary = gesture_profile.get("straight_punch", {}) if gesture_profile.get("straight_punch", {}) is Dictionary else {}
+		var classifier_config: Dictionary = straight_config.get("classifier", {}) if straight_config.get("classifier", {}) is Dictionary else {}
+		var model_config: Dictionary = classifier_config.get("model", {}) if classifier_config.get("model", {}) is Dictionary else {}
+		model_config["artifact_path"] = model_path_override
+		classifier_config["model"] = model_config
+		straight_config["classifier"] = classifier_config
+		gesture_profile["straight_punch"] = straight_config
 	var library_id_override := OS.get_environment("AEROBEAT_PROTOTYPE_LIBRARY_ID_OVERRIDE").strip_edges()
 	if not library_id_override.is_empty():
-		var matcher_config: Dictionary = gesture_profile.get("prototype_matcher", {}) if gesture_profile.get("prototype_matcher", {}) is Dictionary else {}
-		matcher_config["enabled"] = true
-		var prototype_library: Dictionary = matcher_config.get("prototype_library", {}) if matcher_config.get("prototype_library", {}) is Dictionary else {}
-		prototype_library["library_id"] = library_id_override
-		matcher_config["prototype_library"] = prototype_library
-		gesture_profile["prototype_matcher"] = matcher_config
+		for family_name in ["straight_punch", "hook", "uppercut"]:
+			var family_config: Dictionary = gesture_profile.get(family_name, {}) if gesture_profile.get(family_name, {}) is Dictionary else {}
+			var prototype_config: Dictionary = family_config.get("prototype", {}) if family_config.get("prototype", {}) is Dictionary else {}
+			var prototype_library: Dictionary = prototype_config.get("prototype_library", {}) if prototype_config.get("prototype_library", {}) is Dictionary else {}
+			prototype_library["library_id"] = library_id_override
+			prototype_config["prototype_library"] = prototype_library
+			family_config["prototype"] = prototype_config
+			gesture_profile[family_name] = family_config
 	config.gesture_profile_document = gesture_profile
 
 func _build_vendor_runtime_config(model_complexity: int, filter_enabled: bool = true) -> Dictionary:

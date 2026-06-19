@@ -1,196 +1,292 @@
 schema: aerobeat/gesture_detection_config
 version: 1
 profile: boxing
-punch_detection:
-  # [threshold_gates, prototype_matcher, learned_classifier, mixed_family] Pick which punch-detection family is active for boxing. `mixed_family` is the current split rollout: straights use the learned straight artifact below, while hooks/uppercuts still stay on threshold gates. input.
-  backend: threshold_gates
-
-threshold_gates:
-  # Keep the current threshold-based straight/hook/uppercut punch backend active. input.
-  enabled: true
-
 guard:
-  # Turn pose-only guard detection on or off. input.
-  enabled: true
-  thresholds:
-    # Left/right wrists must be at least this close together in camera-space X. input.
-    max_wrist_separation_x: 0.20
-    # Left/right wrists must be at least this close together in camera-space Y. input.
-    max_wrist_separation_y: 0.12
-    # Each wrist must stay at least this close to the nose landmark in camera space. input.
-    max_wrist_nose_distance: 0.20
+  # [threshold, prototype, classifier] Pick which backend contract owns guard routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
+  backend: threshold
+  threshold:
+    # Guard uses the current pose-only runtime. input.
+    thresholds:
+      # Left/right wrists must be at least this close together in camera-space X. input.
+      max_wrist_separation_x: 0.20
+      # Left/right wrists must be at least this close together in camera-space Y. input.
+      max_wrist_separation_y: 0.12
+      # Each wrist must stay at least this close to the nose landmark in camera space. input.
+      max_wrist_nose_distance: 0.20
+  prototype: {}
+  classifier: {}
 
 squat:
-  # Turn calibrated torso-height squat detection on or off. input.
-  enabled: true
-  thresholds:
-    # Squat enters when live torso height / calibrated torso height drops to or below this ratio. input.
-    enter_height_ratio_max: 0.82
-    # Squat exits when live torso height / calibrated torso height rises back to or above this ratio. input.
-    exit_height_ratio_min: 0.92
+  # [threshold, prototype, classifier] Pick which backend contract owns squat routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
+  backend: threshold
+  threshold:
+    # Squat uses the current calibrated torso-height threshold runtime. input.
+    thresholds:
+      # Squat enters when live torso height / calibrated torso height drops to or below this ratio. input.
+      enter_height_ratio_max: 0.82
+      # Squat exits when live torso height / calibrated torso height rises back to or above this ratio. input.
+      exit_height_ratio_min: 0.92
+  prototype: {}
+  classifier: {}
 
 weave:
-  # Turn pose-only weave detection on or off. input.
-  enabled: true
-  thresholds:
-    # Weave starts when head lateral offset reaches at least this far left or right. input.
-    enter_head_lateral_offset_min: 0.30
-    # Weave starts when head-vs-hip lateral offset reaches at least this far left or right. input.
-    enter_relative_head_hip_offset_min: 0.12
-    # Weave starts when head drop reaches at least this much below the standing baseline. input.
-    enter_head_drop_ratio_min: 0.05
-    # Weave ends when head lateral offset settles back within this neutral window. input.
-    exit_head_lateral_offset_max: 0.12
-    # Weave ends when head-vs-hip lateral offset settles back within this neutral window. input.
-    exit_relative_head_hip_offset_max: 0.08
+  # [threshold, prototype, classifier] Pick which backend contract owns weave routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
+  backend: threshold
+  threshold:
+    # Weave uses the current pose-only runtime. input.
+    thresholds:
+      # Weave starts when head lateral offset reaches at least this far left or right. input.
+      enter_head_lateral_offset_min: 0.30
+      # Weave starts when head-vs-hip lateral offset reaches at least this far left or right. input.
+      enter_relative_head_hip_offset_min: 0.12
+      # Weave starts when head drop reaches at least this much below the standing baseline. input.
+      enter_head_drop_ratio_min: 0.05
+      # Weave ends when head lateral offset settles back within this neutral window. input.
+      exit_head_lateral_offset_max: 0.12
+      # Weave ends when head-vs-hip lateral offset settles back within this neutral window. input.
+      exit_relative_head_hip_offset_max: 0.08
+  prototype: {}
+  classifier: {}
 
 straight_punch:
-  # Turn straight-punch detection on or off. input.
-  enabled: true
-  evaluation:
-    # Only let brand-new hand samples count toward a punch. input.
-    fresh_samples_only: true
-    # Keep this many recent samples in the punch check history. input.
-    sample_window_size: 4
-    # Require this many positive forward-punch bbox-growth steps inside the sample history. input.
-    min_positive_growth_samples: 1
-    # Measure the shared straight-punch motion window across this much recent time. input.
-    window_ms: 250
-  thresholds:
-    # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as a punch. input.
-    min_velocity: 0.5
-    # Windowed forward-punch bbox growth must reach at least this value to count as a punch. input.
-    min_bbox_area_growth: 0.003
-    # Elbow and shoulder must stay at least this close together in camera-space XY for the straight-arm pose hint. input.
-    max_elbow_shoulder_xy_distance: 0.140
-  timing:
-    # Keep the punch in its triggered state for this long after it fires. input.
-    triggered_grace_ms: 10
-  rearm:
-    # After a punch, bbox area must shrink by at least this much before rearming when hands are enabled. input.
-    bbox_area_retract_epsilon: 0.0003
-    # When hand tracking is disabled, wait this long before rearming from the pose-only fallback. input.
-    pose_only_rearm_ms: 10
-  state_machine:
-    # After tracking comes back, wait this long before punches can arm again. input.
-    lost_tracking_reacquire_stable_ms: 40
+  # [threshold, prototype, classifier] Pick which backend owns straight-punch routing. `classifier` now reads its straight-family artifact path from `straight_punch.classifier.model.artifact_path`; hooks and uppercuts choose their own backends independently. input.
+  backend: threshold
+  threshold:
+    # Straight punches use the current threshold + hand-growth runtime when `backend: threshold`. input.
+    evaluation:
+      # Only let brand-new hand samples count toward a punch. input.
+      fresh_samples_only: true
+      # Keep this many recent samples in the punch check history. input.
+      sample_window_size: 4
+      # Require this many positive forward-punch bbox-growth steps inside the sample history. input.
+      min_positive_growth_samples: 1
+      # Measure the shared straight-punch motion window across this much recent time. input.
+      window_ms: 250
+    thresholds:
+      # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as a punch. input.
+      min_velocity: 0.5
+      # Windowed forward-punch bbox growth must reach at least this value to count as a punch. input.
+      min_bbox_area_growth: 0.003
+      # Elbow and shoulder must stay at least this close together in camera-space XY for the straight-arm pose hint. input.
+      max_elbow_shoulder_xy_distance: 0.140
+    timing:
+      # Keep the punch in its triggered state for this long after it fires. input.
+      triggered_grace_ms: 10
+    rearm:
+      # After a punch, bbox area must shrink by at least this much before rearming when hands are enabled. input.
+      bbox_area_retract_epsilon: 0.0003
+      # When hand tracking is disabled, wait this long before rearming from the pose-only fallback. input.
+      pose_only_rearm_ms: 10
+    state_machine:
+      # After tracking comes back, wait this long before punches can arm again. input.
+      lost_tracking_reacquire_stable_ms: 40
+  prototype:
+    # Side-aware prototype matching is a real straight-family runtime option. input.
+    prototype_library:
+      # Named curated prototype library/profile to load for boxing prototype matching. input.
+      library_id: boxing_side_aware_v1
+    evaluation:
+      # Measure each prototype-matching decision across this much recent time. input.
+      window_ms: 250
+      # Re-evaluate the rolling matcher this often. input.
+      window_step_ms: 33
+    thresholds:
+      # Require the best positive-class match score to reach at least this 0..1 value or emit no_punch. input.
+      match_score_min: 0.70
+    timing:
+      # After a punch event fires, suppress duplicate re-fires for this long. input.
+      emit_cooldown_ms: 250
+      # Keep the current confident event active for this long before allowing a new event. input.
+      emit_hold_ms: 100
+    debug:
+      # Show per-class match scores in proving/debug views. input presentation.
+      show_scores: true
+      # Show duplicate-suppression / hold state in proving/debug views. input presentation.
+      show_event_gate_state: true
+  classifier:
+    # The learned straight-family runtime reads this block when `backend: classifier`. input.
+    model:
+      # Exported learned straight-classifier artifact to load for the straight family. input.
+      artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
+    thresholds:
+      # Require the best learned positive-class score to reach at least this 0..1 value or emit no_punch. input.
+      match_score_min: 0.70
+    timing:
+      # After a punch event fires, suppress duplicate re-fires for this long. input.
+      emit_cooldown_ms: 250
+      # Keep the current confident event active for this long before allowing a new event. input.
+      emit_hold_ms: 100
+    debug:
+      # Show per-class learned scores in proving/debug views. input presentation.
+      show_scores: true
+      # Show duplicate-suppression / hold state in proving/debug views. input presentation.
+      show_event_gate_state: true
 
 hook:
-  # Turn hook detection on or off. input.
-  enabled: true
-  evaluation:
-    # Measure the shared hook motion window across this much recent time. input.
-    window_ms: 250
-  thresholds:
-    # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as a hook. input.
-    min_velocity: 0.4
-    # Windowed hook motion must stay at least this much more lateral than vertical. input.
-    #- `0` = don’t care about lateral dominance
-    #- `1` = horizontal must be at least as big as vertical
-    #- `2` = horizontal must be twice vertical
-    #- very large = almost purely horizontal
-    min_lateral_dominance_ratio: .25
-    # Correct-direction horizontal hook travel across the motion window must be at least this large relative to total motion. input.
-    #- `0` = don’t care whether horizontal hook motion is going the correct left/right direction
-    #- `0.5` = at least half of the total motion magnitude must be in the correct horizontal direction
-    #- `1` = all of the measured motion magnitude must be in the correct horizontal direction
-    #- larger values are impossible with the current math
-    min_horizontal_direction_ratio: .15
-  timing:
-    # Keep the hook in its triggered state for this long after it fires. input.
-    triggered_grace_ms: 500
-  rearm:
-    # After a hook, wait this long before the pose-primary detector can rearm. input.
-    pose_only_rearm_ms: 50
-  state_machine:
-    # After pose tracking comes back, wait this long before hooks can arm again. input.
-    lost_tracking_reacquire_stable_ms: 40
-    
-uppercut:
-  # Turn uppercut detection on or off. input.
-  enabled: true
-  evaluation:
-    # Measure the shared uppercut motion window across this much recent time. input.
-    window_ms: 250
-  thresholds:
-    # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as an uppercut. input.
-    min_velocity: 0.5
-    # Windowed uppercut motion must stay at least this much more vertical than lateral. input.
-    # `0` = ignore vertical-vs-lateral balance
-    # `1` = vertical must be at least as large as lateral
-    # `2` = vertical must be twice lateral
-    # larger values = more purely vertical motion
-    min_vertical_dominance_ratio: 0.25
-    # Correct-direction upward travel across the motion window must be at least this large relative to total motion. input.
-    #- `0` = don’t care whether uppercut motion is going upward
-    #- `0.5` = at least half of the total motion magnitude must be upward
-    #- `1` = all of the measured motion magnitude must be upward
-    #- larger values are impossible with the current math
-    min_upward_direction_ratio: 0.15
-  timing:
-    # Keep the uppercut in its triggered state for this long after it fires. input.
-    triggered_grace_ms: 500
-  rearm:
-    # After an uppercut, wait this long before the pose-primary detector can rearm. input.
-    pose_only_rearm_ms: 50
-  state_machine:
-    # After pose tracking comes back, wait this long before uppercuts can arm again. input.
-    lost_tracking_reacquire_stable_ms: 40
-
-prototype_matcher:
-  # Turn side-aware prototype matching on or off. input.
-  enabled: false
-  prototype_library:
-    # Named curated prototype library/profile to load for boxing prototype matching. input.
-    library_id: boxing_side_aware_v1
-  evaluation:
-    # Measure each prototype-matching decision across this much recent time. input.
-    window_ms: 250
-    # Re-evaluate the rolling matcher this often. input.
-    window_step_ms: 33
-  thresholds:
-    # Require the best positive-class match score to reach at least this 0..1 value or emit no_punch. input.
-    match_score_min: 0.70
-  timing:
-    # After a punch event fires, suppress duplicate re-fires for this long. input.
-    emit_cooldown_ms: 250
-    # Keep the current confident event active for this long before allowing a new event. input.
-    emit_hold_ms: 100
-  debug:
-    # Show per-class match scores in proving/debug views. input presentation.
-    show_scores: true
-    # Show duplicate-suppression / hold state in proving/debug views. input presentation.
-    show_event_gate_state: true
-
-learned_classifier:
-  # Turn the threshold-windowed learned punch classifier on or off. input.
-  enabled: true
-  model:learned_classifier
-    # Exported learned-classifier artifact to load when the full learned-classifier backend is selected. input.
-    artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
-    #missing p1 #artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/mlp/mlp-result.json
-    #missing p1 artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-mlp-hardened-baseline-2026-06-16/mlp-result.json
-    #missing p1 artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
-    #missing p1 artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/cnn/cnn-result.json
-    #missing p1 artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-cnn-improvement-pass-2026-06-16/best-cnn/cnn-result.json
-  thresholds:
-    # Require the best learned positive-class score to reach at least this 0..1 value or emit no_punch. input.
-    match_score_min: 0.70
-  timing:
-    # After a punch event fires, suppress duplicate re-fires for this long. input.
-    emit_cooldown_ms: 250
-    # Keep the current confident event active for this long before allowing a new event. input.
-    emit_hold_ms: 100
-  debug:
-    # Show per-class learned scores in proving/debug views. input presentation.
-    show_scores: true
-    # Show duplicate-suppression / hold state in proving/debug views. input presentation.
-    show_event_gate_state: true
-
-mixed_family:
-  # Split-family routing contract for the current staged rollout. Only straight punches use the learned classifier from this block; hooks and uppercuts continue to use the threshold_gates config above until they earn their own runtime path. input.
-  straight:
+  # [threshold, prototype, classifier] Pick which backend owns hook routing. `threshold` is the current shipped default; `prototype` and `classifier` are real punch-family runtime surfaces when selected. input.
+  backend: threshold
+  threshold:
+    # Hooks use the current pose-primary hook runtime when `backend: threshold`. input.
+    evaluation:
+      # Measure the shared hook motion window across this much recent time. input.
+      window_ms: 250
+    thresholds:
+      # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as a hook. input.
+      min_velocity: 0.4
+      # Windowed hook motion must stay at least this much more lateral than vertical. input.
+      #- `0` = don’t care about lateral dominance
+      #- `1` = horizontal must be at least as big as vertical
+      #- `2` = horizontal must be twice vertical
+      #- very large = almost purely horizontal
+      min_lateral_dominance_ratio: .25
+      # Correct-direction horizontal hook travel across the motion window must be at least this large relative to total motion. input.
+      #- `0` = don’t care whether horizontal hook motion is going the correct left/right direction
+      #- `0.5` = at least half of the total motion magnitude must be in the correct horizontal direction
+      #- `1` = all of the measured motion magnitude must be in the correct horizontal direction
+      #- larger values are impossible with the current math
+      min_horizontal_direction_ratio: .15
+    timing:
+      # Keep the hook in its triggered state for this long after it fires. input.
+      triggered_grace_ms: 500
+    rearm:
+      # After a hook, wait this long before the pose-primary detector can rearm. input.
+      pose_only_rearm_ms: 50
+    state_machine:
+      # After pose tracking comes back, wait this long before hooks can arm again. input.
+      lost_tracking_reacquire_stable_ms: 40
+  prototype:
+    # Hooks share the same prototype-matcher runtime surface as the other punch families when selected. input.
+    prototype_library:
+      # Named curated prototype library/profile to load for boxing prototype matching. input.
+      library_id: boxing_side_aware_v1
+    evaluation:
+      # Measure each prototype-matching decision across this much recent time. input.
+      window_ms: 250
+      # Re-evaluate the rolling matcher this often. input.
+      window_step_ms: 33
+    thresholds:
+      # Require the best positive-class match score to reach at least this 0..1 value or emit no_punch. input.
+      match_score_min: 0.70
+    timing:
+      # After a punch event fires, suppress duplicate re-fires for this long. input.
+      emit_cooldown_ms: 250
+      # Keep the current confident event active for this long before allowing a new event. input.
+      emit_hold_ms: 100
+    debug:
+      # Show per-class match scores in proving/debug views. input presentation.
+      show_scores: true
+      # Show duplicate-suppression / hold state in proving/debug views. input presentation.
+      show_event_gate_state: true
+  classifier:
+    # Hooks can still point at the shared learned punch-classifier runtime, but runtime/debug stays explicit about which families actually select it. input.
     model:
-      # Exported learned straight-classifier artifact used when punch_detection.backend = mixed_family. If this path is blank or omitted, runtime falls back to learned_classifier.model.artifact_path, and if that is also blank it falls back again to the built-in default model artifact. input.
-      #artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
-      artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/ boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/mlp/mlp-result.json
+      # Exported learned-classifier artifact to load when hook routing selects the classifier runtime. input.
+      artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
+    thresholds:
+      # Require the best learned positive-class score to reach at least this 0..1 value or emit no_punch. input.
+      match_score_min: 0.70
+    timing:
+      # After a punch event fires, suppress duplicate re-fires for this long. input.
+      emit_cooldown_ms: 250
+      # Keep the current confident event active for this long before allowing a new event. input.
+      emit_hold_ms: 100
+    debug:
+      # Show per-class learned scores in proving/debug views. input presentation.
+      show_scores: true
+      # Show duplicate-suppression / hold state in proving/debug views. input presentation.
+      show_event_gate_state: true
+
+uppercut:
+  # [threshold, prototype, classifier] Pick which backend owns uppercut routing. `threshold` is the current shipped default; `prototype` and `classifier` are real punch-family runtime surfaces when selected. input.
+  backend: threshold
+  threshold:
+    # Uppercuts use the current pose-primary uppercut runtime when `backend: threshold`. input.
+    evaluation:
+      # Measure the shared uppercut motion window across this much recent time. input.
+      window_ms: 250
+    thresholds:
+      # Shared elbow+wrist averaged velocity across the motion window must reach at least this value to count as an uppercut. input.
+      min_velocity: 0.5
+      # Windowed uppercut motion must stay at least this much more vertical than lateral. input.
+      # `0` = ignore vertical-vs-lateral balance
+      # `1` = vertical must be at least as large as lateral
+      # `2` = vertical must be twice lateral
+      # larger values = more purely vertical motion
+      min_vertical_dominance_ratio: 0.25
+      # Correct-direction upward travel across the motion window must be at least this large relative to total motion. input.
+      #- `0` = don’t care whether uppercut motion is going upward
+      #- `0.5` = at least half of the total motion magnitude must be upward
+      #- `1` = all of the measured motion magnitude must be upward
+      #- larger values are impossible with the current math
+      min_upward_direction_ratio: 0.15
+    timing:
+      # Keep the uppercut in its triggered state for this long after it fires. input.
+      triggered_grace_ms: 500
+    rearm:
+      # After an uppercut, wait this long before the pose-primary detector can rearm. input.
+      pose_only_rearm_ms: 50
+    state_machine:
+      # After pose tracking comes back, wait this long before uppercuts can arm again. input.
+      lost_tracking_reacquire_stable_ms: 40
+  prototype:
+    # Uppercuts share the same prototype-matcher runtime surface as the other punch families when selected. input.
+    prototype_library:
+      # Named curated prototype library/profile to load for boxing prototype matching. input.
+      library_id: boxing_side_aware_v1
+    evaluation:
+      # Measure each prototype-matching decision across this much recent time. input.
+      window_ms: 250
+      # Re-evaluate the rolling matcher this often. input.
+      window_step_ms: 33
+    thresholds:
+      # Require the best positive-class match score to reach at least this 0..1 value or emit no_punch. input.
+      match_score_min: 0.70
+    timing:
+      # After a punch event fires, suppress duplicate re-fires for this long. input.
+      emit_cooldown_ms: 250
+      # Keep the current confident event active for this long before allowing a new event. input.
+      emit_hold_ms: 100
+    debug:
+      # Show per-class match scores in proving/debug views. input presentation.
+      show_scores: true
+      # Show duplicate-suppression / hold state in proving/debug views. input presentation.
+      show_event_gate_state: true
+  classifier:
+    # Uppercuts can still point at the shared learned punch-classifier runtime, but runtime/debug stays explicit about which families actually select it. input.
+    model:
+      # Exported learned-classifier artifact to load when uppercut routing selects the classifier runtime. input.
+      artifact_path: res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json
+    thresholds:
+      # Require the best learned positive-class score to reach at least this 0..1 value or emit no_punch. input.
+      match_score_min: 0.70
+    timing:
+      # After a punch event fires, suppress duplicate re-fires for this long. input.
+      emit_cooldown_ms: 250
+      # Keep the current confident event active for this long before allowing a new event. input.
+      emit_hold_ms: 100
+    debug:
+      # Show per-class learned scores in proving/debug views. input presentation.
+      show_scores: true
+      # Show duplicate-suppression / hold state in proving/debug views. input presentation.
+      show_event_gate_state: true
+
+knee_strike:
+  # [threshold, prototype, classifier] Pick which backend contract owns knee-strike routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
+  backend: threshold
+  threshold: {}
+  prototype: {}
+  classifier: {}
+
+leg_lift:
+  # [threshold, prototype, classifier] Pick which backend contract owns leg-lift routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
+  backend: threshold
+  threshold: {}
+  prototype: {}
+  classifier: {}
+
+side_step:
+  # [threshold, prototype, classifier] Pick which backend contract owns side-step routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
+  backend: threshold
+  threshold: {}
+  prototype: {}
+  classifier: {}

@@ -2,12 +2,21 @@ schema: aerobeat/gesture_detection_config
 version: 1
 profile: flow
 squat:
-  # Turn calibrated torso-height squat detection on or off. input.
-  enabled: true
-  thresholds:
-    # Squat enters when live torso height / calibrated torso height drops to or below this ratio. input.
-    enter_height_ratio_max: 0.82
-    # Squat exits when live torso height / calibrated torso height rises back to or above this ratio. input.
-    exit_height_ratio_min: 0.92
+  # [threshold, prototype, classifier] Pick which backend contract owns squat routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
+  backend: threshold
+  threshold:
+    # Squat uses the current calibrated torso-height threshold runtime. input.
+    thresholds:
+      # Squat enters when live torso height / calibrated torso height drops to or below this ratio. input.
+      enter_height_ratio_max: 0.82
+      # Squat exits when live torso height / calibrated torso height rises back to or above this ratio. input.
+      exit_height_ratio_min: 0.92
+  prototype: {}
+  classifier: {}
 straight_punch:
-  enabled: false
+  # [threshold, prototype, classifier] Flow keeps straight punches inactive by selecting the threshold backend and leaving its runtime block empty. input.
+  backend: threshold
+  threshold:
+    enabled: false
+  prototype: {}
+  classifier: {}

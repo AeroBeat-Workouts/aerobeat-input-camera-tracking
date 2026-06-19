@@ -1,9 +1,9 @@
 # AeroBeat Learned Classifier Family-Specific Feature Branch
 
 **Date:** 2026-06-18  
-**Status:** Blocked  
-**Last Updated:** 2026-06-18 19:55 EDT  
-**Blocked Reason:** Awaiting Derrick's manual GUI replay/live testing feedback on the mixed-family rollout; terminal-side truth/routing checks passed, but behavior quality still shows straight-left misses and threshold hook/uppercut false positives that need human verification before the next bug-squash slice.  
+**Status:** In Progress  
+**Last Updated:** 2026-06-19 10:47 EDT  
+**Blocked Reason:** None. Derrick returned with Cookie/Chip mixed-family test feedback and a screenshot showing the straight learned model failed to load under the current `mixed_family` selection; branch is now executing the next bug-squash + config-contract cleanup slice.  
 **Agent:** `pico`
 
 ---
@@ -1252,6 +1252,135 @@ QA judgment: terminal-side verification passes as a truthfulness/reproducibility
 I also reran a small fresh proving replay subset into `.temp/audit-mixed-family-terminal-rerun-2026-06-18/` using the live mixed-family path rather than trusting prior summaries. The positive `straight_right` replay again resolved `active_backend=mixed_family`, `routing_mode=mixed_family`, `straight_backend=learned_classifier`, `hook_backend=threshold_gates`, and `uppercut_backend=threshold_gates`; its emitted `punch_right` events carried `payload.backend=learned_classifier` plus the learned-classifier payload block with `class_name=straight_right`, while contemporaneous `hook_*` / `uppercut_*` events carried `payload.backend=threshold_gates`. The `run_in_place` negative-control replay stayed honest about provenance too: its false positives were still bad behaviorally, but they were all threshold-routed rather than being mislabeled as learned-classifier output.
 
 So what is now proven: the terminal-side mixed-family activation/routing truth is real, the `be4b0bf` truth-surface fix is real, emitted replay payloads now report per-family backend provenance truthfully, and the event-feed / proving / unit-test surfaces are internally consistent for this narrow claim. What is **not** proven: behavioral quality, manual hover-card/GUI presentation quality, replay UX, live-camera performance, or rollout readiness. The reruns still show threshold hook/uppercut false positives during the straight replay and the run-in-place negative control, and prior saved branch evidence still leaves broader learned-family behavior questions open. Derrick still needs manual GUI replay/live testing next session before any broader pass-ready judgment.
+
+---
+
+### Task 45: Research mixed-family runtime bug, naming migration, and per-family config topology
+
+**Bead ID:** `aerobeat-input-camera-tracking-aims`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Derrick resumed the branch with concrete Cookie/Chip test feedback. Investigate why `punch_detection.backend = mixed_family` can still show straight learned routing in debug while failing to load the effective straight model, with the provided screenshot indicating `Selected backend = mixed_family`, `Active backend = learned_classifier`, `Learned model loaded = false`, and an older 2026-06-16 artifact path. Also review the current boxing gesture YAML and runtime contract against Derrick’s requested topology cleanup: rename `learned_classifier` → `single_classifier`, rename `mixed_family` → `multiple_classifiers`, expose parallel per-backend option sets without sharing YAML variables, and assess whether the config should evolve toward clearer per-family backend ownership while staying honest about threshold-only gestures like guard. Produce the narrowest truthful implementation slice and call out any migration risk. Claim bead `aerobeat-input-camera-tracking-aims` on start and close it when complete.
+
+**Folders Created/Deleted/Modified:**
+- relevant runtime/config/proving paths discovered during diagnosis
+
+**Files Created/Deleted/Modified:**
+- plan updates / notes as needed
+
+**Status:** ✅ Complete
+
+**Results:** Research completed. Most likely straight-model failure cause is the current shared fallback contract, not the mixed router itself. In `src/detectors/learned_punch_classifier.gd`, mixed mode resolves the straight artifact from `mixed_family.straight.model.artifact_path`, then falls back to `learned_classifier.model.artifact_path`, then to `DEFAULT_MODEL_ARTIFACT_PATH`. Derrick’s screenshot path `res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-temporal-cnn-baseline-2026-06-16/mlp/mlp-result.json` does **not** exist in the repo/addon tree, while the current shipped frozen MLP path does. That makes the most likely bug a stale/dead learned-artifact path being reused through the shared fallback surface when mixed mode is selected. In other words: mixed routing can be active, but if the effective straight-model path is inherited from the old single learned slot and that slot still points at a deleted artifact, runtime truthfully reaches `model_unavailable (model_open_failed)` and straights never fire.
+
+Two extra details matter for interpreting the screenshot honestly. First, the learned detector’s own debug state currently reports `active_backend = learned_classifier` whenever it is the concrete engine doing work, even if the top-level selected backend is `mixed_family`; that naming is confusing but not itself the load failure. Second, the current `assets/boxing.gesture_detection.yaml` no longer points at the dead temporal-CNN path; both `learned_classifier.model.artifact_path` and `mixed_family.straight.model.artifact_path` now point at the existing frozen MLP artifact. So if Derrick still sees the dead temporal path at runtime, the live `gesture_profile_document` is almost certainly coming from an older serialized/configured source (or a path injected elsewhere) rather than from the current checked-in YAML.
+
+Independent YAML/runtime audit: the current topology is still half-global, half-family-specific. `mixed_family` already owns a family-local straight model path, but it still reuses the global `learned_classifier` node for fallback and enablement, which is exactly the kind of shared variable coupling Derrick wants removed. The clean long-term idea of “each gesture family owns its own backend” is directionally better for punch families, but it is **not** yet an honest repo-wide shape for `guard/squat/weave/knee_strike/leg_lift/side_step`; those gestures currently have one runtime detector each, so giving them fake backend matrices right now would mostly create empty config ceremony and overstate readiness.
+
+Recommended narrowest truthful implementation slice for Task 46:
+1. Rename config/runtime labels with compatibility aliases: `learned_classifier` → `single_classifier`, `mixed_family` → `multiple_classifiers`.
+2. Stop sharing backend-owned model/config nodes in the new contract. `single_classifier` should own its own `enabled/model/thresholds/timing/debug` subtree; `multiple_classifiers` should own its own per-family subtrees and should not depend on `single_classifier.model.artifact_path` for normal operation.
+3. For the initial `multiple_classifiers` slice, make only the punch families explicit: `straight`, `hook`, and `uppercut` each get their own backend selection surface. Keep `straight` able to choose `single_classifier` now; keep `hook`/`uppercut` defaulted to `threshold_gates` and document that their learned-specialized paths are not runtime-ready yet.
+4. Keep legacy read compatibility for one migration window: accept old `learned_classifier` / `mixed_family` names and old fallback fields, but only as compatibility input. New comments/examples/debug should prefer the renamed nodes and should surface when a legacy fallback path was used.
+5. Remove the current ambiguity in debug truth by distinguishing top-level selected mode (`multiple_classifiers`) from the concrete per-family engine (`single_classifier` for straight, `threshold_gates` for hook/uppercut).
+
+Recommended config direction (honest first step, not full future overreach):
+- `punch_detection.backend: single_classifier | multiple_classifiers | threshold_gates | prototype_matcher`
+- `single_classifier:` owns the all-punch single-model path and its own thresholds/timing/debug block.
+- `multiple_classifiers.straight:` owns `backend` plus a `single_classifier` subtree with its own model/tuning.
+- `multiple_classifiers.hook:` owns `backend` plus parallel option subtrees, but comments should say the runtime-supported backend is still `threshold_gates` for now.
+- `multiple_classifiers.uppercut:` same as hook.
+This gives Derrick the naming/topology seam he wants without pretending hook/uppercut learned runtime support already exists.
+
+Compatibility / migration risks:
+- Existing saved configs, proving overrides, tests, and debug tooling likely still emit/read `learned_classifier` and `mixed_family`; alias support is required or old sessions will silently break.
+- Any code/tests that assert exact backend strings (`mixed_family`, `learned_classifier`) will need deliberate update because the rename affects both config and debug truth.
+- If Task 46 removes the old fallback too aggressively, older configs missing the new `multiple_classifiers.straight.single_classifier.model.artifact_path` could regress from “loads stale wrong file” to “loads no file at all.” The safe migration is explicit new path first, legacy fallback second, default artifact last, with a visible resolution reason.
+- Broad per-gesture backend ownership beyond punches should wait; doing it now would add noisy config surface for gestures that still only have one real implementation path.
+
+Bottom line: the most probable straight-fire regression is a stale dead artifact path surviving through the shared `mixed_family -> learned_classifier` fallback chain. The narrow honest fix identified in research was to rename and split the config contract so `multiple_classifiers` owns its own family-local model/config surfaces and to keep legacy aliases during migration. After this research pass, Derrick explicitly approved the broader readability-driven split: every gesture family should now own its own backend/config surface, with many families expected to remain threshold-backed until more runtime engines actually exist.
+
+---
+
+### Task 46: Implement mixed-family fix, backend renames, and per-family config expansion
+
+**Bead ID:** `aerobeat-input-camera-tracking-vw0r`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Implement the approved family-first runtime/config split from Task 45. Required goals: (1) fix the straight-family runtime path so the selected classifier path actually loads the intended straight model, (2) rename `learned_classifier` to `classifier`, (3) replace the old `mixed_family` concept with the new family-first contract instead of keeping a separate mixed-mode selector, (4) make **each boxing gesture family** (straight_punch, hook, uppercut, guard, squat, weave, knee_strike, leg_lift, side_step, and any other shipped boxing families) own a single `backend` selector with values exactly `threshold`, `prototype`, or `classifier`, and (5) under each family, define backend-specific variable groups named exactly `threshold`, `prototype`, and `classifier` without shared YAML variable nodes and without redundant enabled booleans—the selected `backend` is the activator. Preserve the repo’s existing YAML comment style while updating comments/debug truth so the shipped behavior stays explicit and readable. Keep the implementation honest: if a family does not have a real runtime implementation for a backend yet, keep that backend block present only as honest config/documentation shape or compatibility support and do not fake working runtime behavior. Preserve compatibility/migration safety where practical and keep per-family routing/debug truth explicit.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `assets/flow.gesture_detection.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `src/detectors/prototype_punch_matcher.gd`
+- `src/detectors/learned_punch_classifier.gd`
+- `.testbed/scripts/proving_harness.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the approved family-first contract. The shipped boxing/flow YAML now uses per-family `backend` + `threshold`/`prototype`/`classifier` blocks with the existing comment style preserved, and `mixed_family` is no longer a user-facing mode in the canonical config. Runtime routing in `pose_detector_substrate.gd` is now per-family: punch families can mix threshold/prototype/classifier selections naturally, debug truth reports per-family routing explicitly, and non-punch families stay honest by only activating the real threshold runtime while leaving placeholder prototype/classifier blocks as documented shape. `prototype_punch_matcher.gd` and `learned_punch_classifier.gd` now resolve the renamed backend labels, preserve legacy aliases where practical, and the straight-family classifier path now prefers the intended straight-family config/artifact source instead of falling through stale shared learned paths. Proving-harness runtime overrides were updated to write the approved family-first shape, and the focused unit coverage was updated to validate the renamed contract plus the straight-path selection fix.
+
+Validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=test_prototype_matcher_backend_emits_side_aware_straight_and_surfaces_debug_state`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=test_learned_classifier_backend_emits_and_surfaces_truthful_debug_state`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=test_mixed_family_backend_routes_straights_to_learned_classifier_and_surfaces_truth`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=test_mixed_family_backend_prefers_explicit_straight_artifact_path_over_learned_classifier_model_path`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_proving_runtime_config_can_force_prototype_matcher_backend_for_fixture_benchmarks`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_proving_runtime_config_can_force_mixed_family_backend_for_fixture_benchmarks`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_proving_runtime_config_can_force_learned_classifier_backend_for_fixture_benchmarks`
+
+---
+
+### Task 47: QA mixed-family fix and renamed config contract
+
+**Bead ID:** `aerobeat-input-camera-tracking-rx3t`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the multi-classifier bug fix, backend renames, and broader per-family config-contract cleanup in the highest-fidelity validation path available. Confirm the intended straight model path now loads under the renamed multi-classifier path, that each gesture family now owns its own readable backend/config surface, that families without multiple real engines still resolve honestly, and that the YAML comments match the actual runtime behavior.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo/test/artifact paths used during QA
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 48: Audit mixed-family fix and config/runtime contract
+
+**Bead ID:** `aerobeat-input-camera-tracking-69v9`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the multi-classifier runtime bug fix plus the renamed per-family config/runtime contract. Confirm the final behavior is honest, that the comments/docs now match reality, that each gesture family’s backend/config ownership is explicit, and that any families still limited to threshold/runtime-singleton behavior are clearly called out instead of hidden by the new naming.
+
+**Folders Created/Deleted/Modified:**
+- relevant repo/test/artifact paths used during audit
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 

@@ -1,8 +1,8 @@
 class_name LearnedPunchClassifier
 extends "res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd"
 
-const BACKEND_LEARNED_CLASSIFIER := "learned_classifier"
-const BACKEND_MIXED_FAMILY := "mixed_family"
+const BACKEND_LEARNED_CLASSIFIER := "classifier"
+const LEGACY_BACKEND_MIXED_FAMILY := "mixed_family"
 const LEARNED_DEFAULT_WINDOW_MS := 250
 const LEARNED_DEFAULT_WINDOW_STEP_MS := 33
 const LEARNED_DEFAULT_MATCH_SCORE_MIN := 0.70
@@ -250,7 +250,7 @@ func process_window(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_
 		"name": StringName(event_name),
 		"power": power,
 		"backend": BACKEND_LEARNED_CLASSIFIER,
-		"learned_classifier": {
+		"classifier": {
 			"class_name": best_class,
 			"score": best_score,
 			"runner_up_class": runner_up_class,
@@ -579,58 +579,46 @@ func _get_gesture_profile_document() -> Dictionary:
 	return gesture_profile_document if gesture_profile_document is Dictionary else {}
 
 func _get_selected_backend() -> String:
-	var gesture_profile_document := _get_gesture_profile_document()
-	var punch_detection: Dictionary = gesture_profile_document.get("punch_detection", {}) if gesture_profile_document.get("punch_detection", {}) is Dictionary else {}
-	return _normalize_backend_name(String(punch_detection.get("backend", BACKEND_THRESHOLD_GATES)))
+	return BACKEND_LEARNED_CLASSIFIER if _is_enabled_in_config() else ""
 
 func _is_enabled_in_config() -> bool:
-	var gesture_profile_document := _get_gesture_profile_document()
-	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
-	return bool(learned.get("enabled", false))
+	return not _get_selected_families_for_backend(BACKEND_LEARNED_CLASSIFIER).is_empty()
 
 func _is_selected_backend_enabled() -> bool:
-	var selected_backend := _get_selected_backend()
-	var gesture_profile_document := _get_gesture_profile_document()
-	if selected_backend == BACKEND_LEARNED_CLASSIFIER:
-		return _is_enabled_in_config()
-	if selected_backend == BACKEND_PROTOTYPE_MATCHER:
-		var matcher: Dictionary = gesture_profile_document.get("prototype_matcher", {}) if gesture_profile_document.get("prototype_matcher", {}) is Dictionary else {}
-		return bool(matcher.get("enabled", false))
-	if selected_backend == BACKEND_THRESHOLD_GATES:
-		var threshold_backend: Dictionary = gesture_profile_document.get(BACKEND_THRESHOLD_GATES, {}) if gesture_profile_document.get(BACKEND_THRESHOLD_GATES, {}) is Dictionary else {}
-		return bool(threshold_backend.get("enabled", true))
-	if selected_backend == BACKEND_MIXED_FAMILY:
-		return _is_enabled_in_config()
-	return false
+	return _is_enabled_in_config()
 
 func _is_active_backend() -> bool:
-	var selected_backend := _get_selected_backend()
-	return (selected_backend == BACKEND_LEARNED_CLASSIFIER or selected_backend == BACKEND_MIXED_FAMILY) and _is_enabled_in_config()
+	return _is_enabled_in_config()
 
 func _get_activation_reason() -> String:
 	if _is_active_backend():
 		return "active"
-	if _get_selected_backend() != BACKEND_LEARNED_CLASSIFIER and _get_selected_backend() != BACKEND_MIXED_FAMILY:
-		return "backend_not_selected"
-	return "selected_backend_disabled"
+	return "backend_not_selected"
 
 func _normalize_backend_name(backend_name: String) -> String:
-	if backend_name == BACKEND_THRESHOLD_GATES:
-		return BACKEND_THRESHOLD_GATES
-	if backend_name == BACKEND_MIXED_FAMILY:
-		return BACKEND_MIXED_FAMILY
-	return backend_name
+	if backend_name == LEGACY_BACKEND_LEARNED_CLASSIFIER:
+		return BACKEND_LEARNED_CLASSIFIER
+	return super._normalize_backend_name(backend_name)
 
 func _get_model_artifact_path() -> String:
 	var gesture_profile_document := _get_gesture_profile_document()
-	if _get_selected_backend() == BACKEND_MIXED_FAMILY:
-		var mixed_family: Dictionary = gesture_profile_document.get(BACKEND_MIXED_FAMILY, {}) if gesture_profile_document.get(BACKEND_MIXED_FAMILY, {}) is Dictionary else {}
-		var straight: Dictionary = mixed_family.get("straight", {}) if mixed_family.get("straight", {}) is Dictionary else {}
-		var mixed_model: Dictionary = straight.get("model", {}) if straight.get("model", {}) is Dictionary else {}
-		var mixed_path := String(mixed_model.get("artifact_path", "")).strip_edges()
-		if not mixed_path.is_empty():
-			return mixed_path
-	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
+	var mixed_family: Dictionary = gesture_profile_document.get(LEGACY_BACKEND_MIXED_FAMILY, {}) if gesture_profile_document.get(LEGACY_BACKEND_MIXED_FAMILY, {}) is Dictionary else {}
+	var legacy_straight: Dictionary = mixed_family.get("straight", {}) if mixed_family.get("straight", {}) is Dictionary else {}
+	var legacy_model: Dictionary = legacy_straight.get("model", {}) if legacy_straight.get("model", {}) is Dictionary else {}
+	var legacy_path := String(legacy_model.get("artifact_path", "")).strip_edges()
+	if _get_family_backend("straight_punch") == BACKEND_LEARNED_CLASSIFIER and not legacy_path.is_empty():
+		return legacy_path
+	for family in ["straight_punch", "hook", "uppercut"]:
+		if _get_family_backend(family) != BACKEND_LEARNED_CLASSIFIER:
+			continue
+		var classifier_config := _get_family_backend_config(family, BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
+		var model: Dictionary = classifier_config.get("model", {}) if classifier_config.get("model", {}) is Dictionary else {}
+		var path := String(model.get("artifact_path", "")).strip_edges()
+		if not path.is_empty():
+			return path
+	if not legacy_path.is_empty():
+		return legacy_path
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
 	var model: Dictionary = learned.get("model", {}) if learned.get("model", {}) is Dictionary else {}
 	var path := String(model.get("artifact_path", DEFAULT_MODEL_ARTIFACT_PATH)).strip_edges()
 	return path if not path.is_empty() else DEFAULT_MODEL_ARTIFACT_PATH
@@ -642,32 +630,27 @@ func _get_window_step_ms() -> int:
 	return LEARNED_DEFAULT_WINDOW_STEP_MS
 
 func _get_match_score_min() -> float:
-	var gesture_profile_document := _get_gesture_profile_document()
-	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
 	var thresholds: Dictionary = learned.get("thresholds", {}) if learned.get("thresholds", {}) is Dictionary else {}
 	return clampf(float(thresholds.get("match_score_min", LEARNED_DEFAULT_MATCH_SCORE_MIN)), 0.0, 1.0)
 
 func _get_emit_cooldown_ms() -> int:
-	var gesture_profile_document := _get_gesture_profile_document()
-	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
 	var timing: Dictionary = learned.get("timing", {}) if learned.get("timing", {}) is Dictionary else {}
 	return max(0, int(timing.get("emit_cooldown_ms", LEARNED_DEFAULT_EMIT_COOLDOWN_MS)))
 
 func _get_emit_hold_ms() -> int:
-	var gesture_profile_document := _get_gesture_profile_document()
-	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
 	var timing: Dictionary = learned.get("timing", {}) if learned.get("timing", {}) is Dictionary else {}
 	return max(0, int(timing.get("emit_hold_ms", LEARNED_DEFAULT_EMIT_HOLD_MS)))
 
 func _get_show_scores() -> bool:
-	var gesture_profile_document := _get_gesture_profile_document()
-	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
 	var debug_config: Dictionary = learned.get("debug", {}) if learned.get("debug", {}) is Dictionary else {}
 	return _get_debug_bool(debug_config, "show_scores", LEARNED_DEFAULT_SHOW_SCORES)
 
 func _get_show_event_gate_state() -> bool:
-	var gesture_profile_document := _get_gesture_profile_document()
-	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
+	var learned := _get_primary_family_backend_config(BACKEND_LEARNED_CLASSIFIER, LEGACY_BACKEND_LEARNED_CLASSIFIER)
 	var debug_config: Dictionary = learned.get("debug", {}) if learned.get("debug", {}) is Dictionary else {}
 	return _get_debug_bool(debug_config, "show_event_gate_state", LEARNED_DEFAULT_SHOW_EVENT_GATE_STATE)
 

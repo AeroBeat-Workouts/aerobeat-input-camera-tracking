@@ -3,7 +3,19 @@ extends RefCounted
 
 const PrototypePunchMatcher = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd")
 const LearnedPunchClassifierScript = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/learned_punch_classifier.gd")
-const PUNCH_BACKEND_MIXED_FAMILY := "mixed_family"
+const BACKEND_THRESHOLD := "threshold"
+const BACKEND_PROTOTYPE := "prototype"
+const BACKEND_CLASSIFIER := "classifier"
+const LEGACY_BACKEND_THRESHOLD := "threshold_gates"
+const LEGACY_BACKEND_PROTOTYPE := "prototype_matcher"
+const LEGACY_BACKEND_CLASSIFIER := "learned_classifier"
+const LEGACY_BACKEND_MIXED_FAMILY := "mixed_family"
+const PUNCH_FAMILIES := ["straight_punch", "hook", "uppercut"]
+const PUNCH_FAMILY_EVENT_NAMES := {
+	"straight_punch": ["punch_left", "punch_right"],
+	"hook": ["hook_left", "hook_right"],
+	"uppercut": ["uppercut_left", "uppercut_right"],
+}
 
 const TRACKING_TRACKING := &"tracking"
 const TRACKING_DEGRADED := &"degraded"
@@ -590,44 +602,50 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		"straight_punch": _build_straight_punch_debug_state(metrics),
 		"hook": _build_pose_strike_debug_state("hook", metrics),
 		"uppercut": _build_pose_strike_debug_state("uppercut", metrics),
+		"prototype": _prototype_punch_matcher.get_debug_state(),
+		"classifier": _learned_punch_classifier.get_debug_state(),
 		"prototype_matcher": _prototype_punch_matcher.get_debug_state(),
 		"learned_classifier": _learned_punch_classifier.get_debug_state(),
 		"flow": _build_flow_debug_state(metrics),
 	}
 
 func _build_punch_detection_debug_state() -> Dictionary:
-	var active_backend := _get_active_punch_detection_backend()
-	var selected_backend := _get_selected_punch_detection_backend()
-	var routing_mode := "single_backend"
-	var straight_backend := active_backend
-	var hook_backend := active_backend
-	var uppercut_backend := active_backend
-	if active_backend == PUNCH_BACKEND_MIXED_FAMILY:
-		routing_mode = "mixed_family"
-		straight_backend = "learned_classifier" if _learned_classifier_backend_enabled() else "none"
-		hook_backend = "threshold_gates" if _threshold_gates_enabled() else "none"
-		uppercut_backend = "threshold_gates" if _threshold_gates_enabled() else "none"
+	var family_backends := {
+		"straight_punch": _get_punch_backend_for_family("straight_punch"),
+		"hook": _get_punch_backend_for_family("hook"),
+		"uppercut": _get_punch_backend_for_family("uppercut"),
+	}
+	var active_backends: Array[String] = []
+	for family in PUNCH_FAMILIES:
+		var backend := String(family_backends.get(family, "none"))
+		if backend != "none" and not active_backends.has(backend):
+			active_backends.append(backend)
 	return {
-		"backend": active_backend,
-		"active_backend": active_backend,
-		"selected_backend": selected_backend,
-		"selected_backend_raw": _get_selected_punch_detection_backend_raw(),
-		"selected_backend_enabled": _selected_punch_detection_backend_enabled(),
+		"backend": "per_family",
+		"active_backend": "per_family",
+		"selected_backend": "per_family",
+		"selected_backend_raw": "per_family",
+		"selected_backend_enabled": not active_backends.is_empty(),
 		"active_backend_resolution": _get_punch_backend_resolution_reason(),
-		"routing_mode": routing_mode,
-		"straight_backend": straight_backend,
-		"hook_backend": hook_backend,
-		"uppercut_backend": uppercut_backend,
-		"hook_uppercut_backend_note": "hook/uppercut stay on threshold_gates in mixed_family routing" if active_backend == PUNCH_BACKEND_MIXED_FAMILY else "",
-		"straight_model_path": String(_learned_punch_classifier.get_debug_state().get("model_path", "")) if active_backend == PUNCH_BACKEND_MIXED_FAMILY else "",
-		"threshold_gates_enabled": _threshold_gates_enabled(),
-		"prototype_matcher_enabled": _prototype_matcher_backend_enabled(),
-		"learned_classifier_enabled": _learned_classifier_backend_enabled(),
+		"routing_mode": "per_family",
+		"active_backends": active_backends,
+		"family_backends": family_backends,
+		"straight_backend": String(family_backends.get("straight_punch", "none")),
+		"hook_backend": String(family_backends.get("hook", "none")),
+		"uppercut_backend": String(family_backends.get("uppercut", "none")),
+		"straight_model_path": String(_learned_punch_classifier.get_debug_state().get("model_path", "")) if String(family_backends.get("straight_punch", "none")) == BACKEND_CLASSIFIER else "",
+		"threshold_enabled": _any_punch_family_uses_backend(BACKEND_THRESHOLD),
+		"prototype_enabled": _any_punch_family_uses_backend(BACKEND_PROTOTYPE),
+		"classifier_enabled": _any_punch_family_uses_backend(BACKEND_CLASSIFIER),
+		"threshold_gates_enabled": _any_punch_family_uses_backend(BACKEND_THRESHOLD),
+		"prototype_matcher_enabled": _any_punch_family_uses_backend(BACKEND_PROTOTYPE),
+		"learned_classifier_enabled": _any_punch_family_uses_backend(BACKEND_CLASSIFIER),
 	}
 
 func _build_guard_debug_state() -> Dictionary:
 	var guard_debug: Dictionary = (_gesture_state.get("guard_debug", {}) as Dictionary).duplicate(true)
 	var guard_config := _get_guard_config()
+	guard_debug["backend"] = _get_non_punch_backend_for_family("guard")
 	guard_debug["state"] = bool(_get_state("guard"))
 	guard_debug["enabled"] = bool(guard_config.get("enabled", true))
 	guard_debug["max_wrist_separation_x"] = float(guard_config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))
@@ -639,6 +657,7 @@ func _build_squat_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
 	var squat_config := _get_squat_config()
 	return {
+		"backend": _get_non_punch_backend_for_family("squat"),
 		"state": bool(_get_state("squat")),
 		"enabled": bool(squat_config.get("enabled", true)),
 		"enter_height_ratio_max": float(squat_config.get("enter_height_ratio_max", SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX)),
@@ -661,6 +680,7 @@ func _build_weave_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		state_name = "left"
 	elif bool(_get_state("weave_right")):
 		state_name = "right"
+	weave_debug["backend"] = _get_non_punch_backend_for_family("weave")
 	weave_debug["state"] = state_name
 	weave_debug["enabled"] = bool(weave_config.get("enabled", true))
 	weave_debug["head_lateral_offset"] = float(measurements.get("head_lateral_offset", weave_debug.get("head_lateral_offset", 0.0)))
@@ -690,6 +710,7 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 	var hand_payload: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
 	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
 	return {
+		"backend": _get_punch_backend_for_family("straight_punch"),
 		"phase": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
 		"state": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
 		"previous_state": String(state.get("previous_state", "")),
@@ -752,6 +773,7 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 	var lateral_speed := float(state.get("last_lateral_velocity", 0.0))
 	var vertical_speed := float(state.get("last_vertical_velocity", 0.0))
 	var debug := {
+		"backend": _get_punch_backend_for_family(family),
 		"phase": String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)),
 		"state": String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST)),
 		"previous_state": String(state.get("previous_state", "")),
@@ -1029,22 +1051,17 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if right_foot_confidence >= lower_body_confidence_gate:
 		_process_knee(events, "right", float(measurements.get("right_knee_rise", 0.0)), float(measurements.get("right_foot_rise", 0.0)), float(measurements.get("left_knee_rise", 0.0)), right_hip, right_ankle, torso_height)
 		_process_leg_lift(events, "right", float(measurements.get("right_leg_angle_from_core_deg", 0.0)), right_hip, right_ankle, torso_height)
-	var punch_backend := _get_active_punch_detection_backend()
-	if punch_backend == "prototype_matcher":
-		events.append_array(_prototype_punch_matcher.process_window(landmarks_by_id, metrics, timestamp_ms))
-	elif punch_backend == "learned_classifier":
-		events.append_array(_learned_punch_classifier.process_window(landmarks_by_id, metrics, timestamp_ms))
-	elif punch_backend == PUNCH_BACKEND_MIXED_FAMILY:
-		events.append_array(_filter_events_by_names(_learned_punch_classifier.process_window(landmarks_by_id, metrics, timestamp_ms), ["punch_left", "punch_right"]))
-		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-	elif punch_backend == "threshold_gates":
+	if _any_punch_family_uses_backend(BACKEND_PROTOTYPE):
+		events.append_array(_filter_events_for_backend(_prototype_punch_matcher.process_window(landmarks_by_id, metrics, timestamp_ms), BACKEND_PROTOTYPE))
+	if _any_punch_family_uses_backend(BACKEND_CLASSIFIER):
+		events.append_array(_filter_events_for_backend(_learned_punch_classifier.process_window(landmarks_by_id, metrics, timestamp_ms), BACKEND_CLASSIFIER))
+	if _get_punch_backend_for_family("straight_punch") == BACKEND_THRESHOLD:
 		_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 		_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
+	if _get_punch_backend_for_family("hook") == BACKEND_THRESHOLD:
 		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
 		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+	if _get_punch_backend_for_family("uppercut") == BACKEND_THRESHOLD:
 		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
 		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
 	if not _has_any_event(events, ["punch_left", "hook_left", "uppercut_left"]):
@@ -1879,78 +1896,83 @@ func _set_straight_punch_state(side: String, state: Dictionary) -> void:
 
 
 func _get_selected_punch_detection_backend() -> String:
-	return _normalize_punch_backend_name(_get_selected_punch_detection_backend_raw())
+	return "per_family"
 
 func _get_selected_punch_detection_backend_raw() -> String:
+	return "per_family"
+
+func _get_gesture_profile_document() -> Dictionary:
 	if _config == null:
-		return "threshold_gates"
+		return {}
 	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return "threshold_gates"
+	return gesture_profile_document if gesture_profile_document is Dictionary else {}
+
+func _get_family_document(family: String) -> Dictionary:
+	var gesture_profile_document := _get_gesture_profile_document()
+	return gesture_profile_document.get(family, {}) if gesture_profile_document.get(family, {}) is Dictionary else {}
+
+func _get_family_backend_document(family: String, backend_name: String) -> Dictionary:
+	var family_document := _get_family_document(family)
+	var backend_document: Dictionary = family_document.get(backend_name, {}) if family_document.get(backend_name, {}) is Dictionary else {}
+	if not backend_document.is_empty():
+		return backend_document
+	return family_document
+
+func _get_punch_backend_for_family(family: String) -> String:
+	var family_document := _get_family_document(family)
+	var backend := String(family_document.get("backend", "")).strip_edges()
+	if backend != "":
+		return _normalize_punch_backend_name(backend)
+	var gesture_profile_document := _get_gesture_profile_document()
 	var punch_detection: Dictionary = gesture_profile_document.get("punch_detection", {}) if gesture_profile_document.get("punch_detection", {}) is Dictionary else {}
-	return String(punch_detection.get("backend", "threshold_gates"))
+	var raw_backend := String(punch_detection.get("backend", LEGACY_BACKEND_THRESHOLD))
+	if raw_backend == LEGACY_BACKEND_MIXED_FAMILY:
+		return BACKEND_CLASSIFIER if family == "straight_punch" else BACKEND_THRESHOLD
+	return _normalize_punch_backend_name(raw_backend)
+
+func _get_non_punch_backend_for_family(family: String) -> String:
+	var family_document := _get_family_document(family)
+	var backend := String(family_document.get("backend", "")).strip_edges()
+	if backend != "":
+		return _normalize_punch_backend_name(backend)
+	return BACKEND_THRESHOLD
 
 func _threshold_gates_enabled() -> bool:
-	if _config == null:
-		return true
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return true
-	var threshold_backend: Dictionary = gesture_profile_document.get("threshold_gates", {}) if gesture_profile_document.get("threshold_gates", {}) is Dictionary else {}
-	return bool(threshold_backend.get("enabled", true))
+	return _any_punch_family_uses_backend(BACKEND_THRESHOLD)
 
 func _prototype_matcher_backend_enabled() -> bool:
-	if _config == null:
-		return false
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return false
-	var matcher: Dictionary = gesture_profile_document.get("prototype_matcher", {}) if gesture_profile_document.get("prototype_matcher", {}) is Dictionary else {}
-	return bool(matcher.get("enabled", false))
+	return _any_punch_family_uses_backend(BACKEND_PROTOTYPE)
 
 func _learned_classifier_backend_enabled() -> bool:
-	if _config == null:
-		return false
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return false
-	var learned: Dictionary = gesture_profile_document.get("learned_classifier", {}) if gesture_profile_document.get("learned_classifier", {}) is Dictionary else {}
-	return bool(learned.get("enabled", false))
+	return _any_punch_family_uses_backend(BACKEND_CLASSIFIER)
 
-func _selected_punch_detection_backend_enabled() -> bool:
-	var selected_backend := _get_selected_punch_detection_backend()
-	if selected_backend == "prototype_matcher":
-		return _prototype_matcher_backend_enabled()
-	if selected_backend == "learned_classifier":
-		return _learned_classifier_backend_enabled()
-	if selected_backend == PUNCH_BACKEND_MIXED_FAMILY:
-		return _threshold_gates_enabled() and _learned_classifier_backend_enabled()
-	if selected_backend == "threshold_gates":
-		return _threshold_gates_enabled()
+func _any_punch_family_uses_backend(backend_name: String) -> bool:
+	for family in PUNCH_FAMILIES:
+		if _get_punch_backend_for_family(String(family)) == backend_name:
+			return true
 	return false
 
+func _selected_punch_detection_backend_enabled() -> bool:
+	return _threshold_gates_enabled() or _prototype_matcher_backend_enabled() or _learned_classifier_backend_enabled()
+
 func _get_active_punch_detection_backend() -> String:
-	var selected_backend := _get_selected_punch_detection_backend()
-	if selected_backend == "prototype_matcher":
-		return "prototype_matcher" if _prototype_matcher_backend_enabled() else "none"
-	if selected_backend == "learned_classifier":
-		return "learned_classifier" if _learned_classifier_backend_enabled() else "none"
-	if selected_backend == PUNCH_BACKEND_MIXED_FAMILY:
-		return PUNCH_BACKEND_MIXED_FAMILY if _threshold_gates_enabled() and _learned_classifier_backend_enabled() else "none"
-	if selected_backend == "threshold_gates":
-		return "threshold_gates" if _threshold_gates_enabled() else "none"
-	return "none"
+	return "per_family" if _selected_punch_detection_backend_enabled() else "none"
 
 func _get_punch_backend_resolution_reason() -> String:
-	var selected_backend := _get_selected_punch_detection_backend()
-	if selected_backend == "prototype_matcher" or selected_backend == "learned_classifier" or selected_backend == "threshold_gates" or selected_backend == PUNCH_BACKEND_MIXED_FAMILY:
-		return "selected_backend_active" if _selected_punch_detection_backend_enabled() else "selected_backend_disabled"
-	return "unknown_selected_backend"
+	return "per_family_active" if _selected_punch_detection_backend_enabled() else "no_active_family_backend"
 
 func _normalize_punch_backend_name(backend_name: String) -> String:
-	if backend_name == PUNCH_BACKEND_MIXED_FAMILY:
-		return PUNCH_BACKEND_MIXED_FAMILY
-	return backend_name
+	match backend_name:
+		LEGACY_BACKEND_THRESHOLD:
+			return BACKEND_THRESHOLD
+		LEGACY_BACKEND_PROTOTYPE:
+			return BACKEND_PROTOTYPE
+		LEGACY_BACKEND_CLASSIFIER:
+			return BACKEND_CLASSIFIER
+		LEGACY_BACKEND_MIXED_FAMILY:
+			return BACKEND_CLASSIFIER
+		_:
+			return backend_name
 
 func _filter_events_by_names(events: Array, allowed_names: Array[String]) -> Array:
 	var filtered: Array = []
@@ -1962,6 +1984,13 @@ func _filter_events_by_names(events: Array, allowed_names: Array[String]) -> Arr
 			filtered.append(event.duplicate(true))
 	return filtered
 
+func _filter_events_for_backend(events: Array, backend_name: String) -> Array:
+	var allowed_names: Array[String] = []
+	for family in PUNCH_FAMILIES:
+		if _get_punch_backend_for_family(String(family)) == backend_name:
+			allowed_names.append_array(PUNCH_FAMILY_EVENT_NAMES.get(String(family), []))
+	return _filter_events_by_names(events, allowed_names)
+
 func _get_guard_config() -> Dictionary:
 	var config := {
 		"enabled": true,
@@ -1971,12 +2000,9 @@ func _get_guard_config() -> Dictionary:
 	}
 	if _config == null:
 		return config
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return config
-	var guard: Dictionary = gesture_profile_document.get("guard", {}) if gesture_profile_document.get("guard", {}) is Dictionary else {}
+	var guard: Dictionary = _get_family_backend_document("guard", BACKEND_THRESHOLD)
 	var thresholds: Dictionary = guard.get("thresholds", {}) if guard.get("thresholds", {}) is Dictionary else {}
-	config["enabled"] = bool(guard.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_non_punch_backend_for_family("guard") == BACKEND_THRESHOLD and bool(guard.get("enabled", config.get("enabled", true)))
 	config["max_wrist_separation_x"] = maxf(0.0, float(thresholds.get("max_wrist_separation_x", config.get("max_wrist_separation_x", GUARD_DEFAULT_MAX_WRIST_SEPARATION_X))))
 	config["max_wrist_separation_y"] = maxf(0.0, float(thresholds.get("max_wrist_separation_y", config.get("max_wrist_separation_y", GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y))))
 	config["max_wrist_nose_distance"] = maxf(0.0, float(thresholds.get("max_wrist_nose_distance", config.get("max_wrist_nose_distance", GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE))))
@@ -1990,12 +2016,9 @@ func _get_squat_config() -> Dictionary:
 	}
 	if _config == null:
 		return config
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return config
-	var squat: Dictionary = gesture_profile_document.get("squat", {}) if gesture_profile_document.get("squat", {}) is Dictionary else {}
+	var squat: Dictionary = _get_family_backend_document("squat", BACKEND_THRESHOLD)
 	var thresholds: Dictionary = squat.get("thresholds", {}) if squat.get("thresholds", {}) is Dictionary else {}
-	config["enabled"] = bool(squat.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_non_punch_backend_for_family("squat") == BACKEND_THRESHOLD and bool(squat.get("enabled", config.get("enabled", true)))
 	config["enter_height_ratio_max"] = clampf(float(thresholds.get("enter_height_ratio_max", config.get("enter_height_ratio_max", SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX))), 0.0, 1.0)
 	config["exit_height_ratio_min"] = clampf(float(thresholds.get("exit_height_ratio_min", config.get("exit_height_ratio_min", SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN))), 0.0, 1.0)
 	if float(config["exit_height_ratio_min"]) < float(config["enter_height_ratio_max"]):
@@ -2013,12 +2036,9 @@ func _get_weave_config() -> Dictionary:
 	}
 	if _config == null:
 		return config
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return config
-	var weave: Dictionary = gesture_profile_document.get("weave", {}) if gesture_profile_document.get("weave", {}) is Dictionary else {}
+	var weave: Dictionary = _get_family_backend_document("weave", BACKEND_THRESHOLD)
 	var thresholds: Dictionary = weave.get("thresholds", {}) if weave.get("thresholds", {}) is Dictionary else {}
-	config["enabled"] = bool(weave.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_non_punch_backend_for_family("weave") == BACKEND_THRESHOLD and bool(weave.get("enabled", config.get("enabled", true)))
 	config["enter_head_lateral_offset_min"] = maxf(0.0, float(thresholds.get("enter_head_lateral_offset_min", config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))))
 	config["enter_relative_head_hip_offset_min"] = maxf(0.0, float(thresholds.get("enter_relative_head_hip_offset_min", config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))))
 	config["enter_head_drop_ratio_min"] = maxf(0.0, float(thresholds.get("enter_head_drop_ratio_min", config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN))))
@@ -2043,16 +2063,13 @@ func _get_straight_punch_config() -> Dictionary:
 	}
 	if _config == null:
 		return config
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return config
-	var straight_punch: Dictionary = gesture_profile_document.get("straight_punch", {}) if gesture_profile_document.get("straight_punch", {}) is Dictionary else {}
+	var straight_punch: Dictionary = _get_family_backend_document("straight_punch", BACKEND_THRESHOLD)
 	var evaluation: Dictionary = straight_punch.get("evaluation", {}) if straight_punch.get("evaluation", {}) is Dictionary else {}
 	var thresholds: Dictionary = straight_punch.get("thresholds", {}) if straight_punch.get("thresholds", {}) is Dictionary else {}
 	var timing: Dictionary = straight_punch.get("timing", {}) if straight_punch.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = straight_punch.get("rearm", {}) if straight_punch.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = straight_punch.get("state_machine", {}) if straight_punch.get("state_machine", {}) is Dictionary else {}
-	config["enabled"] = bool(straight_punch.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_punch_backend_for_family("straight_punch") == BACKEND_THRESHOLD and bool(straight_punch.get("enabled", config.get("enabled", true)))
 	config["fresh_samples_only"] = bool(evaluation.get("fresh_samples_only", config.get("fresh_samples_only", STRAIGHT_PUNCH_DEFAULT_FRESH_SAMPLES_ONLY)))
 	config["sample_window_size"] = max(2, int(evaluation.get("sample_window_size", config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE))))
 	config["min_positive_growth_samples"] = max(1, int(evaluation.get("min_positive_growth_samples", config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES))))
@@ -2123,16 +2140,13 @@ func _get_hook_config() -> Dictionary:
 	}
 	if _config == null:
 		return config
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return config
-	var hook: Dictionary = gesture_profile_document.get("hook", {}) if gesture_profile_document.get("hook", {}) is Dictionary else {}
+	var hook: Dictionary = _get_family_backend_document("hook", BACKEND_THRESHOLD)
 	var evaluation: Dictionary = hook.get("evaluation", {}) if hook.get("evaluation", {}) is Dictionary else {}
 	var thresholds: Dictionary = hook.get("thresholds", {}) if hook.get("thresholds", {}) is Dictionary else {}
 	var timing: Dictionary = hook.get("timing", {}) if hook.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = hook.get("rearm", {}) if hook.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = hook.get("state_machine", {}) if hook.get("state_machine", {}) is Dictionary else {}
-	config["enabled"] = bool(hook.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_punch_backend_for_family("hook") == BACKEND_THRESHOLD and bool(hook.get("enabled", config.get("enabled", true)))
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_lateral_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_lateral_dominance_ratio", config.get("min_lateral_dominance_ratio", HOOK_DEFAULT_MIN_LATERAL_DOMINANCE_RATIO))))
@@ -2155,16 +2169,13 @@ func _get_uppercut_config() -> Dictionary:
 	}
 	if _config == null:
 		return config
-	var gesture_profile_document: Variant = _config.get("gesture_profile_document") if _config.has_method("get") else null
-	if not gesture_profile_document is Dictionary:
-		return config
-	var uppercut: Dictionary = gesture_profile_document.get("uppercut", {}) if gesture_profile_document.get("uppercut", {}) is Dictionary else {}
+	var uppercut: Dictionary = _get_family_backend_document("uppercut", BACKEND_THRESHOLD)
 	var evaluation: Dictionary = uppercut.get("evaluation", {}) if uppercut.get("evaluation", {}) is Dictionary else {}
 	var thresholds: Dictionary = uppercut.get("thresholds", {}) if uppercut.get("thresholds", {}) is Dictionary else {}
 	var timing: Dictionary = uppercut.get("timing", {}) if uppercut.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = uppercut.get("rearm", {}) if uppercut.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = uppercut.get("state_machine", {}) if uppercut.get("state_machine", {}) is Dictionary else {}
-	config["enabled"] = bool(uppercut.get("enabled", config.get("enabled", true)))
+	config["enabled"] = _get_punch_backend_for_family("uppercut") == BACKEND_THRESHOLD and bool(uppercut.get("enabled", config.get("enabled", true)))
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["min_vertical_dominance_ratio"] = maxf(0.0, float(thresholds.get("min_vertical_dominance_ratio", config.get("min_vertical_dominance_ratio", UPPERCUT_DEFAULT_MIN_VERTICAL_DOMINANCE_RATIO))))

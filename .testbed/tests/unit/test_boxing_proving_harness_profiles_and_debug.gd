@@ -208,9 +208,9 @@ func test_proving_runtime_config_can_force_prototype_matcher_backend_for_fixture
 
 	assert_not_null(config)
 	var gesture_profile: Dictionary = config.gesture_profile_document
-	assert_eq(String(gesture_profile.get("punch_detection", {}).get("backend", "")), "prototype_matcher")
-	assert_true(bool(gesture_profile.get("prototype_matcher", {}).get("enabled", false)))
-	assert_false(bool(gesture_profile.get("threshold_gates", {}).get("enabled", true)))
+	assert_eq(String(gesture_profile.get("straight_punch", {}).get("backend", "")), "prototype")
+	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "prototype")
+	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "prototype")
 
 func test_proving_runtime_config_can_force_mixed_family_backend_for_fixture_benchmarks() -> void:
 	var previous_backend := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
@@ -224,10 +224,10 @@ func test_proving_runtime_config_can_force_mixed_family_backend_for_fixture_benc
 
 	assert_not_null(config)
 	var gesture_profile: Dictionary = config.gesture_profile_document
-	assert_eq(String(gesture_profile.get("punch_detection", {}).get("backend", "")), "mixed_family")
-	assert_true(bool(gesture_profile.get("threshold_gates", {}).get("enabled", false)))
-	assert_true(bool(gesture_profile.get("learned_classifier", {}).get("enabled", false)))
-	assert_eq(String(gesture_profile.get("mixed_family", {}).get("straight", {}).get("model", {}).get("artifact_path", "")), "res://docs/models/straight-family-test.json")
+	assert_eq(String(gesture_profile.get("straight_punch", {}).get("backend", "")), "threshold")
+	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "threshold")
+	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "threshold")
+	assert_eq(String(gesture_profile.get("straight_punch", {}).get("classifier", {}).get("model", {}).get("artifact_path", "")), "res://docs/models/straight-family-test.json")
 
 func test_proving_runtime_config_can_force_learned_classifier_backend_for_fixture_benchmarks() -> void:
 	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
@@ -238,9 +238,9 @@ func test_proving_runtime_config_can_force_learned_classifier_backend_for_fixtur
 
 	assert_not_null(config)
 	var gesture_profile: Dictionary = config.gesture_profile_document
-	assert_eq(String(gesture_profile.get("punch_detection", {}).get("backend", "")), "learned_classifier")
-	assert_true(bool(gesture_profile.get("learned_classifier", {}).get("enabled", false)))
-	assert_false(bool(gesture_profile.get("threshold_gates", {}).get("enabled", true)))
+	assert_eq(String(gesture_profile.get("straight_punch", {}).get("backend", "")), "classifier")
+	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "classifier")
+	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "classifier")
 
 func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	var harness: Variant = _new_harness()
