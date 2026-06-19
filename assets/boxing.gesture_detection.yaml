@@ -18,7 +18,7 @@ guard:
 
 squat:
   # [disabled, threshold, prototype, classifier] Pick which backend contract owns squat routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
-  backend: threshold
+  backend: disabled
   threshold:
     # Squat uses the current calibrated torso-height threshold runtime. input.
     thresholds:
@@ -31,7 +31,7 @@ squat:
 
 weave:
   # [disabled, threshold, prototype, classifier] Pick which backend contract owns weave routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
-  backend: threshold
+  backend: disabled
   threshold:
     # Weave uses the current pose-only runtime. input.
     thresholds:
@@ -124,7 +124,7 @@ straight_punch:
 
 hook:
   # [disabled, threshold, prototype, classifier] Pick which backend owns hook routing. `threshold` is the current shipped default; `prototype` and `classifier` are real punch-family runtime surfaces when selected. input.
-  backend: threshold
+  backend: disabled
   threshold:
     # Hooks use the current pose-primary hook runtime when `backend: threshold`. input.
     evaluation:
@@ -198,7 +198,7 @@ hook:
 
 uppercut:
   # [disabled, threshold, prototype, classifier] Pick which backend owns uppercut routing. `threshold` is the current shipped default; `prototype` and `classifier` are real punch-family runtime surfaces when selected. input.
-  backend: threshold
+  backend: disabled
   threshold:
     # Uppercuts use the current pose-primary uppercut runtime when `backend: threshold`. input.
     evaluation:
@@ -272,21 +272,21 @@ uppercut:
 
 knee_strike:
   # [disabled, threshold, prototype, classifier] Pick which backend contract owns knee-strike routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
-  backend: threshold
+  backend: disabled
   threshold: {}
   prototype: {}
   classifier: {}
 
 leg_lift:
   # [disabled, threshold, prototype, classifier] Pick which backend contract owns leg-lift routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
-  backend: threshold
+  backend: disabled
   threshold: {}
   prototype: {}
   classifier: {}
 
 side_step:
   # [disabled, threshold, prototype, classifier] Pick which backend contract owns side-step routing. Only `threshold` has a real runtime implementation today; `prototype` and `classifier` stay as honest placeholders for the approved family-first config shape. input.
-  backend: threshold
+  backend: disabled
   threshold: {}
   prototype: {}
   classifier: {}
