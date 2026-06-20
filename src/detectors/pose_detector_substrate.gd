@@ -822,7 +822,21 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"blocking_side": String(state.get("blocking_side", "")),
 		"blocking_event_name": String(state.get("blocking_event_name", "")),
 		"blocking_phase": String(state.get("blocking_phase", "")),
-		"depth_runtime_status": String(depth_runtime_debug.get("runtime_status", "unloaded")),
+		"depth_signal_available": bool(state.get("depth_signal_available", false)),
+		"depth_signal_fresh": bool(state.get("depth_signal_fresh", false)),
+		"depth_signal_source": String(state.get("depth_signal_source", "")),
+		"last_depth_closeness": float(state.get("last_depth_closeness", 0.0)),
+		"depth_closeness_delta": float(state.get("depth_closeness_delta", 0.0)),
+		"depth_peak_closeness": float(state.get("depth_peak_closeness", 0.0)),
+		"depth_early_closeness": float(state.get("depth_early_closeness", 0.0)),
+		"depth_late_closeness": float(state.get("depth_late_closeness", 0.0)),
+		"depth_window_span_ms": int(state.get("depth_window_span_ms", 0)),
+		"depth_gate_applied": bool(state.get("depth_gate_applied", false)),
+		"depth_gate_passed": bool(state.get("depth_gate_passed", false)),
+		"depth_gate_reason": String(state.get("depth_gate_reason", "staged_or_unavailable")),
+		"depth_gate_threshold_a": float(state.get("depth_gate_threshold_a", 0.0)),
+		"depth_gate_threshold_b": float(state.get("depth_gate_threshold_b", 0.0)),
+		"depth_runtime_status": String(depth_runtime_debug.get("runtime_status", state.get("depth_runtime_status", "unloaded"))),
 		"depth_runtime_stage": String(depth_runtime_debug.get("runtime_stage", "idle")),
 		"depth_backend_id": String(depth_runtime_debug.get("backend_id", "unknown")),
 		"depth_family_id": String(depth_runtime_debug.get("family_id", "unknown")),
@@ -878,7 +892,21 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"directionality_ratio": float(state.get("directionality_ratio", 0.0)),
 		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
 		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
-		"depth_runtime_status": String(depth_runtime_debug.get("runtime_status", "unloaded")),
+		"depth_signal_available": bool(state.get("depth_signal_available", false)),
+		"depth_signal_fresh": bool(state.get("depth_signal_fresh", false)),
+		"depth_signal_source": String(state.get("depth_signal_source", "")),
+		"last_depth_closeness": float(state.get("last_depth_closeness", 0.0)),
+		"depth_closeness_delta": float(state.get("depth_closeness_delta", 0.0)),
+		"depth_peak_closeness": float(state.get("depth_peak_closeness", 0.0)),
+		"depth_early_closeness": float(state.get("depth_early_closeness", 0.0)),
+		"depth_late_closeness": float(state.get("depth_late_closeness", 0.0)),
+		"depth_window_span_ms": int(state.get("depth_window_span_ms", 0)),
+		"depth_gate_applied": bool(state.get("depth_gate_applied", false)),
+		"depth_gate_passed": bool(state.get("depth_gate_passed", false)),
+		"depth_gate_reason": String(state.get("depth_gate_reason", "staged_or_unavailable")),
+		"depth_gate_threshold_a": float(state.get("depth_gate_threshold_a", 0.0)),
+		"depth_gate_threshold_b": float(state.get("depth_gate_threshold_b", 0.0)),
+		"depth_runtime_status": String(depth_runtime_debug.get("runtime_status", state.get("depth_runtime_status", "unloaded"))),
 		"depth_runtime_stage": String(depth_runtime_debug.get("runtime_stage", "idle")),
 		"depth_backend_id": String(depth_runtime_debug.get("backend_id", "unknown")),
 		"depth_family_id": String(depth_runtime_debug.get("family_id", "unknown")),
@@ -1152,11 +1180,11 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 		_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 		_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 	if _get_punch_backend_for_family("hook") == BACKEND_THRESHOLD:
-		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
+		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
 	if _get_punch_backend_for_family("uppercut") == BACKEND_THRESHOLD:
-		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
-		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms)
+		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
+		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
 	if not _has_any_event(events, ["punch_left", "hook_left", "uppercut_left"]):
 		_process_flow_trail(events, "left", left_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
 		_process_flow_swing(events, "left", left_hand_velocity, shoulder_width, shoulder_center, timestamp_ms)
@@ -1192,6 +1220,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var velocity_signal_position := _resolve_straight_punch_velocity_signal_position(state, elbow, wrist_position)
 	var wrist_velocity_vector := _resolve_straight_punch_wrist_velocity(state, velocity_signal_position, timestamp_ms, fresh_sample, straight_punch_config)
 	var forward_depth_spike := _resolve_straight_punch_forward_depth_spike(state, timestamp_ms, fresh_sample, straight_punch_config)
+	var depth_analysis := _update_family_depth_signal("straight_punch", side, state, timestamp_ms, fresh_sample, tracking_frame, shoulder, elbow, wrist, straight_punch_config)
 	var wrist_velocity := maxf(wrist_velocity_vector.length(), 0.0)
 	var wrist_forward_velocity := maxf(-float(wrist_velocity_vector.z), 0.0)
 	state["last_bbox_area"] = bbox_area
@@ -1209,6 +1238,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	state["wrist_lateral_angle_from_elbow_vertical_deg"] = wrist_lateral_angle_from_elbow_vertical_deg
 	state["min_wrist_lateral_angle_from_elbow_vertical_deg"] = min_wrist_lateral_angle_from_elbow_vertical_deg
 	state["wrist_lateral_angle_gate_passed"] = wrist_lateral_angle_gate_passed
+	_apply_depth_analysis_to_state(state, depth_analysis)
 	var sample_window_size := max(2, int(straight_punch_config.get("sample_window_size", STRAIGHT_PUNCH_DEFAULT_SAMPLE_WINDOW_SIZE)))
 	var wrist_velocity_history: Array = (state.get("wrist_velocity_history", []) as Array).duplicate(true)
 	state["wrist_velocity_history"] = wrist_velocity_history
@@ -1219,6 +1249,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var forward_depth_spike_history: Array = (state.get("forward_depth_spike_history", []) as Array).duplicate(true)
 	state["forward_depth_spike_history"] = forward_depth_spike_history
 	state["recent_peak_forward_depth_spike"] = _window_peak_float(forward_depth_spike_history)
+	var depth_closeness_history: Array = (state.get("depth_closeness_history", []) as Array).duplicate(true)
+	state["depth_closeness_history"] = depth_closeness_history
 	var bbox_area_window_history: Array = (state.get("bbox_area_window_history", []) as Array).duplicate(true)
 	state["bbox_area_window_history"] = bbox_area_window_history
 	state["hand_tracking_valid"] = hand_tracking_valid
@@ -1245,6 +1277,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["recent_peak_bbox_area_growth"] = 0.0
 		state["forward_depth_spike_history"] = []
 		state["recent_peak_forward_depth_spike"] = 0.0
+		state["depth_closeness_history"] = []
+		_reset_depth_analysis_state(state)
 		state["positive_growth_samples"] = 0
 		state["grace_ms_remaining"] = 0
 		state["grace_deadline_timestamp_ms"] = 0
@@ -1284,6 +1318,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			forward_depth_spike_history.remove_at(0)
 		state["forward_depth_spike_history"] = forward_depth_spike_history
 		state["recent_peak_forward_depth_spike"] = _window_peak_float(forward_depth_spike_history)
+		depth_closeness_history = (state.get("depth_closeness_history", []) as Array).duplicate(true)
+		state["depth_closeness_history"] = depth_closeness_history
 		state["reacquire_started_timestamp_ms"] = timestamp_ms if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST and int(state.get("reacquire_started_timestamp_ms", -1)) < 0 else int(state.get("reacquire_started_timestamp_ms", -1))
 		if use_hand_tracking:
 			state["last_observation_frame_index"] = int(hand_payload.get("frame_index", -1))
@@ -1297,6 +1333,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		state["bbox_area_window_history"] = bbox_area_window_history
 		state["bbox_area_growth_history"] = bbox_area_growth_history
 		state["forward_depth_spike_history"] = forward_depth_spike_history
+		state["depth_closeness_history"] = depth_closeness_history
 
 	if phase == STRAIGHT_PUNCH_STATE_TRACKING_LOST:
 		if fresh_sample:
@@ -1314,6 +1351,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["recent_peak_bbox_area_growth"] = 0.0
 				state["forward_depth_spike_history"] = []
 				state["recent_peak_forward_depth_spike"] = 0.0
+				state["depth_closeness_history"] = []
+				_reset_depth_analysis_state(state)
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth_window_span_ms"] = 0
 				state["last_forward_depth_spike_window_span_ms"] = 0
@@ -1336,6 +1375,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 			var ready_to_trigger := recent_peak_wrist_velocity >= min_velocity and elbow_shoulder_xy_gate_passed and wrist_lateral_angle_gate_passed
 			if use_hand_tracking:
 				ready_to_trigger = ready_to_trigger and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples
+			if bool(depth_analysis.get("gate_applied", false)):
+				ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
 			if ready_to_trigger:
 				var blocking_state := _get_same_family_threshold_blocking_state("straight_punch", side, timestamp_ms)
 				if not blocking_state.is_empty():
@@ -1380,6 +1421,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["recent_peak_bbox_area_growth"] = 0.0
 				state["forward_depth_spike_history"] = []
 				state["recent_peak_forward_depth_spike"] = 0.0
+				state["depth_closeness_history"] = []
+				_reset_depth_analysis_state(state)
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth_window_span_ms"] = 0
 				state["last_forward_depth_spike_window_span_ms"] = 0
@@ -1405,6 +1448,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				state["recent_peak_bbox_area_growth"] = 0.0
 				state["forward_depth_spike_history"] = []
 				state["recent_peak_forward_depth_spike"] = 0.0
+				state["depth_closeness_history"] = []
+				_reset_depth_analysis_state(state)
 				state["positive_growth_samples"] = 0
 				state["last_bbox_area_growth_window_span_ms"] = 0
 				state["last_forward_depth_spike_window_span_ms"] = 0
@@ -1414,15 +1459,15 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 				_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_READY)
 	_set_straight_punch_state(side, state)
 
-func _process_hook(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int) -> void:
+func _process_hook(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int, tracking_frame: Dictionary = {}) -> void:
 	var config := _get_hook_config()
-	_process_pose_strike(events, "hook", side, "hook_%s" % side, config, shoulder, elbow, wrist, elbow_bend_deg, shoulder_width, timestamp_ms)
+	_process_pose_strike(events, "hook", side, "hook_%s" % side, config, shoulder, elbow, wrist, elbow_bend_deg, shoulder_width, timestamp_ms, tracking_frame)
 
-func _process_uppercut(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int) -> void:
+func _process_uppercut(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int, tracking_frame: Dictionary = {}) -> void:
 	var config := _get_uppercut_config()
-	_process_pose_strike(events, "uppercut", side, "uppercut_%s" % side, config, shoulder, elbow, wrist, elbow_bend_deg, shoulder_width, timestamp_ms)
+	_process_pose_strike(events, "uppercut", side, "uppercut_%s" % side, config, shoulder, elbow, wrist, elbow_bend_deg, shoulder_width, timestamp_ms, tracking_frame)
 
-func _process_pose_strike(events: Array, family: String, side: String, event_name: String, config: Dictionary, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int) -> void:
+func _process_pose_strike(events: Array, family: String, side: String, event_name: String, config: Dictionary, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, elbow_bend_deg: float, shoulder_width: float, timestamp_ms: int, tracking_frame: Dictionary = {}) -> void:
 	if not bool(config.get("enabled", true)):
 		_set_pose_strike_state(family, side, _build_pose_strike_state(POSE_STRIKE_STATE_TRACKING_LOST))
 		return
@@ -1434,6 +1479,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var velocity_signal_position := _resolve_straight_punch_velocity_signal_position(state, elbow, wrist_position)
 	var velocity_vector := _resolve_straight_punch_wrist_velocity(state, velocity_signal_position, timestamp_ms, fresh_sample, config)
 	var motion_window := _resolve_pose_strike_motion_window(state, side, velocity_vector, timestamp_ms)
+	var depth_analysis := _update_family_depth_signal(family, side, state, timestamp_ms, fresh_sample, tracking_frame, shoulder, elbow, wrist, config)
 	var speed := float(motion_window.get("wrist_velocity", 0.0))
 	var lateral_speed := float(motion_window.get("lateral_velocity", 0.0))
 	var vertical_speed := float(motion_window.get("vertical_velocity", 0.0))
@@ -1457,6 +1503,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["pose_tracking_valid"] = pose_tracking_valid
 	state["tracking_state"] = "pose_tracked" if pose_tracking_valid else "pose_missing"
 	state["current_timestamp_ms"] = timestamp_ms
+	_apply_depth_analysis_to_state(state, depth_analysis)
 	state["elbow_bend_deg"] = elbow_bend_deg
 	state["outward_velocity"] = outward_velocity
 	state["upward_velocity"] = upward_velocity
@@ -1485,6 +1532,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		state["last_lateral_velocity"] = 0.0
 		state["last_vertical_velocity"] = 0.0
 		state["last_wrist_velocity_window_span_ms"] = 0
+		state["depth_closeness_history"] = []
+		_reset_depth_analysis_state(state)
 		state["grace_ms_remaining"] = 0
 		state["grace_deadline_timestamp_ms"] = 0
 		state["reacquire_started_timestamp_ms"] = -1
@@ -1495,6 +1544,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var phase := String(state.get("phase", POSE_STRIKE_STATE_TRACKING_LOST))
 	var sample_window_size := 4
 	var wrist_velocity_history: Array = (state.get("wrist_velocity_history", []) as Array).duplicate(true)
+	var depth_closeness_history: Array = (state.get("depth_closeness_history", []) as Array).duplicate(true)
+	state["depth_closeness_history"] = depth_closeness_history
 	if fresh_sample:
 		wrist_velocity_history.append(speed)
 		while wrist_velocity_history.size() > sample_window_size:
@@ -1514,6 +1565,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["last_lateral_velocity"] = 0.0
 			state["last_vertical_velocity"] = 0.0
 			state["last_wrist_velocity_window_span_ms"] = 0
+			state["depth_closeness_history"] = []
+			_reset_depth_analysis_state(state)
 			state["not_ready_started_timestamp_ms"] = -1
 			state["reacquire_started_timestamp_ms"] = -1
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
@@ -1532,6 +1585,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			var wrist_vertical_angle_gate_passed := wrist_angle_from_elbow_vertical_deg <= max_wrist_angle_from_elbow_vertical_deg + 0.000001
 			state["wrist_vertical_angle_gate_passed"] = wrist_vertical_angle_gate_passed
 			ready_to_trigger = speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed
+		if bool(depth_analysis.get("gate_applied", false)):
+			ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
 		if ready_to_trigger:
 			var blocking_state := _get_same_family_threshold_blocking_state(family, side, timestamp_ms)
 			if not blocking_state.is_empty():
@@ -1567,6 +1622,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["last_lateral_velocity"] = 0.0
 			state["last_vertical_velocity"] = 0.0
 			state["last_wrist_velocity_window_span_ms"] = 0
+			state["depth_closeness_history"] = []
+			_reset_depth_analysis_state(state)
 			state["not_ready_started_timestamp_ms"] = -1
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
 		_set_pose_strike_state(family, side, state)
@@ -2008,6 +2065,171 @@ func _get_same_family_threshold_blocking_state(family: String, side: String, tim
 		"blocking_event_name": _family_side_to_event_name(family, blocking_side),
 	}
 
+func _reset_depth_analysis_state(state: Dictionary) -> void:
+	state["depth_signal_available"] = false
+	state["depth_signal_fresh"] = false
+	state["depth_signal_source"] = ""
+	state["last_depth_closeness"] = 0.0
+	state["depth_closeness_delta"] = 0.0
+	state["depth_peak_closeness"] = 0.0
+	state["depth_early_closeness"] = 0.0
+	state["depth_late_closeness"] = 0.0
+	state["depth_window_span_ms"] = 0
+	state["depth_gate_applied"] = false
+	state["depth_gate_passed"] = false
+	state["depth_gate_reason"] = "staged_or_unavailable"
+	state["depth_gate_threshold_a"] = 0.0
+	state["depth_gate_threshold_b"] = 0.0
+	state["depth_runtime_status"] = "unloaded"
+	state["depth_runtime_stage"] = "idle"
+	state["depth_runtime_backend_id"] = "unknown"
+	state["depth_runtime_family_id"] = "unknown"
+	state["depth_runtime_failure_code"] = ""
+	state["depth_runtime_failure_message"] = ""
+	state["depth_sample_metrics"] = {}
+
+func _apply_depth_analysis_to_state(state: Dictionary, depth_analysis: Dictionary) -> void:
+	state["depth_signal_available"] = bool(depth_analysis.get("available", false))
+	state["depth_signal_fresh"] = bool(depth_analysis.get("sample_fresh", false))
+	state["depth_signal_source"] = String(depth_analysis.get("sample_source", ""))
+	state["last_depth_closeness"] = float(depth_analysis.get("closeness", 0.0))
+	state["depth_closeness_delta"] = float(depth_analysis.get("closeness_delta", 0.0))
+	state["depth_peak_closeness"] = float(depth_analysis.get("peak_closeness", 0.0))
+	state["depth_early_closeness"] = float(depth_analysis.get("early_closeness", 0.0))
+	state["depth_late_closeness"] = float(depth_analysis.get("late_closeness", 0.0))
+	state["depth_window_span_ms"] = int(depth_analysis.get("window_span_ms", 0))
+	state["depth_gate_applied"] = bool(depth_analysis.get("gate_applied", false))
+	state["depth_gate_passed"] = bool(depth_analysis.get("gate_passed", false))
+	state["depth_gate_reason"] = String(depth_analysis.get("gate_reason", "staged_or_unavailable"))
+	state["depth_gate_threshold_a"] = float(depth_analysis.get("threshold_a", 0.0))
+	state["depth_gate_threshold_b"] = float(depth_analysis.get("threshold_b", 0.0))
+	state["depth_runtime_status"] = String(depth_analysis.get("runtime_status", "unloaded"))
+	state["depth_runtime_stage"] = String(depth_analysis.get("runtime_stage", "idle"))
+	state["depth_runtime_backend_id"] = String(depth_analysis.get("backend_id", "unknown"))
+	state["depth_runtime_family_id"] = String(depth_analysis.get("family_id", "unknown"))
+	state["depth_runtime_failure_code"] = String(depth_analysis.get("failure_code", ""))
+	state["depth_runtime_failure_message"] = String(depth_analysis.get("failure_message", ""))
+	state["depth_sample_metrics"] = (depth_analysis.get("sample_metrics", {}) as Dictionary).duplicate(true)
+
+func _update_family_depth_signal(family: String, side: String, state: Dictionary, timestamp_ms: int, fresh_sample: bool, tracking_frame: Dictionary, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, config: Dictionary) -> Dictionary:
+	var depth_config := _get_family_depth_config(family)
+	var debug_state := _get_depth_runtime_debug_state(family)
+	var analysis := {
+		"available": false,
+		"sample_fresh": false,
+		"sample_source": "",
+		"closeness": 0.0,
+		"early_closeness": 0.0,
+		"late_closeness": 0.0,
+		"closeness_delta": 0.0,
+		"peak_closeness": 0.0,
+		"window_span_ms": 0,
+		"gate_applied": false,
+		"gate_passed": false,
+		"gate_reason": "disabled_in_config" if not bool(depth_config.get("enabled", false)) else "staged_or_unavailable",
+		"threshold_a": 0.0,
+		"threshold_b": 0.0,
+		"runtime_status": String(debug_state.get("runtime_status", "unloaded")),
+		"runtime_stage": String(debug_state.get("runtime_stage", "idle")),
+		"backend_id": String(debug_state.get("backend_id", "unknown")),
+		"family_id": String(debug_state.get("family_id", "unknown")),
+		"failure_code": String(debug_state.get("failure_code", "")),
+		"failure_message": String(debug_state.get("failure_message", "")),
+		"sample_metrics": (debug_state.get("last_sample_metrics", {}) as Dictionary).duplicate(true),
+	}
+	if not bool(depth_config.get("enabled", false)):
+		return analysis
+	var manager = _get_depth_runtime_manager(family)
+	var sample_request := {
+		"family": family,
+		"side": side,
+		"timestamp_ms": timestamp_ms,
+		"evaluation": (depth_config.get("evaluation", {}) as Dictionary).duplicate(true) if depth_config.get("evaluation", {}) is Dictionary else {},
+		"shoulder": shoulder.duplicate(true),
+		"elbow": elbow.duplicate(true),
+		"wrist": wrist.duplicate(true),
+	}
+	var result: Dictionary = manager.infer_relative_depth(tracking_frame, sample_request)
+	var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
+	analysis["runtime_status"] = String(result.get("status", analysis.get("runtime_status", "unloaded")))
+	analysis["backend_id"] = String(result.get("backend_id", analysis.get("backend_id", "unknown")))
+	analysis["family_id"] = String(result.get("family_id", analysis.get("family_id", "unknown")))
+	analysis["sample_metrics"] = sample_metrics.duplicate(true)
+	if not bool(result.get("ok", false)):
+		var error_info: Dictionary = result.get("error_info", {}) if result.get("error_info", {}) is Dictionary else {}
+		analysis["failure_code"] = String(error_info.get("code", analysis.get("failure_code", "")))
+		analysis["failure_message"] = String(error_info.get("message", analysis.get("failure_message", "")))
+		return analysis
+	var closeness := float(sample_metrics.get("wrist_closeness", sample_metrics.get("closeness", 0.0)))
+	analysis["available"] = true
+	analysis["sample_fresh"] = bool(sample_metrics.get("sample_fresh", fresh_sample))
+	analysis["sample_source"] = String(sample_metrics.get("sample_source", "depth_runtime"))
+	analysis["closeness"] = closeness
+	var history: Array = (state.get("depth_closeness_history", []) as Array).duplicate(true)
+	if fresh_sample and bool(analysis.get("sample_fresh", false)):
+		history.append({"timestamp_ms": timestamp_ms, "closeness": closeness})
+	var evaluation: Dictionary = depth_config.get("evaluation", {}) if depth_config.get("evaluation", {}) is Dictionary else {}
+	var window_ms := max(1, int(config.get("window_ms", evaluation.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
+	while history.size() > 0 and timestamp_ms - int((history[0] as Dictionary).get("timestamp_ms", timestamp_ms)) > window_ms:
+		history.remove_at(0)
+	state["depth_closeness_history"] = history
+	if history.is_empty():
+		return analysis
+	analysis["window_span_ms"] = maxi(timestamp_ms - int((history[0] as Dictionary).get("timestamp_ms", timestamp_ms)), 0)
+	var closeness_values: Array = []
+	for entry_variant: Variant in history:
+		if not entry_variant is Dictionary:
+			continue
+		closeness_values.append(float((entry_variant as Dictionary).get("closeness", 0.0)))
+	if closeness_values.is_empty():
+		return analysis
+	var smoothing_window := max(1, int(evaluation.get("smoothing_window_samples", 1)))
+	var smoothed_values := _moving_average_float_window(closeness_values, smoothing_window)
+	var early_fraction := clampf(float(evaluation.get("early_window_fraction", 0.35)), 0.0, 1.0)
+	var late_fraction := clampf(float(evaluation.get("late_window_fraction", 0.35)), 0.0, 1.0)
+	var early_count := clampi(int(ceil(float(smoothed_values.size()) * early_fraction)), 1, smoothed_values.size())
+	var late_count := clampi(int(ceil(float(smoothed_values.size()) * late_fraction)), 1, smoothed_values.size())
+	analysis["early_closeness"] = _mean_float_slice(smoothed_values, 0, early_count)
+	analysis["late_closeness"] = _mean_float_slice(smoothed_values, smoothed_values.size() - late_count, late_count)
+	analysis["closeness_delta"] = float(analysis.get("late_closeness", 0.0)) - float(analysis.get("early_closeness", 0.0))
+	analysis["peak_closeness"] = _window_peak_float(smoothed_values)
+	var thresholds: Dictionary = depth_config.get("thresholds", {}) if depth_config.get("thresholds", {}) is Dictionary else {}
+	if family == "straight_punch":
+		analysis["threshold_a"] = float(thresholds.get("min_closeness_delta", 0.0))
+		analysis["threshold_b"] = float(thresholds.get("min_peak_closeness", 0.0))
+		analysis["gate_applied"] = true
+		analysis["gate_passed"] = float(analysis.get("closeness_delta", 0.0)) + 0.000001 >= float(analysis.get("threshold_a", 0.0)) and float(analysis.get("peak_closeness", 0.0)) + 0.000001 >= float(analysis.get("threshold_b", 0.0))
+		analysis["gate_reason"] = "min_closeness_delta_and_min_peak_closeness"
+	else:
+		analysis["threshold_a"] = float(thresholds.get("max_closeness_delta", 0.0))
+		analysis["threshold_b"] = float(thresholds.get("max_peak_closeness", 0.0))
+		analysis["gate_applied"] = true
+		analysis["gate_passed"] = float(analysis.get("closeness_delta", 0.0)) <= float(analysis.get("threshold_a", 0.0)) + 0.000001 and float(analysis.get("peak_closeness", 0.0)) <= float(analysis.get("threshold_b", 0.0)) + 0.000001
+		analysis["gate_reason"] = "max_closeness_delta_and_max_peak_closeness"
+	return analysis
+
+func _moving_average_float_window(values: Array, window_size: int) -> Array:
+	var smoothed: Array = []
+	for index in range(values.size()):
+		var start := maxi(index - window_size + 1, 0)
+		var total := 0.0
+		var count := 0
+		for sample_index in range(start, index + 1):
+			total += float(values[sample_index])
+			count += 1
+		smoothed.append(total / float(maxi(count, 1)))
+	return smoothed
+
+func _mean_float_slice(values: Array, start_index: int, count: int) -> float:
+	if values.is_empty() or count <= 0:
+		return 0.0
+	var safe_start := clampi(start_index, 0, values.size() - 1)
+	var safe_end := clampi(safe_start + count, safe_start + 1, values.size())
+	var total := 0.0
+	for index in range(safe_start, safe_end):
+		total += float(values[index])
+	return total / float(maxi(safe_end - safe_start, 1))
+
 func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_LOST) -> Dictionary:
 	return {
 		"phase": phase,
@@ -2019,6 +2241,7 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"last_bbox_area": 0.0,
 		"wrist_velocity_history": [],
 		"wrist_position_history": [],
+		"depth_closeness_history": [],
 		"recent_peak_wrist_velocity": 0.0,
 		"bbox_area_window_history": [],
 		"bbox_area_growth_history": [],
@@ -2057,6 +2280,27 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"blocking_side": "",
 		"blocking_event_name": "",
 		"blocking_phase": "",
+		"depth_signal_available": false,
+		"depth_signal_fresh": false,
+		"depth_signal_source": "",
+		"last_depth_closeness": 0.0,
+		"depth_closeness_delta": 0.0,
+		"depth_peak_closeness": 0.0,
+		"depth_early_closeness": 0.0,
+		"depth_late_closeness": 0.0,
+		"depth_window_span_ms": 0,
+		"depth_gate_applied": false,
+		"depth_gate_passed": false,
+		"depth_gate_reason": "staged_or_unavailable",
+		"depth_gate_threshold_a": 0.0,
+		"depth_gate_threshold_b": 0.0,
+		"depth_runtime_status": "unloaded",
+		"depth_runtime_stage": "idle",
+		"depth_runtime_backend_id": "unknown",
+		"depth_runtime_family_id": "unknown",
+		"depth_runtime_failure_code": "",
+		"depth_runtime_failure_message": "",
+		"depth_sample_metrics": {},
 	}
 
 func _get_straight_punch_state(side: String) -> Dictionary:
@@ -2323,6 +2567,27 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"wrist_on_required_hook_side": false,
 		"wrist_above_elbow_gate_passed": false,
 		"dominance_ratio": 0.0,
+		"depth_signal_available": false,
+		"depth_signal_fresh": false,
+		"depth_signal_source": "",
+		"last_depth_closeness": 0.0,
+		"depth_closeness_delta": 0.0,
+		"depth_peak_closeness": 0.0,
+		"depth_early_closeness": 0.0,
+		"depth_late_closeness": 0.0,
+		"depth_window_span_ms": 0,
+		"depth_gate_applied": false,
+		"depth_gate_passed": false,
+		"depth_gate_reason": "staged_or_unavailable",
+		"depth_gate_threshold_a": 0.0,
+		"depth_gate_threshold_b": 0.0,
+		"depth_runtime_status": "unloaded",
+		"depth_runtime_stage": "idle",
+		"depth_runtime_backend_id": "unknown",
+		"depth_runtime_family_id": "unknown",
+		"depth_runtime_failure_code": "",
+		"depth_runtime_failure_message": "",
+		"depth_sample_metrics": {},
 	}
 
 func _get_pose_strike_state(family: String, side: String) -> Dictionary:

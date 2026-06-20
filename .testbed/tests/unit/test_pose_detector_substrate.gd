@@ -392,6 +392,180 @@ func test_straight_punch_ignores_deprecated_forward_depth_spike_threshold_config
 	assert_false(left_debug.has("min_forward_depth_spike"))
 	assert_false(left_debug.has("forward_depth_spike_gate_passed"))
 
+func test_straight_punch_depth_gate_stays_staged_without_runtime_sample() -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"enabled": true,
+			"thresholds": {
+				"min_velocity": 0.18,
+			},
+			"timing": {
+				"triggered_grace_ms": 240,
+			},
+			"depth": {
+				"enabled": true,
+				"model": {
+					"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/",
+				},
+				"evaluation": {
+					"window_ms": 250,
+					"early_window_fraction": 0.5,
+					"late_window_fraction": 0.5,
+				},
+				"thresholds": {
+					"min_closeness_delta": 0.06,
+					"min_peak_closeness": 0.08,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1220)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_false(bool(left_debug.get("depth_gate_applied", true)))
+	assert_eq(String(left_debug.get("depth_gate_reason", "")), "staged_or_unavailable")
+	assert_eq(String(left_debug.get("depth_runtime_status", "")), "blocked")
+
+func test_straight_punch_depth_gate_uses_placeholder_closeness_signal() -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"enabled": true,
+			"thresholds": {
+				"min_velocity": 0.18,
+			},
+			"timing": {
+				"triggered_grace_ms": 240,
+			},
+			"depth": {
+				"enabled": true,
+				"model": {
+					"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/",
+				},
+				"evaluation": {
+					"window_ms": 250,
+					"early_window_fraction": 0.5,
+					"late_window_fraction": 0.5,
+				},
+				"thresholds": {
+					"min_closeness_delta": 0.06,
+					"min_peak_closeness": 0.08,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("straight_punch", "left", 0.01)))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1140, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("straight_punch", "left", 0.02)))
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.05}}), 1180, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("straight_punch", "left", 0.02)))
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1260, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("straight_punch", "left", 0.12)))
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_true(bool(left_debug.get("depth_gate_applied", false)))
+	assert_true(bool(left_debug.get("depth_gate_passed", false)))
+	assert_eq(String(left_debug.get("depth_signal_source", "")), "placeholder")
+	assert_true(float(left_debug.get("depth_closeness_delta", 0.0)) >= 0.06)
+	assert_true(float(left_debug.get("depth_peak_closeness", 0.0)) >= 0.12)
+
+func test_hook_depth_gate_blocks_excessive_forward_closeness() -> void:
+	var hook_threshold := _default_hook_threshold_block()
+	hook_threshold["depth"] = {
+		"enabled": true,
+		"evaluation": {
+			"window_ms": 160,
+			"early_window_fraction": 0.5,
+			"late_window_fraction": 0.5,
+		},
+		"thresholds": {
+			"max_closeness_delta": 0.03,
+			"max_peak_closeness": 0.06,
+		},
+	}
+	config.gesture_profile_document = {
+		"hook": {
+			"backend": "threshold",
+			"threshold": hook_threshold,
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1000, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("hook", "right", 0.01)))
+	state = substrate.process_landmarks(_make_pose_frame(), 1160, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("hook", "right", 0.02)))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.64, "y": 0.60},
+	}), 1320, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("hook", "right", 0.10)))
+	assert_false(_event_names(state.get("events", [])).has("hook_right"))
+	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
+	assert_true(bool(right_debug.get("depth_gate_applied", false)))
+	assert_false(bool(right_debug.get("depth_gate_passed", true)))
+	assert_eq(String(right_debug.get("state", "")), "ready")
+
+func test_uppercut_depth_gate_allows_placeholder_signal_inside_family_thresholds() -> void:
+	var uppercut_threshold := {
+		"evaluation": {"window_ms": 160},
+		"thresholds": {
+			"min_velocity": 0.40,
+			"max_wrist_angle_from_elbow_vertical_deg": 70.0,
+		},
+		"timing": {"triggered_grace_ms": 300},
+		"rearm": {"pose_only_rearm_ms": 120},
+		"state_machine": {"lost_tracking_reacquire_stable_ms": 32},
+		"depth": {
+			"enabled": true,
+			"evaluation": {
+				"window_ms": 160,
+				"early_window_fraction": 0.5,
+				"late_window_fraction": 0.5,
+			},
+			"thresholds": {
+				"max_closeness_delta": 0.03,
+				"max_peak_closeness": 0.06,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"uppercut": {
+			"backend": "threshold",
+			"threshold": uppercut_threshold,
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 2000, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("uppercut", "left", 0.01)))
+	state = substrate.process_landmarks(_make_pose_frame(), 2160, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("uppercut", "left", 0.02)))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.62},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.33, "y": 0.76},
+	}), 2320, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("uppercut", "left", 0.03)))
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_true(bool(left_debug.get("depth_gate_applied", false)))
+	assert_true(bool(left_debug.get("depth_gate_passed", false)))
+	assert_true(float(left_debug.get("depth_peak_closeness", 0.0)) <= 0.06)
+
 func test_straight_punch_debug_surfaces_forward_depth_spike_metrics_without_gate_threshold() -> void:
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
@@ -2089,8 +2263,8 @@ func _pose_strike_state_names(events: Array, family: String, side: String) -> Ar
 		states.append(String(event_data.get("state", "")))
 	return states
 
-func _make_tracking_frame(left_hand: Dictionary = {}, right_hand: Dictionary = {}) -> Dictionary:
-	return {
+func _make_tracking_frame(left_hand: Dictionary = {}, right_hand: Dictionary = {}, extras: Dictionary = {}) -> Dictionary:
+	var frame := {
 		"hand_tracking": {
 			"enabled": true,
 			"available": true,
@@ -2098,6 +2272,30 @@ func _make_tracking_frame(left_hand: Dictionary = {}, right_hand: Dictionary = {
 		"hands": {
 			"left": left_hand.duplicate(true),
 			"right": right_hand.duplicate(true),
+		},
+	}
+	for key_variant: Variant in extras.keys():
+		var key := String(key_variant)
+		frame[key] = extras.get(key_variant)
+	return frame
+
+func _depth_tracking_frame_extras(family: String, side: String, closeness: float, sample_source: String = "placeholder") -> Dictionary:
+	return {
+		"depth_runtime": {
+			"families": {
+				family: {
+					side: {
+						"status": "ready",
+						"sample_metrics": {
+							"wrist_closeness": closeness,
+							"wrist_depth": maxf(0.0, 1.0 - closeness),
+							"torso_depth": 1.0,
+							"sample_source": sample_source,
+							"sample_fresh": true,
+						},
+					},
+				},
+			},
 		},
 	}
 

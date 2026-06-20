@@ -98,6 +98,11 @@ func ensure_runtime_ready() -> Dictionary:
 func infer_relative_depth(frame_payload: Dictionary, sample_request: Dictionary) -> Dictionary:
 	var ready_state := ensure_runtime_ready()
 	var runtime_status := String(ready_state.get("runtime_status", DepthRuntimeTypes.STATUS_UNLOADED))
+	var precomputed_result := _extract_precomputed_result(frame_payload, sample_request, runtime_status)
+	if bool(precomputed_result.get("ok", false)):
+		_debug_state["last_sample_metrics"] = (precomputed_result.get("sample_metrics", {}) as Dictionary).duplicate(true)
+		_debug_state["last_timing_ms"] = (precomputed_result.get("timing_ms", {}) as Dictionary).duplicate(true)
+		return precomputed_result
 	if runtime_status != DepthRuntimeTypes.STATUS_READY or _adapter == null:
 		var blocked_result := DepthRuntimeTypes.make_result(runtime_status)
 		blocked_result["backend_id"] = String(ready_state.get("backend_id", "unknown"))
@@ -244,3 +249,66 @@ func _release_adapter() -> void:
 		return
 	_adapter.unload()
 	_adapter = null
+
+func _extract_precomputed_result(frame_payload: Dictionary, sample_request: Dictionary, fallback_status: String) -> Dictionary:
+	var family := String(sample_request.get("family", _family))
+	var side := String(sample_request.get("side", "")).strip_edges()
+	var family_candidates: Array = []
+	var direct_depth := frame_payload.get("depth", {}) if frame_payload.get("depth", {}) is Dictionary else {}
+	var direct_runtime := frame_payload.get("depth_runtime", {}) if frame_payload.get("depth_runtime", {}) is Dictionary else {}
+	var family_depth_samples := frame_payload.get("depth_family_samples", {}) if frame_payload.get("depth_family_samples", {}) is Dictionary else {}
+	var runtime_family_samples := frame_payload.get("depth_runtime_samples", {}) if frame_payload.get("depth_runtime_samples", {}) is Dictionary else {}
+	family_candidates.append(family_depth_samples)
+	family_candidates.append(runtime_family_samples)
+	for container in [direct_depth, direct_runtime]:
+		if container.is_empty():
+			continue
+		var families: Dictionary = container.get("families", {}) if container.get("families", {}) is Dictionary else {}
+		family_candidates.append(families)
+		family_candidates.append(container)
+	for candidate_variant: Variant in family_candidates:
+		if not candidate_variant is Dictionary:
+			continue
+		var candidate: Dictionary = candidate_variant
+		var family_payload: Variant = candidate.get(family, null)
+		if family_payload is Dictionary:
+			var resolved := _normalize_precomputed_sample_result(family_payload, side, fallback_status)
+			if bool(resolved.get("ok", false)):
+				return resolved
+	return DepthRuntimeTypes.make_result(fallback_status)
+
+func _normalize_precomputed_sample_result(family_payload: Dictionary, side: String, fallback_status: String) -> Dictionary:
+	var sample_payload: Dictionary = family_payload
+	if not side.is_empty() and family_payload.get(side, null) is Dictionary:
+		sample_payload = family_payload.get(side, {})
+	var sample_metrics: Dictionary = sample_payload.get("sample_metrics", {}) if sample_payload.get("sample_metrics", {}) is Dictionary else sample_payload
+	var closeness := _first_float(sample_metrics, ["wrist_closeness", "closeness", "normalized_closeness", "torso_minus_wrist_closeness"], NAN)
+	if is_nan(closeness):
+		return DepthRuntimeTypes.make_result(fallback_status)
+	var result := DepthRuntimeTypes.make_result(String(sample_payload.get("status", DepthRuntimeTypes.STATUS_READY)))
+	result["ok"] = true
+	result["status"] = String(sample_payload.get("status", DepthRuntimeTypes.STATUS_READY))
+	result["backend_id"] = String(sample_payload.get("backend_id", _debug_state.get("backend_id", "unknown")))
+	result["family_id"] = String(sample_payload.get("family_id", _debug_state.get("family_id", "unknown")))
+	result["artifact_path"] = String(sample_payload.get("artifact_path", _debug_state.get("artifact_path_res", "")))
+	result["sample_metrics"] = {
+		"wrist_closeness": closeness,
+		"wrist_depth": _first_float(sample_metrics, ["wrist_depth", "wrist_depth_normalized"], 0.0),
+		"torso_depth": _first_float(sample_metrics, ["torso_depth", "torso_depth_normalized"], 0.0),
+		"sample_source": String(sample_metrics.get("sample_source", sample_payload.get("sample_source", "placeholder"))),
+		"sample_fresh": bool(sample_metrics.get("sample_fresh", sample_payload.get("sample_fresh", true))),
+	}
+	result["timing_ms"] = (sample_payload.get("timing_ms", {}) as Dictionary).duplicate(true) if sample_payload.get("timing_ms", {}) is Dictionary else {
+		"preprocess": 0.0,
+		"infer": 0.0,
+		"postprocess": 0.0,
+		"total": 0.0,
+	}
+	return result
+
+func _first_float(document: Dictionary, keys: Array, default_value: float) -> float:
+	for key_variant: Variant in keys:
+		var key := String(key_variant)
+		if document.has(key):
+			return float(document.get(key, default_value))
+	return default_value

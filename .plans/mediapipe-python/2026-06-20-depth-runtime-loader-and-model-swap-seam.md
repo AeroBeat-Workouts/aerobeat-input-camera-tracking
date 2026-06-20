@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-20
 **Status:** In Progress
-**Last Updated:** 2026-06-20 12:31 EDT
+**Last Updated:** 2026-06-20 12:44 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -96,15 +96,17 @@ So the first design goal is not "pretend all three models are live." It is: intr
 **Folders Created/Deleted/Modified:**
 - `src/`
 - `.plans/mediapipe-python/`
+- `.testbed/tests/`
 
 **Files Created/Deleted/Modified:**
 - `src/detectors/pose_detector_substrate.gd`
-- `src/<new depth runtime files>`
+- `src/depth/depth_runtime_manager.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-ms3x` and wired the threshold detector to consume one shared normalized depth seam without leaking backend/model-family branches into straight/hook/uppercut logic. `pose_detector_substrate.gd` now asks the shared depth runtime for normalized wrist-closeness samples, maintains per-family rolling closeness windows, and applies the existing config semantics truthfully: straight punches use `min_closeness_delta` + `min_peak_closeness`, while hook/uppercut use `max_closeness_delta` + `max_peak_closeness`. `depth_runtime_manager.gd` now also accepts precomputed/placeholder normalized depth samples from the tracking frame so the detector can already consume staged runtime slots cleanly even though live OpenVINO/ONNX execution is still blocked. Live today: truthful runtime/debug/status propagation, shared normalized-signal consumption, and gating when placeholder/precomputed normalized depth samples are present. Still staged: actual monocular inference adapters remain blocked/unimplemented, so when no normalized depth sample is available the detector reports `staged_or_unavailable` and does **not** fake live depth gating. Validation: `godot --headless --path .testbed --quit` passes, and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` finished with 81/83 passing; the two remaining failures were unrelated flow-swing tests (`test_detects_flow_swing_events_with_distinct_placement_and_direction`, `test_exposes_flow_debug_candidates_and_last_emit_metadata`).
 
 ---
 
