@@ -71,6 +71,34 @@ straight_punch:
       max_elbow_shoulder_xy_distance: 0.140
       # Wrist motion must deflect at least this far left/right away from the elbow-anchored vertical ray in camera-space XY. input.
       min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
+    depth:
+      # Turn straight-punch depth trend checks on or off inside the threshold runtime. input.
+      enabled: false
+      evaluation:
+        # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
+        model_input_size: 256
+        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> tool.
+        wrist_roi_radius_px: 12
+        # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
+        wrist_to_elbow_extension_px: 8
+        # Sample this many torso-centered depth pixels on each side of the torso ROI center for the body reference depth. input -> tool.
+        torso_roi_radius_px: 18
+        # Smooth the per-frame wrist-vs-torso depth signal across this many recent frames before window scoring. input -> tool.
+        smoothing_window_samples: 3
+        # Use this much of the window from the front as the early depth baseline slice. input -> tool.
+        early_window_fraction: 0.35
+        # Use this much of the window from the back as the late depth comparison slice. input -> tool.
+        late_window_fraction: 0.35
+      thresholds:
+        # Straight punches must grow wrist closeness by at least this amount so the strike shows meaningful forward travel in depth. input.
+        min_closeness_delta: 0.06
+        # Straight punches must reach at least this wrist closeness peak so shallow lateral motion does not pass as forward. input.
+        min_peak_closeness: 0.04
+      debug:
+        # Show the live wrist depth, torso depth, and closeness values in proving/debug views. input presentation.
+        show_depth_signal: true
+        # Show the early/late window depth slices and closeness delta in proving/debug views. input presentation.
+        show_depth_window_analysis: true
     timing:
       # Keep the punch in its triggered state for this long after it fires. input.
       triggered_grace_ms: 10
@@ -140,6 +168,34 @@ hook:
       #- `45` = wrist can drift up/down within a moderate horizontal arc
       #- `90` = angle no longer constrains hook-vs-vertical alignment
       max_wrist_angle_from_elbow_horizontal_deg: 25.0
+    depth:
+      # Turn hook depth trend checks on or off inside the threshold runtime. input.
+      enabled: false
+      evaluation:
+        # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
+        model_input_size: 256
+        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> tool.
+        wrist_roi_radius_px: 12
+        # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
+        wrist_to_elbow_extension_px: 8
+        # Sample this many torso-centered depth pixels on each side of the torso ROI center for the body reference depth. input -> tool.
+        torso_roi_radius_px: 18
+        # Smooth the per-frame wrist-vs-torso depth signal across this many recent frames before window scoring. input -> tool.
+        smoothing_window_samples: 3
+        # Use this much of the window from the front as the early depth baseline slice. input -> tool.
+        early_window_fraction: 0.35
+        # Use this much of the window from the back as the late depth comparison slice. input -> tool.
+        late_window_fraction: 0.35
+      thresholds:
+        # Hooks must keep wrist closeness growth at or below this value so strong forward straights do not pass as hooks. input.
+        max_closeness_delta: 0.03
+        # Hooks must keep peak wrist closeness at or below this value so they remain mostly lateral in depth. input.
+        max_peak_closeness: 0.06
+      debug:
+        # Show the live wrist depth, torso depth, and closeness values in proving/debug views. input presentation.
+        show_depth_signal: true
+        # Show the early/late window depth slices and closeness delta in proving/debug views. input presentation.
+        show_depth_window_analysis: true
     timing:
       # Keep the hook in its triggered state for this long after it fires. input.
       triggered_grace_ms: 500
@@ -207,6 +263,34 @@ uppercut:
       #- `45` = wrist can drift sideways within a moderate vertical arc
       #- `90` = angle no longer constrains uppercut-vs-horizontal alignment
       max_wrist_angle_from_elbow_vertical_deg: 25.0
+    depth:
+      # Turn uppercut depth trend checks on or off inside the threshold runtime. input.
+      enabled: false
+      evaluation:
+        # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
+        model_input_size: 256
+        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> tool.
+        wrist_roi_radius_px: 12
+        # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
+        wrist_to_elbow_extension_px: 8
+        # Sample this many torso-centered depth pixels on each side of the torso ROI center for the body reference depth. input -> tool.
+        torso_roi_radius_px: 18
+        # Smooth the per-frame wrist-vs-torso depth signal across this many recent frames before window scoring. input -> tool.
+        smoothing_window_samples: 3
+        # Use this much of the window from the front as the early depth baseline slice. input -> tool.
+        early_window_fraction: 0.35
+        # Use this much of the window from the back as the late depth comparison slice. input -> tool.
+        late_window_fraction: 0.35
+      thresholds:
+        # Uppercuts must keep wrist closeness growth at or below this value so strong forward straights do not pass as uppercuts. input.
+        max_closeness_delta: 0.03
+        # Uppercuts must keep peak wrist closeness at or below this value so they remain mostly vertical in camera space rather than strongly forward in depth. input.
+        max_peak_closeness: 0.06
+      debug:
+        # Show the live wrist depth, torso depth, and closeness values in proving/debug views. input presentation.
+        show_depth_signal: true
+        # Show the early/late window depth slices and closeness delta in proving/debug views. input presentation.
+        show_depth_window_analysis: true
     timing:
       # Keep the uppercut in its triggered state for this long after it fires. input.
       triggered_grace_ms: 500

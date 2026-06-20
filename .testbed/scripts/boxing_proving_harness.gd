@@ -208,6 +208,51 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"label": "Reacquire progress",
 		"row_kind": "info",
 	},
+	{
+		"id": "depth_section",
+		"label": "Staged depth config",
+		"row_kind": "section",
+	},
+	{
+		"id": "depth_runtime_status",
+		"label": "Depth runtime status",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_enabled",
+		"label": "Depth config enabled",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_window_shape",
+		"label": "Depth window slices (early / late)",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_roi_shape",
+		"label": "Depth ROI sizes (wrist / extend / torso)",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_smoothing_window_samples",
+		"label": "Depth smoothing window samples",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_family_delta_threshold",
+		"label": "Depth closeness delta threshold",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_family_peak_threshold",
+		"label": "Depth peak closeness threshold",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_debug_flags",
+		"label": "Depth debug flags",
+		"row_kind": "info",
+	},
 ]
 const PROTOTYPE_MATCHER_REQUIREMENT_ROWS := [
 	{
@@ -362,6 +407,51 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 	{
 		"id": "reacquire_progress",
 		"label": "Reacquire progress",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_section",
+		"label": "Staged depth config",
+		"row_kind": "section",
+	},
+	{
+		"id": "depth_runtime_status",
+		"label": "Depth runtime status",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_enabled",
+		"label": "Depth config enabled",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_window_shape",
+		"label": "Depth window slices (early / late)",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_roi_shape",
+		"label": "Depth ROI sizes (wrist / extend / torso)",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_smoothing_window_samples",
+		"label": "Depth smoothing window samples",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_family_delta_threshold",
+		"label": "Depth closeness delta threshold",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_family_peak_threshold",
+		"label": "Depth peak closeness threshold",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_debug_flags",
+		"label": "Depth debug flags",
 		"row_kind": "info",
 	},
 ]
@@ -845,6 +935,129 @@ func _pretty_resource_path(path: String) -> String:
 	if path.begins_with("res://addons/aerobeat-input-camera-tracking/"):
 		return path.replace("res://addons/aerobeat-input-camera-tracking/", "res://")
 	return path
+
+func _current_gesture_profile_document() -> Dictionary:
+	var bundle := _current_profile_bundle()
+	return bundle.get("gesture_detection", {}) if bundle.get("gesture_detection", {}) is Dictionary else {}
+
+func _gesture_family_document(gesture_document: Dictionary, family: String) -> Dictionary:
+	return gesture_document.get(family, {}) if gesture_document.get(family, {}) is Dictionary else {}
+
+func _gesture_family_backend_document(gesture_document: Dictionary, family: String, backend_name: String) -> Dictionary:
+	var family_document := _gesture_family_document(gesture_document, family)
+	var backend_document: Dictionary = family_document.get(backend_name, {}) if family_document.get(backend_name, {}) is Dictionary else {}
+	if not backend_document.is_empty():
+		return backend_document
+	return family_document
+
+func _punch_threshold_profile_config(family: String) -> Dictionary:
+	return _gesture_family_backend_document(_current_gesture_profile_document(), family, "threshold")
+
+func _punch_depth_profile_config(family: String) -> Dictionary:
+	var threshold_config := _punch_threshold_profile_config(family)
+	return threshold_config.get("depth", {}) if threshold_config.get("depth", {}) is Dictionary else {}
+
+func _depth_threshold_label(family: String, field_name: String) -> String:
+	if family == "straight_punch":
+		if field_name == "closeness_delta":
+			return "min_closeness_delta"
+		return "min_peak_closeness"
+	if field_name == "closeness_delta":
+		return "max_closeness_delta"
+	return "max_peak_closeness"
+
+func _depth_config_runtime_status_text(depth_config: Dictionary) -> String:
+	if depth_config.is_empty():
+		return "not present in selected gesture YAML"
+	var enabled_text := "enabled" if bool(depth_config.get("enabled", false)) else "disabled"
+	return "%s in config only; live threshold runtime does not consume depth yet" % enabled_text
+
+func _build_depth_config_row(row_spec: Dictionary, family: String) -> Dictionary:
+	var row := row_spec.duplicate(true)
+	var row_id := String(row.get("id", ""))
+	var depth_config := _punch_depth_profile_config(family)
+	var evaluation: Dictionary = depth_config.get("evaluation", {}) if depth_config.get("evaluation", {}) is Dictionary else {}
+	var thresholds: Dictionary = depth_config.get("thresholds", {}) if depth_config.get("thresholds", {}) is Dictionary else {}
+	var debug_config: Dictionary = depth_config.get("debug", {}) if depth_config.get("debug", {}) is Dictionary else {}
+	var current_text := ""
+	match row_id:
+		"depth_section":
+			current_text = ""
+		"depth_runtime_status":
+			current_text = _depth_config_runtime_status_text(depth_config)
+		"depth_enabled":
+			current_text = _fmt_bool(bool(depth_config.get("enabled", false))) if not depth_config.is_empty() else "missing"
+		"depth_window_shape":
+			if depth_config.is_empty():
+				current_text = "missing"
+			else:
+				current_text = "%s / %s at %dpx model input" % [
+					_fmt_float(evaluation.get("early_window_fraction", 0.0)),
+					_fmt_float(evaluation.get("late_window_fraction", 0.0)),
+					int(evaluation.get("model_input_size", 0)),
+				]
+		"depth_roi_shape":
+			if depth_config.is_empty():
+				current_text = "missing"
+			else:
+				current_text = "%dpx / %dpx / %dpx" % [
+					int(evaluation.get("wrist_roi_radius_px", 0)),
+					int(evaluation.get("wrist_to_elbow_extension_px", 0)),
+					int(evaluation.get("torso_roi_radius_px", 0)),
+				]
+		"depth_smoothing_window_samples":
+			current_text = str(int(evaluation.get("smoothing_window_samples", 0))) if not depth_config.is_empty() else "missing"
+		"depth_family_delta_threshold":
+			var delta_key := _depth_threshold_label(family, "closeness_delta")
+			current_text = "%s = %s" % [delta_key, _fmt_float(thresholds.get(delta_key, 0.0))] if not depth_config.is_empty() else "missing"
+		"depth_family_peak_threshold":
+			var peak_key := _depth_threshold_label(family, "peak_closeness")
+			current_text = "%s = %s" % [peak_key, _fmt_float(thresholds.get(peak_key, 0.0))] if not depth_config.is_empty() else "missing"
+		"depth_debug_flags":
+			if depth_config.is_empty():
+				current_text = "missing"
+			else:
+				current_text = "show_depth_signal=%s, show_depth_window_analysis=%s" % [
+					_fmt_bool(bool(debug_config.get("show_depth_signal", false))),
+					_fmt_bool(bool(debug_config.get("show_depth_window_analysis", false))),
+				]
+		_:
+			current_text = "pending"
+	row["current_text"] = current_text
+	row["passed"] = false
+	return row
+
+func _append_depth_config_summary_lines(lines: Array, family: String, depth_config: Dictionary) -> void:
+	lines.append("Depth contract status: %s" % _depth_config_runtime_status_text(depth_config))
+	if depth_config.is_empty():
+		return
+	var evaluation: Dictionary = depth_config.get("evaluation", {}) if depth_config.get("evaluation", {}) is Dictionary else {}
+	var thresholds: Dictionary = depth_config.get("thresholds", {}) if depth_config.get("thresholds", {}) is Dictionary else {}
+	var debug_config: Dictionary = depth_config.get("debug", {}) if depth_config.get("debug", {}) is Dictionary else {}
+	var delta_key := _depth_threshold_label(family, "closeness_delta")
+	var peak_key := _depth_threshold_label(family, "peak_closeness")
+	lines.append("Depth enabled: %s" % _fmt_bool(bool(depth_config.get("enabled", false))))
+	lines.append("Depth window slices / input: %s / %s @ %dpx" % [
+		_fmt_float(evaluation.get("early_window_fraction", 0.0)),
+		_fmt_float(evaluation.get("late_window_fraction", 0.0)),
+		int(evaluation.get("model_input_size", 0)),
+	])
+	lines.append("Depth ROI sizes (wrist / extend / torso): %dpx / %dpx / %dpx" % [
+		int(evaluation.get("wrist_roi_radius_px", 0)),
+		int(evaluation.get("wrist_to_elbow_extension_px", 0)),
+		int(evaluation.get("torso_roi_radius_px", 0)),
+	])
+	lines.append("Depth smoothing window samples: %d" % int(evaluation.get("smoothing_window_samples", 0)))
+	lines.append("Depth thresholds: %s=%s, %s=%s" % [
+		delta_key,
+		_fmt_float(thresholds.get(delta_key, 0.0)),
+		peak_key,
+		_fmt_float(thresholds.get(peak_key, 0.0)),
+	])
+	lines.append("Depth debug flags: show_depth_signal=%s show_depth_window_analysis=%s" % [
+		_fmt_bool(bool(debug_config.get("show_depth_signal", false))),
+		_fmt_bool(bool(debug_config.get("show_depth_window_analysis", false))),
+	])
 
 func _build_tile_grid_if_needed() -> void:
 	if _board_grid == null or not _tile_refs.is_empty():
@@ -1619,8 +1832,10 @@ func _build_classifier_requirement_row(row_spec: Dictionary, classifier_debug: D
 	return row
 
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
-	var row := row_spec.duplicate(true)
 	var row_id := String(row_spec.get("id", ""))
+	if row_id.begins_with("depth_"):
+		return _build_depth_config_row(row_spec, "straight_punch")
+	var row := row_spec.duplicate(true)
 	var label := String(row_spec.get("label", ""))
 	var passed := false
 	var current_text := ""
@@ -1816,8 +2031,10 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	return row
 
 func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictionary, family: String, _side: String) -> Dictionary:
-	var row := row_spec.duplicate(true)
 	var row_id := String(row_spec.get("id", ""))
+	if row_id.begins_with("depth_"):
+		return _build_depth_config_row(row_spec, family)
+	var row := row_spec.duplicate(true)
 	var label := String(row_spec.get("label", ""))
 	var passed := false
 	var current_text := ""
@@ -2192,24 +2409,30 @@ func _build_boxing_event_feed_text() -> String:
 	var pose_config: Dictionary = tracking.get("pose", {}) if tracking.get("pose", {}) is Dictionary else {}
 	var hands_config: Dictionary = tracking.get("hands", {}) if tracking.get("hands", {}) is Dictionary else {}
 	var hand_validity: Dictionary = hands_config.get("validity", {}) if hands_config.get("validity", {}) is Dictionary else {}
-	var straight_config: Dictionary = gesture_document.get("straight_punch", {}) if gesture_document.get("straight_punch", {}) is Dictionary else {}
+	var straight_family: Dictionary = _gesture_family_document(gesture_document, "straight_punch")
+	var straight_config: Dictionary = _gesture_family_backend_document(gesture_document, "straight_punch", "threshold")
 	var straight_eval: Dictionary = straight_config.get("evaluation", {}) if straight_config.get("evaluation", {}) is Dictionary else {}
 	var straight_thresholds: Dictionary = straight_config.get("thresholds", {}) if straight_config.get("thresholds", {}) is Dictionary else {}
 	var straight_timing: Dictionary = straight_config.get("timing", {}) if straight_config.get("timing", {}) is Dictionary else {}
 	var straight_rearm: Dictionary = straight_config.get("rearm", {}) if straight_config.get("rearm", {}) is Dictionary else {}
 	var straight_state_machine: Dictionary = straight_config.get("state_machine", {}) if straight_config.get("state_machine", {}) is Dictionary else {}
-	var hook_config: Dictionary = gesture_document.get("hook", {}) if gesture_document.get("hook", {}) is Dictionary else {}
+	var straight_depth: Dictionary = straight_config.get("depth", {}) if straight_config.get("depth", {}) is Dictionary else {}
+	var hook_family: Dictionary = _gesture_family_document(gesture_document, "hook")
+	var hook_config: Dictionary = _gesture_family_backend_document(gesture_document, "hook", "threshold")
 	var hook_eval: Dictionary = hook_config.get("evaluation", {}) if hook_config.get("evaluation", {}) is Dictionary else {}
 	var hook_thresholds: Dictionary = hook_config.get("thresholds", {}) if hook_config.get("thresholds", {}) is Dictionary else {}
 	var hook_timing: Dictionary = hook_config.get("timing", {}) if hook_config.get("timing", {}) is Dictionary else {}
 	var hook_rearm: Dictionary = hook_config.get("rearm", {}) if hook_config.get("rearm", {}) is Dictionary else {}
 	var hook_state_machine: Dictionary = hook_config.get("state_machine", {}) if hook_config.get("state_machine", {}) is Dictionary else {}
-	var uppercut_config: Dictionary = gesture_document.get("uppercut", {}) if gesture_document.get("uppercut", {}) is Dictionary else {}
+	var hook_depth: Dictionary = hook_config.get("depth", {}) if hook_config.get("depth", {}) is Dictionary else {}
+	var uppercut_family: Dictionary = _gesture_family_document(gesture_document, "uppercut")
+	var uppercut_config: Dictionary = _gesture_family_backend_document(gesture_document, "uppercut", "threshold")
 	var uppercut_eval: Dictionary = uppercut_config.get("evaluation", {}) if uppercut_config.get("evaluation", {}) is Dictionary else {}
 	var uppercut_thresholds: Dictionary = uppercut_config.get("thresholds", {}) if uppercut_config.get("thresholds", {}) is Dictionary else {}
 	var uppercut_timing: Dictionary = uppercut_config.get("timing", {}) if uppercut_config.get("timing", {}) is Dictionary else {}
 	var uppercut_rearm: Dictionary = uppercut_config.get("rearm", {}) if uppercut_config.get("rearm", {}) is Dictionary else {}
 	var uppercut_state_machine: Dictionary = uppercut_config.get("state_machine", {}) if uppercut_config.get("state_machine", {}) is Dictionary else {}
+	var uppercut_depth: Dictionary = uppercut_config.get("depth", {}) if uppercut_config.get("depth", {}) is Dictionary else {}
 
 	lines.append("")
 	lines.append("Profile bundle")
@@ -2231,7 +2454,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("")
 	lines.append("Straight-punch tuning")
 	lines.append("---------------------")
-	lines.append("Enabled: %s" % _fmt_bool(bool(straight_config.get("enabled", false))))
+	lines.append("Threshold backend selected: %s" % _fmt_bool(String(straight_family.get("backend", "threshold")).strip_edges().to_lower() == "threshold"))
 	lines.append("Fresh samples only: %s" % _fmt_bool(bool(straight_eval.get("fresh_samples_only", true))))
 	lines.append("Sample window size: %d" % int(straight_eval.get("sample_window_size", 0)))
 	lines.append("Motion window: %dms" % int(straight_eval.get("window_ms", 0)))
@@ -2243,11 +2466,12 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
 	lines.append("Pose-only rearm timer: %dms" % int(straight_rearm.get("pose_only_rearm_ms", 0)))
 	lines.append("Straight-punch lost reacquire stable window: %dms" % int(straight_state_machine.get("lost_tracking_reacquire_stable_ms", 0)))
+	_append_depth_config_summary_lines(lines, "straight_punch", straight_depth)
 
 	lines.append("")
 	lines.append("Hook tuning")
 	lines.append("-----------")
-	lines.append("Enabled: %s" % _fmt_bool(bool(hook_config.get("enabled", false))))
+	lines.append("Threshold backend selected: %s" % _fmt_bool(String(hook_family.get("backend", "threshold")).strip_edges().to_lower() == "threshold"))
 	lines.append("Motion window: %dms" % int(hook_eval.get("window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Max wrist angle from elbow horizontal ray: %s" % _fmt_float(hook_thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
@@ -2257,11 +2481,12 @@ func _build_boxing_event_feed_text() -> String:
 		int(hook_rearm.get("pose_only_rearm_ms", 0)),
 		int(hook_state_machine.get("lost_tracking_reacquire_stable_ms", 0)),
 	])
+	_append_depth_config_summary_lines(lines, "hook", hook_depth)
 
 	lines.append("")
 	lines.append("Uppercut tuning")
 	lines.append("---------------")
-	lines.append("Enabled: %s" % _fmt_bool(bool(uppercut_config.get("enabled", false))))
+	lines.append("Threshold backend selected: %s" % _fmt_bool(String(uppercut_family.get("backend", "threshold")).strip_edges().to_lower() == "threshold"))
 	lines.append("Motion window: %dms" % int(uppercut_eval.get("window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Max wrist angle from elbow vertical ray: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_angle_from_elbow_vertical_deg", 0.0)))
@@ -2271,6 +2496,7 @@ func _build_boxing_event_feed_text() -> String:
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),
 		int(uppercut_state_machine.get("lost_tracking_reacquire_stable_ms", 0)),
 	])
+	_append_depth_config_summary_lines(lines, "uppercut", uppercut_depth)
 
 	var punch_detection_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) is Dictionary) else {}
 	var prototype_matcher_source: Variant = (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype", (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}))

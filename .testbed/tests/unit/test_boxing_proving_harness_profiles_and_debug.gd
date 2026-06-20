@@ -978,6 +978,8 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	assert_string_contains(text_body, "Min velocity")
 	assert_string_contains(text_body, "Max wrist angle from elbow horizontal ray")
 	assert_string_contains(text_body, "Hook wrist must stay on mirrored preview-space side of elbow")
+	assert_string_contains(text_body, "Depth contract status: disabled in config only; live threshold runtime does not consume depth yet")
+	assert_string_contains(text_body, "Depth thresholds: max_closeness_delta=0.030, max_peak_closeness=0.060")
 	assert_string_contains(text_body, "Uppercut tuning")
 	assert_string_contains(text_body, "Max wrist angle from elbow vertical ray")
 	assert_string_contains(text_body, "Uppercut wrist must stay above elbow in preview space")
@@ -1041,6 +1043,27 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_string_contains(body, "Wrist angle from elbow horizontal ray <= 20.000° - 18.000")
 	assert_string_contains(body, "Preview-space wrist stays on required mirrored hook side - true (left_of_elbow)")
 	assert_string_contains(body, "Pose-only rearm - ")
+
+func test_punch_family_inspectors_surface_staged_depth_contract_without_claiming_live_runtime() -> void:
+	var harness = _new_harness()
+
+	var straight_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var straight_body := String(straight_inspector.get("body", ""))
+	assert_string_contains(straight_body, "Depth runtime status - disabled in config only; live threshold runtime does not consume depth yet")
+	assert_string_contains(straight_body, "Depth closeness delta threshold - min_closeness_delta = 0.060")
+	assert_string_contains(straight_body, "Depth peak closeness threshold - min_peak_closeness = 0.040")
+
+	var hook_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
+	var hook_body := String(hook_inspector.get("body", ""))
+	assert_string_contains(hook_body, "Depth runtime status - disabled in config only; live threshold runtime does not consume depth yet")
+	assert_string_contains(hook_body, "Depth closeness delta threshold - max_closeness_delta = 0.030")
+	assert_string_contains(hook_body, "Depth peak closeness threshold - max_peak_closeness = 0.060")
+
+	var uppercut_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "uppercut_left")
+	var uppercut_body := String(uppercut_inspector.get("body", ""))
+	assert_string_contains(uppercut_body, "Depth runtime status - disabled in config only; live threshold runtime does not consume depth yet")
+	assert_string_contains(uppercut_body, "Depth closeness delta threshold - max_closeness_delta = 0.030")
+	assert_string_contains(uppercut_body, "Depth peak closeness threshold - max_peak_closeness = 0.060")
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:
 	var harness = _new_harness()
