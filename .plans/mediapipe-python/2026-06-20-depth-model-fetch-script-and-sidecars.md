@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 11:18 EDT  
+**Last Updated:** 2026-06-20 11:24 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -76,9 +76,9 @@ The script should be designed for sync-first use: after pulling the repo, Derric
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/scripts/<new yaml sidecar>`
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/2026-06-20-depth-model-fetch-script-and-sidecars.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-hxce` and independently QA’d the fetch workflow without modifying downloaded-artifact state in the repo. Verified that `scripts/depth-models.yaml` and `scripts/fetch-depth-models.sh` stay aligned on all three model ids, upstream URLs, and resolved destination paths by cross-checking the metadata against `--list` output and repo-root path resolution. Validation run: `bash -n scripts/fetch-depth-models.sh`; `scripts/fetch-depth-models.sh --help`; `scripts/fetch-depth-models.sh --list`; `scripts/fetch-depth-models.sh --dry-run`; `scripts/fetch-depth-models.sh --dry-run --model fastdepth-224-onnx`; `python3 -m json.tool scripts/depth-models.yaml`; `git check-ignore -v assets/depth_models/ ...`; and one constrained real fetch using `scripts/fetch-depth-models.sh --repo-root "$(mktemp -d)" --model fastdepth-224-onnx`, which downloaded a 5,775,869-byte ONNX file into a temporary repo root and then correctly skipped re-download on the second run. `.gitignore` truthfully ignores `assets/depth_models/` and `git ls-files assets/depth_models` returned no tracked artifacts. The workflow is honest about provenance/caveats: MiDaS is labeled `official_release_assets`, while FastDepth and Depth Anything V2 Small are explicitly labeled as community-sourced/runtime-export artifacts with notes that the canonical upstreams do not publish those exact ONNX/runtime files at the approved final paths. No QA fixes were required. Bead referenced: `aerobeat-input-camera-tracking-hxce`.
 
 ---
 
