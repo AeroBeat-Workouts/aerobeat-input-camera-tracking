@@ -1,9 +1,9 @@
 # AeroBeat Learned Classifier Family-Specific Feature Branch
 
 **Date:** 2026-06-18  
-**Status:** In Progress  
-**Last Updated:** 2026-06-19 22:24 EDT  
-**Blocked Reason:** None — Derrick resumed the active plan with concrete hook-threshold bug reports from live review, so the next slice is a focused required-side/remaining-threshold diagnosis and fix.  
+**Status:** Complete  
+**Last Updated:** 2026-06-19 22:29 EDT  
+**Blocked Reason:** None  
 **Agent:** `pico`
 
 ---
@@ -1999,15 +1999,28 @@ I also ran a broader two-file GUT invocation during diagnosis; the hook/proving 
 **Prompt:** Verify the hook threshold bug fix from Task 67. Confirm the preview-space required-side boolean now matches the intended mirrored webcam interpretation for both left and right hooks, confirm the remaining threshold gate participates honestly in the hook trigger path, and separate what repo-local automation proves from what still needs Derrick’s replay/live feel check.
 
 **Folders Created/Deleted/Modified:**
-- QA artifact paths as needed
+- `.testbed/test-results/task68-qa-20260619/`
 
 **Files Created/Deleted/Modified:**
-- QA notes/artifacts as needed
 - `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+- `.testbed/test-results/task68-qa-20260619/gut-hook-task68.log`
+- `.testbed/test-results/task68-qa-20260619/gut-hook-rewind-task68.log`
+- `.testbed/test-results/task68-qa-20260619/gut-hook-proving-task68.log`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA passed on the narrowest truthful repo-local validation path for the Task 67 hook-side fix. I reran the exact focused checks the coder used and saved the logs under `.testbed/test-results/task68-qa-20260619/`:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=hook_ -gexit` → **7/7 passed** (`gut-hook-task68.log`)
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=replay_timestamp_rewind_resets_pose_strike_temporal_windows -gexit` → **1/1 passed** (`gut-hook-rewind-task68.log`)
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=hook_hover_card_reports_simplified_pose_trigger_contract -gexit` → **1/1 passed** (`gut-hook-proving-task68.log`; non-blocking pre-existing orphan/leaked-RID warning only)
+
+Exact QA evidence for the side-label contract:
+- Runtime code now defines the mirrored preview-space requirement in one place: `src/detectors/pose_detector_substrate.gd` `_required_hook_side_label(side)` returns `left_of_elbow` for left and `right_of_elbow` for right, and `_is_wrist_on_required_hook_side(...)` enforces `wrist_offset_x < 0` for left / `> 0` for right.
+- The final live hook trigger remains `speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side`, so the remaining threshold gate still participates honestly after the fix rather than being bypassed.
+- Focused unit coverage proves both mirrored-side negatives and positives: `test_hook_requires_wrist_on_correct_mirrored_elbow_side`, `test_hook_requires_wrist_on_correct_mirrored_elbow_side_for_right_arm`, `test_hook_alignment_angle_gate_participates_honestly`, and `test_hook_uses_pose_primary_state_machine_and_debug_surfaces`.
+- The proving/debug text now reflects the corrected side labels explicitly. `.testbed/scripts/boxing_proving_harness.gd` shows `Preview-space wrist stays on required mirrored hook side` with the live label appended (`true (left_of_elbow)` style), and the tuning summary text now says: `left hook = left_of_elbow, right hook = right_of_elbow`. The focused proving-harness test `test_hook_hover_card_reports_simplified_pose_trigger_contract` passed and asserts that exact `true (left_of_elbow)` row/body text.
+
+What repo-local automation proves: the mirrored preview-space side boolean is now wired correctly for both hook arms, the hook trigger still honestly depends on velocity + horizontal-angle + required-side, the proving/debug surfaces expose the corrected contract clearly, and the hook temporal-window rewind path still resets cleanly after the change. What it does **not** prove: final replay/live feel, whether Derrick’s actual webcam mirroring intuition matches the on-screen proving UX in motion, or whether the corrected side gate plus the remaining threshold gates feel right on real hook footage. Derrick still needs replay/live manual validation for that acceptance layer.
 
 ---
 
@@ -2020,25 +2033,31 @@ I also ran a broader two-file GUT invocation during diagnosis; the hook/proving 
 **Prompt:** Independently truth-check the hook threshold bug fix. Confirm the runtime no longer misinterprets the mirrored preview-space left/right side requirement for hooks, confirm the final threshold contract is implemented/documented honestly, and call out what still depends on Derrick’s real replay/live validation.
 
 **Folders Created/Deleted/Modified:**
-- audit artifact paths as needed
+- `.testbed/test-results/task69-audit-20260619/`
 
 **Files Created/Deleted/Modified:**
-- audit notes/artifacts as needed
+- `.testbed/test-results/task69-audit-20260619/gut-hook-task69-audit.log`
+- `.testbed/test-results/task69-audit-20260619/gut-hook-rewind-task69-audit.log`
+- `.testbed/test-results/task69-audit-20260619/gut-hook-proving-task69-audit.log`
 - `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit passed on `b193588` (`Fix mirrored hook required-side gate`) with no additional code changes needed. Independent truth-check confirmed `src/detectors/pose_detector_substrate.gd` now enforces the mirrored preview-space hook side contract honestly via `_required_hook_side_label(side)` + `_is_wrist_on_required_hook_side(...)`: `hook_left` requires `wrist_offset_x < 0` (`left_of_elbow`), and `hook_right` requires `wrist_offset_x > 0` (`right_of_elbow`). The final live hook threshold remains explicit and unchanged apart from that side fix: `speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side`, so the remaining threshold contract is still velocity gate + horizontal-angle gate + required-side gate.
+
+I reran the narrowest truthful repo-local audit validation and saved fresh logs under `.testbed/test-results/task69-audit-20260619/`: `godot --headless ... -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=hook_ -gexit` (**7/7 passed**), `... -gunit_test_name=replay_timestamp_rewind_resets_pose_strike_temporal_windows -gexit` (**1/1 passed**), and `... -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=hook_hover_card_reports_simplified_pose_trigger_contract -gexit` (**1/1 passed**). Static audit also confirmed the proving/debug/documentation text now says `left hook = left_of_elbow, right hook = right_of_elbow` in `.testbed/scripts/boxing_proving_harness.gd`, and the hover-card row shows the live label (`true (left_of_elbow)` style) instead of vague boolean-only text.
+
+What this audit proves: repo-local runtime logic, focused tests, rewind safety, and proving/debug text all agree on the corrected mirrored hook-side contract. What still depends on Derrick: real replay/live validation that the mirrored preview-space interpretation matches his webcam/proving intuition in motion and that the current hook false-positive/false-negative feel is acceptable in practice. Non-blocking caveat unchanged: the proving-harness audit run still emits pre-existing orphan / leaked-RID warnings, but the test itself passed and did not expose a hook-contract regression.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial / Paused for Derrick replay/live review
+**Status:** ✅ Complete
 
-**What We Built:** This branch progressed from the original flat shared-vector family-specific feature test into family-masked topology checks, reduced straight-family diagnosis, multiple hook/uppercut cue-design passes, retimed-truth reruns after Derrick corrected the punch YAML windows, and then a broader boxing runtime/config rewrite. The shipped state now uses a family-first gesture YAML contract (`disabled` / `threshold` / `prototype` / `classifier` per family), truthful proving/debug backend surfaces, real disabled-backend obedience for punch and non-punch families, same-family boxing co-fire suppression, a straight-punch lateral-angle guard-raise filter, and new hook/uppercut elbow-ray alignment threshold gates. Repo-local coder → QA → audit loops passed for those slices, but final acceptance still depends on Derrick’s manual replay/live review and later tuning feedback.
+**What We Built:** This branch progressed from the original flat shared-vector family-specific feature test into family-masked topology checks, reduced straight-family diagnosis, multiple hook/uppercut cue-design passes, retimed-truth reruns after Derrick corrected the punch YAML windows, and then a broader boxing runtime/config rewrite. The shipped state now uses a family-first gesture YAML contract (`disabled` / `threshold` / `prototype` / `classifier` per family), truthful proving/debug backend surfaces, real disabled-backend obedience for punch and non-punch families, same-family boxing co-fire suppression, a straight-punch lateral-angle guard-raise filter, new hook/uppercut elbow-ray alignment threshold gates, and the final mirrored hook required-side fix (`hook_left = left_of_elbow`, `hook_right = right_of_elbow`) that Derrick confirmed live.
 
-**Reference Check:** `REF-02`/`REF-03` still anchor the runtime/harness implementation surface, and `REF-06` remains the fixture-manifest truth source. The trustworthy updated read after the retimed-YAML reruns is: straight-family masking wins fairly against the refreshed shared-vector straight subset baseline, hook/uppercut specialization still fails to beat the refreshed hook/uppercut subset baseline, and the later family-first runtime contract work stayed honest by keeping tuning/acceptance decisions gated on Derrick’s real replay/live review rather than pretending repo-local automation alone can sign off gameplay behavior.
+**Reference Check:** `REF-02`/`REF-03` still anchor the runtime/harness implementation surface, and `REF-06` remains the fixture-manifest truth source. The trustworthy updated read after the retimed-YAML reruns is: straight-family masking wins fairly against the refreshed shared-vector straight subset baseline, hook/uppercut specialization still fails to beat the refreshed hook/uppercut subset baseline, and the later family-first runtime contract work stayed honest by keeping tuning/acceptance decisions gated on Derrick’s real replay/live review rather than pretending repo-local automation alone can sign off gameplay behavior. Derrick’s latest live review then validated the remaining hook-threshold bugfix directly, closing the active branch.
 
 **Commits:**
 - `05606b0` - `Refresh family benchmarks for retimed punch truth`
@@ -2054,8 +2073,8 @@ I also ran a broader two-file GUT invocation during diagnosis; the hook/proving 
 - `f67ddfe` - `Honor disabled non-punch gesture backends`
 - `6821df4` - `Replace hook and uppercut ratio gates with elbow alignment`
 
-**Lessons Learned:** Two things turned out to be separately material. First, “family-specific named features inside one shared classifier” is not the same thing as true family isolation. Second, truth-window definition itself was strong enough to change the benchmark story: pre-retime blanket conclusions about masking were too broad. After retiming, straight-family isolation looks genuinely promising on the fair subset comparison, while hook/uppercut remains the weak branch. Terminal-side verification then showed a separate truth-plumbing issue in mixed-family proving that was worth fixing, but also confirmed behavior quality still needs Derrick’s manual replay/live judgment before the next bug-squash slice.
+**Lessons Learned:** Two things turned out to be separately material. First, “family-specific named features inside one shared classifier” is not the same thing as true family isolation. Second, truth-window definition itself was strong enough to change the benchmark story: pre-retime blanket conclusions about masking were too broad. After retiming, straight-family isolation looks genuinely promising on the fair subset comparison, while hook/uppercut remains the weak branch. Terminal-side verification then showed a separate truth-plumbing issue in mixed-family proving that was worth fixing, and Derrick’s final live review then closed the loop by catching a simple mirrored preview-space hook-side bug that was easy to prove and fix once isolated.
 
 ---
 
-*Completed on Pending manual follow-up*
+*Completed on 2026-06-19*
