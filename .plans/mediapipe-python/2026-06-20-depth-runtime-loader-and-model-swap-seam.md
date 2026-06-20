@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20
 **Status:** In Progress
-**Last Updated:** 2026-06-20 18:16 EDT
-**Blocked Reason:** None
+**Last Updated:** 2026-06-20 18:18 EDT
+**Blocked Reason:** Detector-side no-preview-image depth debug truth gap is unresolved (`depth_runtime_status` can still report `ready` when the sample request actually blocked).
 **Agent:** `pico`
 
 ---
@@ -456,7 +456,7 @@ Performance caveat recorded honestly: this slice proves real execution and truth
 
 ### Task 9: Audit real backend execution support and truthfulness
 
-**Bead ID:** `Pending`
+**Bead ID:** `aerobeat-input-camera-tracking-nfir`
 **SubAgent:** `primary`
 **Role:** `auditor`
 **References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`
@@ -470,19 +470,23 @@ Performance caveat recorded honestly: this slice proves real execution and truth
 - runtime / proving / tests touched by implementation
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-nfir` and independently rechecked the repo state, runtime wiring, and QA evidence. Pass findings: real backend execution is genuinely live through the shared seam; direct runtime-level inference against the shipped proving frame succeeded for MiDaS/OpenVINO (`runtime_provider=OpenVINO CPU`, `wrist_closeness≈0.090`, total sample latency ≈472 ms), FastDepth ONNX (`CPUExecutionProvider`, `wrist_closeness≈-0.616`, ≈202 ms), and Depth Anything V2 Small ONNX (`CPUExecutionProvider`, `wrist_closeness≈0.081`, ≈937 ms). Shared-seam architecture also still holds: backend/model-family branching remains centralized in `src/depth/depth_runtime_manager.gd`, the backend adapters, and the Python bridge/script; `pose_detector_substrate.gd` consumes only model-agnostic runtime/sample dictionaries plus family-specific threshold semantics.
+
+Audit blocker: the stale detector test is **not** just drift. It exposed a real debug-truth mismatch in the no-preview-image path. `DepthPythonRuntimeBridge.infer()` returns a blocked `preview_image_missing` result before syncing bridge debug state, while `_build_pose_strike_debug_state()` surfaces `depth_runtime_status` from the manager debug object rather than the per-sample analysis result. That leaves side debug reporting `depth_runtime_status=ready` after runtime probe/load even when the actual sample request for that frame was blocked, which is exactly why `test_straight_punch_depth_gate_stays_staged_without_runtime_sample` now fails. This does not invalidate the live backend-execution claim, but it does mean the detector-side truth surface still overstates readiness for that failure mode, so the bead stays open pending a fix or an intentional debug-contract decision.
+
+Audit validation rerun: `test_depth_runtime_manager.gd` (pass 3/3), `test_boxing_proving_harness_profiles_and_debug.gd` (pass 39/39), `test_pose_detector_substrate.gd -gunit_test_name=depth_gate` (fail 1/4 at the stale-runtime-status assertion), plus a direct shell invocation of `scripts/depth_runtime_infer.py` through the vendor Python venv for all three approved artifacts. Remaining limitations recorded honestly: inference still runs via one Python bridge invocation per sample rather than a persistent low-latency worker, and Depth Anything V2 Small remains materially slower than FastDepth/OpenVINO on this machine.
 
 ---
 
 ## Final Results
 
-**Status:** ⏳ In Progress
+**Status:** ⚠️ Partial
 
-**What We Built:** Completed the shared seam / swap-visibility / truthful debug slice, then landed and QA-verified real backend execution for the approved OpenVINO + ONNX depth adapters. Audit is the remaining open step.
+**What We Built:** Completed the shared seam / swap-visibility / truthful debug slice, then landed and QA-verified real backend execution for the approved OpenVINO + ONNX depth adapters. Audit confirmed that backend execution and model swapping are live, but it also found one remaining detector-side truthfulness gap in the no-preview-image/sample-unavailable path, so this slice is not fully closed yet.
 
-**Reference Check:** `REF-01`/`REF-03`/`REF-06` are satisfied by the live artifact-path contract plus the QA-verified swap/execution results. `REF-04`/`REF-05` are satisfied for detector consumption and proving-surface truth. `REF-07`/`REF-08` are now also exercised by real runtime execution through the vendor Python lane; the main remaining follow-up is auditor confirmation and any cleanup for stale staged-era tests.
+**Reference Check:** `REF-01`/`REF-03`/`REF-06` are satisfied by the live artifact-path contract plus the independently rechecked swap/execution results. `REF-07`/`REF-08` are genuinely exercised by real runtime execution through the vendor Python lane. `REF-04`/`REF-05` are mostly satisfied, but not fully closed yet because the detector-side debug surface can still report `depth_runtime_status=ready` when the actual per-frame depth sample request blocked before inference (`preview_image_missing` / no preview image path), which is the real issue behind the remaining stale detector test failure.
 
 **Commits:**
 - `23ae372` - Add depth runtime seam design
