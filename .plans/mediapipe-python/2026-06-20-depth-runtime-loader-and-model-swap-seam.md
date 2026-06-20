@@ -176,9 +176,9 @@ So the first design goal is not "pretend all three models are live." It is: intr
 - runtime / proving files touched by implementation
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-6vmf` and independently audited the live repo state against `REF-03` through `REF-08`, the implementation files under `src/depth/`, and the proving/test surfaces. Architecture truth check passed: model/backend-specific branching is centralized inside `DepthRuntimeManager` + backend adapters, while `pose_detector_substrate.gd` only consumes model-agnostic runtime/debug/sample dictionaries and family semantics (`straight_punch` uses min closeness thresholds; hook/uppercut use max closeness thresholds) without backend-specific conditionals. Swap-truth check passed: a fresh headless runtime probe confirmed the three approved artifact paths resolve exactly as QA reported — MiDaS OpenVINO directory → `openvino` / `midas_openvino_v21_small_256`, FastDepth ONNX → `onnx` / `fastdepth_224_onnx`, Depth Anything V2 Small ONNX → `onnx` / `depth_anything_v2_small_onnx` — while missing artifacts fail honestly at `artifact_resolution` with `artifact_missing`. Proving/debug truth check passed: `.testbed/scripts/boxing_proving_harness.gd` reads runtime state from `gesture_debug.depth_runtime` / family side debug data and reports runtime status, stage, backend/family, artifact path, failure reason, and live depth metrics without claiming real ONNX/OpenVINO execution. Validation rerun during audit: (1) headless swap probe via `/tmp/depth_runtime_audit_2026_06_20.gd`; (2) `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit -ghide_orphans` (pass); (3) `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit` (pass). Honest remaining staged surface: actual ONNX/OpenVINO depth inference is still blocked/unimplemented, which matches the repo state and the debug text.
 
 ---
 
@@ -399,13 +399,13 @@ The best first real execution route is to extend the already-existing Python sub
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Updated the active plan with the concrete shared-depth-runtime design, then implemented Task 2’s repo-side seam: artifact-path resolution, backend/family inference, normalized detector/debug contracts, and truthful blocked adapter states for the currently unwired OpenVINO/ONNX execution paths.
+**What We Built:** Completed this seam slice end to end: the repo now has a shared depth runtime manager plus backend adapter seam under `src/depth/`, truthful artifact-path resolution and family/backend inference for the approved MiDaS/FastDepth/Depth Anything model paths, detector integration that consumes one normalized depth/debug contract instead of backend-specific branches, and proving surfaces that expose what model/runtime state is live versus staged. Model swaps are observable now at the loader/debug layer, and the punch-family logic stays backend-agnostic.
 
-**Reference Check:** `REF-01`/`REF-03`/`REF-06` confirm the approved family-local depth config and artifact paths; `REF-04`/`REF-05` confirm the current detector/proving surfaces still do not run monocular depth; `REF-07`/`REF-08` confirm the only existing execution substrate already wired here is the MediaPipe Python subprocess lane and that it currently lacks ONNX/OpenVINO dependencies.
+**Reference Check:** `REF-01`/`REF-03`/`REF-06` are satisfied by the live artifact-path contract and the audited swap-resolution results. `REF-04`/`REF-05` are satisfied because the detector/proving surfaces now consume and display the shared seam truthfully without pretending monocular inference already runs. `REF-07`/`REF-08` remain accurately reflected: the repo still has no runnable ONNX/OpenVINO execution substrate, and the staged adapter/debug states say exactly that.
 
 **Commits:**
 - Pending.
 
-**Lessons Learned:** The repo is ready for a clean seam, but not for honest claims of real model swapping yet. The right next step is to centralize resolution/debug first, then add a real backend behind that seam instead of leaking backend assumptions into boxing threshold code.
+**Lessons Learned:** This slice is complete because the seam, swap visibility, and truth surfaces are real and audited; what remains staged is only the future backend execution work. Keeping the detector on a model-agnostic normalized contract made it possible to finish this slice honestly without leaking backend-specific behavior into punch-family logic.
