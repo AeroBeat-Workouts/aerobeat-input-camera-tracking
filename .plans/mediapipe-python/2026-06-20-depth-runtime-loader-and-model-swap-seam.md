@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-20
 **Status:** In Progress
-**Last Updated:** 2026-06-20 12:44 EDT
+**Last Updated:** 2026-06-20 17:45 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -397,15 +397,94 @@ The best first real execution route is to extend the already-existing Python sub
 
 ---
 
-## Final Results
+### Task 7: Implement real backend execution support for all depth adapters
+
+**Bead ID:** `aerobeat-input-camera-tracking-22ao`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-03`, `REF-04`, `REF-06`, `REF-07`, `REF-08`
+**Prompt:** Implement actual backend execution support for the approved depth adapters while preserving the existing shared seam. Extend the real runtime substrate as needed so MiDaS/OpenVINO and the ONNX-backed adapters can execute for real instead of reporting `adapter_unimplemented`. Keep backend/model-specific work inside adapters/runtime helpers and do not leak it into punch-family detector logic. Update the active plan with actual implementation results, run relevant validation, commit/push repo-file changes by default, and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `src/`
+- `scripts/`
+- `.testbed/`
+- `.plans/mediapipe-python/`
+- `../aerobeat-vendor-mediapipe-python/runtime/`
+
+**Files Created/Deleted/Modified:**
+- `src/depth/depth_model_adapter.gd`
+- `src/depth/depth_python_runtime_bridge.gd`
+- `src/depth/adapters/openvino_depth_adapter.gd`
+- `src/depth/adapters/onnx_depth_adapter.gd`
+- `scripts/depth_runtime_infer.py`
+- `.testbed/tests/unit/test_depth_runtime_manager.gd`
+- `../aerobeat-vendor-mediapipe-python/runtime/requirements.txt`
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
 **Status:** ✅ Complete
 
-**What We Built:** Completed this seam slice end to end: the repo now has a shared depth runtime manager plus backend adapter seam under `src/depth/`, truthful artifact-path resolution and family/backend inference for the approved MiDaS/FastDepth/Depth Anything model paths, detector integration that consumes one normalized depth/debug contract instead of backend-specific branches, and proving surfaces that expose what model/runtime state is live versus staged. Model swaps are observable now at the loader/debug layer, and the punch-family logic stays backend-agnostic.
+**Results:** Replaced the staged `adapter_unimplemented` adapters with a shared Python depth-runtime bridge that probes and executes the approved ONNX and OpenVINO artifacts behind the existing loader seam. MiDaS/OpenVINO now runs through the vendor Python venv with `openvino`, while both ONNX-backed families (`depth_anything_v2_small_onnx` and `fastdepth_224_onnx`) run through `onnxruntime`; the detector/punch-family logic stayed unchanged and continues to talk only to `DepthRuntimeManager`. Added targeted runtime tests plus direct shell smoke coverage against the shipped model artifacts and a proving-frame preview image, and preserved truthful debug reporting/model-swap observability by surfacing backend/family/runtime-provider/failure data from the bridge back into the existing debug state. Remaining limitation: inference currently uses one Python process per sample through the shared bridge, so this slice delivers real execution truth and observability, not a long-lived high-throughput runtime yet.
 
-**Reference Check:** `REF-01`/`REF-03`/`REF-06` are satisfied by the live artifact-path contract and the audited swap-resolution results. `REF-04`/`REF-05` are satisfied because the detector/proving surfaces now consume and display the shared seam truthfully without pretending monocular inference already runs. `REF-07`/`REF-08` remain accurately reflected: the repo still has no runnable ONNX/OpenVINO execution substrate, and the staged adapter/debug states say exactly that.
+---
+
+### Task 8: QA real backend execution and model swapping
+
+**Bead ID:** `Pending`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`
+**Prompt:** Independently verify that real backend execution works for the approved depth adapters, that swapping among the approved models remains observable and clean, and that the proving/debug surfaces still tell the truth about live inference, failures, and metrics. Use the highest-fidelity safe validation available, including real runtime execution where feasible. Update the active plan with actual QA findings and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- runtime / proving / vendor-runtime folders touched by implementation
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / proving / tests touched by implementation
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 9: Audit real backend execution support and truthfulness
+
+**Bead ID:** `Pending`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`
+**Prompt:** Independently audit that real backend execution support is genuinely live where claimed, that model swapping still stays behind the shared seam, and that the plan and proving surfaces tell the truth about what works, what is limited, and what remains staged. Close the bead if it passes or report the blocking gap if it fails.
+
+**Folders Created/Deleted/Modified:**
+- runtime / proving / vendor-runtime folders touched by implementation
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / proving / tests touched by implementation
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+## Final Results
+
+**Status:** ⏳ In Progress
+
+**What We Built:** Completed the shared seam / swap-visibility / truthful debug slice end to end, and now moving into the next approved seam: real backend execution support for all adapters.
+
+**Reference Check:** `REF-01`/`REF-03`/`REF-06` are already satisfied by the live artifact-path contract and the audited swap-resolution results. `REF-04`/`REF-05` are satisfied for shared seam consumption/debug truth. `REF-07`/`REF-08` remain the key next-step implementation area because real execution support must now be added rather than merely staged.
 
 **Commits:**
-- Pending.
+- `23ae372` - Add depth runtime seam design
+- `5dea311` - Add depth runtime loader seam
+- `1081787` - Wire shared depth signal into boxing threshold gates
+- `52106f3` - docs(plan): record depth runtime QA findings
+- `de67a89` - docs: record depth runtime seam audit
 
-**Lessons Learned:** This slice is complete because the seam, swap visibility, and truth surfaces are real and audited; what remains staged is only the future backend execution work. Keeping the detector on a model-agnostic normalized contract made it possible to finish this slice honestly without leaking backend-specific behavior into punch-family logic.
+**Lessons Learned:** The shared seam is solid enough now that adding backend execution should be a runtime-substrate problem, not a punch-family logic rewrite. The main risk is keeping real OpenVINO/ONNX execution support inside the adapters/runtime layer so the detector and proving surfaces remain backend-agnostic and truthful.
