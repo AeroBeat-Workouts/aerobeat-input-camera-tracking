@@ -1,9 +1,9 @@
 # AeroBeat depth runtime loader and model-swap seam
 
 **Date:** 2026-06-20
-**Status:** In Progress
-**Last Updated:** 2026-06-20 18:31 EDT
-**Blocked Reason:** Awaiting Task 12 audit on the Task 10 detector-side no-preview-image truth-gap fix after Task 11 QA passed.
+**Status:** Complete
+**Last Updated:** 2026-06-20 18:35 EDT
+**Blocked Reason:** None.
 **Agent:** `pico`
 
 ---
@@ -543,19 +543,19 @@ Audit validation rerun: `test_depth_runtime_manager.gd` (pass 3/3), `test_boxing
 - runtime / detector / tests touched by implementation
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-dpa2` and independently re-audited the Task 10 no-preview-image truth-gap fix against the live detector/runtime/proving surfaces plus the QA evidence. The detector-side truth fix is real: `src/depth/depth_python_runtime_bridge.gd` now syncs terminal debug state when inference cannot run because the preview image is missing, and `src/detectors/pose_detector_substrate.gd` now assembles family depth analysis from the post-request runtime debug state instead of stale pre-inference readiness. Independent validation matched the intended contract: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit -ghide_orphans` passed 4/4, including `test_straight_punch_depth_gate_reports_preview_image_block_truthfully`, which now asserts the correct live behavior (`depth_runtime_status=blocked`, `depth_runtime_stage=inference`, `depth_failure_code=preview_image_missing`) instead of the stale staged-era expectation. Supporting truth surfaces also held: `test_depth_runtime_manager.gd` passed 3/3, and `test_boxing_proving_harness_profiles_and_debug.gd` passed 39/39, confirming the plan/debug surfaces distinguish runtime readiness from per-frame blocked inference truthfully. Remaining warnings were the pre-existing UID/RID/object-leak warnings at test exit; they did not change the audit outcome.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Completed the shared seam / swap-visibility / truthful debug slice, then landed and QA-verified real backend execution for the approved OpenVINO + ONNX depth adapters. Audit confirmed that backend execution and model swapping are live, but it also found one remaining detector-side truthfulness gap in the no-preview-image/sample-unavailable path, so this slice is not fully closed yet.
+**What We Built:** Completed the shared seam / swap-visibility / truthful debug slice, landed and QA-verified real backend execution for the approved OpenVINO + ONNX depth adapters, fixed the detector-side no-preview-image debug truth gap, and independently re-audited the final detector/runtime/proving behavior. The runtime can be ready at the seam level while still reporting a per-frame blocked inference truthfully when no preview image is available, and the detector/proving surfaces now reflect that distinction instead of overstating readiness.
 
-**Reference Check:** `REF-01`/`REF-03`/`REF-06` are satisfied by the live artifact-path contract plus the independently rechecked swap/execution results. `REF-07`/`REF-08` are genuinely exercised by real runtime execution through the vendor Python lane. `REF-04`/`REF-05` are mostly satisfied, but not fully closed yet because the detector-side debug surface can still report `depth_runtime_status=ready` when the actual per-frame depth sample request blocked before inference (`preview_image_missing` / no preview image path), which is the real issue behind the remaining stale detector test failure.
+**Reference Check:** `REF-01`/`REF-03`/`REF-06` remain satisfied by the live artifact-path contract plus the rechecked swap/execution results. `REF-07`/`REF-08` are genuinely exercised by the vendor Python runtime lane. `REF-04`/`REF-05` are now satisfied as well: the detector-facing debug state, the updated detector test, and the proving-harness surfaces all report blocked-per-frame preview-image failures truthfully while preserving real runtime-ready state elsewhere.
 
 **Commits:**
 - `23ae372` - Add depth runtime seam design
