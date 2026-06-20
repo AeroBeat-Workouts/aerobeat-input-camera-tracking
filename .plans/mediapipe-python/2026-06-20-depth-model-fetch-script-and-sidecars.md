@@ -145,9 +145,9 @@ The script should be designed for sync-first use: after pulling the repo, Derric
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.gitignore`
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/mediapipe-python/2026-06-20-depth-model-fetch-script-and-sidecars.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-yzft` and independently QA'd the real fetched artifact state already materialized under `assets/depth_models/`. Verified that all approved local targets from the fetch metadata and Task 4 plan entry exist at the recorded paths with matching actual sizes: `assets/depth_models/midas/openvino_midas_v21_small_256/openvino_midas_v21_small_256.xml` (554,444 bytes), `assets/depth_models/midas/openvino_midas_v21_small_256/openvino_midas_v21_small_256.bin` (33,127,892 bytes), `assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx` (5,775,869 bytes), and `assets/depth_models/depth_anything_v2/depth_anything_v2_small/depth_anything_v2_small.onnx` (99,373,606 bytes). Confirmed the expected artifact shapes still match the plan: MiDaS is a directory-backed OpenVINO pair, while FastDepth and Depth Anything V2 Small are single ONNX files. Validation run: `find assets/depth_models -type f -printf '%P\t%s bytes\n' | sort`; `stat -c '%n\t%s bytes' ...`; `scripts/fetch-depth-models.sh --list`; `scripts/fetch-depth-models.sh --dry-run --model depth-anything-v2-small-onnx`; `git check-ignore -v assets/depth_models ...`; `git status --short --ignored assets/depth_models`; and `git ls-files assets/depth_models`. Higher-level ignore coverage is active and sufficient via the existing `.gitignore` rule `assets/depth_models/`, and the fetched artifacts remain untracked (`git status` reported `!! assets/depth_models/` while `git ls-files assets/depth_models` returned nothing). The plan’s recorded fetch command, actual results, file sizes, and provenance caveats still match reality; no QA fixes were required. Bead referenced: `aerobeat-input-camera-tracking-yzft`. 
 
 ---
 
