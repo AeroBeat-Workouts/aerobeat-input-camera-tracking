@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-20
 **Status:** In Progress
-**Last Updated:** 2026-06-20 17:45 EDT
+**Last Updated:** 2026-06-20 18:16 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -430,7 +430,7 @@ The best first real execution route is to extend the already-existing Python sub
 
 ### Task 8: QA real backend execution and model swapping
 
-**Bead ID:** `Pending`
+**Bead ID:** `aerobeat-input-camera-tracking-2xsl`
 **SubAgent:** `primary`
 **Role:** `qa`
 **References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`
@@ -444,9 +444,13 @@ The best first real execution route is to extend the already-existing Python sub
 - runtime / proving / tests touched by implementation
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-2xsl` and reran the highest-fidelity safe QA path against the actual shipped artifacts plus the live proving surfaces. Real backend validation passed through the shared Godot seam, not just the Python helper in isolation: `godot --headless --path .testbed --script /tmp/depth_runtime_task8_qa_2026_06_20.gd` loaded and executed all three approved artifacts with real inference on the proving preview frame. Observed truth: MiDaS OpenVINO resolved to `backend_id=openvino`, `family_id=midas_openvino_v21_small_256`, `runtime_provider=OpenVINO CPU`, with fresh sample metrics (`wrist_closeness≈0.090`) and total sample latency ≈471 ms; FastDepth resolved to `backend_id=onnx`, `family_id=fastdepth_224_onnx`, `runtime_provider=CPUExecutionProvider`, with fresh sample metrics (`wrist_closeness≈-0.616`) and total sample latency ≈174 ms; Depth Anything V2 Small resolved to `backend_id=onnx`, `family_id=depth_anything_v2_small_onnx`, `runtime_provider=CPUExecutionProvider`, with fresh sample metrics (`wrist_closeness≈0.081`) and total sample latency ≈945 ms. Swapping the configured artifact between those three models stayed clean and observable: the reported backend/family/provider/debug summary changed immediately with no detector-side branching required. Honest failure-path check also passed: a missing artifact failed at `runtime_stage=artifact_resolution` with `failure_code=artifact_missing` and a truthful `active_model_summary`.
+
+Proving/debug surface validation was mixed-but-honest. `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_depth_runtime_manager.gd -gexit -ghide_orphans` passed (3/3), confirming real ONNX/OpenVINO execution plus swap truth at the runtime seam. `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit -ghide_orphans` passed (39/39), confirming the proving harness still surfaces runtime status/stage, loader truth, artifact path, backend/family, failure reasons, and live depth metrics truthfully. One QA issue surfaced in detector coverage: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit -ghide_orphans` now fails 1/4 because `test_straight_punch_depth_gate_stays_staged_without_runtime_sample` still expects the old staged runtime state (`depth_runtime_status == blocked`), but with real backend execution live the runtime reports `ready`. That is a stale test expectation, not evidence that the runtime/debug seam is lying.
+
+Performance caveat recorded honestly: this slice proves real execution and truthful swap observability, but it is not yet a low-latency persistent runtime. Each inference still spins through the Python bridge process, and the fixture timings above show that Depth Anything V2 Small is substantially slower than FastDepth on this machine.
 
 ---
 
@@ -476,9 +480,9 @@ The best first real execution route is to extend the already-existing Python sub
 
 **Status:** ⏳ In Progress
 
-**What We Built:** Completed the shared seam / swap-visibility / truthful debug slice end to end, and now moving into the next approved seam: real backend execution support for all adapters.
+**What We Built:** Completed the shared seam / swap-visibility / truthful debug slice, then landed and QA-verified real backend execution for the approved OpenVINO + ONNX depth adapters. Audit is the remaining open step.
 
-**Reference Check:** `REF-01`/`REF-03`/`REF-06` are already satisfied by the live artifact-path contract and the audited swap-resolution results. `REF-04`/`REF-05` are satisfied for shared seam consumption/debug truth. `REF-07`/`REF-08` remain the key next-step implementation area because real execution support must now be added rather than merely staged.
+**Reference Check:** `REF-01`/`REF-03`/`REF-06` are satisfied by the live artifact-path contract plus the QA-verified swap/execution results. `REF-04`/`REF-05` are satisfied for detector consumption and proving-surface truth. `REF-07`/`REF-08` are now also exercised by real runtime execution through the vendor Python lane; the main remaining follow-up is auditor confirmation and any cleanup for stale staged-era tests.
 
 **Commits:**
 - `23ae372` - Add depth runtime seam design
@@ -486,5 +490,7 @@ The best first real execution route is to extend the already-existing Python sub
 - `1081787` - Wire shared depth signal into boxing threshold gates
 - `52106f3` - docs(plan): record depth runtime QA findings
 - `de67a89` - docs: record depth runtime seam audit
+- `309fa92` - Add real ONNX and OpenVINO depth execution
+- `91f1996` - test: cover real depth runtime bridge
 
-**Lessons Learned:** The shared seam is solid enough now that adding backend execution should be a runtime-substrate problem, not a punch-family logic rewrite. The main risk is keeping real OpenVINO/ONNX execution support inside the adapters/runtime layer so the detector and proving surfaces remain backend-agnostic and truthful.
+**Lessons Learned:** The shared seam held up under real execution: loader truth, backend/family swaps, and proving metrics stayed centralized and honest. The next cleanup risk is test drift from the staged era — at least one detector test still asserts `blocked` even though the runtime now becomes `ready`.
