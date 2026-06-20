@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20
 **Status:** In Progress
-**Last Updated:** 2026-06-20 18:18 EDT
-**Blocked Reason:** Detector-side no-preview-image depth debug truth gap is unresolved (`depth_runtime_status` can still report `ready` when the sample request actually blocked).
+**Last Updated:** 2026-06-20 18:34 EDT
+**Blocked Reason:** Awaiting Task 11 QA and Task 12 audit on the Task 10 detector-side no-preview-image truth-gap fix.
 **Agent:** `pico`
 
 ---
@@ -477,6 +477,75 @@ Performance caveat recorded honestly: this slice proves real execution and truth
 Audit blocker: the stale detector test is **not** just drift. It exposed a real debug-truth mismatch in the no-preview-image path. `DepthPythonRuntimeBridge.infer()` returns a blocked `preview_image_missing` result before syncing bridge debug state, while `_build_pose_strike_debug_state()` surfaces `depth_runtime_status` from the manager debug object rather than the per-sample analysis result. That leaves side debug reporting `depth_runtime_status=ready` after runtime probe/load even when the actual sample request for that frame was blocked, which is exactly why `test_straight_punch_depth_gate_stays_staged_without_runtime_sample` now fails. This does not invalidate the live backend-execution claim, but it does mean the detector-side truth surface still overstates readiness for that failure mode, so the bead stays open pending a fix or an intentional debug-contract decision.
 
 Audit validation rerun: `test_depth_runtime_manager.gd` (pass 3/3), `test_boxing_proving_harness_profiles_and_debug.gd` (pass 39/39), `test_pose_detector_substrate.gd -gunit_test_name=depth_gate` (fail 1/4 at the stale-runtime-status assertion), plus a direct shell invocation of `scripts/depth_runtime_infer.py` through the vendor Python venv for all three approved artifacts. Remaining limitations recorded honestly: inference still runs via one Python bridge invocation per sample rather than a persistent low-latency worker, and Depth Anything V2 Small remains materially slower than FastDepth/OpenVINO on this machine.
+
+---
+
+### Task 10: Fix detector-side no-preview-image depth debug truth gap
+
+**Bead ID:** `aerobeat-input-camera-tracking-c4bx`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-07`, `REF-08`
+**Prompt:** Fix the detector-side truth gap identified by the audit. Specifically, make the no-preview-image / sample-blocked path report detector-facing depth runtime/debug state truthfully instead of leaving `depth_runtime_status=ready` after probe/load when the actual per-frame request blocked. Keep the fix inside the shared runtime/debug seam and detector-side debug assembly without leaking backend-specific behavior into punch-family logic. Update the active plan with actual Task 10 results, run relevant validation, commit/push repo-file changes by default, and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `src/`
+- `.testbed/tests/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / detector / tests touched by implementation
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-c4bx` and fixed the detector-side no-preview-image truth gap inside the shared runtime/debug seam plus detector-side depth analysis assembly. `src/depth/depth_python_runtime_bridge.gd` now synchronizes terminal debug state when a per-frame depth request cannot run (`preview_image_missing`) or when the Python runtime is missing, so the shared runtime no longer stays falsely `ready` after a blocked sample request. `src/detectors/pose_detector_substrate.gd` now reads post-inference runtime debug back from the shared manager before assembling detector-facing depth analysis, ensuring `runtime_status`, `runtime_stage`, `failure_code`, `failure_message`, and live sample metrics reflect the actual per-frame outcome instead of stale pre-request state. Replaced the stale detector expectation in `.testbed/tests/unit/test_pose_detector_substrate.gd` with an explicit blocked-preview truth test that asserts `depth_runtime_status=blocked`, `depth_runtime_stage=inference`, and `depth_failure_code=preview_image_missing`. Validation: `test_depth_runtime_manager.gd` (3/3 pass), `test_pose_detector_substrate.gd` with `depth_gate` selection (4/4 pass), and `test_boxing_proving_harness_profiles_and_debug.gd` (39/39 pass).
+
+---
+
+### Task 11: QA detector-side no-preview-image depth debug truth gap fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-e17c`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-07`, `REF-08`
+**Prompt:** Independently verify the detector-side truth-gap fix, especially the no-preview-image / sample-blocked path. Confirm the detector/proving/debug surfaces now report blocked vs ready state truthfully, and rerun the targeted detector depth-gate tests plus any proving/runtime tests needed to ensure no regression. Update the active plan with actual QA findings and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `src/`
+- `.testbed/tests/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / detector / tests touched by implementation
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 12: Audit detector-side no-preview-image depth debug truth gap fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-dpa2`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-04`, `REF-05`, `REF-07`, `REF-08`
+**Prompt:** Independently audit that the detector-side no-preview-image truth gap is actually fixed, that the stale detector test now reflects the correct live behavior, and that the plan/debug surfaces tell the truth about readiness versus blocked-per-frame inference state. Close the bead if it passes or report the blocking gap if it fails.
+
+**Folders Created/Deleted/Modified:**
+- `src/`
+- `.testbed/tests/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / detector / tests touched by implementation
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 

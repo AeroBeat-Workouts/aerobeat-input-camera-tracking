@@ -67,19 +67,35 @@ func infer(frame_payload: Dictionary, request: Dictionary) -> Dictionary:
 	result["family_id"] = _family_id
 	result["artifact_path"] = String(_model_spec.get("artifact_path_res", _model_spec.get("artifact_path_abs", "")))
 	if _python_executable.is_empty() or not FileAccess.file_exists(_python_executable):
+		var python_missing_message := "Depth runtime Python executable was not found at '%s'." % _python_executable
 		result["status"] = DepthRuntimeTypes.STATUS_FAILED
 		result["error_info"] = {
 			"code": "python_runtime_missing",
-			"message": "Depth runtime Python executable was not found at '%s'." % _python_executable,
+			"message": python_missing_message,
 		}
+		_sync_terminal_debug_state(
+			DepthRuntimeTypes.STATUS_FAILED,
+			DepthRuntimeTypes.STAGE_DEPENDENCY_CHECK,
+			"python_runtime_missing",
+			python_missing_message,
+			"enabled; depth runtime python executable missing for %s" % _backend_id
+		)
 		return result
 	var preview_image_path := _resolve_preview_image_path(frame_payload)
 	if preview_image_path.is_empty():
+		var preview_missing_message := "Tracking frame did not include a preview image path for live depth inference."
 		result["status"] = DepthRuntimeTypes.STATUS_BLOCKED
 		result["error_info"] = {
 			"code": "preview_image_missing",
-			"message": "Tracking frame did not include a preview image path for live depth inference.",
+			"message": preview_missing_message,
 		}
+		_sync_terminal_debug_state(
+			DepthRuntimeTypes.STATUS_BLOCKED,
+			DepthRuntimeTypes.STAGE_INFERENCE,
+			"preview_image_missing",
+			preview_missing_message,
+			"enabled; per-frame depth sample blocked: preview image missing"
+		)
 		return result
 	var response := _run_request({
 		"operation": "infer",
@@ -198,6 +214,21 @@ func _sync_debug_from_response(response: Dictionary) -> void:
 		_debug_state["last_timing_ms"] = (response.get("timing_ms", {}) as Dictionary).duplicate(true)
 	if response.get("runtime_provider", null) != null:
 		_debug_state["runtime_provider"] = response.get("runtime_provider")
+
+
+func _sync_terminal_debug_state(status: String, stage: String, code: String, message: String, summary: String) -> void:
+	_debug_state["runtime_status"] = status
+	_debug_state["runtime_stage"] = stage
+	_debug_state["failure_code"] = code
+	_debug_state["failure_message"] = message
+	_debug_state["active_model_summary"] = summary
+	_debug_state["last_sample_metrics"] = {}
+	_debug_state["last_timing_ms"] = {
+		"preprocess": 0.0,
+		"infer": 0.0,
+		"postprocess": 0.0,
+		"total": 0.0,
+	}
 
 func _failed_probe(code: String, message: String) -> Dictionary:
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_FAILED

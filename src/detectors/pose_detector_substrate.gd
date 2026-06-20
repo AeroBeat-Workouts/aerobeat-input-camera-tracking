@@ -2150,15 +2150,18 @@ func _update_family_depth_signal(family: String, side: String, state: Dictionary
 		"wrist": wrist.duplicate(true),
 	}
 	var result: Dictionary = manager.infer_relative_depth(tracking_frame, sample_request)
+	var runtime_debug: Dictionary = manager.get_debug_state()
 	var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
-	analysis["runtime_status"] = String(result.get("status", analysis.get("runtime_status", "unloaded")))
-	analysis["backend_id"] = String(result.get("backend_id", analysis.get("backend_id", "unknown")))
-	analysis["family_id"] = String(result.get("family_id", analysis.get("family_id", "unknown")))
-	analysis["sample_metrics"] = sample_metrics.duplicate(true)
+	var debug_sample_metrics: Dictionary = runtime_debug.get("last_sample_metrics", {}) if runtime_debug.get("last_sample_metrics", {}) is Dictionary else {}
+	analysis["runtime_status"] = String(runtime_debug.get("runtime_status", result.get("status", analysis.get("runtime_status", "unloaded"))))
+	analysis["runtime_stage"] = String(runtime_debug.get("runtime_stage", analysis.get("runtime_stage", "idle")))
+	analysis["backend_id"] = String(runtime_debug.get("backend_id", result.get("backend_id", analysis.get("backend_id", "unknown"))))
+	analysis["family_id"] = String(runtime_debug.get("family_id", result.get("family_id", analysis.get("family_id", "unknown"))))
+	analysis["sample_metrics"] = debug_sample_metrics.duplicate(true) if not debug_sample_metrics.is_empty() or sample_metrics.is_empty() else sample_metrics.duplicate(true)
 	if not bool(result.get("ok", false)):
 		var error_info: Dictionary = result.get("error_info", {}) if result.get("error_info", {}) is Dictionary else {}
-		analysis["failure_code"] = String(error_info.get("code", analysis.get("failure_code", "")))
-		analysis["failure_message"] = String(error_info.get("message", analysis.get("failure_message", "")))
+		analysis["failure_code"] = String(runtime_debug.get("failure_code", error_info.get("code", analysis.get("failure_code", ""))))
+		analysis["failure_message"] = String(runtime_debug.get("failure_message", error_info.get("message", analysis.get("failure_message", ""))))
 		return analysis
 	var closeness := float(sample_metrics.get("wrist_closeness", sample_metrics.get("closeness", 0.0)))
 	analysis["available"] = true

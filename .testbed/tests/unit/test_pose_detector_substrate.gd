@@ -392,7 +392,7 @@ func test_straight_punch_ignores_deprecated_forward_depth_spike_threshold_config
 	assert_false(left_debug.has("min_forward_depth_spike"))
 	assert_false(left_debug.has("forward_depth_spike_gate_passed"))
 
-func test_straight_punch_depth_gate_stays_staged_without_runtime_sample() -> void:
+func test_straight_punch_depth_gate_reports_preview_image_block_truthfully() -> void:
 	config.tracker_profile_document = {
 		"tracking": {
 			"hands": {
@@ -438,6 +438,9 @@ func test_straight_punch_depth_gate_stays_staged_without_runtime_sample() -> voi
 	assert_false(bool(left_debug.get("depth_gate_applied", true)))
 	assert_eq(String(left_debug.get("depth_gate_reason", "")), "staged_or_unavailable")
 	assert_eq(String(left_debug.get("depth_runtime_status", "")), "blocked")
+	assert_eq(String(left_debug.get("depth_runtime_stage", "")), "inference")
+	assert_eq(String(left_debug.get("depth_failure_code", "")), "preview_image_missing")
+	assert_string_contains(String(left_debug.get("depth_failure_message", "")), "preview image path")
 
 func test_straight_punch_depth_gate_uses_placeholder_closeness_signal() -> void:
 	config.tracker_profile_document = {
