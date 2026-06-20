@@ -152,9 +152,9 @@ So the first design goal is not "pretend all three models are live." It is: intr
 - runtime / proving files touched by implementation
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified the seam with two layers of validation. (1) Real artifact-swap probe: `godot --headless --path .testbed --script /tmp/depth_runtime_qa_2026_06_20.gd` exercised the three approved depth model paths from `scripts/depth-models.yaml` / `assets/boxing.gesture_detection.yaml` and confirmed each configured artifact resolves truthfully through the shared seam: MiDaS OpenVINO directory → `backend_id=openvino`, `family_id=midas_openvino_v21_small_256`; FastDepth ONNX file → `backend_id=onnx`, `family_id=fastdepth_224_onnx`; Depth Anything V2 Small ONNX file → `backend_id=onnx`, `family_id=depth_anything_v2_small_onnx`. Repeated `ensure_runtime_ready()` calls stayed stable per artifact, swapping paths changed the reported runtime key/backend/family cleanly, and a missing-path probe failed honestly with `runtime_status=failed`, `runtime_stage=artifact_resolution`, `failure_code=artifact_missing`. (2) Detector/proving truth checks: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit -ghide_orphans` (pass) and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit` (pass) confirmed the detector/debug/proving layers surface truthful staged-vs-live depth state plus normalized wrist/torso/closeness metrics. Honest QA finding: artifact loading/resolution and swap visibility are live now, but ONNX/OpenVINO execution remains intentionally staged/blocked, so the seam truthfully reports `adapter_unimplemented` while still passing through normalized placeholder/sample metrics for debug surfaces.
 
 ---
 
