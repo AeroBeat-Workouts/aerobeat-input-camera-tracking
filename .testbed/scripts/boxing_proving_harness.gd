@@ -210,12 +210,37 @@ const PUNCH_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "depth_section",
-		"label": "Staged depth config",
+		"label": "Depth runtime + config",
 		"row_kind": "section",
 	},
 	{
 		"id": "depth_runtime_status",
-		"label": "Depth runtime status",
+		"label": "Depth runtime status / stage",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_loader_truth",
+		"label": "Depth loader truth",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_artifact_path",
+		"label": "Active depth artifact path",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_backend_family",
+		"label": "Resolved backend / family",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_failure_reason",
+		"label": "Depth failure reason",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_live_metrics",
+		"label": "Active normalized depth metrics",
 		"row_kind": "info",
 	},
 	{
@@ -411,12 +436,37 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "depth_section",
-		"label": "Staged depth config",
+		"label": "Depth runtime + config",
 		"row_kind": "section",
 	},
 	{
 		"id": "depth_runtime_status",
-		"label": "Depth runtime status",
+		"label": "Depth runtime status / stage",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_loader_truth",
+		"label": "Depth loader truth",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_artifact_path",
+		"label": "Active depth artifact path",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_backend_family",
+		"label": "Resolved backend / family",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_failure_reason",
+		"label": "Depth failure reason",
+		"row_kind": "info",
+	},
+	{
+		"id": "depth_live_metrics",
+		"label": "Active normalized depth metrics",
 		"row_kind": "info",
 	},
 	{
@@ -969,22 +1019,132 @@ func _depth_threshold_label(family: String, field_name: String) -> String:
 func _depth_config_runtime_status_text(depth_config: Dictionary) -> String:
 	if depth_config.is_empty():
 		return "not present in selected gesture YAML"
-	var enabled_text := "enabled" if bool(depth_config.get("enabled", false)) else "disabled"
-	return "%s in config only; live threshold runtime does not consume depth yet" % enabled_text
+	return "enabled in selected gesture YAML" if bool(depth_config.get("enabled", false)) else "disabled in selected gesture YAML"
 
-func _build_depth_config_row(row_spec: Dictionary, family: String) -> Dictionary:
+func _current_depth_runtime_debug_state(family: String, live_depth_state: Dictionary = {}) -> Dictionary:
+	var latest_state := _boxing_latest_state_snapshot()
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var depth_runtime: Dictionary = (gesture_debug.get("depth_runtime", {}) as Dictionary)
+	var family_runtime: Dictionary = (depth_runtime.get(family, {}) as Dictionary)
+	if not family_runtime.is_empty():
+		return family_runtime.duplicate(true)
+	if live_depth_state.is_empty():
+		return {}
+	return {
+		"depth_enabled": bool(live_depth_state.get("depth_enabled", false)),
+		"artifact_path_res": String(live_depth_state.get("depth_artifact_path", "")),
+		"backend_id": String(live_depth_state.get("depth_backend_id", "unknown")),
+		"family_id": String(live_depth_state.get("depth_family_id", "unknown")),
+		"runtime_status": String(live_depth_state.get("depth_runtime_status", "unloaded")),
+		"runtime_stage": String(live_depth_state.get("depth_runtime_stage", "idle")),
+		"failure_code": String(live_depth_state.get("depth_failure_code", "")),
+		"failure_message": String(live_depth_state.get("depth_failure_message", "")),
+		"active_model_summary": String(live_depth_state.get("depth_active_model_summary", "")),
+		"last_sample_metrics": (live_depth_state.get("depth_sample_metrics", {}) as Dictionary).duplicate(true),
+	}
+
+func _family_side_depth_debug_state(family: String, side: String) -> Dictionary:
+	var latest_state := _boxing_latest_state_snapshot()
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var family_debug: Dictionary = (gesture_debug.get(family, {}) as Dictionary)
+	return ((family_debug.get(side, {}) as Dictionary)).duplicate(true)
+
+func _depth_loader_truth_text(depth_config: Dictionary, runtime_debug: Dictionary) -> String:
+	if runtime_debug.is_empty():
+		return _depth_config_runtime_status_text(depth_config)
+	var summary := String(runtime_debug.get("active_model_summary", "")).strip_edges()
+	if not summary.is_empty():
+		return summary
+	return "%s; runtime status is %s" % [
+		_depth_config_runtime_status_text(depth_config),
+		String(runtime_debug.get("runtime_status", "unloaded")),
+	]
+
+func _depth_artifact_path_text(depth_config: Dictionary, runtime_debug: Dictionary) -> String:
+	var runtime_path := _pretty_resource_path(String(runtime_debug.get("artifact_path_res", "")).strip_edges())
+	if not runtime_path.is_empty():
+		return runtime_path
+	var model_document: Dictionary = depth_config.get("model", {}) if depth_config.get("model", {}) is Dictionary else {}
+	var configured_path := _pretty_resource_path(String(model_document.get("artifact_path", "")).strip_edges())
+	if configured_path.is_empty():
+		return "missing in selected gesture YAML"
+	return "%s (configured; runtime unresolved)" % configured_path
+
+func _depth_backend_family_text(runtime_debug: Dictionary) -> String:
+	return "%s / %s" % [
+		String(runtime_debug.get("backend_id", "unknown")),
+		String(runtime_debug.get("family_id", "unknown")),
+	]
+
+func _depth_failure_reason_text(runtime_debug: Dictionary) -> String:
+	var failure_code := String(runtime_debug.get("failure_code", "")).strip_edges()
+	var failure_message := String(runtime_debug.get("failure_message", "")).strip_edges()
+	if failure_code.is_empty() and failure_message.is_empty():
+		return "none"
+	if failure_code.is_empty():
+		return failure_message
+	if failure_message.is_empty():
+		return failure_code
+	return "%s - %s" % [failure_code, failure_message]
+
+func _depth_live_metrics_text(live_depth_state: Dictionary) -> String:
+	if live_depth_state.is_empty():
+		return "no live family depth state yet"
+	var sample_metrics: Dictionary = (live_depth_state.get("depth_sample_metrics", {}) as Dictionary)
+	var sample_source := String(live_depth_state.get("depth_signal_source", sample_metrics.get("sample_source", "none"))).strip_edges()
+	if sample_source.is_empty():
+		sample_source = "none"
+	var parts := [
+		"available=%s" % _fmt_bool(bool(live_depth_state.get("depth_signal_available", false))),
+		"fresh=%s" % _fmt_bool(bool(live_depth_state.get("depth_signal_fresh", false))),
+		"source=%s" % sample_source,
+		"closeness=%s" % _fmt_float(live_depth_state.get("last_depth_closeness", 0.0)),
+		"delta=%s" % _fmt_float(live_depth_state.get("depth_closeness_delta", 0.0)),
+		"peak=%s" % _fmt_float(live_depth_state.get("depth_peak_closeness", 0.0)),
+		"early=%s" % _fmt_float(live_depth_state.get("depth_early_closeness", 0.0)),
+		"late=%s" % _fmt_float(live_depth_state.get("depth_late_closeness", 0.0)),
+		"span=%dms" % int(live_depth_state.get("depth_window_span_ms", 0)),
+		"gate=%s/%s(%s)" % [
+			_fmt_bool(bool(live_depth_state.get("depth_gate_applied", false))),
+			_fmt_bool(bool(live_depth_state.get("depth_gate_passed", false))),
+			String(live_depth_state.get("depth_gate_reason", "staged_or_unavailable")),
+		],
+	]
+	if not sample_metrics.is_empty():
+		parts.append("wrist_depth=%s" % _fmt_float(sample_metrics.get("wrist_depth", 0.0)))
+		parts.append("torso_depth=%s" % _fmt_float(sample_metrics.get("torso_depth", 0.0)))
+	return ", ".join(parts)
+
+func _build_depth_config_row(row_spec: Dictionary, family: String, live_depth_state: Dictionary = {}) -> Dictionary:
 	var row := row_spec.duplicate(true)
 	var row_id := String(row.get("id", ""))
 	var depth_config := _punch_depth_profile_config(family)
 	var evaluation: Dictionary = depth_config.get("evaluation", {}) if depth_config.get("evaluation", {}) is Dictionary else {}
 	var thresholds: Dictionary = depth_config.get("thresholds", {}) if depth_config.get("thresholds", {}) is Dictionary else {}
 	var debug_config: Dictionary = depth_config.get("debug", {}) if depth_config.get("debug", {}) is Dictionary else {}
+	var runtime_debug := _current_depth_runtime_debug_state(family, live_depth_state)
 	var current_text := ""
 	match row_id:
 		"depth_section":
 			current_text = ""
 		"depth_runtime_status":
-			current_text = _depth_config_runtime_status_text(depth_config)
+			if runtime_debug.is_empty():
+				current_text = _depth_config_runtime_status_text(depth_config)
+			else:
+				current_text = "%s / %s" % [
+					String(runtime_debug.get("runtime_status", "unloaded")),
+					String(runtime_debug.get("runtime_stage", "idle")),
+				]
+		"depth_loader_truth":
+			current_text = _depth_loader_truth_text(depth_config, runtime_debug)
+		"depth_artifact_path":
+			current_text = _depth_artifact_path_text(depth_config, runtime_debug)
+		"depth_backend_family":
+			current_text = _depth_backend_family_text(runtime_debug)
+		"depth_failure_reason":
+			current_text = _depth_failure_reason_text(runtime_debug)
+		"depth_live_metrics":
+			current_text = _depth_live_metrics_text(live_depth_state)
 		"depth_enabled":
 			current_text = _fmt_bool(bool(depth_config.get("enabled", false))) if not depth_config.is_empty() else "missing"
 		"depth_window_shape":
@@ -1028,7 +1188,25 @@ func _build_depth_config_row(row_spec: Dictionary, family: String) -> Dictionary
 	return row
 
 func _append_depth_config_summary_lines(lines: Array, family: String, depth_config: Dictionary) -> void:
-	lines.append("Depth contract status: %s" % _depth_config_runtime_status_text(depth_config))
+	var runtime_debug := _current_depth_runtime_debug_state(family)
+	var left_debug := _family_side_depth_debug_state(family, "left")
+	var right_debug := _family_side_depth_debug_state(family, "right")
+	lines.append("Depth loader truth: %s" % _depth_loader_truth_text(depth_config, runtime_debug))
+	if not runtime_debug.is_empty():
+		lines.append("Depth runtime status / stage: %s / %s" % [
+			String(runtime_debug.get("runtime_status", "unloaded")),
+			String(runtime_debug.get("runtime_stage", "idle")),
+		])
+		lines.append("Depth artifact path: %s" % _depth_artifact_path_text(depth_config, runtime_debug))
+		lines.append("Depth backend/family: %s" % _depth_backend_family_text(runtime_debug))
+		var failure_reason := _depth_failure_reason_text(runtime_debug)
+		if failure_reason != "none":
+			lines.append("Depth failure reason: %s" % failure_reason)
+	lines.append("Depth enabled: %s" % _fmt_bool(bool(depth_config.get("enabled", false))))
+	if not left_debug.is_empty():
+		lines.append("Depth live metrics (L): %s" % _depth_live_metrics_text(left_debug))
+	if not right_debug.is_empty():
+		lines.append("Depth live metrics (R): %s" % _depth_live_metrics_text(right_debug))
 	if depth_config.is_empty():
 		return
 	var evaluation: Dictionary = depth_config.get("evaluation", {}) if depth_config.get("evaluation", {}) is Dictionary else {}
@@ -1036,7 +1214,6 @@ func _append_depth_config_summary_lines(lines: Array, family: String, depth_conf
 	var debug_config: Dictionary = depth_config.get("debug", {}) if depth_config.get("debug", {}) is Dictionary else {}
 	var delta_key := _depth_threshold_label(family, "closeness_delta")
 	var peak_key := _depth_threshold_label(family, "peak_closeness")
-	lines.append("Depth enabled: %s" % _fmt_bool(bool(depth_config.get("enabled", false))))
 	lines.append("Depth window slices / input: %s / %s @ %dpx" % [
 		_fmt_float(evaluation.get("early_window_fraction", 0.0)),
 		_fmt_float(evaluation.get("late_window_fraction", 0.0)),
@@ -1834,7 +2011,7 @@ func _build_classifier_requirement_row(row_spec: Dictionary, classifier_debug: D
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
 	var row_id := String(row_spec.get("id", ""))
 	if row_id.begins_with("depth_"):
-		return _build_depth_config_row(row_spec, "straight_punch")
+		return _build_depth_config_row(row_spec, "straight_punch", straight_side)
 	var row := row_spec.duplicate(true)
 	var label := String(row_spec.get("label", ""))
 	var passed := false
@@ -2033,7 +2210,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictionary, family: String, _side: String) -> Dictionary:
 	var row_id := String(row_spec.get("id", ""))
 	if row_id.begins_with("depth_"):
-		return _build_depth_config_row(row_spec, family)
+		return _build_depth_config_row(row_spec, family, side_debug)
 	var row := row_spec.duplicate(true)
 	var label := String(row_spec.get("label", ""))
 	var passed := false

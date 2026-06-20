@@ -125,12 +125,12 @@ So the first design goal is not "pretend all three models are live." It is: intr
 
 **Files Created/Deleted/Modified:**
 - `.testbed/scripts/boxing_proving_harness.gd`
-- `.testbed/tests/<relevant depth/proving tests>`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Updated `.testbed/scripts/boxing_proving_harness.gd` so the boxing inspectors/event feed now surface live depth loader truth instead of stale “config only” messaging: runtime status/stage, active artifact path, resolved backend/family, failure reason, and active normalized depth metrics (including gate/source truth) all render directly from `gesture_debug.depth_runtime` + family side debug state, with truthful fallbacks when runtime state is still unresolved. Added/updated proving tests in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` to cover live-ready straight-punch depth runtime truth plus blocked hook/uppercut swap visibility in the event feed. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit` (pass).
 
 ---
 

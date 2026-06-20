@@ -75,6 +75,50 @@ func _new_harness() -> Object:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
 	return harness_script.new()
 
+func _depth_runtime_debug_payload(summary: String, artifact_path: String, backend_id: String, family_id: String, runtime_status: String, runtime_stage: String, failure_code: String = "", failure_message: String = "") -> Dictionary:
+	return {
+		"active_model_summary": summary,
+		"artifact_path_res": artifact_path,
+		"backend_id": backend_id,
+		"family_id": family_id,
+		"runtime_status": runtime_status,
+		"runtime_stage": runtime_stage,
+		"failure_code": failure_code,
+		"failure_message": failure_message,
+	}
+
+func _depth_live_debug_payload(closeness: float, delta: float, peak: float, sample_source: String = "placeholder") -> Dictionary:
+	return {
+		"depth_signal_available": true,
+		"depth_signal_fresh": true,
+		"depth_signal_source": sample_source,
+		"last_depth_closeness": closeness,
+		"depth_closeness_delta": delta,
+		"depth_peak_closeness": peak,
+		"depth_early_closeness": closeness * 0.5,
+		"depth_late_closeness": closeness,
+		"depth_window_span_ms": 120,
+		"depth_gate_applied": true,
+		"depth_gate_passed": true,
+		"depth_gate_reason": "passed",
+		"depth_runtime_status": "ready",
+		"depth_runtime_stage": "sampling",
+		"depth_backend_id": "onnx",
+		"depth_family_id": "depth_anything_v2_small_onnx",
+		"depth_enabled": true,
+		"depth_failure_code": "",
+		"depth_failure_message": "",
+		"depth_active_model_summary": "enabled; runtime ready via onnx backend",
+		"depth_artifact_path": "res://assets/depth_models/depth_anything_v2/depth_anything_v2_vits.onnx",
+		"depth_sample_metrics": {
+			"wrist_closeness": closeness,
+			"wrist_depth": maxf(0.0, 1.0 - closeness),
+			"torso_depth": 1.0,
+			"sample_source": sample_source,
+			"sample_fresh": true,
+		},
+	}
+
 func _has_editor_exposed_property(subject: Object, property_name: String) -> bool:
 	for property_info_variant: Variant in subject.get_property_list():
 		if not property_info_variant is Dictionary:
@@ -964,6 +1008,34 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
+			"depth_runtime": {
+				"hook": _depth_runtime_debug_payload(
+					"enabled; artifact resolved to FastDepth/ONNX but adapter is still staged",
+					"res://assets/depth_models/fastdepth/fastdepth_224.onnx",
+					"onnx",
+					"fastdepth_224_onnx",
+					"blocked",
+					"adapter_load",
+					"adapter_unimplemented",
+					"ONNX adapter is staged but not implemented yet"
+				),
+				"uppercut": _depth_runtime_debug_payload(
+					"enabled; artifact resolved to MiDaS/OpenVINO but adapter is still staged",
+					"res://assets/depth_models/midas/openvino_midas_v21_small_256/",
+					"openvino",
+					"midas_openvino_v21_small_256",
+					"blocked",
+					"adapter_load",
+					"adapter_unimplemented",
+					"OpenVINO adapter is staged but not implemented yet"
+				),
+			},
+			"hook": {
+				"left": _depth_live_debug_payload(0.020, 0.010, 0.020),
+			},
+			"uppercut": {
+				"left": _depth_live_debug_payload(0.030, 0.010, 0.030),
+			},
 			"guard": {
 				"candidate": true,
 				"wrist_separation_x": 0.180,
@@ -978,11 +1050,18 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	assert_string_contains(text_body, "Min velocity")
 	assert_string_contains(text_body, "Max wrist angle from elbow horizontal ray")
 	assert_string_contains(text_body, "Hook wrist must stay on mirrored preview-space side of elbow")
-	assert_string_contains(text_body, "Depth contract status: disabled in config only; live threshold runtime does not consume depth yet")
+	assert_string_contains(text_body, "Depth loader truth: enabled; artifact resolved to FastDepth/ONNX but adapter is still staged")
+	assert_string_contains(text_body, "Depth runtime status / stage: blocked / adapter_load")
+	assert_string_contains(text_body, "Depth artifact path: res://assets/depth_models/fastdepth/fastdepth_224.onnx")
+	assert_string_contains(text_body, "Depth backend/family: onnx / fastdepth_224_onnx")
+	assert_string_contains(text_body, "Depth failure reason: adapter_unimplemented - ONNX adapter is staged but not implemented yet")
+	assert_string_contains(text_body, "Depth live metrics (L): available=true, fresh=true, source=placeholder, closeness=0.020")
 	assert_string_contains(text_body, "Depth thresholds: max_closeness_delta=0.030, max_peak_closeness=0.060")
 	assert_string_contains(text_body, "Uppercut tuning")
 	assert_string_contains(text_body, "Max wrist angle from elbow vertical ray")
 	assert_string_contains(text_body, "Uppercut wrist must stay above elbow in preview space")
+	assert_string_contains(text_body, "Depth artifact path: res://assets/depth_models/midas/openvino_midas_v21_small_256/")
+	assert_string_contains(text_body, "Depth backend/family: openvino / midas_openvino_v21_small_256")
 	assert_string_contains(text_body, "Guard tuning")
 	assert_string_contains(text_body, "Wrist separation X <=")
 	assert_string_contains(text_body, "Wrist separation Y <=")
@@ -1044,24 +1123,48 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_string_contains(body, "Preview-space wrist stays on required mirrored hook side - true (left_of_elbow)")
 	assert_string_contains(body, "Pose-only rearm - ")
 
-func test_punch_family_inspectors_surface_staged_depth_contract_without_claiming_live_runtime() -> void:
+func test_punch_family_inspectors_surface_live_depth_loader_truth_and_metrics() -> void:
 	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"depth_runtime": {
+				"straight_punch": _depth_runtime_debug_payload(
+					"enabled; runtime ready via onnx backend",
+					"res://assets/depth_models/depth_anything_v2/depth_anything_v2_vits.onnx",
+					"onnx",
+					"depth_anything_v2_small_onnx",
+					"ready",
+					"sampling"
+				),
+			},
+			"straight_punch": {
+				"left": _depth_live_debug_payload(0.120, 0.080, 0.120),
+			},
+		}
+	})
 
 	var straight_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var straight_body := String(straight_inspector.get("body", ""))
-	assert_string_contains(straight_body, "Depth runtime status - disabled in config only; live threshold runtime does not consume depth yet")
+	assert_string_contains(straight_body, "Depth runtime status / stage - ready / sampling")
+	assert_string_contains(straight_body, "Depth loader truth - enabled; runtime ready via onnx backend")
+	assert_string_contains(straight_body, "Active depth artifact path - res://assets/depth_models/depth_anything_v2/depth_anything_v2_vits.onnx")
+	assert_string_contains(straight_body, "Resolved backend / family - onnx / depth_anything_v2_small_onnx")
+	assert_string_contains(straight_body, "Depth failure reason - none")
+	assert_string_contains(straight_body, "Active normalized depth metrics - available=true, fresh=true, source=placeholder, closeness=0.120, delta=0.080")
 	assert_string_contains(straight_body, "Depth closeness delta threshold - min_closeness_delta = 0.060")
 	assert_string_contains(straight_body, "Depth peak closeness threshold - min_peak_closeness = 0.040")
 
 	var hook_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
 	var hook_body := String(hook_inspector.get("body", ""))
-	assert_string_contains(hook_body, "Depth runtime status - disabled in config only; live threshold runtime does not consume depth yet")
+	assert_string_contains(hook_body, "Depth runtime status / stage - disabled in selected gesture YAML")
+	assert_string_contains(hook_body, "Depth loader truth - disabled in selected gesture YAML")
 	assert_string_contains(hook_body, "Depth closeness delta threshold - max_closeness_delta = 0.030")
 	assert_string_contains(hook_body, "Depth peak closeness threshold - max_peak_closeness = 0.060")
 
 	var uppercut_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "uppercut_left")
 	var uppercut_body := String(uppercut_inspector.get("body", ""))
-	assert_string_contains(uppercut_body, "Depth runtime status - disabled in config only; live threshold runtime does not consume depth yet")
+	assert_string_contains(uppercut_body, "Depth runtime status / stage - disabled in selected gesture YAML")
+	assert_string_contains(uppercut_body, "Depth loader truth - disabled in selected gesture YAML")
 	assert_string_contains(uppercut_body, "Depth closeness delta threshold - max_closeness_delta = 0.030")
 	assert_string_contains(uppercut_body, "Depth peak closeness threshold - max_peak_closeness = 0.060")
 
