@@ -919,7 +919,7 @@ func test_hook_uses_pose_primary_state_machine_and_debug_surfaces() -> void:
 
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.46, "y": 0.60},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.64, "y": 0.60},
 	}), 1320)
 	assert_true(_event_names(state.get("events", [])).has("hook_right"))
 	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["triggered"])
@@ -930,6 +930,7 @@ func test_hook_uses_pose_primary_state_machine_and_debug_surfaces() -> void:
 	assert_true(float(right_debug.get("wrist_angle_from_elbow_horizontal_deg", 99.0)) <= float(right_debug.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
 	assert_true(bool(right_debug.get("wrist_horizontal_angle_gate_passed", false)))
 	assert_true(bool(right_debug.get("wrist_on_required_hook_side", false)))
+	assert_eq(String(right_debug.get("required_hook_side_label", "")), "right_of_elbow")
 	assert_true(absf(float(right_debug.get("outward_distance", 0.0))) >= 0.0)
 	assert_eq(String(right_debug.get("required_direction_label", "")), "leftward")
 	assert_eq(String(right_debug.get("direction_reference_frame", "")), "preview_space_horizontal")
@@ -1027,7 +1028,7 @@ func test_replay_timestamp_rewind_resets_pose_strike_temporal_windows() -> void:
 	state = substrate.process_landmarks(_make_pose_frame(), 1160)
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.46, "y": 0.60},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.64, "y": 0.60},
 	}), 1320)
 	assert_true(_event_names(state.get("events", [])).has("hook_right"))
 
@@ -1046,14 +1047,31 @@ func test_hook_requires_wrist_on_correct_mirrored_elbow_side() -> void:
 
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.20, "y": 0.62},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.08, "y": 0.60},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.32, "y": 0.60},
 	}), 1320)
 	assert_false(_event_names(state.get("events", [])).has("hook_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
 	assert_true(bool(left_debug.get("wrist_horizontal_angle_gate_passed", false)))
 	assert_false(bool(left_debug.get("wrist_on_required_hook_side", true)))
-	assert_eq(String(left_debug.get("required_hook_side_label", "")), "right_of_elbow")
+	assert_eq(String(left_debug.get("required_hook_side_label", "")), "left_of_elbow")
 	assert_eq(String(left_debug.get("state", "")), "ready")
+
+func test_hook_requires_wrist_on_correct_mirrored_elbow_side_for_right_arm() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 2000)
+	state = substrate.process_landmarks(_make_pose_frame(), 2160)
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.80, "y": 0.62},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.68, "y": 0.60},
+	}), 2320)
+	assert_false(_event_names(state.get("events", [])).has("hook_right"))
+	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
+	assert_true(bool(right_debug.get("wrist_horizontal_angle_gate_passed", false)))
+	assert_false(bool(right_debug.get("wrist_on_required_hook_side", true)))
+	assert_eq(String(right_debug.get("required_hook_side_label", "")), "right_of_elbow")
+	assert_eq(String(right_debug.get("state", "")), "ready")
 
 func test_uppercut_requires_wrist_above_elbow_in_camera_space() -> void:
 	_calibrate_stance()
@@ -1092,13 +1110,14 @@ func test_hook_alignment_angle_gate_participates_honestly() -> void:
 
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.43, "y": 0.70},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.55, "y": 0.73},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.31, "y": 0.73},
 	}), 3320)
 	assert_true(_event_names(state.get("events", [])).has("hook_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
 	assert_true(float(left_debug.get("wrist_angle_from_elbow_horizontal_deg", 99.0)) <= float(left_debug.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
 	assert_true(bool(left_debug.get("wrist_horizontal_angle_gate_passed", false)))
 	assert_true(bool(left_debug.get("wrist_on_required_hook_side", false)))
+	assert_eq(String(left_debug.get("required_hook_side_label", "")), "left_of_elbow")
 
 func test_uppercut_alignment_angle_gate_participates_honestly() -> void:
 	config.gesture_profile_document = {
@@ -1150,7 +1169,7 @@ func test_hook_alignment_angle_gate_blocks_even_when_velocity_is_high() -> void:
 
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.42, "y": 0.74},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.48, "y": 0.80},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.36, "y": 0.80},
 	}), 1320)
 	assert_false(_event_names(state.get("events", [])).has("hook_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})

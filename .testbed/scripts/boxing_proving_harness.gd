@@ -1874,7 +1874,10 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 		"directionality_ratio":
 			threshold_text = _fmt_bool(true)
 			if family == "hook":
+				var required_hook_side_label := String(side_debug.get("required_hook_side_label", ""))
 				current_text = _fmt_bool(hook_side_gate_passed)
+				if not required_hook_side_label.is_empty():
+					current_text += " (%s)" % required_hook_side_label
 				passed = hook_side_gate_passed
 				label = "Preview-space wrist stays on required mirrored hook side"
 			else:
@@ -2248,7 +2251,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Motion window: %dms" % int(hook_eval.get("window_ms", 0)))
 	lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
 	lines.append("Max wrist angle from elbow horizontal ray: %s" % _fmt_float(hook_thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
-	lines.append("Hook wrist must stay on mirrored preview-space side of elbow: yes")
+	lines.append("Hook wrist must stay on mirrored preview-space side of elbow: left hook = left_of_elbow, right hook = right_of_elbow")
 	lines.append("Hook grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(hook_timing.get("triggered_grace_ms", 0)),
 		int(hook_rearm.get("pose_only_rearm_ms", 0)),

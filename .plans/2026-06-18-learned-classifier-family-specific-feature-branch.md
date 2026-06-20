@@ -1,9 +1,9 @@
 # AeroBeat Learned Classifier Family-Specific Feature Branch
 
 **Date:** 2026-06-18  
-**Status:** Blocked  
-**Last Updated:** 2026-06-19 19:49 EDT  
-**Blocked Reason:** Paused for Derrick’s manual replay/live review. Latest landed slices are committed and validated in repo-local automation, and the next step depends on Derrick’s later feedback on real-device behavior/tuning rather than an already-approved autonomous change.  
+**Status:** In Progress  
+**Last Updated:** 2026-06-19 22:24 EDT  
+**Blocked Reason:** None — Derrick resumed the active plan with concrete hook-threshold bug reports from live review, so the next slice is a focused required-side/remaining-threshold diagnosis and fix.  
 **Agent:** `pico`
 
 ---
@@ -1951,6 +1951,84 @@ Added focused threshold-contract tests in `.testbed/tests/unit/test_pose_detecto
 Static search truth-checks also passed. The superseded live config/debug keys (`min_lateral_dominance_ratio`, `min_horizontal_direction_ratio`, `min_vertical_dominance_ratio`, `min_upward_direction_ratio`) no longer appear in the live runtime/config/test/proving surfaces under `src/`, `assets/`, `.testbed/scripts/`, or `.testbed/tests/`. Remaining hits in the repo are confined to older captured `docs/baselines/**/report.json` artifacts, which document historical runs but are not consulted by the live threshold-routing code path. YAML/comments in `assets/boxing.gesture_detection.yaml` match the approved contract: hook exposes only `max_wrist_angle_from_elbow_horizontal_deg` with horizontal-ray guidance, and uppercut exposes only `max_wrist_angle_from_elbow_vertical_deg` with vertical-ray guidance. Proving/debug surfaces also match the contract: `.testbed/scripts/boxing_proving_harness.gd` now renders the hover-card gate rows as elbow-ray angle + mirrored-side/above-elbow truth, and the event-feed tuning text reports the new angle thresholds plus the required spatial-validity rule for each family.
 
 The strongest code/test proof points are: `test_hook_requires_wrist_on_correct_mirrored_elbow_side`, `test_uppercut_requires_wrist_above_elbow_in_camera_space`, `test_hook_alignment_angle_gate_participates_honestly`, `test_uppercut_alignment_angle_gate_participates_honestly`, `test_hook_alignment_angle_gate_blocks_even_when_velocity_is_high`, `test_uppercut_alignment_angle_gate_blocks_even_when_velocity_is_high`, `test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections`, and `test_hook_hover_card_reports_simplified_pose_trigger_contract`. What is proven: repo-local runtime routing, config comments, debug surfaces, and focused automation all agree on the new elbow-ray threshold contract. What is **not** proven by this audit: whether these angle windows feel best in real motion, how they behave on Derrick’s live replay set beyond the synthetic/unit fixtures, or whether the false-positive / false-negative tradeoff is now good enough for gameplay. Derrick still needs live replay/manual validation for that acceptance layer.
+
+---
+
+### Task 67: Diagnose and fix hook required-side / remaining threshold bug
+
+**Bead ID:** `aerobeat-input-camera-tracking-zkl6`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Derrick resumed the active boxing branch with concrete live-testing feedback on hook threshold behavior. Diagnose the current hook threshold path in `src/detectors/pose_detector_substrate.gd`, specifically the preview-space `wrist stays on required side` boolean and the last remaining threshold check now that velocity and wrist-angle-from-elbow-horizontal-ray were already validated as working. Walk the code path from the mirrored camera-space side check through the final trigger decision, explain exactly how left/right are currently interpreted relative to the athlete-facing webcam, fix any incorrect per-arm logic, and keep runtime/debug/proving truth explicit so Derrick can verify the corrected behavior. Claim bead `aerobeat-input-camera-tracking-zkl6` on start, run the narrowest truthful validation, commit/push by default, and close the bead with a clear reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `src/detectors/`
+- `.testbed/scripts/`
+- `.testbed/tests/unit/`
+- `.plans/`
+
+**Files Created/Deleted/Modified:**
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ✅ Complete
+
+**Results:** Root cause: the final hook side gate was mirrored backwards. `_is_wrist_on_required_hook_side` treated `hook_left` as valid only when the left wrist crossed to the preview-space **right** of the left elbow, and treated `hook_right` as valid only when the right wrist crossed to the preview-space **left** of the right elbow. That inverted the athlete-facing mirrored preview interpretation and made the final `ready_to_trigger = speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side` contract reject the side that Derrick’s live test expected. The narrow fix flipped that per-arm side check to the honest mirrored preview contract: `hook_left` now requires `left_of_elbow`, `hook_right` now requires `right_of_elbow`, while leaving the already-validated velocity and elbow-horizontal-angle gates unchanged.
+
+To keep proving truth explicit, runtime debug now surfaces the corrected `required_hook_side_label` from a single helper, and the boxing proving harness text now spells out the mirrored contract (`left hook = left_of_elbow`, `right hook = right_of_elbow`) plus includes the live required-side label in the hover-card / inspector row (`true (left_of_elbow)` style output). Focused test updates now cover both arms for the required-side gate, plus the positive hook trigger/replay-reset cases that depended on the old inverted interpretation.
+
+Validation run (narrow + truthful):
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=hook_ -gexit` → `7/7` passing
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=replay_timestamp_rewind_resets_pose_strike_temporal_windows -gexit` → `1/1` passing
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=hook_hover_card_reports_simplified_pose_trigger_contract -gexit` → `1/1` passing
+
+I also ran a broader two-file GUT invocation during diagnosis; the hook/proving changes passed there after the fix, while the same pre-existing unrelated flow tests in `test_pose_detector_substrate.gd` still failed (`test_detects_flow_swing_events_with_distinct_placement_and_direction`, `test_exposes_flow_debug_candidates_and_last_emit_metadata`). No new failures were introduced in the hook path. Commit/push details to be appended once landed.
+
+---
+
+### Task 68: QA hook required-side / remaining threshold fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-je2y`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Verify the hook threshold bug fix from Task 67. Confirm the preview-space required-side boolean now matches the intended mirrored webcam interpretation for both left and right hooks, confirm the remaining threshold gate participates honestly in the hook trigger path, and separate what repo-local automation proves from what still needs Derrick’s replay/live feel check.
+
+**Folders Created/Deleted/Modified:**
+- QA artifact paths as needed
+
+**Files Created/Deleted/Modified:**
+- QA notes/artifacts as needed
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 69: Audit hook required-side / remaining threshold fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-zymj`  
+**SubAgent:** `primary` (for `auditor`)  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently truth-check the hook threshold bug fix. Confirm the runtime no longer misinterprets the mirrored preview-space left/right side requirement for hooks, confirm the final threshold contract is implemented/documented honestly, and call out what still depends on Derrick’s real replay/live validation.
+
+**Folders Created/Deleted/Modified:**
+- audit artifact paths as needed
+
+**Files Created/Deleted/Modified:**
+- audit notes/artifacts as needed
+- `.plans/2026-06-18-learned-classifier-family-specific-feature-branch.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 

@@ -1008,7 +1008,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 					"wrist_horizontal_angle_gate_passed": true,
 					"wrist_on_required_hook_side": true,
 					"required_direction_label": "rightward",
-					"required_hook_side_label": "right_of_elbow",
+					"required_hook_side_label": "left_of_elbow",
 					"direction_reference_frame": "preview_space_horizontal",
 					"grace_ms_remaining": 0,
 					"triggered_grace_ms": 240,
@@ -1030,7 +1030,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_eq(String(rows[6].get("current_text", "")), "18.000")
 	assert_eq(String(rows[7].get("label", "")), "Preview-space wrist stays on required mirrored hook side")
 	assert_eq(String(rows[7].get("threshold_text", "")), "true")
-	assert_eq(String(rows[7].get("current_text", "")), "true")
+	assert_eq(String(rows[7].get("current_text", "")), "true (left_of_elbow)")
 	assert_string_contains(String(rows[10].get("current_text", "")), "elapsed (pose-only timer)")
 	assert_eq(String(rows[11].get("current_text", "")), "tracked / 40ms required")
 
@@ -1039,7 +1039,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_string_contains(body, "Motion window - 120ms configured, 118ms averaged span")
 	assert_string_contains(body, "Averaged velocity >= 0.080 - 0.420")
 	assert_string_contains(body, "Wrist angle from elbow horizontal ray <= 20.000° - 18.000")
-	assert_string_contains(body, "Preview-space wrist stays on required mirrored hook side - true")
+	assert_string_contains(body, "Preview-space wrist stays on required mirrored hook side - true (left_of_elbow)")
 	assert_string_contains(body, "Pose-only rearm - ")
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:

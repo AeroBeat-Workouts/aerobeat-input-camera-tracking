@@ -861,7 +861,7 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["max_wrist_angle_from_elbow_horizontal_deg"] = float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))
 		debug["wrist_horizontal_angle_gate_passed"] = bool(state.get("wrist_horizontal_angle_gate_passed", false))
 		debug["wrist_on_required_hook_side"] = bool(state.get("wrist_on_required_hook_side", false))
-		debug["required_hook_side_label"] = "right_of_elbow" if side == "left" else "left_of_elbow"
+		debug["required_hook_side_label"] = _required_hook_side_label(side)
 		debug["required_direction_label"] = "rightward" if side == "left" else "leftward"
 		debug["direction_reference_frame"] = "preview_space_horizontal"
 	else:
@@ -2369,11 +2369,14 @@ func _compute_wrist_angle_from_elbow_vertical_deg(elbow: Dictionary, wrist: Dict
 		return 0.0
 	return rad_to_deg(atan2(absf(elbow_to_wrist.x), maxf(absf(elbow_to_wrist.y), 0.000001)))
 
+func _required_hook_side_label(side: String) -> String:
+	return "left_of_elbow" if side == "left" else "right_of_elbow"
+
 func _is_wrist_on_required_hook_side(side: String, elbow: Dictionary, wrist: Dictionary) -> bool:
 	if elbow.is_empty() or wrist.is_empty():
 		return false
 	var wrist_offset_x := float(wrist.get("x", 0.0)) - float(elbow.get("x", 0.0))
-	return wrist_offset_x > 0.000001 if side == "left" else wrist_offset_x < -0.000001
+	return wrist_offset_x < -0.000001 if side == "left" else wrist_offset_x > 0.000001
 
 func _is_wrist_above_elbow_in_camera_space(elbow: Dictionary, wrist: Dictionary) -> bool:
 	if elbow.is_empty() or wrist.is_empty():
