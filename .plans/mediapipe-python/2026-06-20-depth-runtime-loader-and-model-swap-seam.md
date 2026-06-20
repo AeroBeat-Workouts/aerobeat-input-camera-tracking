@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 12:10 EDT  
+**Last Updated:** 2026-06-20 12:12 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -356,7 +356,15 @@ Those differences belong in:
 
 A good implementation smell test: the family-level methods in `pose_detector_substrate.gd` should never need `if backend_id == ...`.
 
-### 8) What can realistically be live first vs staged/blocked
+### 8) Current runtime-support truth audit
+
+- `src/detectors/pose_detector_substrate.gd` currently has no monocular-depth loader, no ONNX runtime hook, and no OpenVINO runtime hook. Its current `forward_depth_spike` logic is still landmark-`z`-derived state from the tracked wrist history.
+- `.testbed/scripts/boxing_proving_harness.gd` currently surfaces the YAML `depth:` contract as config-only and does not report a live depth backend.
+- `scripts/depth-models.yaml` defines approved artifact locations and provenance, but it is metadata only; it is not itself a runtime registry/loader.
+- The only already-integrated cross-language inference substrate available to this addon today is the sibling MediaPipe Python subprocess lane referenced by the proving harness.
+- That Python lane currently declares only `mediapipe`, `opencv-python`, and `numpy` in `aerobeat-vendor-mediapipe-python/runtime/requirements.txt`, so neither ONNX nor OpenVINO execution is present there yet.
+
+### 9) What can realistically be live first vs staged/blocked
 
 #### Live first, realistically
 
