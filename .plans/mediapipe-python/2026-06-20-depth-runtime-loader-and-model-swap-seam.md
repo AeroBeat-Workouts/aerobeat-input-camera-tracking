@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20
 **Status:** In Progress
-**Last Updated:** 2026-06-20 18:34 EDT
-**Blocked Reason:** Awaiting Task 11 QA and Task 12 audit on the Task 10 detector-side no-preview-image truth-gap fix.
+**Last Updated:** 2026-06-20 18:31 EDT
+**Blocked Reason:** Awaiting Task 12 audit on the Task 10 detector-side no-preview-image truth-gap fix after Task 11 QA passed.
 **Agent:** `pico`
 
 ---
@@ -520,9 +520,9 @@ Audit validation rerun: `test_depth_runtime_manager.gd` (pass 3/3), `test_boxing
 - runtime / detector / tests touched by implementation
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-e17c` and independently reran the targeted detector/proving/runtime QA coverage around the Task 10 truth-gap fix. Detector truth check passed: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit -ghide_orphans` now passes 4/4, including the explicit blocked-preview assertion `test_straight_punch_depth_gate_reports_preview_image_block_truthfully`, which confirms the no-preview-image path reports `depth_runtime_status=blocked`, `depth_runtime_stage=inference`, and `depth_failure_code=preview_image_missing` instead of leaving stale `ready` state behind. Runtime-seam regression coverage also passed: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_depth_runtime_manager.gd -gexit -ghide_orphans` finished 3/3 green, confirming real ONNX/OpenVINO execution and model-swap runtime truth still hold after the fix. Proving/debug regression coverage passed too: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gexit -ghide_orphans` finished 39/39 green, so the proving surfaces still expose truthful runtime status/stage, backend/family, artifact path, failure reasons, and live depth metrics. Honest QA note: the proving-harness run still emits existing RID/object leak warnings at exit, but the test suite exits 0 and those warnings do not change the detector blocked-vs-ready truth finding.
 
 ---
 
