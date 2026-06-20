@@ -18,6 +18,10 @@ func test_onnx_depth_runtime_executes_real_preview_inference() -> void:
 	assert_eq(String(result.get("family_id", "")), "depth_anything_v2_small_onnx")
 	assert_eq(String(result.get("sample_metrics", {}).get("sample_source", "")), "fresh_inference")
 	assert_true(result.get("sample_metrics", {}).has("wrist_closeness"))
+	var debug_state: Dictionary = manager.get_debug_state()
+	assert_eq(String(debug_state.get("worker_mode", "")), "persistent_tcp")
+	assert_true(bool(debug_state.get("worker_alive", false)))
+	assert_true(int(debug_state.get("worker_pid", 0)) > 0)
 
 func test_openvino_depth_runtime_executes_real_preview_inference() -> void:
 	var manager = DepthRuntimeManagerScript.new()
@@ -58,6 +62,30 @@ func test_model_swap_updates_runtime_debug_backend_and_family_truthfully() -> vo
 	assert_eq(String(openvino_state.get("backend_id", "")), "openvino")
 	assert_eq(String(openvino_state.get("family_id", "")), "midas_openvino_v21_small_256")
 	assert_false(String(openvino_state.get("active_model_summary", "")).contains("adapter_unimplemented"))
+	assert_eq(String(openvino_state.get("worker_mode", "")), "persistent_tcp")
+	assert_true(int(openvino_state.get("model_load_count", 0)) >= 1)
+
+func test_repeated_inference_reuses_persistent_worker_session() -> void:
+	var manager = DepthRuntimeManagerScript.new()
+	manager.configure_from_family("straight_punch", {
+		"enabled": true,
+		"model": {
+			"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx",
+		}
+	})
+	var ready_state: Dictionary = manager.ensure_runtime_ready()
+	var first_result: Dictionary = manager.infer_relative_depth(_preview_frame_payload(), _sample_request("straight_punch", "left"))
+	var second_result: Dictionary = manager.infer_relative_depth(_preview_frame_payload(), _sample_request("straight_punch", "left"))
+	assert_eq(String(ready_state.get("runtime_status", "")), DepthRuntimeTypes.STATUS_READY)
+	assert_true(float(ready_state.get("last_timing_ms", {}).get("worker_load", 0.0)) > 0.0)
+	assert_true(bool(first_result.get("ok", false)))
+	assert_true(bool(second_result.get("ok", false)))
+	assert_true(bool(first_result.get("timing_ms", {}).get("session_warm", false)))
+	assert_true(bool(second_result.get("timing_ms", {}).get("session_warm", false)))
+	var debug_state: Dictionary = manager.get_debug_state()
+	assert_true(bool(debug_state.get("model_loaded", false)))
+	assert_true(int(debug_state.get("model_load_count", 0)) >= 1)
+	assert_eq(int(debug_state.get("model_reload_count", 0)), 0)
 
 func _preview_frame_payload() -> Dictionary:
 	return {

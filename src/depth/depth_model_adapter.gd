@@ -68,6 +68,8 @@ func get_debug_state() -> Dictionary:
 
 func unload() -> void:
 	_model_spec = {}
+	if _runtime_bridge != null and _runtime_bridge.has_method("shutdown"):
+		_runtime_bridge.shutdown()
 	_runtime_bridge = null
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_UNLOADED
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_IDLE

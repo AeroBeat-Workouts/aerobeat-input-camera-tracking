@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 18:54 EDT  
+**Last Updated:** 2026-06-20 19:08 EDT  
 **Blocked Reason:** None.  
 **Agent:** `pico`
 
@@ -115,18 +115,46 @@ Explicit preservation note: this design preserves the existing shared seam and s
 **Prompt:** Implement the performance-first runtime improvement behind the existing shared seam. Replace or augment the current one-process-per-inference bridge with a persistent worker or similarly reduced-overhead path. Preserve truthful status/debug reporting, model swap behavior, and clean shutdown/restart handling. Record real before/after timing evidence.
 
 **Folders Created/Deleted/Modified:**
-- `src/`
+- `src/depth/`
 - `scripts/`
-- `.testbed/tests/`
+- `.testbed/tests/unit/`
 - `.plans/mediapipe-python/`
-- `../aerobeat-vendor-mediapipe-python/runtime/`
 
 **Files Created/Deleted/Modified:**
-- runtime bridge / worker / tests / plan files touched by implementation
+- `src/depth/depth_python_runtime_bridge.gd`
+- `src/depth/depth_model_adapter.gd`
+- `src/depth/depth_runtime_types.gd`
+- `scripts/depth_runtime_infer.py`
+- `.testbed/tests/unit/test_depth_runtime_manager.gd`
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Implemented the performance-first runtime improvement entirely behind the existing shared seam from `REF-02` / `REF-03` / `REF-04`. The worker shape changed slightly from the Task 1 design note: instead of stdio, the live path now uses a local authenticated persistent TCP worker because that is the lowest-risk fit for Godot 4.6's built-in process + socket primitives while still keeping the worker private to the host process and avoiding detector-level architecture leakage.
+
+Concrete implementation details:
+- `scripts/depth_runtime_infer.py` now supports both modes: the legacy single-shot `--request-file/--response-file` path still works, and a new `--tcp-worker` mode hosts one persistent in-process runtime session that caches the active backend/model by `runtime_key`.
+- The Python worker now keeps the heavy backend session alive across requests, tracks `model_load_count` / `model_reload_count`, returns truthful worker/session metadata, and reports `timing_ms.worker_load` plus `timing_ms.session_warm` so cold-vs-warm behavior is visible.
+- `src/depth/depth_python_runtime_bridge.gd` now lazily spawns that worker, waits on a ready file, sends newline-delimited JSON over localhost TCP, measures bridge transport timing, restarts once on transport/protocol failure, and reports truthful worker/debug state (`worker_mode`, `worker_pid`, `worker_generation`, `worker_restart_count`, `worker_uptime_ms`, `model_loaded`, `model_runtime_key`, `model_load_count`, `model_reload_count`, `last_request_id`, `last_worker_error`).
+- `DepthRuntimeManager` still owns artifact-path/runtime-key truth. No backend/model selection logic was moved into detector code; the detector-facing seam stayed unchanged.
+- `src/depth/depth_model_adapter.gd` now calls bridge shutdown during unload so worker teardown follows the existing adapter/runtime lifecycle and model swaps remain clean/truthful.
+- `src/depth/depth_runtime_types.gd` now seeds the new worker/debug fields, and `.testbed/tests/unit/test_depth_runtime_manager.gd` now verifies the persistent worker mode, truthful worker state, and warm-session reuse behavior.
+
+Real timing evidence recorded on this machine with the repo vendor Python runtime and the real `fastdepth_224_onnx` model over the same preview frame:
+- Legacy single-shot path: 5 end-to-end wall-clock runs averaged **222.65 ms** per inference.
+- Legacy single-shot runtime internals: those same runs averaged **102.10 ms** of model/session load time and **63.68 ms** of in-worker infer total time, confirming process/model bring-up dominated wall time.
+- Persistent worker cold probe/load: first load cost **105.85 ms** wall / **103.68 ms** `worker_load`, matching the old cold-load cost but paying it once.
+- Persistent worker warm inference: 5 end-to-end warm requests averaged **33.98 ms** wall overall, with the last 3 requests averaging **21.15 ms** wall; worker-reported infer totals averaged **33.43 ms** and all warm requests reported `session_warm=true`.
+- Steady-state speedup versus the legacy one-process-per-inference wall time was **6.55x** on the measured run.
+
+Validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit`
+- Result: **4/4 passed**.
+
+Caveats / remaining truth notes:
+- The live speed win is for repeated requests on the same runtime key; first load still pays the real backend/model load cost once, now surfaced explicitly through `worker_load` and `session_warm`.
+- The manager still unloads/recreates the adapter on model swap, so swapping models remains truthful and clean, but cross-model swaps are not optimized into a shared multi-model resident cache in this slice.
+- The legacy file-based single-shot path remains available inside the Python entrypoint for compatibility and benchmarking, but the live Godot bridge now defaults to the persistent worker path.
 
 ---
 
@@ -236,14 +264,14 @@ Explicit preservation note: this design preserves the existing shared seam and s
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Task 1 only so far: a concrete lowest-risk performance design centered on replacing the per-inference Python subprocess with a persistent stdio worker while preserving the current shared seam, model swap behavior, and truth-first debug/proving surfaces.
+**What We Built:** Tasks 1-2 only so far: a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam, with truthful worker/debug timing surfaces, clean adapter-driven shutdown, and targeted tests proving warm-session reuse.
 
-**Reference Check:** `REF-02` / `REF-03` / `REF-04` were directly reviewed and the design keeps their current architecture boundary intact. `REF-06` is explicitly preserved as the truth surface for runtime-worker state and latency evidence.
+**Reference Check:** `REF-02` / `REF-03` / `REF-04` stayed the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker's lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. `REF-06` remains the intended truth surface because the new debug fields are surfaced through the same shared runtime state.
 
 **Commits:**
 - Pending.
 
-**Lessons Learned:** The cleanest win is below the seam, not above it. The manager/adapter/detector boundary is already the right shape; the expensive part is paying process startup, temp-file I/O, and model/session reconstruction on every request.
+**Lessons Learned:** The big win really was below the seam. Warm repeated inference got dramatically faster once process start + model/session reconstruction moved out of the steady-state path. Also, the low-risk Godot fit was local TCP plus an authenticated ready-file handshake rather than stdio, which kept the same architecture goal while reducing implementation risk.
 
 ---
 

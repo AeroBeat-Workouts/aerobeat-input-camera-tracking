@@ -3,12 +3,26 @@ extends RefCounted
 
 const DepthRuntimeTypes = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_runtime_types.gd")
 
+const _WORKER_READY_TIMEOUT_MS := 5000
+const _WORKER_REQUEST_TIMEOUT_MS := 120000
+const _WORKER_CONNECT_TIMEOUT_MS := 2000
+const _WORKER_MODE_PERSISTENT := "persistent_tcp"
+const _WORKER_MODE_LEGACY := "process_per_request"
+
 var _model_spec: Dictionary = {}
 var _backend_id := ""
 var _family_id := "unknown"
 var _python_executable := ""
 var _bridge_script_path := ""
 var _debug_state: Dictionary = DepthRuntimeTypes.make_debug_state()
+var _worker_ready_file := ""
+var _worker_token := ""
+var _worker_port := -1
+var _worker_pid := -1
+var _worker_generation := 0
+var _worker_restart_count := 0
+var _worker_last_error := ""
+var _request_serial := 0
 
 func configure(model_spec: Dictionary, backend_id: String) -> void:
 	_model_spec = model_spec.duplicate(true)
@@ -29,6 +43,26 @@ func configure(model_spec: Dictionary, backend_id: String) -> void:
 	_debug_state["runtime_key"] = String(_model_spec.get("runtime_key", ""))
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_LOADING
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_DEPENDENCY_CHECK
+	_debug_state["worker_mode"] = _WORKER_MODE_PERSISTENT
+	_debug_state["worker_alive"] = false
+	_debug_state["worker_pid"] = 0
+	_debug_state["worker_generation"] = 0
+	_debug_state["worker_restart_count"] = 0
+	_debug_state["worker_uptime_ms"] = 0.0
+	_debug_state["worker_port"] = 0
+	_debug_state["model_loaded"] = false
+	_debug_state["model_runtime_key"] = ""
+	_debug_state["model_load_count"] = 0
+	_debug_state["model_reload_count"] = 0
+	_debug_state["last_request_id"] = ""
+	_debug_state["last_worker_error"] = ""
+	_worker_ready_file = ""
+	_worker_token = ""
+	_worker_port = -1
+	_worker_pid = -1
+	_worker_generation = 0
+	_worker_last_error = ""
+	_request_serial = 0
 
 func probe_runtime() -> Dictionary:
 	if _python_executable.is_empty() or not FileAccess.file_exists(_python_executable):
@@ -52,6 +86,7 @@ func probe_runtime() -> Dictionary:
 			"failure_code": String(_debug_state.get("failure_code", "probe_failed")),
 			"failure_message": String(_debug_state.get("failure_message", "Depth runtime probe failed.")),
 		}
+	_sync_debug_from_response(response)
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_READY
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_SAMPLING
 	_debug_state["failure_code"] = ""
@@ -128,43 +163,178 @@ func infer(frame_payload: Dictionary, request: Dictionary) -> Dictionary:
 func get_debug_state() -> Dictionary:
 	return _debug_state.duplicate(true)
 
+func shutdown() -> void:
+	if _worker_port > 0:
+		var response := _send_worker_request({"operation": "shutdown"}, false)
+		if not bool(response.get("ok", false)):
+			_worker_last_error = String(response.get("failure_message", "Depth runtime worker shutdown failed."))
+		_debug_state["last_worker_error"] = _worker_last_error
+	_cleanup_worker_state()
+
 func _run_request(payload: Dictionary) -> Dictionary:
-	var request_path := _temp_json_path("request")
-	var response_path := _temp_json_path("response")
-	var request_file := FileAccess.open(request_path, FileAccess.WRITE)
-	if request_file == null:
-		return {
-			"ok": false,
-			"status": DepthRuntimeTypes.STATUS_FAILED,
-			"failure_code": "request_write_failed",
-			"failure_message": "Failed to write depth runtime request file.",
-			"runtime_stage": DepthRuntimeTypes.STAGE_DEPENDENCY_CHECK,
-		}
-	request_file.store_string(JSON.stringify(payload))
-	request_file.close()
-	var output: Array = []
-	var exit_code := OS.execute(_python_executable, [_bridge_script_path, "--request-file", request_path, "--response-file", response_path], output, true)
-	var response: Dictionary = {}
-	if FileAccess.file_exists(response_path):
-		var response_text := FileAccess.get_file_as_string(response_path)
-		var parsed := JSON.parse_string(response_text)
-		if parsed is Dictionary:
-			response = parsed
-	_cleanup_temp_file(request_path)
-	_cleanup_temp_file(response_path)
-	if exit_code != 0 and response.is_empty():
-		return {
-			"ok": false,
-			"status": DepthRuntimeTypes.STATUS_FAILED,
-			"failure_code": "bridge_exec_failed",
-			"failure_message": "Depth runtime bridge exited with code %d. %s" % [exit_code, "\n".join(output)],
-			"runtime_stage": DepthRuntimeTypes.STAGE_DEPENDENCY_CHECK,
-		}
-	if exit_code != 0 and not response.get("ok", false):
-		response["failure_message"] = String(response.get("failure_message", "Depth runtime bridge failed."))
-		if response["failure_message"].is_empty():
-			response["failure_message"] = "Depth runtime bridge failed."
+	var request_id := _next_request_id()
+	var attempts := 0
+	while attempts < 2:
+		attempts += 1
+		if not _ensure_worker():
+			return {
+				"ok": false,
+				"status": DepthRuntimeTypes.STATUS_FAILED,
+				"failure_code": "worker_spawn_failed",
+				"failure_message": _worker_last_error if not _worker_last_error.is_empty() else "Depth runtime worker failed to start.",
+				"runtime_stage": DepthRuntimeTypes.STAGE_DEPENDENCY_CHECK,
+			}
+		var request_payload := payload.duplicate(true)
+		request_payload["request_id"] = request_id
+		var response := _send_worker_request(request_payload)
+		if bool(response.get("ok", false)) or not _should_restart_after_response(response):
+			return response
+		_restart_worker(String(response.get("failure_code", "worker_request_failed")), String(response.get("failure_message", "Depth runtime worker request failed.")))
+	return {
+		"ok": false,
+		"status": DepthRuntimeTypes.STATUS_FAILED,
+		"failure_code": "worker_request_failed",
+		"failure_message": _worker_last_error if not _worker_last_error.is_empty() else "Depth runtime worker request failed twice.",
+		"runtime_stage": DepthRuntimeTypes.STAGE_INFERENCE,
+	}
+
+func _ensure_worker() -> bool:
+	if _worker_port > 0 and not _worker_token.is_empty():
+		_debug_state["worker_alive"] = true
+		return true
+	if _python_executable.is_empty() or not FileAccess.file_exists(_python_executable):
+		_worker_last_error = "Depth runtime Python executable was not found at '%s'." % _python_executable
+		_debug_state["last_worker_error"] = _worker_last_error
+		return false
+	if not FileAccess.file_exists(_bridge_script_path):
+		_worker_last_error = "Depth runtime bridge script was not found at '%s'." % _bridge_script_path
+		_debug_state["last_worker_error"] = _worker_last_error
+		return false
+	_worker_ready_file = _temp_json_path("worker-ready")
+	_worker_token = _random_token()
+	var args := [_bridge_script_path, "--tcp-worker", "--ready-file", _worker_ready_file, "--token", _worker_token]
+	var pid := OS.create_process(_python_executable, args, false)
+	if pid <= 0:
+		_worker_last_error = "Depth runtime worker process failed to spawn."
+		_debug_state["last_worker_error"] = _worker_last_error
+		return false
+	_worker_pid = pid
+	var started_at := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - started_at < _WORKER_READY_TIMEOUT_MS:
+		if FileAccess.file_exists(_worker_ready_file):
+			var parsed := JSON.parse_string(FileAccess.get_file_as_string(_worker_ready_file))
+			if parsed is Dictionary:
+				var ready_payload: Dictionary = parsed
+				if bool(ready_payload.get("ok", false)):
+					_worker_port = int(ready_payload.get("port", 0))
+					_worker_generation = int(ready_payload.get("worker_generation", 0))
+					if _worker_port > 0:
+						_debug_state["worker_mode"] = _WORKER_MODE_PERSISTENT
+						_debug_state["worker_alive"] = true
+						_debug_state["worker_pid"] = _worker_pid
+						_debug_state["worker_generation"] = _worker_generation
+						_debug_state["worker_restart_count"] = _worker_restart_count
+						_debug_state["worker_port"] = _worker_port
+						_cleanup_temp_file(_worker_ready_file)
+						return true
+		OS.delay_msec(25)
+	_worker_last_error = "Depth runtime worker did not become ready within %d ms." % _WORKER_READY_TIMEOUT_MS
+	_debug_state["last_worker_error"] = _worker_last_error
+	_cleanup_temp_file(_worker_ready_file)
+	return false
+
+func _send_worker_request(payload: Dictionary, measure_roundtrip: bool = true) -> Dictionary:
+	var request_payload := payload.duplicate(true)
+	request_payload["token"] = _worker_token
+	var peer := StreamPeerTCP.new()
+	var connect_error := peer.connect_to_host("127.0.0.1", _worker_port)
+	if connect_error != OK:
+		return _worker_transport_failure("worker_connect_failed", "Depth runtime worker connect failed with code %d." % connect_error, DepthRuntimeTypes.STAGE_DEPENDENCY_CHECK)
+	var connected := _wait_for_connection(peer)
+	if not connected:
+		return _worker_transport_failure("worker_connect_timeout", "Depth runtime worker connect timed out.", DepthRuntimeTypes.STAGE_DEPENDENCY_CHECK)
+	var transport_write_started := Time.get_ticks_usec()
+	var put_error := peer.put_data((JSON.stringify(request_payload) + "\n").to_utf8_buffer())
+	var transport_write_ms := float(Time.get_ticks_usec() - transport_write_started) / 1000.0
+	if put_error != OK:
+		peer.disconnect_from_host()
+		return _worker_transport_failure("worker_write_failed", "Depth runtime worker write failed with code %d." % put_error, DepthRuntimeTypes.STAGE_INFERENCE)
+	var read_started := Time.get_ticks_usec()
+	var line := _read_peer_line(peer, _WORKER_REQUEST_TIMEOUT_MS)
+	var transport_read_ms := float(Time.get_ticks_usec() - read_started) / 1000.0
+	peer.disconnect_from_host()
+	if line.is_empty():
+		return _worker_transport_failure("worker_read_timeout", "Depth runtime worker response timed out.", DepthRuntimeTypes.STAGE_INFERENCE)
+	var parsed := JSON.parse_string(line)
+	if not (parsed is Dictionary):
+		return _worker_transport_failure("worker_bad_response", "Depth runtime worker returned malformed JSON.", DepthRuntimeTypes.STAGE_INFERENCE)
+	var response: Dictionary = parsed
+	var timing_ms: Dictionary = response.get("timing_ms", {}) if response.get("timing_ms", {}) is Dictionary else {}
+	if measure_roundtrip:
+		timing_ms["transport_write"] = transport_write_ms
+		timing_ms["transport_read"] = transport_read_ms
+		timing_ms["bridge_roundtrip"] = transport_write_ms + transport_read_ms
+		response["timing_ms"] = timing_ms
 	return response
+
+func _wait_for_connection(peer: StreamPeerTCP) -> bool:
+	var started_at := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - started_at < _WORKER_CONNECT_TIMEOUT_MS:
+		peer.poll()
+		if peer.get_status() == StreamPeerTCP.STATUS_CONNECTED:
+			return true
+		if peer.get_status() == StreamPeerTCP.STATUS_ERROR or peer.get_status() == StreamPeerTCP.STATUS_NONE:
+			return false
+		OS.delay_msec(10)
+	return false
+
+func _read_peer_line(peer: StreamPeerTCP, timeout_ms: int) -> String:
+	var started_at := Time.get_ticks_msec()
+	var buffer := PackedByteArray()
+	while Time.get_ticks_msec() - started_at < timeout_ms:
+		peer.poll()
+		var available := peer.get_available_bytes()
+		if available > 0:
+			var read_result := peer.get_data(available)
+			if int(read_result[0]) != OK:
+				return ""
+			buffer.append_array(read_result[1])
+			var text := buffer.get_string_from_utf8()
+			var newline_index := text.find("\n")
+			if newline_index >= 0:
+				return text.substr(0, newline_index)
+		if peer.get_status() == StreamPeerTCP.STATUS_NONE:
+			break
+		OS.delay_msec(10)
+	return ""
+
+func _should_restart_after_response(response: Dictionary) -> bool:
+	var failure_code := String(response.get("failure_code", ""))
+	return failure_code in [
+		"worker_connect_failed",
+		"worker_connect_timeout",
+		"worker_write_failed",
+		"worker_read_timeout",
+		"worker_bad_response",
+	]
+
+func _restart_worker(code: String, message: String) -> void:
+	_worker_restart_count += 1
+	_worker_last_error = "%s: %s" % [code, message]
+	_debug_state["last_worker_error"] = _worker_last_error
+	_debug_state["worker_restart_count"] = _worker_restart_count
+	shutdown()
+
+func _worker_transport_failure(code: String, message: String, stage: String) -> Dictionary:
+	_worker_last_error = message
+	_debug_state["last_worker_error"] = _worker_last_error
+	return {
+		"ok": false,
+		"status": DepthRuntimeTypes.STATUS_FAILED,
+		"failure_code": code,
+		"failure_message": message,
+		"runtime_stage": stage,
+	}
 
 func _resolve_python_executable() -> String:
 	var project_root := ProjectSettings.globalize_path("res://")
@@ -214,6 +384,19 @@ func _sync_debug_from_response(response: Dictionary) -> void:
 		_debug_state["last_timing_ms"] = (response.get("timing_ms", {}) as Dictionary).duplicate(true)
 	if response.get("runtime_provider", null) != null:
 		_debug_state["runtime_provider"] = response.get("runtime_provider")
+	_debug_state["worker_mode"] = String(response.get("worker_mode", _debug_state.get("worker_mode", _WORKER_MODE_PERSISTENT)))
+	_debug_state["worker_alive"] = int(response.get("worker_pid", 0)) > 0
+	_debug_state["worker_pid"] = int(response.get("worker_pid", _worker_pid))
+	_debug_state["worker_generation"] = int(response.get("worker_generation", _worker_generation))
+	_debug_state["worker_restart_count"] = _worker_restart_count
+	_debug_state["worker_uptime_ms"] = float(response.get("worker_uptime_ms", 0.0))
+	_debug_state["worker_port"] = _worker_port
+	_debug_state["model_runtime_key"] = String(response.get("model_runtime_key", _debug_state.get("runtime_key", "")))
+	_debug_state["model_loaded"] = bool(response.get("model_loaded", false))
+	_debug_state["model_load_count"] = int(response.get("model_load_count", 0))
+	_debug_state["model_reload_count"] = int(response.get("model_reload_count", 0))
+	_debug_state["last_request_id"] = String(response.get("request_id", ""))
+	_debug_state["last_worker_error"] = "" if bool(response.get("ok", false)) else String(response.get("failure_message", _worker_last_error))
 
 
 func _sync_terminal_debug_state(status: String, stage: String, code: String, message: String, summary: String) -> void:
@@ -252,6 +435,28 @@ func _cleanup_temp_file(path: String) -> void:
 	if path.is_empty() or not FileAccess.file_exists(path):
 		return
 	DirAccess.remove_absolute(path)
+
+func _cleanup_worker_state() -> void:
+	_cleanup_temp_file(_worker_ready_file)
+	_worker_ready_file = ""
+	_worker_token = ""
+	_worker_port = -1
+	_worker_pid = -1
+	_worker_generation = 0
+	_debug_state["worker_alive"] = false
+	_debug_state["worker_pid"] = 0
+	_debug_state["worker_generation"] = 0
+	_debug_state["worker_port"] = 0
+	_debug_state["worker_uptime_ms"] = 0.0
+	_debug_state["model_loaded"] = false
+	_debug_state["model_runtime_key"] = ""
+
+func _next_request_id() -> String:
+	_request_serial += 1
+	return "%s-%s-%d" % [_backend_id, str(OS.get_process_id()), _request_serial]
+
+func _random_token() -> String:
+	return "%s-%s-%s" % [str(OS.get_process_id()), str(Time.get_ticks_usec()), str(randi())]
 
 func _vector2i_from_variant(value: Variant) -> Vector2i:
 	if value is Array:
