@@ -1,9 +1,9 @@
 # AeroBeat depth runtime loader and model-swap seam
 
-**Date:** 2026-06-20  
-**Status:** In Progress  
-**Last Updated:** 2026-06-20 12:12 EDT  
-**Blocked Reason:** None  
+**Date:** 2026-06-20
+**Status:** In Progress
+**Last Updated:** 2026-06-20 12:31 EDT
+**Blocked Reason:** None
 **Agent:** `pico`
 
 ---
@@ -18,9 +18,9 @@ Wire the boxing depth path so AeroBeat can load the approved monocular depth art
 
 The repo already has the config-side prerequisites for depth experiments: the staged `depth:` contract in `assets/boxing.gesture_detection.yaml`, the approved `depth.model.artifact_path` locations, and a repo-owned fetch workflow that materializes MiDaS, FastDepth, and Depth Anything V2 Small under `assets/depth_models/`. What is still missing is the runtime seam that can take one of those artifact paths, load the correct inference backend, and expose a stable normalized depth signal to the punch-family threshold logic.
 
-The architecture needs to stay truth-first. Today the shipped detector does **not** consume monocular depth yet. `pose_detector_substrate.gd` still computes `forward_depth_spike` from landmark/camera-space `z` history, and the boxing proving harness explicitly reports that the `depth:` blocks are “config only; live threshold runtime does not consume depth yet.” Also, the only already-wired external inference substrate is the existing Python subprocess lane used for MediaPipe pose/hands via the sibling vendor runtime. There is no current ONNX runtime or OpenVINO runtime implementation in this repo, and the vendor Python runtime currently depends only on `mediapipe`, `opencv-python`, and `numpy`.
+The architecture needs to stay truth-first. Today the shipped detector does **not** consume monocular depth yet. `pose_detector_substrate.gd` still computes `forward_depth_spike` from landmark/camera-space `z` history, and the boxing proving harness explicitly reports that the `depth:` blocks are "config only; live threshold runtime does not consume depth yet." Also, the only already-wired external inference substrate is the existing Python subprocess lane used for MediaPipe pose/hands via the sibling vendor runtime. There is no current ONNX runtime or OpenVINO runtime implementation in this repo, and the vendor Python runtime currently depends only on `mediapipe`, `opencv-python`, and `numpy`.
 
-So the first design goal is not “pretend all three models are live.” It is: introduce one honest seam that can centralize artifact resolution, model-family/backend selection, debug state, and normalized depth output. That seam can go live first with artifact resolution + truthful blocked states, then later gain actual ONNX and/or OpenVINO adapters without leaking model-specific conditionals into straight/hook/uppercut threshold code.
+So the first design goal is not "pretend all three models are live." It is: introduce one honest seam that can centralize artifact resolution, model-family/backend selection, debug state, and normalized depth output. That seam can go live first with artifact resolution + truthful blocked states, then later gain actual ONNX and/or OpenVINO adapters without leaking model-specific conditionals into straight/hook/uppercut threshold code.
 
 ---
 
@@ -43,10 +43,10 @@ So the first design goal is not “pretend all three models are live.” It is: 
 
 ### Task 1: Design the shared depth runtime seam
 
-**Bead ID:** `aerobeat-input-camera-tracking-kabf`  
-**SubAgent:** `primary`  
-**Role:** `research`  
-**References:** `REF-01`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`  
+**Bead ID:** `aerobeat-input-camera-tracking-kabf`
+**SubAgent:** `primary`
+**Role:** `research`
+**References:** `REF-01`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`
 **Prompt:** Review the current detector/config/fetch state and produce the concrete runtime design for loading interchangeable monocular depth artifacts behind one shared seam. The design must specify: where the loader lives in `src/`, what the normalized adapter interface is, how artifact-path resolution works, how model type is inferred or declared, how load/unload/caching works, and how the detector consumes model-agnostic depth output. Include explicit notes on OpenVINO-vs-ONNX branching so the boxing detector itself stays backend-agnostic.
 
 **Folders Created/Deleted/Modified:**
@@ -63,10 +63,10 @@ So the first design goal is not “pretend all three models are live.” It is: 
 
 ### Task 2: Implement model-loader abstraction and artifact resolution
 
-**Bead ID:** `aerobeat-input-camera-tracking-q0t9`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-04`, `REF-06`, `REF-07`, `REF-08`  
+**Bead ID:** `aerobeat-input-camera-tracking-q0t9`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-03`, `REF-04`, `REF-06`, `REF-07`, `REF-08`
 **Prompt:** Implement the shared depth runtime seam. Land loader/adapter code that can resolve `depth.model.artifact_path`, identify the active model family, and expose one normalized per-frame depth interface to consumers. Keep model-specific branching inside adapters. Add clean failure states and debug metadata so the proving harness can show whether a model loaded, which backend family it resolved to, and why it failed if it did.
 
 **Folders Created/Deleted/Modified:**
@@ -79,18 +79,18 @@ So the first design goal is not “pretend all three models are live.” It is: 
 - `src/detectors/pose_detector_substrate.gd`
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-loader-and-model-swap-seam.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Claimed bead `aerobeat-input-camera-tracking-q0t9` and landed the shared runtime seam under `src/depth/` with `DepthRuntimeManager`, a base `DepthModelAdapter`, and backend-specific OpenVINO/ONNX adapter stubs. The live part of this seam is now honest artifact resolution from `depth.model.artifact_path`, backend/model-family inference (`openvino` + `midas_openvino_v21_small_256`, `onnx` + `fastdepth_224_onnx`, `onnx` + `depth_anything_v2_small_onnx`, or `custom`), normalized detector-facing result/debug dictionaries, and per-family runtime status wiring into `pose_detector_substrate.gd`. The detector now exposes `depth_runtime` debug state plus family-local runtime status/failure metadata without pushing model-specific branching into punch-family logic. Actual depth inference remains deliberately staged: both adapters truthfully report `adapter_unimplemented` because this repo still has no runnable OpenVINO or ONNX execution substrate. Validation: `godot --headless --path .testbed --quit` now passes script compilation and boots the boxing proving harness without new depth-runtime script errors.
 
 ---
 
 ### Task 3: Integrate depth inference into boxing threshold flow without model-specific leakage
 
-**Bead ID:** `aerobeat-input-camera-tracking-ms3x`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-01`, `REF-03`, `REF-04`  
+**Bead ID:** `aerobeat-input-camera-tracking-ms3x`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-01`, `REF-03`, `REF-04`
 **Prompt:** Wire the boxing threshold/runtime path so straight/hook/uppercut depth logic consumes the shared normalized depth signal and the existing `depth:` config values. Preserve the existing per-family threshold semantics (`min_closeness_delta`, `max_closeness_delta`, etc.) while keeping the punch-family code unaware of the underlying model family. If any part must remain staged rather than live, make that explicit in comments/debug rather than implying completion.
 
 **Folders Created/Deleted/Modified:**
@@ -110,10 +110,10 @@ So the first design goal is not “pretend all three models are live.” It is: 
 
 ### Task 4: Extend proving/debug surfaces for loader truth and swap visibility
 
-**Bead ID:** `aerobeat-input-camera-tracking-8i6n`  
-**SubAgent:** `primary`  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-05`, `REF-06`  
+**Bead ID:** `aerobeat-input-camera-tracking-8i6n`
+**SubAgent:** `primary`
+**Role:** `coder`
+**References:** `REF-03`, `REF-05`, `REF-06`
 **Prompt:** Update the boxing proving harness / inspector surfaces so Derrick can see the active depth artifact path, resolved backend family, load status, failure reason if any, and the currently active normalized depth metrics. Make model swaps observable and honest so changing config paths/models is easy to verify without reading code.
 
 **Folders Created/Deleted/Modified:**
@@ -134,10 +134,10 @@ So the first design goal is not “pretend all three models are live.” It is: 
 
 ### Task 5: QA runtime loading and model swapping
 
-**Bead ID:** `aerobeat-input-camera-tracking-uizc`  
-**SubAgent:** `primary`  
-**Role:** `qa`  
-**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `aerobeat-input-camera-tracking-uizc`
+**SubAgent:** `primary`
+**Role:** `qa`
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Independently verify that the shared runtime seam loads the configured depth artifact, that swapping between the approved model paths is observable and mostly painless, and that the proving/debug surfaces report truthful loader status and normalized depth metrics. Use the highest-fidelity safe validation available, including real model-path swaps where feasible.
 
 **Folders Created/Deleted/Modified:**
@@ -158,10 +158,10 @@ So the first design goal is not “pretend all three models are live.” It is: 
 
 ### Task 6: Audit architecture truthfulness and completion
 
-**Bead ID:** `aerobeat-input-camera-tracking-6vmf`  
-**SubAgent:** `primary`  
-**Role:** `auditor`  
-**References:** `REF-01`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`  
+**Bead ID:** `aerobeat-input-camera-tracking-6vmf`
+**SubAgent:** `primary`
+**Role:** `auditor`
+**References:** `REF-01`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`
 **Prompt:** Independently audit that the implementation truly centralizes model-specific logic behind a shared seam, that swapping models does not leak backend-specific branching across the detector/proving path, and that the plan and debug surfaces tell the truth about what is live versus staged.
 
 **Folders Created/Deleted/Modified:**
@@ -214,7 +214,7 @@ The adapter seam behind that manager should expose the same core lifecycle:
 - `get_debug_state() -> Dictionary`
 - `unload() -> void`
 
-Important boundary: the detector asks for a normalized relative-depth sample, not “run MiDaS/OpenVINO” or “run ONNX.”
+Important boundary: the detector asks for a normalized relative-depth sample, not "run MiDaS/OpenVINO" or "run ONNX."
 
 ### 3) `depth.model.artifact_path` resolution to family/backend
 
@@ -399,7 +399,7 @@ The best first real execution route is to extend the already-existing Python sub
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Updated the active plan with the concrete shared-depth-runtime design, current repo-truth findings, and an honest live-vs-staged breakdown for OpenVINO/ONNX model swapping.
+**What We Built:** Updated the active plan with the concrete shared-depth-runtime design, then implemented Task 2’s repo-side seam: artifact-path resolution, backend/family inference, normalized detector/debug contracts, and truthful blocked adapter states for the currently unwired OpenVINO/ONNX execution paths.
 
 **Reference Check:** `REF-01`/`REF-03`/`REF-06` confirm the approved family-local depth config and artifact paths; `REF-04`/`REF-05` confirm the current detector/proving surfaces still do not run monocular depth; `REF-07`/`REF-08` confirm the only existing execution substrate already wired here is the MediaPipe Python subprocess lane and that it currently lacks ONNX/OpenVINO dependencies.
 

@@ -3,6 +3,7 @@ extends RefCounted
 
 const PrototypePunchMatcher = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd")
 const LearnedPunchClassifierScript = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/learned_punch_classifier.gd")
+const DepthRuntimeManagerScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_runtime_manager.gd")
 const BACKEND_DISABLED := "disabled"
 const BACKEND_THRESHOLD := "threshold"
 const BACKEND_PROTOTYPE := "prototype"
@@ -120,6 +121,7 @@ var _consecutive_invalid_frames := 0
 var _reacquire_frames_remaining := 0
 var _last_processed_timestamp_ms := 0
 var _frame_index := 0
+var _depth_runtime_managers := {}
 
 func _init() -> void:
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
@@ -127,12 +129,14 @@ func _init() -> void:
 	_learned_punch_classifier = LearnedPunchClassifierScript.new()
 	_latest_state = _build_empty_state()
 	_reset_gesture_state()
+	_configure_depth_runtime_managers()
 
 func configure(config) -> PoseDetectorSubstrate:
 	_config = config
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
 	_prototype_punch_matcher.configure(config)
 	_learned_punch_classifier.configure(config)
+	_configure_depth_runtime_managers()
 	return self
 
 func reset() -> void:
@@ -148,6 +152,7 @@ func reset() -> void:
 	_prototype_punch_matcher.reset()
 	_learned_punch_classifier.reset()
 	_latest_state = _build_empty_state()
+	_configure_depth_runtime_managers()
 
 func request_athlete_recalibration() -> void:
 	_reset_baseline_calibration()
@@ -605,6 +610,7 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		"classifier": _learned_punch_classifier.get_debug_state(),
 		"prototype_matcher": _prototype_punch_matcher.get_debug_state(),
 		"learned_classifier": _learned_punch_classifier.get_debug_state(),
+		"depth_runtime": _build_depth_runtime_debug_state(),
 		"flow": _build_flow_debug_state(metrics),
 	}
 
@@ -622,6 +628,7 @@ func _build_punch_detection_debug_state() -> Dictionary:
 		if not active_backends.has(backend):
 			active_backends.append(backend)
 	var any_active_backend := not active_backends.is_empty()
+	var depth_runtime := _build_depth_runtime_debug_state()
 	return {
 		"backend": "per_family",
 		"active_backend": "per_family" if any_active_backend else "none",
@@ -639,6 +646,12 @@ func _build_punch_detection_debug_state() -> Dictionary:
 		"threshold_enabled": _any_punch_family_uses_backend(BACKEND_THRESHOLD),
 		"prototype_enabled": _any_punch_family_uses_backend(BACKEND_PROTOTYPE),
 		"classifier_enabled": _any_punch_family_uses_backend(BACKEND_CLASSIFIER),
+		"depth_runtime": depth_runtime,
+		"depth_runtime_statuses": {
+			"straight_punch": String((depth_runtime.get("straight_punch", {}) as Dictionary).get("runtime_status", "unloaded")),
+			"hook": String((depth_runtime.get("hook", {}) as Dictionary).get("runtime_status", "unloaded")),
+			"uppercut": String((depth_runtime.get("uppercut", {}) as Dictionary).get("runtime_status", "unloaded")),
+		},
 	}
 
 func _build_guard_debug_state() -> Dictionary:
@@ -747,6 +760,7 @@ func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, hands: Dictionary = {}) -> Dictionary:
 	var state := _get_straight_punch_state(side)
 	var straight_punch_config := _get_straight_punch_config()
+	var depth_runtime_debug := _get_depth_runtime_debug_state("straight_punch")
 	if hands.is_empty():
 		hands = _latest_state.get("metrics", {}).get("hands", {})
 	var hand_payload: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
@@ -808,6 +822,16 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"blocking_side": String(state.get("blocking_side", "")),
 		"blocking_event_name": String(state.get("blocking_event_name", "")),
 		"blocking_phase": String(state.get("blocking_phase", "")),
+		"depth_runtime_status": String(depth_runtime_debug.get("runtime_status", "unloaded")),
+		"depth_runtime_stage": String(depth_runtime_debug.get("runtime_stage", "idle")),
+		"depth_backend_id": String(depth_runtime_debug.get("backend_id", "unknown")),
+		"depth_family_id": String(depth_runtime_debug.get("family_id", "unknown")),
+		"depth_enabled": bool(depth_runtime_debug.get("depth_enabled", false)),
+		"depth_failure_code": String(depth_runtime_debug.get("failure_code", "")),
+		"depth_failure_message": String(depth_runtime_debug.get("failure_message", "")),
+		"depth_active_model_summary": String(depth_runtime_debug.get("active_model_summary", "")),
+		"depth_artifact_path": String(depth_runtime_debug.get("artifact_path_res", "")),
+		"depth_sample_metrics": (depth_runtime_debug.get("last_sample_metrics", {}) as Dictionary).duplicate(true),
 	}
 
 func _build_pose_strike_debug_state(family: String, metrics: Dictionary = {}) -> Dictionary:
@@ -820,6 +844,7 @@ func _build_pose_strike_debug_state(family: String, metrics: Dictionary = {}) ->
 func _build_pose_strike_side_debug(family: String, side: String, measurements: Dictionary) -> Dictionary:
 	var state := _get_pose_strike_state(family, side)
 	var config := _get_pose_strike_config(family)
+	var depth_runtime_debug := _get_depth_runtime_debug_state(family)
 	var lateral_speed := float(state.get("last_lateral_velocity", 0.0))
 	var vertical_speed := float(state.get("last_vertical_velocity", 0.0))
 	var debug := {
@@ -853,6 +878,16 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"directionality_ratio": float(state.get("directionality_ratio", 0.0)),
 		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
 		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
+		"depth_runtime_status": String(depth_runtime_debug.get("runtime_status", "unloaded")),
+		"depth_runtime_stage": String(depth_runtime_debug.get("runtime_stage", "idle")),
+		"depth_backend_id": String(depth_runtime_debug.get("backend_id", "unknown")),
+		"depth_family_id": String(depth_runtime_debug.get("family_id", "unknown")),
+		"depth_enabled": bool(depth_runtime_debug.get("depth_enabled", false)),
+		"depth_failure_code": String(depth_runtime_debug.get("failure_code", "")),
+		"depth_failure_message": String(depth_runtime_debug.get("failure_message", "")),
+		"depth_active_model_summary": String(depth_runtime_debug.get("active_model_summary", "")),
+		"depth_artifact_path": String(depth_runtime_debug.get("artifact_path_res", "")),
+		"depth_sample_metrics": (depth_runtime_debug.get("last_sample_metrics", {}) as Dictionary).duplicate(true),
 	}
 	if family == "hook":
 		debug["outward_velocity"] = float(state.get("outward_velocity", 0.0))
@@ -2034,6 +2069,39 @@ func _set_straight_punch_state(side: String, state: Dictionary) -> void:
 	_gesture_state["straight_punch"] = straight_punch
 	_set_ready("punch_%s" % side, String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)) == STRAIGHT_PUNCH_STATE_READY)
 
+
+func _configure_depth_runtime_managers() -> void:
+	var families := ["straight_punch", "hook", "uppercut"]
+	for family in families:
+		var manager: Variant = _depth_runtime_managers.get(family, null)
+		if manager == null:
+			manager = DepthRuntimeManagerScript.new()
+			_depth_runtime_managers[family] = manager
+		var family_depth_config := _get_family_depth_config(family)
+		manager.configure_from_family(family, family_depth_config)
+		manager.ensure_runtime_ready()
+
+func _get_family_depth_config(family: String) -> Dictionary:
+	var family_document := _get_family_backend_document(family, BACKEND_THRESHOLD)
+	return family_document.get("depth", {}) if family_document.get("depth", {}) is Dictionary else {}
+
+func _get_depth_runtime_manager(family: String):
+	var manager: Variant = _depth_runtime_managers.get(family, null)
+	if manager == null:
+		manager = DepthRuntimeManagerScript.new()
+		_depth_runtime_managers[family] = manager
+		manager.configure_from_family(family, _get_family_depth_config(family))
+	return manager
+
+func _get_depth_runtime_debug_state(family: String) -> Dictionary:
+	var manager = _get_depth_runtime_manager(family)
+	return manager.ensure_runtime_ready()
+
+func _build_depth_runtime_debug_state() -> Dictionary:
+	var families := {}
+	for family in ["straight_punch", "hook", "uppercut"]:
+		families[family] = _get_depth_runtime_debug_state(family)
+	return families
 
 func _get_selected_punch_detection_backend() -> String:
 	return "per_family"
