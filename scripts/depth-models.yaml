@@ -1,0 +1,78 @@
+{
+  "schema": "aerobeat/depth-model-fetch-metadata",
+  "version": 1,
+  "addon_id": "aerobeat-input-camera-tracking",
+  "models": [
+    {
+      "id": "midas-openvino-v21-small-256",
+      "name": "MiDaS v2.1 Small 256 (OpenVINO)",
+      "destination_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/",
+      "destination_kind": "directory",
+      "source_kind": "official_release_assets",
+      "direct_fetch_supported": true,
+      "reference_urls": [
+        "https://github.com/isl-org/MiDaS",
+        "https://raw.githubusercontent.com/isl-org/MiDaS/master/README.md"
+      ],
+      "sources": [
+        {
+          "target_name": "openvino_midas_v21_small_256.xml",
+          "url": "https://github.com/isl-org/MiDaS/releases/download/v3_1/openvino_midas_v21_small_256.xml"
+        },
+        {
+          "target_name": "openvino_midas_v21_small_256.bin",
+          "url": "https://github.com/isl-org/MiDaS/releases/download/v3_1/openvino_midas_v21_small_256.bin"
+        }
+      ],
+      "notes": [
+        "This target is a directory because the OpenVINO runtime artifact is a paired .xml + .bin model, not a single file.",
+        "MiDaS documents these exact OpenVINO artifacts in the current README under the v3.1 release assets for the legacy v2.1 small 256 model type."
+      ]
+    },
+    {
+      "id": "fastdepth-224-onnx",
+      "name": "FastDepth 224 ONNX",
+      "destination_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx",
+      "destination_kind": "file",
+      "source_kind": "community_demo_repo",
+      "direct_fetch_supported": true,
+      "reference_urls": [
+        "https://fastdepth.mit.edu/",
+        "https://github.com/dwofk/fast-depth",
+        "https://github.com/miso3/HoloFastDepth"
+      ],
+      "sources": [
+        {
+          "target_name": "fastdepth.onnx",
+          "url": "https://raw.githubusercontent.com/miso3/HoloFastDepth/master/Assets/MLModel/fastdepth_7.onnx"
+        }
+      ],
+      "notes": [
+        "The canonical FastDepth project does not publish a stable official ONNX release artifact at this exact path.",
+        "This script fetches the community-distributed ONNX file used by HoloFastDepth and renames it to the approved repo-local runtime filename fastdepth.onnx."
+      ]
+    },
+    {
+      "id": "depth-anything-v2-small-onnx",
+      "name": "Depth Anything V2 Small ONNX",
+      "destination_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/depth_anything_v2/depth_anything_v2_small/depth_anything_v2_small.onnx",
+      "destination_kind": "file",
+      "source_kind": "community_onnx_export_release",
+      "direct_fetch_supported": true,
+      "reference_urls": [
+        "https://github.com/DepthAnything/Depth-Anything-V2",
+        "https://github.com/fabio-sim/Depth-Anything-ONNX/releases"
+      ],
+      "sources": [
+        {
+          "target_name": "depth_anything_v2_small.onnx",
+          "url": "https://github.com/fabio-sim/Depth-Anything-ONNX/releases/download/v2.0.0/depth_anything_v2_vits.onnx"
+        }
+      ],
+      "notes": [
+        "The official Depth Anything V2 upstream publishes Small checkpoints as .pth, not an official ONNX artifact at this exact runtime path.",
+        "This script therefore fetches the community-exported ONNX release for the V2 Small/ViT-S variant and stores it under the approved repo-local runtime filename depth_anything_v2_small.onnx."
+      ]
+    }
+  ]
+}
