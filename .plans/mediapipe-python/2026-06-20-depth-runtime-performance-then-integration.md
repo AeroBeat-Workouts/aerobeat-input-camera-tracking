@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 19:08 EDT  
+**Last Updated:** 2026-06-20 19:13 EDT  
 **Blocked Reason:** None.  
 **Agent:** `pico`
 
@@ -167,14 +167,34 @@ Caveats / remaining truth notes:
 **Prompt:** Independently verify the performance-first runtime improvement. Confirm the shared seam still swaps models truthfully, that the worker/runtime lifecycle is stable, and that before/after timing claims are supported by real measurements on this machine.
 
 **Folders Created/Deleted/Modified:**
-- runtime / tests / plan files touched by implementation
+- `.plans/mediapipe-python/`
 
 **Files Created/Deleted/Modified:**
-- runtime / tests / plan files touched by implementation
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** Independently QA-validated the performance claim and the model/backend seam with real runs on this machine, then found one truthfulness/lifecycle bug that keeps this task from passing yet.
+
+Validation runs executed:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit`
+- `python3 /tmp/qa_depth_runtime_benchmark.py` (real wall-clock benchmark against legacy single-shot bridge vs persistent worker)
+- `godot --headless --path .testbed --script /tmp/qa_depth_runtime_lifecycle.gd` (real seam/swap/shutdown debug-state probe)
+
+What QA confirmed as true:
+- The performance win is real for repeated requests on the same runtime key. FastDepth ONNX legacy single-shot averaged **223.23 ms wall** across 5 runs, while the persistent worker averaged **29.11 ms wall** across 5 warm runs, with the last 3 warm runs averaging **21.65 ms wall**.
+- The cold-load cost still exists and is now honestly surfaced. FastDepth persistent `probe` measured **107.12 ms wall** with **104.22 ms** reported as `worker_load`, which matches the same-order cost seen in the legacy single-shot path (**105.92 ms** average `worker_load`).
+- Warm-session reuse is real and truthfully reported for repeated requests on the same runtime key: all measured warm FastDepth requests and all measured warm Depth Anything V2 Small requests reported `session_warm=true`.
+- The shared seam still swaps models/backend truthfully at the manager/debug level. A FastDepth ONNX run reported `backend_id=onnx`, `family_id=fastdepth_224_onnx`, then a reconfigured OpenVINO run reported `backend_id=openvino`, `family_id=midas_openvino_v21_small_256`, with different worker PIDs showing the manager currently unloads the old adapter/worker and starts a fresh worker for the new model rather than hot-reloading one persistent worker across model swaps.
+- Warm behavior is model-dependent and should stay documented honestly. On this host, Depth Anything V2 Small persistent warm inference averaged **338.38 ms wall** across 3 runs after a **453.23 ms** cold probe/load, so the persistent worker removes bridge/process/model-reload churn but does **not** make the heavier model cheap.
+
+Issue found:
+- `DepthModelAdapter.unload()` / `DepthRuntimeManager.shutdown()` leaves stale worker truth in the debug state after shutdown. In the headless lifecycle probe, the actual worker exited successfully (`exited_after_shutdown=true` in the direct Python worker benchmark), but `manager.get_debug_state()` after `shutdown()` still reported `worker_alive=true`, `worker_pid` still populated, and `model_loaded=true`. So the runtime lifecycle itself appears stable, but the shared debug surface is currently **not truthful after shutdown/unload**. That means this QA task fails until the shutdown path clears or refreshes those worker/model fields.
+
+QA conclusion:
+- Performance improvement claim: **verified**.
+- Shared model/backend seam truth during ready/infer/swap: **verified**.
+- Worker/runtime lifecycle stability: **mostly verified operationally**, but **fails truthfulness on shutdown state reporting**.
 
 ---
 
@@ -264,14 +284,14 @@ Caveats / remaining truth notes:
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Tasks 1-2 only so far: a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam, with truthful worker/debug timing surfaces, clean adapter-driven shutdown, and targeted tests proving warm-session reuse.
+**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA then verified the warm-request performance win and truthful ready/infer/swap reporting, but found that shutdown/unload leaves stale worker/model fields in the shared debug state.
 
-**Reference Check:** `REF-02` / `REF-03` / `REF-04` stayed the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker's lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. `REF-06` remains the intended truth surface because the new debug fields are surfaced through the same shared runtime state.
+**Reference Check:** `REF-02` / `REF-03` / `REF-04` still hold the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. However, `REF-06` is **not yet fully truthful** after shutdown because the surfaced worker/model fields are not cleared even when the worker has exited.
 
 **Commits:**
 - Pending.
 
-**Lessons Learned:** The big win really was below the seam. Warm repeated inference got dramatically faster once process start + model/session reconstruction moved out of the steady-state path. Also, the low-risk Godot fit was local TCP plus an authenticated ready-file handshake rather than stdio, which kept the same architecture goal while reducing implementation risk.
+**Lessons Learned:** The big win really was below the seam. Warm repeated inference got dramatically faster once process start + model/session reconstruction moved out of the steady-state path. But truth surfaces need explicit shutdown-state cleanup too; otherwise a stable worker lifecycle can still be reported dishonestly at the manager/debug layer.
 
 ---
 
