@@ -45,6 +45,11 @@ static func make_debug_state() -> Dictionary:
 		"model_reload_count": 0,
 		"last_request_id": "",
 		"last_worker_error": "",
+		"shared_runtime_key": "",
+		"shared_runtime_refcount": 0,
+		"shared_runtime_family_claims": [],
+		"shared_runtime_claimed": false,
+		"shared_runtime_shared": false,
 		"last_timing_ms": {
 			"preprocess": 0.0,
 			"infer": 0.0,

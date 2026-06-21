@@ -362,11 +362,16 @@ Risk notes for implementation: the biggest correctness risk is lifecycle churn d
 - `.plans/mediapipe-python/`
 
 **Files Created/Deleted/Modified:**
-- runtime manager / bridge / detector / tests / plan files touched by implementation
+- `src/depth/depth_shared_runtime_pool.gd`
+- `src/depth/depth_runtime_manager.gd`
+- `src/depth/depth_runtime_types.gd`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_depth_runtime_manager.gd`
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Added `src/depth/depth_shared_runtime_pool.gd` and refactored `src/depth/depth_runtime_manager.gd` so family managers now acquire/release pooled shared runtimes by `runtime_key` while keeping family-local debug overlays and detector-facing semantics intact. `src/detectors/pose_detector_substrate.gd` now binds all family managers to one substrate-lifetime shared pool, and `src/depth/depth_runtime_types.gd` exposes shared-runtime debug fields (`shared_runtime_key`, refcount, family claim list, claimed/shared flags). Extended `.testbed/tests/unit/test_depth_runtime_manager.gd` to cover same-key sharing, different-key isolation, and last-claimer shutdown; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit` passed 8/8 tests. Implementation intentionally kept threshold/evaluation logic above the depth seam; pooling only shares backend/model/artifact runtime ownership and worker/session lifecycle.
 
 ---
 

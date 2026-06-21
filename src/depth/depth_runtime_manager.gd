@@ -2,17 +2,24 @@ class_name DepthRuntimeManager
 extends RefCounted
 
 const DepthRuntimeTypes = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_runtime_types.gd")
-const OpenvinoDepthAdapterScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/adapters/openvino_depth_adapter.gd")
-const OnnxDepthAdapterScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/adapters/onnx_depth_adapter.gd")
+const DepthSharedRuntimePoolScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_shared_runtime_pool.gd")
 
 var _family := ""
 var _family_depth_config: Dictionary = {}
 var _debug_state: Dictionary = DepthRuntimeTypes.make_debug_state()
 var _active_runtime_key := ""
 var _active_model_spec: Dictionary = {}
-var _adapter: RefCounted = null
+var _shared_runtime_pool: RefCounted = DepthSharedRuntimePoolScript.new()
+
+func set_shared_runtime_pool(shared_runtime_pool: RefCounted) -> void:
+	if shared_runtime_pool == null:
+		_shared_runtime_pool = DepthSharedRuntimePoolScript.new()
+		return
+	_shared_runtime_pool = shared_runtime_pool
 
 func configure_from_family(family: String, family_depth_config: Dictionary) -> void:
+	var previous_family := _family
+	_release_shared_runtime(previous_family)
 	_family = family
 	_family_depth_config = family_depth_config.duplicate(true)
 	_debug_state = DepthRuntimeTypes.make_debug_state()
@@ -23,7 +30,6 @@ func configure_from_family(family: String, family_depth_config: Dictionary) -> v
 	_debug_state["active_model_summary"] = "disabled in config" if not bool(_debug_state.get("depth_enabled", false)) else "depth runtime configured; waiting for artifact resolution"
 	_active_runtime_key = ""
 	_active_model_spec = {}
-	_release_adapter()
 
 func ensure_runtime_ready() -> Dictionary:
 	if _family.is_empty():
@@ -39,6 +45,11 @@ func ensure_runtime_ready() -> Dictionary:
 		_debug_state["failure_code"] = ""
 		_debug_state["failure_message"] = ""
 		_debug_state["active_model_summary"] = "disabled in config"
+		_debug_state["shared_runtime_key"] = ""
+		_debug_state["shared_runtime_refcount"] = 0
+		_debug_state["shared_runtime_family_claims"] = []
+		_debug_state["shared_runtime_claimed"] = false
+		_debug_state["shared_runtime_shared"] = false
 		return _debug_state.duplicate(true)
 
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_ARTIFACT_RESOLUTION
@@ -49,7 +60,7 @@ func ensure_runtime_ready() -> Dictionary:
 		_debug_state["failure_code"] = "artifact_missing"
 		_debug_state["failure_message"] = "Depth artifact path could not be resolved to an existing file or directory."
 		_debug_state["active_model_summary"] = "enabled; depth artifact missing at %s" % String(model_spec.get("artifact_path_res", model_spec.get("artifact_path_abs", "")))
-		_release_adapter()
+		_release_shared_runtime()
 		return _debug_state.duplicate(true)
 	var backend_id := String(model_spec.get("backend_id", "unknown"))
 	if backend_id == "unknown":
@@ -57,40 +68,32 @@ func ensure_runtime_ready() -> Dictionary:
 		_debug_state["failure_code"] = "unsupported_artifact"
 		_debug_state["failure_message"] = "Depth artifact exists, but its backend/family could not be inferred from the approved path/shape rules."
 		_debug_state["active_model_summary"] = "enabled; artifact exists but backend could not be inferred"
-		_release_adapter()
-		return _debug_state.duplicate(true)
-	var runtime_key := String(model_spec.get("runtime_key", ""))
-	if runtime_key == _active_runtime_key and _adapter != null:
-		_merge_adapter_debug()
+		_release_shared_runtime()
 		return _debug_state.duplicate(true)
 
-	_release_adapter()
-	_adapter = _create_adapter_for_backend(backend_id)
-	_active_runtime_key = runtime_key
-	_active_model_spec = model_spec.duplicate(true)
-	_debug_state["runtime_key"] = runtime_key
-	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_LOADING
-	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_ADAPTER_LOAD
-	if _adapter == null:
-		_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_FAILED
-		_debug_state["failure_code"] = "unsupported_backend"
-		_debug_state["failure_message"] = "No adapter is registered for backend '%s'." % backend_id
-		_debug_state["active_model_summary"] = "enabled; artifact resolved but backend '%s' is unsupported" % backend_id
+	var runtime_key := String(model_spec.get("runtime_key", ""))
+	if runtime_key != _active_runtime_key:
+		_release_shared_runtime()
+		var acquire_result: Dictionary = _shared_runtime_pool.acquire(_family, model_spec)
+		_active_runtime_key = runtime_key
+		_active_model_spec = model_spec.duplicate(true)
+		_merge_shared_runtime_debug(_shared_runtime_pool.get_runtime_debug(runtime_key), false)
+		if bool(acquire_result.get("ok", false)):
+			_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_READY
+			_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_SAMPLING
+			_debug_state["failure_code"] = ""
+			_debug_state["failure_message"] = ""
+			_debug_state["active_model_summary"] = "enabled; runtime ready via %s" % backend_id
+			return _debug_state.duplicate(true)
+		if String(_debug_state.get("runtime_status", "")) == DepthRuntimeTypes.STATUS_LOADING:
+			_debug_state["runtime_status"] = String(acquire_result.get("status", DepthRuntimeTypes.STATUS_BLOCKED))
+		_debug_state["failure_code"] = String(acquire_result.get("failure_code", _debug_state.get("failure_code", "adapter_unimplemented")))
+		_debug_state["failure_message"] = String(acquire_result.get("failure_message", _debug_state.get("failure_message", "Depth runtime failed to load.")))
+		if String(_debug_state.get("active_model_summary", "")).is_empty():
+			_debug_state["active_model_summary"] = "enabled; runtime failed to load"
 		return _debug_state.duplicate(true)
-	var load_result: Dictionary = _adapter.load(model_spec)
-	_merge_adapter_debug()
-	if bool(load_result.get("ok", false)):
-		_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_READY
-		_debug_state["failure_code"] = ""
-		_debug_state["failure_message"] = ""
-		_debug_state["active_model_summary"] = "enabled; runtime ready via %s" % backend_id
-		return _debug_state.duplicate(true)
-	if String(_debug_state.get("runtime_status", "")) == DepthRuntimeTypes.STATUS_LOADING:
-		_debug_state["runtime_status"] = String(load_result.get("status", DepthRuntimeTypes.STATUS_BLOCKED))
-	_debug_state["failure_code"] = String(load_result.get("failure_code", _debug_state.get("failure_code", "adapter_unimplemented")))
-	_debug_state["failure_message"] = String(load_result.get("failure_message", _debug_state.get("failure_message", "Depth runtime failed to load.")))
-	if String(_debug_state.get("active_model_summary", "")).is_empty():
-		_debug_state["active_model_summary"] = "enabled; runtime failed to load"
+
+	_merge_shared_runtime_debug(_shared_runtime_pool.get_runtime_debug(runtime_key), true)
 	return _debug_state.duplicate(true)
 
 func infer_relative_depth(frame_payload: Dictionary, sample_request: Dictionary) -> Dictionary:
@@ -101,7 +104,7 @@ func infer_relative_depth(frame_payload: Dictionary, sample_request: Dictionary)
 		_debug_state["last_sample_metrics"] = (precomputed_result.get("sample_metrics", {}) as Dictionary).duplicate(true)
 		_debug_state["last_timing_ms"] = (precomputed_result.get("timing_ms", {}) as Dictionary).duplicate(true)
 		return precomputed_result
-	if runtime_status != DepthRuntimeTypes.STATUS_READY or _adapter == null:
+	if runtime_status != DepthRuntimeTypes.STATUS_READY or _active_runtime_key.is_empty():
 		var blocked_result := DepthRuntimeTypes.make_result(runtime_status)
 		blocked_result["backend_id"] = String(ready_state.get("backend_id", "unknown"))
 		blocked_result["family_id"] = String(ready_state.get("family_id", "unknown"))
@@ -114,8 +117,8 @@ func infer_relative_depth(frame_payload: Dictionary, sample_request: Dictionary)
 		}
 		return blocked_result
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_INFERENCE
-	var result: Dictionary = _adapter.infer(frame_payload, sample_request)
-	_merge_adapter_debug()
+	var result: Dictionary = _shared_runtime_pool.infer(_active_runtime_key, frame_payload, sample_request)
+	_merge_shared_runtime_debug(_shared_runtime_pool.get_runtime_debug(_active_runtime_key), false)
 	var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
 	var timing_ms: Dictionary = result.get("timing_ms", {}) if result.get("timing_ms", {}) is Dictionary else {}
 	_debug_state["last_sample_metrics"] = sample_metrics.duplicate(true)
@@ -136,6 +139,8 @@ func infer_relative_depth(frame_payload: Dictionary, sample_request: Dictionary)
 	return result
 
 func get_debug_state() -> Dictionary:
+	if not _active_runtime_key.is_empty():
+		_merge_shared_runtime_debug(_shared_runtime_pool.get_runtime_debug(_active_runtime_key), true)
 	return _debug_state.duplicate(true)
 
 func release_unused_runtime() -> void:
@@ -144,9 +149,7 @@ func release_unused_runtime() -> void:
 	shutdown()
 
 func shutdown() -> void:
-	_release_adapter()
-	_active_runtime_key = ""
-	_active_model_spec = {}
+	_release_shared_runtime()
 	if _family.is_empty():
 		_debug_state = DepthRuntimeTypes.make_debug_state()
 		return
@@ -156,6 +159,14 @@ func shutdown() -> void:
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_IDLE
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_DISABLED if not bool(_family_depth_config.get("enabled", false)) else DepthRuntimeTypes.STATUS_UNLOADED
 	_debug_state["active_model_summary"] = "disabled in config" if not bool(_family_depth_config.get("enabled", false)) else "depth runtime unloaded"
+	_debug_state["worker_alive"] = false
+	_debug_state["worker_pid"] = 0
+	_debug_state["worker_generation"] = 0
+	_debug_state["worker_restart_count"] = 0
+	_debug_state["worker_uptime_ms"] = 0.0
+	_debug_state["worker_port"] = 0
+	_debug_state["model_loaded"] = false
+	_debug_state["model_runtime_key"] = ""
 
 func _resolve_model_spec() -> Dictionary:
 	var model_document: Dictionary = _family_depth_config.get("model", {}) if _family_depth_config.get("model", {}) is Dictionary else {}
@@ -214,15 +225,6 @@ func _directory_has_openvino_pair(path: String) -> bool:
 			has_bin = true
 	return has_xml and has_bin
 
-func _create_adapter_for_backend(backend_id: String) -> RefCounted:
-	match backend_id:
-		"openvino":
-			return OpenvinoDepthAdapterScript.new()
-		"onnx":
-			return OnnxDepthAdapterScript.new()
-		_:
-			return null
-
 func _apply_model_spec_to_debug(model_spec: Dictionary) -> void:
 	_debug_state["configured"] = true
 	_debug_state["family"] = _family
@@ -234,20 +236,32 @@ func _apply_model_spec_to_debug(model_spec: Dictionary) -> void:
 	_debug_state["family_id"] = String(model_spec.get("family_id", "unknown"))
 	_debug_state["backend_id"] = String(model_spec.get("backend_id", "unknown"))
 	_debug_state["runtime_key"] = String(model_spec.get("runtime_key", ""))
+	_debug_state["shared_runtime_key"] = String(model_spec.get("runtime_key", ""))
 
-func _merge_adapter_debug() -> void:
-	if _adapter == null:
-		return
-	var adapter_debug: Dictionary = _adapter.get_debug_state()
-	for key in adapter_debug.keys():
-		_debug_state[key] = adapter_debug[key]
+func _merge_shared_runtime_debug(shared_debug: Dictionary, preserve_last_observation: bool) -> void:
+	var previous_last_sample_metrics: Dictionary = (_debug_state.get("last_sample_metrics", {}) as Dictionary).duplicate(true)
+	var previous_last_timing_ms: Dictionary = (_debug_state.get("last_timing_ms", {}) as Dictionary).duplicate(true)
+	for key in shared_debug.keys():
+		_debug_state[key] = shared_debug[key]
+	_debug_state["family"] = _family
+	_debug_state["depth_enabled"] = bool(_family_depth_config.get("enabled", false))
+	if preserve_last_observation:
+		_debug_state["last_sample_metrics"] = previous_last_sample_metrics
+		_debug_state["last_timing_ms"] = previous_last_timing_ms
 
-func _release_adapter() -> void:
-	if _adapter == null:
+func _release_shared_runtime(claim_family: String = "") -> void:
+	if _active_runtime_key.is_empty():
 		return
-	_adapter.unload()
-	_merge_adapter_debug()
-	_adapter = null
+	var family_claim := claim_family if not claim_family.is_empty() else _family
+	var release_debug: Dictionary = _shared_runtime_pool.release(family_claim, _active_runtime_key)
+	_merge_shared_runtime_debug(release_debug, false)
+	_debug_state["shared_runtime_key"] = ""
+	_debug_state["shared_runtime_refcount"] = 0
+	_debug_state["shared_runtime_family_claims"] = []
+	_debug_state["shared_runtime_claimed"] = false
+	_debug_state["shared_runtime_shared"] = false
+	_active_runtime_key = ""
+	_active_model_spec = {}
 
 func _extract_precomputed_result(frame_payload: Dictionary, sample_request: Dictionary, fallback_status: String) -> Dictionary:
 	var family := String(sample_request.get("family", _family))

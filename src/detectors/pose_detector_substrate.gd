@@ -4,6 +4,7 @@ extends RefCounted
 const PrototypePunchMatcher = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/prototype_punch_matcher.gd")
 const LearnedPunchClassifierScript = preload("res://addons/aerobeat-input-camera-tracking/src/detectors/learned_punch_classifier.gd")
 const DepthRuntimeManagerScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_runtime_manager.gd")
+const DepthSharedRuntimePoolScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_shared_runtime_pool.gd")
 const BACKEND_DISABLED := "disabled"
 const BACKEND_THRESHOLD := "threshold"
 const BACKEND_PROTOTYPE := "prototype"
@@ -122,6 +123,7 @@ var _reacquire_frames_remaining := 0
 var _last_processed_timestamp_ms := 0
 var _frame_index := 0
 var _depth_runtime_managers := {}
+var _depth_shared_runtime_pool: RefCounted = DepthSharedRuntimePoolScript.new()
 
 func _init() -> void:
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())
@@ -2324,6 +2326,8 @@ func _configure_depth_runtime_managers() -> void:
 		if manager == null:
 			manager = DepthRuntimeManagerScript.new()
 			_depth_runtime_managers[family] = manager
+		if manager.has_method("set_shared_runtime_pool"):
+			manager.set_shared_runtime_pool(_depth_shared_runtime_pool)
 		var family_depth_config := _get_family_depth_config(family)
 		manager.configure_from_family(family, family_depth_config)
 		manager.ensure_runtime_ready()
@@ -2337,6 +2341,8 @@ func _get_depth_runtime_manager(family: String):
 	if manager == null:
 		manager = DepthRuntimeManagerScript.new()
 		_depth_runtime_managers[family] = manager
+		if manager.has_method("set_shared_runtime_pool"):
+			manager.set_shared_runtime_pool(_depth_shared_runtime_pool)
 		manager.configure_from_family(family, _get_family_depth_config(family))
 	return manager
 

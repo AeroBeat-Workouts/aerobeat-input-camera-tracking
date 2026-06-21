@@ -2,6 +2,7 @@ extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const DepthRuntimeManagerScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_runtime_manager.gd")
 const DepthRuntimeTypes = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_runtime_types.gd")
+const DepthSharedRuntimePoolScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_shared_runtime_pool.gd")
 
 func test_onnx_depth_runtime_executes_real_preview_inference() -> void:
 	var manager = DepthRuntimeManagerScript.new()
@@ -108,6 +109,72 @@ func test_shutdown_clears_worker_and_model_debug_truth() -> void:
 	assert_eq(int(debug_state.get("worker_pid", 0)), 0)
 	assert_false(bool(debug_state.get("model_loaded", false)))
 	assert_eq(String(debug_state.get("model_runtime_key", "")), "")
+
+func test_same_runtime_key_shares_one_live_worker_across_families() -> void:
+	var shared_pool = DepthSharedRuntimePoolScript.new()
+	var straight_manager = _make_shared_manager(shared_pool, "straight_punch", "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx")
+	var hook_manager = _make_shared_manager(shared_pool, "hook", "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx")
+	var straight_ready: Dictionary = straight_manager.ensure_runtime_ready()
+	var hook_ready: Dictionary = hook_manager.ensure_runtime_ready()
+	var straight_live: Dictionary = straight_manager.get_debug_state()
+	var hook_live: Dictionary = hook_manager.get_debug_state()
+	assert_eq(String(straight_ready.get("runtime_status", "")), DepthRuntimeTypes.STATUS_READY)
+	assert_eq(String(hook_ready.get("runtime_status", "")), DepthRuntimeTypes.STATUS_READY)
+	assert_true(int(straight_live.get("worker_pid", 0)) > 0)
+	assert_eq(int(straight_live.get("worker_pid", 0)), int(hook_live.get("worker_pid", 0)))
+	assert_eq(int(straight_live.get("shared_runtime_refcount", 0)), 2)
+	assert_eq(int(hook_live.get("shared_runtime_refcount", 0)), 2)
+	assert_eq(String(straight_live.get("family", "")), "straight_punch")
+	assert_eq(String(hook_live.get("family", "")), "hook")
+	assert_eq(String(straight_live.get("shared_runtime_key", "")), String(hook_live.get("shared_runtime_key", "")))
+	assert_true((straight_live.get("shared_runtime_family_claims", []) as Array).has("straight_punch"))
+	assert_true((straight_live.get("shared_runtime_family_claims", []) as Array).has("hook"))
+	assert_true(bool(straight_live.get("shared_runtime_shared", false)))
+	assert_true(bool(hook_live.get("shared_runtime_shared", false)))
+
+func test_different_runtime_keys_do_not_share_workers() -> void:
+	var shared_pool = DepthSharedRuntimePoolScript.new()
+	var straight_manager = _make_shared_manager(shared_pool, "straight_punch", "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx")
+	var uppercut_manager = _make_shared_manager(shared_pool, "uppercut", "res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/")
+	var straight_ready: Dictionary = straight_manager.ensure_runtime_ready()
+	var uppercut_ready: Dictionary = uppercut_manager.ensure_runtime_ready()
+	assert_eq(String(straight_ready.get("runtime_status", "")), DepthRuntimeTypes.STATUS_READY)
+	assert_eq(String(uppercut_ready.get("runtime_status", "")), DepthRuntimeTypes.STATUS_READY)
+	assert_true(int(straight_ready.get("worker_pid", 0)) > 0)
+	assert_true(int(uppercut_ready.get("worker_pid", 0)) > 0)
+	assert_ne(int(straight_ready.get("worker_pid", 0)), int(uppercut_ready.get("worker_pid", 0)))
+	assert_ne(String(straight_ready.get("shared_runtime_key", "")), String(uppercut_ready.get("shared_runtime_key", "")))
+
+func test_release_keeps_shared_worker_alive_until_last_family_shutdown() -> void:
+	var shared_pool = DepthSharedRuntimePoolScript.new()
+	var straight_manager = _make_shared_manager(shared_pool, "straight_punch", "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx")
+	var hook_manager = _make_shared_manager(shared_pool, "hook", "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx")
+	var straight_ready: Dictionary = straight_manager.ensure_runtime_ready()
+	var hook_ready: Dictionary = hook_manager.ensure_runtime_ready()
+	var shared_pid := int(straight_ready.get("worker_pid", 0))
+	assert_eq(shared_pid, int(hook_ready.get("worker_pid", 0)))
+	straight_manager.shutdown()
+	var straight_after_shutdown: Dictionary = straight_manager.get_debug_state()
+	var hook_after_peer_shutdown: Dictionary = hook_manager.ensure_runtime_ready()
+	assert_false(bool(straight_after_shutdown.get("worker_alive", false)))
+	assert_eq(int(straight_after_shutdown.get("shared_runtime_refcount", 0)), 0)
+	assert_true(bool(hook_after_peer_shutdown.get("worker_alive", false)))
+	assert_eq(int(hook_after_peer_shutdown.get("worker_pid", 0)), shared_pid)
+	assert_eq(int(hook_after_peer_shutdown.get("shared_runtime_refcount", 0)), 1)
+	assert_false(bool(hook_after_peer_shutdown.get("shared_runtime_shared", false)))
+	assert_true((hook_after_peer_shutdown.get("shared_runtime_family_claims", []) as Array).has("hook"))
+	assert_false((hook_after_peer_shutdown.get("shared_runtime_family_claims", []) as Array).has("straight_punch"))
+
+func _make_shared_manager(shared_pool: RefCounted, family: String, artifact_path: String):
+	var manager = DepthRuntimeManagerScript.new()
+	manager.set_shared_runtime_pool(shared_pool)
+	manager.configure_from_family(family, {
+		"enabled": true,
+		"model": {
+			"artifact_path": artifact_path,
+		}
+	})
+	return manager
 
 func _preview_frame_payload() -> Dictionary:
 	return {
