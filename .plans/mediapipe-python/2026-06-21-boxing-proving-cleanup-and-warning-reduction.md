@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-21  
 **Status:** In Progress  
-**Last Updated:** 2026-06-21 09:36 EDT  
-**Blocked Reason:** The narrow repo-local cleanup seam is done, but Derrick explicitly widened the completion bar: remaining cleanup items still include the mounted addon UID warning source and the non-viable full-file proving-harness rerun path, so the plan stays open until those are resolved or truthfully eliminated.  
+**Last Updated:** 2026-06-21 12:28 EDT  
+**Blocked Reason:** None — remaining cleanup ownership is now diagnosed, Derrick explicitly approved execution, and Task 6 implementation is the active next seam: first fix the proving/runtime re-entrant full-file rerun blocker in `aerobeat-input-camera-tracking`, then clean the mounted addon UID warning source in `aerobeat-vendor-godot-unit-test`, then re-run full-file + targeted validation.  
 **Agent:** `pico`
 
 ---
@@ -175,9 +175,9 @@ This cleanup plan will treat three seams separately so we do not blur signal: (1
 **Files Created/Deleted/Modified:**
 - proving/runtime/addon/project metadata files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Landed the real cross-repo implementation fix and validation evidence this retry required. Root cause fixed first: the proving-harness debug repaint path was reading playback/transport state through `CameraTrackingPreviewPresenter`, which in turn called `CameraTracking.get_playback_status()` / replay transport getters; those getters force `_refresh_from_backend_if_running(false)`, which polls the backend again while `preview_changed` / `pose_updated` are already being handled. That re-entered the proving runtime loop (`boxing_proving_harness._refresh_debug_panels()` → presenter snapshot reads → `CameraTracking` refresh → vendor backend `preview_changed` → `camera_tracking_provider._poll_tracking_session_frame(true)` → `pose_updated` → `_refresh_debug_panels()`), ballooned Godot logs, and made the full-file rerun non-viable. The narrow architecture-safe fix landed in the owning mounted tool repo: `aerobeat-tool-camera-tracking/src/CameraTracking.gd` now exposes passive snapshot getters (`get_playback_status_snapshot()`, `get_replay_transport_capabilities_snapshot()`, `get_replay_transport_status_snapshot()`), and `src/CameraTrackingPreviewPresenter.gd` now prefers those passive getters before falling back to the older refresh-driving public getters. Regression coverage was added in `aerobeat-tool-camera-tracking/.testbed/tests/test_CameraTracking.gd` to prove presenter snapshot reads no longer force runtime refresh calls. After that fix, local runaway Godot logs under `~/.local/share/godot/app_userdata/AeroBeat Camera Tracking Testbed/logs/` were cleaned (the directory had ballooned into hundreds of GB from prior recursive runs), and the previously blocked full proving-harness file finally completed cleanly from the main repo: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` finished `39/39 passed`, `364` asserts, `366.695s`, with the log captured at `.testbed/test-results/task6-final-retry-20260621/full_proving_file.log`. Only after that succeeded, the mounted addon UID cleanup was landed in the owning sibling repo `aerobeat-vendor-godot-unit-test` by realigning stale ext-resource UIDs in `GutScene.tscn`, `gui/NormalGui.tscn`, `gui/MinGui.tscn`, `gui/ResizeHandle.tscn`, `gui/RunExternally.tscn`, and `gui/GutRunner.tscn` to their current `.gd.uid` sidecars. Mounted-addon revalidation from the main repo then passed via `test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls`, and `rg` confirmed no `invalid UID` / `using text path instead` warnings in `.testbed/test-results/task6-final-retry-20260621/mounted-addon-post-uid-fix.log`. Remaining warnings after the fix are truthful runtime noise rather than this blocker: repeated MediaPipe/TFLite startup warnings (`inference_feedback_manager`, `landmark_projection_calculator`), plus the existing proving warning `Replay start requested without a source path` on the tests that intentionally drive replay start without a configured path. Those warnings did not prevent the full-file rerun from completing.
 
 ### Task 7: QA remaining cross-repo cleanup fixes
 
