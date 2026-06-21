@@ -163,7 +163,23 @@ func infer(frame_payload: Dictionary, request: Dictionary) -> Dictionary:
 func get_debug_state() -> Dictionary:
 	return _debug_state.duplicate(true)
 
-func shutdown() -> void:
+func unload_runtime() -> void:
+	if _worker_port <= 0:
+		return
+	var response := _send_worker_request({"operation": "unload"}, false)
+	if bool(response.get("ok", false)):
+		_sync_debug_from_response(response)
+		_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_UNLOADED
+		_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_IDLE
+		_debug_state["failure_code"] = ""
+		_debug_state["failure_message"] = ""
+		_debug_state["active_model_summary"] = "depth runtime unloaded"
+		return
+	_worker_last_error = String(response.get("failure_message", "Depth runtime worker unload failed."))
+	_debug_state["last_worker_error"] = _worker_last_error
+	terminate_worker()
+
+func terminate_worker() -> void:
 	if _worker_port > 0:
 		var response := _send_worker_request({"operation": "shutdown"}, false)
 		if not bool(response.get("ok", false)):
@@ -323,7 +339,7 @@ func _restart_worker(code: String, message: String) -> void:
 	_worker_last_error = "%s: %s" % [code, message]
 	_debug_state["last_worker_error"] = _worker_last_error
 	_debug_state["worker_restart_count"] = _worker_restart_count
-	shutdown()
+	terminate_worker()
 
 func _worker_transport_failure(code: String, message: String, stage: String) -> Dictionary:
 	_worker_last_error = message

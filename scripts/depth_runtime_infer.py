@@ -310,6 +310,17 @@ class WorkerState:
                 "active_model_summary": "persistent depth worker ready",
             }, model_loaded=self.active_session is not None, session_warm=self.active_session is not None, request_id=self.last_request_id)
 
+        if operation == "unload":
+            had_session = self.active_session is not None
+            self.active_session = None
+            self.active_runtime_key = ""
+            return self._decorate({
+                "ok": True,
+                "status": "unloaded",
+                "runtime_stage": "idle",
+                "active_model_summary": "persistent depth worker unloaded",
+            }, model_loaded=False, session_warm=False if had_session else None, request_id=self.last_request_id)
+
         if operation == "shutdown":
             return self._decorate({
                 "ok": True,
@@ -541,5 +552,23 @@ def main() -> int:
     return 0 if response.get("ok", False) else 1
 
 
+def _arm_parent_death_signal() -> None:
+    if not sys.platform.startswith("linux"):
+        return
+    try:
+        import ctypes
+        import signal
+
+        libc = ctypes.CDLL(None)
+        prctl = libc.prctl
+        prctl.argtypes = [ctypes.c_int, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong, ctypes.c_ulong]
+        prctl.restype = ctypes.c_int
+        PR_SET_PDEATHSIG = 1
+        prctl(PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
+    except Exception:
+        pass
+
+
 if __name__ == "__main__":
+    _arm_parent_death_signal()
     raise SystemExit(main())

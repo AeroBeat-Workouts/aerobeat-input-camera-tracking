@@ -19,6 +19,8 @@ func acquire(family: String, model_spec: Dictionary) -> Dictionary:
 	var entry: Dictionary = _entries.get(runtime_key, {}) if _entries.get(runtime_key, {}) is Dictionary else {}
 	if entry.is_empty():
 		entry = _create_entry(model_spec)
+	else:
+		entry = _ensure_entry_ready(entry)
 	_claim_family(entry, family)
 	_store_entry(runtime_key, entry)
 	var debug_state: Dictionary = _entry_debug(entry)
@@ -59,12 +61,12 @@ func release(family: String, runtime_key: String) -> Dictionary:
 		if adapter != null and adapter.has_method("unload"):
 			adapter.unload()
 			entry["last_debug_state"] = adapter.get_debug_state()
+		_store_entry(runtime_key, entry)
 		var release_debug := _entry_debug(entry)
 		release_debug["shared_runtime_refcount"] = 0
 		release_debug["shared_runtime_family_claims"] = []
 		release_debug["shared_runtime_claimed"] = false
 		release_debug["shared_runtime_shared"] = false
-		_entries.erase(runtime_key)
 		return release_debug
 	_store_entry(runtime_key, entry)
 	return _entry_debug(entry)
@@ -116,6 +118,22 @@ func _create_adapter_for_backend(backend_id: String) -> RefCounted:
 			return OnnxDepthAdapterScript.new()
 		_:
 			return null
+
+func _ensure_entry_ready(entry: Dictionary) -> Dictionary:
+	var adapter: Variant = entry.get("adapter", null)
+	if adapter == null:
+		return _create_entry(entry.get("model_spec", {}) if entry.get("model_spec", {}) is Dictionary else {})
+	var ensure_result := {
+		"ok": false,
+		"status": DepthRuntimeTypes.STATUS_FAILED,
+		"failure_code": "adapter_unimplemented",
+		"failure_message": "Depth adapter cannot be reloaded.",
+	}
+	if adapter.has_method("ensure_ready"):
+		ensure_result = adapter.ensure_ready()
+	entry["last_load_result"] = ensure_result.duplicate(true)
+	entry["last_debug_state"] = adapter.get_debug_state()
+	return entry
 
 func _claim_family(entry: Dictionary, family: String) -> void:
 	var claims: Dictionary = entry.get("family_claims", {}) if entry.get("family_claims", {}) is Dictionary else {}

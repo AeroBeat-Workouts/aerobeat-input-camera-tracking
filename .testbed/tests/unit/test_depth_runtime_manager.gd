@@ -165,6 +165,20 @@ func test_release_keeps_shared_worker_alive_until_last_family_shutdown() -> void
 	assert_true((hook_after_peer_shutdown.get("shared_runtime_family_claims", []) as Array).has("hook"))
 	assert_false((hook_after_peer_shutdown.get("shared_runtime_family_claims", []) as Array).has("straight_punch"))
 
+func test_final_release_reacquires_same_cached_runtime_key_without_new_worker() -> void:
+	var shared_pool = DepthSharedRuntimePoolScript.new()
+	var straight_manager = _make_shared_manager(shared_pool, "straight_punch", "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx")
+	var initial_ready: Dictionary = straight_manager.ensure_runtime_ready()
+	var initial_pid := int(initial_ready.get("worker_pid", 0))
+	assert_true(initial_pid > 0)
+	straight_manager.shutdown()
+	var reacquired_manager = _make_shared_manager(shared_pool, "hook", "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx")
+	var reacquired_ready: Dictionary = reacquired_manager.ensure_runtime_ready()
+	assert_eq(String(reacquired_ready.get("runtime_status", "")), DepthRuntimeTypes.STATUS_READY)
+	assert_eq(int(reacquired_ready.get("worker_pid", 0)), initial_pid)
+	assert_true(int(reacquired_ready.get("model_load_count", 0)) >= 2)
+	assert_eq(int(reacquired_ready.get("model_reload_count", 0)), 0)
+
 func _make_shared_manager(shared_pool: RefCounted, family: String, artifact_path: String):
 	var manager = DepthRuntimeManagerScript.new()
 	manager.set_shared_runtime_pool(shared_pool)

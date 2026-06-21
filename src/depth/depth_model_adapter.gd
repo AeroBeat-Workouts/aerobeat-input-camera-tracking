@@ -66,12 +66,18 @@ func infer_via_python_runtime(frame_payload: Dictionary, request: Dictionary) ->
 func get_debug_state() -> Dictionary:
 	return _debug_state.duplicate(true)
 
-func unload() -> void:
-	_model_spec = {}
-	if _runtime_bridge != null and _runtime_bridge.has_method("shutdown"):
-		_runtime_bridge.shutdown()
+func ensure_ready() -> Dictionary:
+	if _runtime_bridge != null and _runtime_bridge.has_method("probe_runtime"):
+		var probe_result: Dictionary = _runtime_bridge.probe_runtime()
 		_debug_state = _runtime_bridge.get_debug_state()
-	_runtime_bridge = null
+		return probe_result
+	return self.load(_model_spec)
+
+func unload() -> void:
+	_model_spec = _model_spec.duplicate(true)
+	if _runtime_bridge != null and _runtime_bridge.has_method("unload_runtime"):
+		_runtime_bridge.unload_runtime()
+		_debug_state = _runtime_bridge.get_debug_state()
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_UNLOADED
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_IDLE
 	_debug_state["active_model_summary"] = "depth runtime unloaded"
