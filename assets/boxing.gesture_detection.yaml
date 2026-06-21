@@ -73,7 +73,10 @@ straight_punch:
       min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
     depth:
       # Turn straight-punch depth trend checks on or off inside the threshold runtime. input.
-      enabled: false
+      enabled: true
+      model:
+        # Repo-owned pretrained monocular depth artifact to load when depth is enabled for this family. input.
+        artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
       evaluation:
         # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
         model_input_size: 256
@@ -90,9 +93,9 @@ straight_punch:
         # Use this much of the window from the back as the late depth comparison slice. input -> tool.
         late_window_fraction: 0.35
       thresholds:
-        # Straight punches must grow wrist closeness by at least this amount so the strike shows meaningful forward travel in depth. input.
+        # Straight punches must grow wrist closeness by at least this amount so the strike shows meaningful forward travel in depth. `wrist closeness = torso_depth - wrist_depth` after sign normalization, so larger means the wrist is closer to camera than the torso reference. input.
         min_closeness_delta: 0.06
-        # Straight punches must reach at least this wrist closeness peak so shallow lateral motion does not pass as forward. input.
+        # Straight punches must reach at least this wrist closeness peak so shallow lateral motion does not pass as forward. `wrist closeness = torso_depth - wrist_depth` after sign normalization, so larger means the wrist is closer to camera than the torso reference. input.
         min_peak_closeness: 0.04
       debug:
         # Show the live wrist depth, torso depth, and closeness values in proving/debug views. input presentation.
@@ -154,7 +157,7 @@ straight_punch:
 
 hook:
   # [disabled, threshold, prototype, classifier] Pick which backend owns hook routing. `threshold` is the current shipped default; `prototype` and `classifier` are real punch-family runtime surfaces when selected. input.
-  backend: disabled
+  backend: threshold
   threshold:
     # Hooks use the current pose-primary hook runtime when `backend: threshold`. input.
     evaluation:
@@ -170,7 +173,10 @@ hook:
       max_wrist_angle_from_elbow_horizontal_deg: 25.0
     depth:
       # Turn hook depth trend checks on or off inside the threshold runtime. input.
-      enabled: false
+      enabled: true
+      model:
+        # Repo-owned pretrained monocular depth artifact to load when depth is enabled for this family. input.
+        artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
       evaluation:
         # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
         model_input_size: 256
@@ -187,9 +193,9 @@ hook:
         # Use this much of the window from the back as the late depth comparison slice. input -> tool.
         late_window_fraction: 0.35
       thresholds:
-        # Hooks must keep wrist closeness growth at or below this value so strong forward straights do not pass as hooks. input.
+        # Hooks must keep wrist closeness growth at or below this value so strong forward straights do not pass as hooks. `wrist closeness = torso_depth - wrist_depth` after sign normalization, so larger means the wrist is closer to camera than the torso reference. input.
         max_closeness_delta: 0.03
-        # Hooks must keep peak wrist closeness at or below this value so they remain mostly lateral in depth. input.
+        # Hooks must keep peak wrist closeness at or below this value so they remain mostly lateral in depth. `wrist closeness = torso_depth - wrist_depth` after sign normalization, so larger means the wrist is closer to camera than the torso reference. input.
         max_peak_closeness: 0.06
       debug:
         # Show the live wrist depth, torso depth, and closeness values in proving/debug views. input presentation.
@@ -249,7 +255,7 @@ hook:
 
 uppercut:
   # [disabled, threshold, prototype, classifier] Pick which backend owns uppercut routing. `threshold` is the current shipped default; `prototype` and `classifier` are real punch-family runtime surfaces when selected. input.
-  backend: disabled
+  backend: threshold
   threshold:
     # Uppercuts use the current pose-primary uppercut runtime when `backend: threshold`. input.
     evaluation:
@@ -265,7 +271,10 @@ uppercut:
       max_wrist_angle_from_elbow_vertical_deg: 25.0
     depth:
       # Turn uppercut depth trend checks on or off inside the threshold runtime. input.
-      enabled: false
+      enabled: true
+      model:
+        # Repo-owned pretrained monocular depth artifact to load when depth is enabled for this family. input.
+        artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
       evaluation:
         # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
         model_input_size: 256
@@ -282,9 +291,9 @@ uppercut:
         # Use this much of the window from the back as the late depth comparison slice. input -> tool.
         late_window_fraction: 0.35
       thresholds:
-        # Uppercuts must keep wrist closeness growth at or below this value so strong forward straights do not pass as uppercuts. input.
+        # Uppercuts must keep wrist closeness growth at or below this value so strong forward straights do not pass as uppercuts. `wrist closeness = torso_depth - wrist_depth` after sign normalization, so larger means the wrist is closer to camera than the torso reference. input.
         max_closeness_delta: 0.03
-        # Uppercuts must keep peak wrist closeness at or below this value so they remain mostly vertical in camera space rather than strongly forward in depth. input.
+        # Uppercuts must keep peak wrist closeness at or below this value so they remain mostly vertical in camera space rather than strongly forward in depth. `wrist closeness = torso_depth - wrist_depth` after sign normalization, so larger means the wrist is closer to camera than the torso reference. input.
         max_peak_closeness: 0.06
       debug:
         # Show the live wrist depth, torso depth, and closeness values in proving/debug views. input presentation.

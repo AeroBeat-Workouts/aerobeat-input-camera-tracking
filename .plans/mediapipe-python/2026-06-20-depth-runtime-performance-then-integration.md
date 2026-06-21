@@ -1,9 +1,9 @@
 # AeroBeat depth runtime performance then integration
 
 **Date:** 2026-06-20  
-**Status:** Blocked  
-**Last Updated:** 2026-06-21 08:06 EDT  
-**Blocked Reason:** Task 7 audit failed: boxing config/proving contract still does not enable threshold-backed punch-family depth for hook + uppercut, and straight-punch depth also remains disabled in the shipped boxing profile.  
+**Status:** In Progress  
+**Last Updated:** 2026-06-21 08:10 EDT  
+**Blocked Reason:** None — Task 7 exposed a real config/profile blocker, and follow-up Tasks 8-10 now materialize the approved next seam to enable threshold-backed punch-family depth in the shipped boxing profile and re-verify playtest readiness.  
 **Agent:** `pico`
 
 ---
@@ -35,6 +35,8 @@ The current code makes the bottleneck very clear. `DepthRuntimeManager` already 
 | `REF-05` | Boxing detector runtime consumer | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd` |
 | `REF-06` | Proving/debug surface | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd` |
 | `REF-07` | Vendor Python runtime dependency set | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-mediapipe-python/runtime/requirements.txt` |
+| `REF-08` | Shipped boxing gesture profile contract | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml` |
+| `REF-09` | Boxing profile/config truth test | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_camera_tracking_config_profiles.gd` |
 
 ---
 
@@ -807,11 +809,80 @@ Direct config audit of `assets/boxing.gesture_detection.yaml` explains the failu
 
 Net audit result: fail / blocked for Task 7 scope. The deeper provider/runtime integration is real and the shared seam architecture remains clean, but the boxing profile has not yet been advanced to threshold-backed punch-family depth across the proving-scene-related seams. Precise blocking gap: update the boxing profile/runtime contract so hook + uppercut actually load as `backend: threshold` and enable their family depth blocks (and, if intended, enable straight-punch depth too), then re-run the config-profile + proving/runtime audit. Until that lands, this plan is not ready to call playtest-ready.
 
+### Task 8: Enable shipped boxing punch-family threshold depth profile
+
+**Bead ID:** `aerobeat-input-camera-tracking-qe1u`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-05`, `REF-06`, `REF-08`, `REF-09`  
+**Prompt:** Update the shipped boxing gesture profile/runtime contract so boxing punch families are actually configured for threshold-backed depth where the proving/runtime contract now expects it. At minimum, move `hook` and `uppercut` onto `backend: threshold` and enable their `threshold.depth` blocks; also resolve whether `straight_punch.threshold.depth.enabled` should now be true for playtest-ready depth-backed boxing. Keep the architecture seam clean, update or add truthful tests, run the strongest repo-local validation for this slice, update the active plan with actual results, and commit/push repo changes by default.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- proving/runtime tests as needed for truthful contract coverage
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
+
+**Status:** ✅ Complete
+
+**Results:** Updated the shipped boxing profile contract in `REF-08` so the threshold-backed punch families now agree with the runtime/proving expectations instead of shipping contradictory half-enabled depth state. Chosen contract: `straight_punch`, `hook`, and `uppercut` all ship on `backend: threshold`, and all three families now set `threshold.depth.enabled: true` so the threshold runtime truthfully owns punch-family depth gating for playtest-ready boxing. No provider/backend seam changes were needed; this was a config + contract-truth fix, with tests updated to assert the shipped truth instead of the old disabled state.
+
+Strengthened repo-local coverage in `REF-09` by asserting all three families load with threshold depth enabled, and updated the proving-harness inspector truth test so hook/uppercut now report `enabled in selected gesture YAML` when no runtime debug payload overrides the config truth. Targeted validation on this machine passed:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_punch_family_inspectors_surface_live_depth_loader_truth_and_metrics -gexit`
+
+A broader combined proving-harness sweep was intentionally not used as final evidence for this slice after it re-entered the known scene-backed proving loop / deep callback stack unrelated to the contract assertions under test; the focused inspector/config coverage above exercised the exact changed seam cleanly.
+
+### Task 9: QA shipped boxing punch-family threshold depth profile
+
+**Bead ID:** `aerobeat-input-camera-tracking-hxu4`  
+**SubAgent:** `primary`  
+**Role:** `qa`  
+**References:** `REF-05`, `REF-06`, `REF-08`, `REF-09`  
+**Prompt:** Independently verify that the shipped boxing profile now actually enables threshold-backed depth for the intended punch families, that the proving/runtime/config surfaces tell the truth about that enablement, and that blocked/model-swap/runtime behavior did not regress. Run the strongest targeted validation available on this machine, update the active plan with actual QA findings, and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- config / proving / runtime / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 10: Audit shipped boxing punch-family threshold depth profile
+
+**Bead ID:** `aerobeat-input-camera-tracking-t9jq`  
+**SubAgent:** `primary`  
+**Role:** `auditor`  
+**References:** `REF-05`, `REF-06`, `REF-08`, `REF-09`  
+**Prompt:** Independently audit that threshold-backed depth is genuinely enabled in the shipped boxing profile for the intended punch families, that proving/runtime/config surfaces remain honest, and that the boxing proving-scene-related seams are ready to call playtest-ready only if the configuration and tests now actually support that claim. Update the active plan with actual audit findings, close the bead if it passes, or record the precise remaining blocker if it fails.
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- config / proving / runtime / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
 ---
 
 ## Final Results
 
-**Status:** ❌ Blocked
+**Status:** ⚠️ Partial
 
 **What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA first found a shutdown-state truth gap, Task 3.5 fixed it inside the runtime bridge/manager debug seam, and Task 3.6 then re-verified truthful shutdown, clean worker exit, swap behavior, and the previously claimed FastDepth steady-state performance win. Task 3.9 then added runtime-key pooling across punch families, Task 3.10 QA verified that pooling while exposing the final-release zombie-child seam, Task 3.11 audit confirmed the blocker, Task 3.12 fixed that seam by retaining pooled bridge workers and unloading model state instead of letting the Godot-owned child exit, Task 3.13 QA re-verified same-key pooling / no live-session zombies / truthful released-manager debug state, and Task 3.14 audit independently confirmed those same claims with fresh unit, runtime, and host-process checks. Task 4.1 also clears stale blocked-infer `failure_code` / `failure_message` residue during shutdown/release so unloaded/idle runtime truth no longer overstates an old failure, Task 4.2 QA independently verified that residue fix while also reconfirming pooling, shutdown truth, and warm-path performance, and Task 4.3 audit independently confirmed that exact blocked-infer → shutdown/release sequence with a fresh pooled repro. Task 5 then made the provider seam carry live/replay preview image paths into downstream depth consumers, and Task 6 QA verified that integration. Task 7 audit, however, found the plan is still blocked before playtest-ready: the live/shared seam work is real, but the shipped boxing profile still leaves `straight_punch.threshold.depth.enabled = false`, `hook.backend = disabled`, `hook.threshold.depth.enabled = false`, `uppercut.backend = disabled`, and `uppercut.threshold.depth.enabled = false`, so threshold-backed punch-family depth is not yet actually enabled across the boxing proving/runtime contract.
 
