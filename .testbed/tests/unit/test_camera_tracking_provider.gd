@@ -4,19 +4,27 @@ const CameraTrackingProviderScript = preload("res://addons/aerobeat-input-camera
 const CameraTrackingScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTracking.gd")
 const CameraTrackingFakeBackendScript = preload("res://addons/aerobeat-tool-camera-tracking/src/CameraTrackingFakeBackend.gd")
 
+const LEFT_PREVIEW_IMAGE_PATH := "res://addons/aerobeat-input-camera-tracking/.testbed/test-results/qa-fixture-captures/2026-06-03-task-aby/left-gui/proving.png"
+const RIGHT_PREVIEW_IMAGE_PATH := "res://addons/aerobeat-input-camera-tracking/.testbed/test-results/qa-fixture-captures/2026-06-03-task-aby/right-gui/proving.png"
+
 class PollOnlyTrackingSession:
 	extends Node
 
 	signal tracking_updated(frame: Dictionary)
 	signal state_changed(state: String, detail: Dictionary)
+	signal preview_changed(descriptor: Dictionary)
 
 	var frame: Dictionary = {}
+	var preview_descriptor: Dictionary = {}
 
 	func get_tracking_frame() -> Dictionary:
 		return frame.duplicate(true)
 
 	func get_active_config() -> Dictionary:
 		return {"source": {"kind": "video_file", "path": "res://fixtures/replay/test.mp4"}}
+
+	func get_preview_descriptor() -> Dictionary:
+		return preview_descriptor.duplicate(true)
 
 class CapturingTrackingSession:
 	extends Node
@@ -112,6 +120,81 @@ func test_camera_tracking_provider_consumes_normalized_tracking_frames() -> void
 	assert_true(is_equal_approx(float((emitted_left_hand[0] as Dictionary).get("x", 0.0)), 0.64))
 	assert_true(is_equal_approx(float((emitted_left_hand[0] as Dictionary).get("y", 0.0)), 0.48), "Provider pose_updated overlays should stay in preview-space so skeletons and click targets match the presenter")
 	assert_true(is_equal_approx(left_hand.y, 0.52), "Gameplay-facing hand getters should still expose bottom-left normalized y for detector/math consumers")
+
+func test_camera_tracking_provider_live_frame_merges_preview_descriptor_for_real_depth_runtime() -> void:
+	var tracker = add_child_autoqfree(CameraTrackingScript.new())
+	var backend = CameraTrackingFakeBackendScript.new()
+	tracker.set_backend(backend)
+	tracker.start({
+		"source": {"kind": "live_camera", "camera_id": "/dev/video7"},
+		"preview": {"flip_horizontal": true},
+	})
+	backend.emit_preview_descriptor({
+		"attached": true,
+		"image_path": ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH),
+		"image_revision": 1,
+	})
+
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.config = provider._ensure_config()
+	provider.config.load_selected_profile_bundle("boxing")
+	_enable_boxing_depth_runtime(provider.config)
+	provider.set_tracking_session(tracker)
+	assert_true(provider.start())
+
+	backend.emit_tracking_frame(_boxing_depth_runtime_frame(100, "/dev/video7"))
+
+	var left_debug := _left_straight_punch_debug(provider.get_detector_state())
+	assert_eq(String(left_debug.get("depth_runtime_status", "")), "ready")
+	assert_eq(String(left_debug.get("depth_signal_source", "")), "fresh_inference")
+	assert_eq(String(left_debug.get("depth_failure_code", "")), "")
+	assert_eq(String((provider._last_tracking_frame.get("preview_descriptor", {}) as Dictionary).get("image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
+
+func test_camera_tracking_provider_replay_polling_merges_preview_descriptor_for_real_depth_runtime() -> void:
+	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
+	tracker.preview_descriptor = {
+		"attached": true,
+		"image_path": ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH),
+		"image_revision": 1,
+	}
+	tracker.frame = _boxing_depth_runtime_frame(100, "res://fixtures/replay/test.mp4")
+
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.config = provider._ensure_config()
+	provider.config.load_selected_profile_bundle("boxing")
+	provider.set_tracking_session(tracker)
+	provider._process(0.016)
+
+	var left_debug := _left_straight_punch_debug(provider.get_detector_state())
+	assert_eq(String(left_debug.get("depth_runtime_status", "")), "ready")
+	assert_eq(String(left_debug.get("depth_signal_source", "")), "fresh_inference")
+	assert_eq(String(left_debug.get("depth_failure_code", "")), "")
+	assert_eq(String((provider._last_tracking_frame.get("preview_descriptor", {}) as Dictionary).get("image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
+
+func test_camera_tracking_provider_preview_change_forces_repoll_even_when_frame_signature_stays_stable() -> void:
+	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
+	tracker.preview_descriptor = {
+		"attached": true,
+		"image_path": ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH),
+		"image_revision": 1,
+	}
+	tracker.frame = _boxing_depth_runtime_frame(100, "res://fixtures/replay/test.mp4")
+
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.config = provider._ensure_config()
+	provider.config.load_selected_profile_bundle("boxing")
+	provider.set_tracking_session(tracker)
+	provider._process(0.016)
+	assert_eq(String((provider._last_tracking_frame.get("preview_descriptor", {}) as Dictionary).get("image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
+
+	tracker.preview_descriptor = {
+		"attached": true,
+		"image_path": ProjectSettings.globalize_path(RIGHT_PREVIEW_IMAGE_PATH),
+		"image_revision": 2,
+	}
+	tracker.preview_changed.emit(tracker.get_preview_descriptor())
+	assert_eq(String((provider._last_tracking_frame.get("preview_descriptor", {}) as Dictionary).get("image_path", "")), ProjectSettings.globalize_path(RIGHT_PREVIEW_IMAGE_PATH))
+	assert_eq(String(provider._last_tracking_frame.get("preview_image_path", "")), ProjectSettings.globalize_path(RIGHT_PREVIEW_IMAGE_PATH))
 
 func test_camera_tracking_provider_attaches_preview_and_can_change_camera_id() -> void:
 	var tracker = add_child_autoqfree(CameraTrackingScript.new())
@@ -371,6 +454,38 @@ func test_camera_tracking_provider_polls_tracking_session_frames_between_signals
 	assert_eq(provider.get_num_poses(), 1)
 	assert_eq(provider.get_all_poses().size(), 1)
 	assert_ne(provider.get_detector_state().get("tracking_state", &""), &"lost")
+
+func _left_straight_punch_debug(detector_state: Dictionary) -> Dictionary:
+	var gesture_debug: Dictionary = detector_state.get("gesture_debug", {}) if detector_state.get("gesture_debug", {}) is Dictionary else {}
+	var straight_punch: Dictionary = gesture_debug.get("straight_punch", {}) if gesture_debug.get("straight_punch", {}) is Dictionary else {}
+	return straight_punch.get("left", {}) if straight_punch.get("left", {}) is Dictionary else {}
+
+func _boxing_depth_runtime_frame(timestamp_ms: int, source_id: String) -> Dictionary:
+	return {
+		"timestamp_ms": timestamp_ms,
+		"frame_index": timestamp_ms,
+		"backend": "fake",
+		"source_kind": "video_file" if source_id.ends_with(".mp4") else "live_camera",
+		"source_id": source_id,
+		"tracking_state": "tracked",
+		"confidence": 0.9,
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": [
+			{"id": 0, "x": 0.50, "y": 0.15, "z": 0.0, "visibility": 0.95},
+			{"id": 11, "x": 0.42, "y": 0.32, "z": 0.0, "visibility": 0.92},
+			{"id": 12, "x": 0.58, "y": 0.32, "z": 0.0, "visibility": 0.92},
+			{"id": 13, "x": 0.36, "y": 0.40, "z": 0.0, "visibility": 0.94},
+			{"id": 14, "x": 0.64, "y": 0.40, "z": 0.0, "visibility": 0.94},
+			{"id": 15, "x": 0.36, "y": 0.48, "z": -0.02, "visibility": 0.94},
+			{"id": 16, "x": 0.64, "y": 0.48, "z": 0.0, "visibility": 0.94},
+			{"id": 23, "x": 0.45, "y": 0.56, "z": 0.0, "visibility": 0.90},
+			{"id": 24, "x": 0.55, "y": 0.56, "z": 0.0, "visibility": 0.90},
+			{"id": 25, "x": 0.45, "y": 0.70, "z": 0.0, "visibility": 0.90},
+			{"id": 26, "x": 0.55, "y": 0.70, "z": 0.0, "visibility": 0.90},
+			{"id": 27, "x": 0.45, "y": 0.84, "z": 0.0, "visibility": 0.90},
+			{"id": 28, "x": 0.55, "y": 0.84, "z": 0.0, "visibility": 0.90},
+		],
+	}
 
 func _normalized_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0) -> Dictionary:
 	var width := 0.10

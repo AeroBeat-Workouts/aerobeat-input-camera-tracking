@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 23:53 EDT  
-**Blocked Reason:** None. Task 4.3 audit now independently verifies the stale blocked-infer shutdown/release truth fix; next planned work is the broader Task 4 performance-seam audit.  
+**Last Updated:** 2026-06-21 00:44 EDT  
+**Blocked Reason:** Waiting for next session QA/audit on Task 5 deeper runtime integration before evaluating completion of the broader plan.  
 **Agent:** `pico`
 
 ---
@@ -734,9 +734,9 @@ Audit conclusion:
 **Files Created/Deleted/Modified:**
 - detector / proving / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ⚠️ Partial
 
-**Results:** Pending.
+**Results:** Task 5 coder work returned with a malformed completion payload, so I inspected the repo state directly instead of trusting the event text. Local uncommitted implementation is present in `src/providers/camera_tracking_provider.gd` and `.testbed/tests/unit/test_camera_tracking_provider.gd`, with the active plan header also updated during execution. The implementation deepens live runtime integration by enriching provider-owned tracking frames with preview descriptors / preview image paths from the tracking session, wiring `preview_changed` into forced re-polls, and adding unit coverage for live-camera, replay-polling, and preview-change paths so real depth runtime consumers downstream can receive preview-backed frame context. This is a coder-only local landing point for the next session: QA and audit were intentionally deferred per Derrick’s instruction, so this task is not yet considered complete.
 
 ---
 

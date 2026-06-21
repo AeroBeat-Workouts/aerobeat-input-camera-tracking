@@ -60,6 +60,7 @@ var _all_poses: Array = []
 var _last_tracking_frame: Dictionary = {}
 var _last_tracking_frame_signature := ""
 var _was_tracking := false
+var _last_preview_descriptor: Dictionary = {}
 
 enum TrackingMode {
 	MODE_2D,
@@ -82,6 +83,7 @@ func set_tracking_session(session) -> void:
 		return
 	_disconnect_tracking_session()
 	_tracking_session = session
+	_last_preview_descriptor = {}
 	_connect_tracking_session()
 	_sync_from_tracking_session()
 
@@ -115,6 +117,7 @@ func reset_runtime_state() -> void:
 	_all_poses.clear()
 	_last_tracking_frame = {}
 	_last_tracking_frame_signature = ""
+	_last_preview_descriptor = {}
 	_was_tracking = false
 	if _detector_substrate != null:
 		_detector_substrate.reset()
@@ -240,18 +243,20 @@ func is_tracking_player(player_idx: int) -> bool:
 	return player_idx >= 0 and player_idx < _all_poses.size() and not (_all_poses[player_idx] as Dictionary).get("landmarks", []).is_empty()
 
 func ingest_tracking_frame(frame: Dictionary) -> void:
-	_last_tracking_frame = frame.duplicate(true)
+	var enriched_frame := _augment_tracking_frame_runtime_context(frame)
+	_last_tracking_frame = enriched_frame.duplicate(true)
 	var adapter_script := _ensure_tracking_frame_adapter_script()
+	var frame_for_processing := _last_tracking_frame
 	if adapter_script == null:
 		_clear_tracking_runtime_state(false)
 		_multi_pose_from_current_landmarks([])
 		_emit_tracking_edge_signals(false)
 		return
-	var active: bool = bool(adapter_script.tracking_state_is_active(frame))
-	var preview_landmarks: Array = adapter_script.landmarks_from_tracking_frame(frame)
-	var gameplay_landmarks: Array = adapter_script.gameplay_landmarks_from_tracking_frame(frame)
+	var active: bool = bool(adapter_script.tracking_state_is_active(frame_for_processing))
+	var preview_landmarks: Array = adapter_script.landmarks_from_tracking_frame(frame_for_processing)
+	var gameplay_landmarks: Array = adapter_script.gameplay_landmarks_from_tracking_frame(frame_for_processing)
 	if active and not gameplay_landmarks.is_empty():
-		_process_primary_landmarks(gameplay_landmarks, false, false, adapter_script.get_timestamp_ms(frame))
+		_process_primary_landmarks(gameplay_landmarks, false, false, adapter_script.get_timestamp_ms(frame_for_processing))
 		_multi_pose_from_current_landmarks(preview_landmarks)
 		pose_updated.emit(preview_landmarks.duplicate(true))
 	else:
@@ -274,6 +279,8 @@ func _connect_tracking_session() -> void:
 		_tracking_session.tracking_updated.connect(_on_tracking_session_tracking_updated)
 	if _tracking_session.has_signal("state_changed") and not _tracking_session.state_changed.is_connected(_on_tracking_session_state_changed):
 		_tracking_session.state_changed.connect(_on_tracking_session_state_changed)
+	if _tracking_session.has_signal("preview_changed") and not _tracking_session.preview_changed.is_connected(_on_tracking_session_preview_changed):
+		_tracking_session.preview_changed.connect(_on_tracking_session_preview_changed)
 
 func _disconnect_tracking_session() -> void:
 	if _tracking_session == null:
@@ -282,6 +289,8 @@ func _disconnect_tracking_session() -> void:
 		_tracking_session.tracking_updated.disconnect(_on_tracking_session_tracking_updated)
 	if _tracking_session.has_signal("state_changed") and _tracking_session.state_changed.is_connected(_on_tracking_session_state_changed):
 		_tracking_session.state_changed.disconnect(_on_tracking_session_state_changed)
+	if _tracking_session.has_signal("preview_changed") and _tracking_session.preview_changed.is_connected(_on_tracking_session_preview_changed):
+		_tracking_session.preview_changed.disconnect(_on_tracking_session_preview_changed)
 
 func _sync_from_tracking_session() -> void:
 	_poll_tracking_session_frame(true)
@@ -292,7 +301,7 @@ func _poll_tracking_session_frame(force: bool = false) -> void:
 	var frame: Variant = _tracking_session.get_tracking_frame()
 	if not frame is Dictionary:
 		return
-	var frame_dict: Dictionary = frame
+	var frame_dict: Dictionary = _augment_tracking_frame_runtime_context(frame)
 	var signature := _build_tracking_frame_signature(frame_dict)
 	if not force and signature == _last_tracking_frame_signature:
 		return
@@ -302,12 +311,15 @@ func _poll_tracking_session_frame(force: bool = false) -> void:
 func _build_tracking_frame_signature(frame: Dictionary) -> String:
 	var raw_landmarks: Variant = frame.get("landmarks", [])
 	var landmark_count: int = raw_landmarks.size() if raw_landmarks is Array else 0
-	return "%s|%s|%s|%d|%s" % [
+	var preview_descriptor: Dictionary = frame.get("preview_descriptor", {}) if frame.get("preview_descriptor", {}) is Dictionary else {}
+	return "%s|%s|%s|%d|%s|%s|%s" % [
 		str(frame.get("timestamp_ms", "")),
 		str(frame.get("frame_index", "")),
 		str(frame.get("tracking_state", "")),
 		landmark_count,
 		str(frame.get("source_id", "")),
+		str(frame.get("preview_image_path", preview_descriptor.get("image_path", ""))),
+		str(preview_descriptor.get("image_revision", "")),
 	]
 
 func _build_tracking_config() -> Dictionary:
@@ -569,6 +581,26 @@ func _emit_detector_events(events: Array) -> void:
 			"leg_lift_right_end":
 				leg_lift_right_end.emit()
 
+func _augment_tracking_frame_runtime_context(frame: Dictionary) -> Dictionary:
+	var enriched := frame.duplicate(true)
+	var preview_descriptor := _get_tracking_session_preview_descriptor()
+	if not preview_descriptor.is_empty():
+		enriched["preview_descriptor"] = preview_descriptor.duplicate(true)
+		var preview_image_path := String(preview_descriptor.get("image_path", "")).strip_edges()
+		if not preview_image_path.is_empty():
+			enriched["preview_image_path"] = preview_image_path
+			if String(enriched.get("image_path", "")).strip_edges().is_empty():
+				enriched["image_path"] = preview_image_path
+	return enriched
+
+func _get_tracking_session_preview_descriptor() -> Dictionary:
+	if _tracking_session == null or not _tracking_session.has_method("get_preview_descriptor"):
+		return _last_preview_descriptor.duplicate(true)
+	var descriptor: Variant = _tracking_session.get_preview_descriptor()
+	if descriptor is Dictionary:
+		_last_preview_descriptor = (descriptor as Dictionary).duplicate(true)
+	return _last_preview_descriptor.duplicate(true)
+
 func _passes_visibility_threshold(landmark: Dictionary) -> bool:
 	var active_config := _ensure_config()
 	if active_config == null:
@@ -588,3 +620,7 @@ func _on_tracking_session_tracking_updated(frame: Dictionary) -> void:
 
 func _on_tracking_session_state_changed(_state: String, _detail: Dictionary) -> void:
 	_sync_from_tracking_session()
+
+func _on_tracking_session_preview_changed(descriptor: Dictionary) -> void:
+	_last_preview_descriptor = descriptor.duplicate(true)
+	_poll_tracking_session_frame(true)
