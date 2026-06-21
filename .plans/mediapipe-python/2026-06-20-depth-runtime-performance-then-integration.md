@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-21 00:53 EDT  
-**Blocked Reason:** Waiting on Task 6 QA and Task 7 audit for the now-landed Task 5 runtime-integration seam.  
+**Last Updated:** 2026-06-21 08:02 EDT  
+**Blocked Reason:** Waiting on Task 7 audit for the now-QA-validated Task 5 runtime-integration seam.  
 **Agent:** `pico`
 
 ---
@@ -756,9 +756,22 @@ Audit conclusion:
 **Files Created/Deleted/Modified:**
 - detector / proving / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independently QA-validated the Task 5 provider seam and the downstream boxing/depth consumers on this machine. Code review confirmed the implementation matches the intended seam in `src/providers/camera_tracking_provider.gd`: frames are enriched through `_augment_tracking_frame_runtime_context()` before processing, preview-path data participates in the frame signature (`preview_image_path` / preview revision), and `preview_changed` forces a re-poll so live/replay preview swaps propagate even when landmark signatures stay stable (`src/providers/camera_tracking_provider.gd:245-309, 624-626`). Exact Task 5 unit coverage in `.testbed/tests/unit/test_camera_tracking_provider.gd` also matches those claims: live preview merge, replay preview merge, forced re-poll on preview swap, and boxing live/replay config forwarding (`.testbed/tests/unit/test_camera_tracking_provider.gd:124-199, 378-435`).
+
+Strongest relevant validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect test_camera_tracking_provider.gd -gexit` → 14/14 passed.
+- `... -gselect test_pose_detector_substrate.gd -gunit_test_name depth_gate -gexit` → 4/4 passed, confirming preview-image-backed depth gating and placeholder closeness truth remain live.
+- `... -gselect test_pose_detector_substrate.gd -gunit_test_name same_family -gexit` → 4/4 passed, confirming threshold-blocked reporting remains truthful.
+- `... -gselect test_pose_detector_substrate.gd -gunit_test_name per_family_backend -gexit` → 3/3 passed, confirming per-family backend/model routing stays truthful.
+- `... -gselect test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name live_depth_loader -gexit` → 1/1 passed, confirming punch-family inspectors surface live depth loader truth/metrics.
+- `... -gselect test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name per_family -gexit` → 2/2 passed, confirming boxing event-feed and classifier payload surfaces stay truthful under per-family routing.
+- `... -gselect test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name model_open_error -gexit` → 1/1 passed, confirming blocked/model-unavailable UI reporting remains honest.
+- `... -gselect test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name force_ -gexit` → 3/3 passed, confirming proving runtime backend swapping across prototype/disabled/classifier modes still works.
+- `... -gselect test_depth_runtime_manager.gd -gexit` → 10/10 passed, including real preview inference plus truthful model/backend swap and blocked-shutdown state coverage.
+
+Net QA result: pass for Task 6 scope. The live depth signal is still consumed where claimed, boxing debug/proving surfaces remain truthful, and no Task 5 regression showed up in model swapping or blocked-state reporting. I also noted two unrelated repo-level red signals outside this slice while probing broader suites (`test_pose_detector_substrate.gd` still has two failing flow tests when run unfiltered, and a broad all-unit attempt surfaced an existing unrelated recursion/stack-overflow path in proving-harness coverage), but those did not reproduce in the targeted Task 5/Task 6 coverage above and are not blockers for this bead. Task 7 audit should proceed.
 
 ---
 
