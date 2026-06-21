@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-21  
 **Status:** In Progress  
-**Last Updated:** 2026-06-21 09:24 EDT  
-**Blocked Reason:** None  
+**Last Updated:** 2026-06-21 09:36 EDT  
+**Blocked Reason:** The narrow repo-local cleanup seam is done, but Derrick explicitly widened the completion bar: remaining cleanup items still include the mounted addon UID warning source and the non-viable full-file proving-harness rerun path, so the plan stays open until those are resolved or truthfully eliminated.  
 **Agent:** `pico`
 
 ---
@@ -30,6 +30,7 @@ This cleanup plan will treat three seams separately so we do not blur signal: (1
 | `REF-02` | Boxing proving harness | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd` |
 | `REF-03` | Proving/debug truth tests | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` |
 | `REF-04` | Shipped boxing gesture profile | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml` |
+| `REF-05` | Mounted GUT addon owning source repo | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-godot-unit-test` |
 
 ---
 
@@ -122,9 +123,9 @@ This cleanup plan will treat three seams separately so we do not blur signal: (1
 
 ## Final Results
 
-**Status:** ✅ Complete
+**Status:** ⚠️ Partial
 
-**What We Built:** Completed the proving-scene warning-cleanup seam for the boxing threshold-depth path without overstating the broader proving-harness state. Local test-owned lifecycle leaks in `REF-03` were genuinely cleaned up, the stray root fake-`.mp4` artifact was removed from repo root by relocation into test-results, targeted proving-harness validation still passes for the touched seams, and the remaining warning surface is now truthfully bounded to sibling-addon UID noise plus a separate full-file validation blocker.
+**What We Built:** Completed the narrow repo-local proving-scene warning-cleanup seam for the boxing threshold-depth path without overstating the broader proving-harness state. Local test-owned lifecycle leaks in `REF-03` were genuinely cleaned up, the stray root fake-`.mp4` artifact was removed from repo root by relocation into test-results, and targeted proving-harness validation still passes for the touched seams. But Derrick has now widened the completion bar, so the overall cleanup plan remains open until the sibling-addon UID warning source and the non-viable full-file proving-harness rerun path are also resolved or truthfully eliminated.
 
 **Reference Check:** `REF-02` and `REF-03` were satisfied for the scoped cleanup seam: the audited test-owned allocations now flow through GUT cleanup, targeted GUT passes still exercise the boxing proving/runtime-config and playback-control seams, and no local orphan/resource-leak summaries appeared in the fresh targeted audit logs. `REF-04` remains satisfied for the playtest-ready boxing path through the targeted runtime-config validation. Deliberate caveat: this plan does **not** claim that the entire `REF-03` file now reruns cleanly end-to-end; only the targeted cleanup seam is verified complete.
 
@@ -133,6 +134,86 @@ This cleanup plan will treat three seams separately so we do not blur signal: (1
 - `3d0011f` - docs: record QA for boxing proving cleanup
 
 **Lessons Learned:** For proving-harness cleanup work, targeted validation plus strict warning categorization is the trustworthy evidence path when the full-file run is not currently stable. Mounted sibling addons must be called out separately from owning-repo cleanup so we do not hide real progress behind external UID noise or over-claim end-to-end stability.
+
+### Task 5: Diagnose remaining cross-repo cleanup items
+
+**Bead ID:** `aerobeat-input-camera-tracking-zvc9`  
+**SubAgent:** `primary`  
+**Role:** `research`  
+**References:** `REF-02`, `REF-03`, `REF-05`  
+**Prompt:** Diagnose the remaining cleanup items that keep this plan from being truly done: (1) the non-viable full-file rerun path for `test_boxing_proving_harness_profiles_and_debug.gd`, and (2) the mounted addon invalid-UID warning source in the owning addon repo. Identify exact root causes, which repo owns each fix, the lowest-risk execution order, and the concrete validation path that would let us honestly say no cleanup items remain.
+
+**Folders Created/Deleted/Modified:**
+- coordination / plan files as needed across the owning repo(s)
+
+**Files Created/Deleted/Modified:**
+- active plan and any repo-local coordination artifacts needed for the follow-up slice
+
+**Status:** ✅ Complete
+
+**Results:** Claimed and completed as diagnosis-only research; no code fixes implemented in this pass. Findings split the remaining work into one real proving/runtime blocker and one separate mounted-addon metadata cleanup item. **Real blocker:** the full-file rerun path is non-viable because scene instantiation for `test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls()` (around `tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:172`) enters a re-entrant runtime loop that explodes Godot logging and leaves the process stuck in uninterruptible I/O. The repeating call chain captured from the generated Godot logs is: `boxing_proving_harness._refresh_debug_panels()` → `_sync_hand_bbox_drawer()` → `_tracker_hand_debug_snapshot()` (`boxing_proving_harness.gd:2862`) → `CameraTrackingPreviewPresenter.get_hand_debug_snapshot()` → `get_playback_status_snapshot()` → `CameraTracking.get_playback_status()` → `_refresh_from_backend_if_running(false)` → `MediaPipePythonCameraTrackingBackend.get_tracking_frame()` / `_refresh_runtime_snapshot_if_running()` → backend `preview_changed` emission → `camera_tracking_provider._on_tracking_session_preview_changed()` → `_poll_tracking_session_frame(true)` → `ingest_tracking_frame()` / `pose_updated` → `proving_harness._on_pose_updated()` → `_refresh_debug_panels()` again. That loop is the owning source of the rerun failure, and it belongs to the main proving/runtime repo (`aerobeat-input-camera-tracking`) across the proving harness plus mounted tool/runtime addons it owns in-tree. Evidence: repeated Godot log tails showed the same recursive stack, and the log directory under `~/.local/share/godot/app_userdata/AeroBeat Camera Tracking Testbed/logs/` had already ballooned to ~208 GB during reproduction, which is why later headless runs appeared to simply hang.
+
+**Separate warning source (not the rerun root cause):** the mounted `aerobeat-vendor-godot-unit-test` addon has invalid ext-resource UID declarations in scene files that no longer match the current script `.uid` sidecars in the addon source repo. These warnings are real but they downgrade to text-path fallback and are not the source of the recursive runtime loop above. I confirmed the fix surface is in the addon owning repo, not this proving repo. The mismatches include at least these scene/script pairs: `GutScene.tscn`→`GutScene.gd`, `gui/NormalGui.tscn`→`gui/gut_gui.gd`, `gui/MinGui.tscn`→`gui/gut_gui.gd`, `gui/ResizeHandle.tscn`→`gui/ResizeHandle.gd`, `gui/GutRunner.tscn`→`gui/GutRunner.gd`, `gui/RunExternally.tscn`→`gui/RunExternally.gd`, plus additional GUI scenes (`RunAtCursor`, `update_required`, `GutControl`, `GutBottomPanel`, `ShellOutOptions`, `OutputText`, `check_for_update`, `RunResults`, `ShortcutButton`, `ShortcutDialog`, `GutLogo`, `ResultsTree`, `about`, `UserFileViewer`) for a total of 21 declared UID mismatches detected by script. Owning repo: `aerobeat-vendor-godot-unit-test`.
+
+**Noise vs blocker split:** the invalid-UID warnings are cleanup debt and should be fixed, but they are noise relative to the proving-harness rerun blocker. The blocker that must be solved first to make full-file reruns viable is the re-entrant preview/playback/debug refresh cycle in the proving/runtime stack. The giant Godot logs are a symptom/output-amplifier, not the underlying logic bug.
+
+**Lowest-risk execution order to truly finish the cleanup plan:** (1) in `aerobeat-input-camera-tracking`, break the re-entrant debug/preview/playback refresh path so boxing scene instantiation no longer recursively polls the runtime while handling preview/frame updates; then delete/archive the oversized local Godot logs and re-run the full file to prove the blocker is gone; (2) once the proving rerun is stable, in `aerobeat-vendor-godot-unit-test`, regenerate or realign the stale ext-resource UIDs so the mounted addon loads without invalid-UID fallback warnings; (3) refresh the mounted addon in the proving repo as needed and rerun the same full-file proving test plus the previously used targeted commands to verify both the blocker and warning cleanup are actually gone; (4) only then should Task 6 claim the cleanup plan is really finished.
+
+**Task 6 next move:** implement a narrow guard/decoupling fix in the proving/runtime path first—most likely around `boxing_proving_harness` debug snapshot reads and/or `CameraTracking` playback-status refresh behavior during backend `preview_changed` handling—then validate with a clean full-file GUT run before touching addon UID metadata.
+
+### Task 6: Implement remaining cross-repo cleanup fixes
+
+**Bead ID:** `aerobeat-input-camera-tracking-xn6a`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`  
+**Prompt:** Implement the remaining cleanup fixes required to actually finish this plan: fix the full-file proving-harness rerun blocker in the owning source, repair the mounted addon UID warning source in its owning repo if that is still the cause, and preserve the boxing proving playtest path while removing the remaining cleanup residue.
+
+**Folders Created/Deleted/Modified:**
+- owning repo(s) touched by the remaining cleanup work
+
+**Files Created/Deleted/Modified:**
+- proving/runtime/addon/project metadata files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 7: QA remaining cross-repo cleanup fixes
+
+**Bead ID:** `aerobeat-input-camera-tracking-fp1v`  
+**SubAgent:** `primary`  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`  
+**Prompt:** Independently verify that the remaining cleanup fixes actually clear the full-file proving-harness cleanup residue and the addon UID warning noise in scope, and that the boxing proving threshold-depth path still passes the relevant validation.
+
+**Folders Created/Deleted/Modified:**
+- owning repo(s) touched by remaining cleanup work
+
+**Files Created/Deleted/Modified:**
+- proving/runtime/addon/project metadata files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+### Task 8: Audit remaining cleanup fixes and final closure
+
+**Bead ID:** `aerobeat-input-camera-tracking-fzt8`  
+**SubAgent:** `primary`  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`  
+**Prompt:** Independently audit that the remaining cleanup items are actually resolved, that no cleanup residue is being waved away, and that this cleanup plan can now be truthfully closed with the boxing proving setup still playtest-ready.
+
+**Folders Created/Deleted/Modified:**
+- owning repo(s) touched by remaining cleanup work
+
+**Files Created/Deleted/Modified:**
+- proving/runtime/addon/project metadata files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 
