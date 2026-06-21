@@ -10,6 +10,8 @@ var _debug_state: Dictionary = DepthRuntimeTypes.make_debug_state()
 var _active_runtime_key := ""
 var _active_model_spec: Dictionary = {}
 var _shared_runtime_pool: RefCounted = DepthSharedRuntimePoolScript.new()
+var _eligible_sample_request_count := 0
+var _last_successful_result: Dictionary = {}
 
 func set_shared_runtime_pool(shared_runtime_pool: RefCounted) -> void:
 	if shared_runtime_pool == null:
@@ -28,8 +30,10 @@ func configure_from_family(family: String, family_depth_config: Dictionary) -> v
 	_debug_state["depth_enabled"] = bool(_family_depth_config.get("enabled", false))
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_DISABLED if not bool(_debug_state.get("depth_enabled", false)) else DepthRuntimeTypes.STATUS_UNLOADED
 	_debug_state["active_model_summary"] = "disabled in config" if not bool(_debug_state.get("depth_enabled", false)) else "depth runtime configured; waiting for artifact resolution"
+	_apply_cadence_settings_from_request({})
 	_active_runtime_key = ""
 	_active_model_spec = {}
+	_reset_sample_cache()
 
 func ensure_runtime_ready() -> Dictionary:
 	if _family.is_empty():
@@ -98,11 +102,11 @@ func ensure_runtime_ready() -> Dictionary:
 
 func infer_relative_depth(frame_payload: Dictionary, sample_request: Dictionary) -> Dictionary:
 	var ready_state := ensure_runtime_ready()
+	_apply_cadence_settings_from_request(sample_request)
 	var runtime_status := String(ready_state.get("runtime_status", DepthRuntimeTypes.STATUS_UNLOADED))
 	var precomputed_result := _extract_precomputed_result(frame_payload, sample_request, runtime_status)
 	if bool(precomputed_result.get("ok", false)):
-		_debug_state["last_sample_metrics"] = (precomputed_result.get("sample_metrics", {}) as Dictionary).duplicate(true)
-		_debug_state["last_timing_ms"] = (precomputed_result.get("timing_ms", {}) as Dictionary).duplicate(true)
+		_sync_debug_from_result(precomputed_result, sample_request)
 		return precomputed_result
 	if runtime_status != DepthRuntimeTypes.STATUS_READY or _active_runtime_key.is_empty():
 		var blocked_result := DepthRuntimeTypes.make_result(runtime_status)
@@ -111,19 +115,35 @@ func infer_relative_depth(frame_payload: Dictionary, sample_request: Dictionary)
 		blocked_result["artifact_path"] = String(ready_state.get("artifact_path_res", ""))
 		blocked_result["sample_metrics"] = (ready_state.get("last_sample_metrics", {}) as Dictionary).duplicate(true)
 		blocked_result["timing_ms"] = (ready_state.get("last_timing_ms", {}) as Dictionary).duplicate(true)
+		blocked_result["frame_size"] = ready_state.get("frame_size", Vector2i.ZERO)
+		blocked_result["depth_map_size"] = ready_state.get("depth_map_size", Vector2i.ZERO)
+		blocked_result["normalized_depth_map"] = ready_state.get("normalized_depth_map", null)
 		blocked_result["error_info"] = {
 			"code": String(ready_state.get("failure_code", "")),
 			"message": String(ready_state.get("failure_message", "")),
 		}
 		return blocked_result
+
+	_eligible_sample_request_count += 1
+	if not _should_run_fresh_inference(sample_request):
+		var cached_result := _build_cached_reuse_result(sample_request)
+		if bool(cached_result.get("ok", false)):
+			_sync_debug_from_result(cached_result, sample_request)
+		else:
+			_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_READY
+			_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_SAMPLING
+			_debug_state["failure_code"] = String((cached_result.get("error_info", {}) as Dictionary).get("code", "cached_sample_unavailable"))
+			_debug_state["failure_message"] = String((cached_result.get("error_info", {}) as Dictionary).get("message", "No valid cached depth sample was available for reuse."))
+		return cached_result
+
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_INFERENCE
 	var result: Dictionary = _shared_runtime_pool.infer(_active_runtime_key, frame_payload, sample_request)
 	_merge_shared_runtime_debug(_shared_runtime_pool.get_runtime_debug(_active_runtime_key), false)
-	var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
-	var timing_ms: Dictionary = result.get("timing_ms", {}) if result.get("timing_ms", {}) is Dictionary else {}
-	_debug_state["last_sample_metrics"] = sample_metrics.duplicate(true)
-	_debug_state["last_timing_ms"] = timing_ms.duplicate(true)
 	if not bool(result.get("ok", false)):
+		var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
+		var timing_ms: Dictionary = result.get("timing_ms", {}) if result.get("timing_ms", {}) is Dictionary else {}
+		_debug_state["last_sample_metrics"] = sample_metrics.duplicate(true)
+		_debug_state["last_timing_ms"] = timing_ms.duplicate(true)
 		_debug_state["runtime_status"] = String(result.get("status", DepthRuntimeTypes.STATUS_FAILED))
 		var error_info: Dictionary = result.get("error_info", {}) if result.get("error_info", {}) is Dictionary else {}
 		_debug_state["failure_code"] = String(error_info.get("code", _debug_state.get("failure_code", "infer_failed")))
@@ -131,6 +151,8 @@ func infer_relative_depth(frame_payload: Dictionary, sample_request: Dictionary)
 		if String(_debug_state.get("active_model_summary", "")).is_empty():
 			_debug_state["active_model_summary"] = "enabled; last inference failed: %s" % String(_debug_state.get("failure_code", "infer_failed"))
 		return result
+	_store_successful_result(result, sample_request)
+	_sync_debug_from_result(result, sample_request)
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_READY
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_SAMPLING
 	_debug_state["failure_code"] = ""
@@ -169,6 +191,8 @@ func shutdown() -> void:
 	_debug_state["worker_port"] = 0
 	_debug_state["model_loaded"] = false
 	_debug_state["model_runtime_key"] = ""
+	_reset_sample_cache()
+	_apply_cadence_settings_from_request({})
 
 func _resolve_model_spec() -> Dictionary:
 	var model_document: Dictionary = _family_depth_config.get("model", {}) if _family_depth_config.get("model", {}) is Dictionary else {}
@@ -243,13 +267,28 @@ func _apply_model_spec_to_debug(model_spec: Dictionary) -> void:
 func _merge_shared_runtime_debug(shared_debug: Dictionary, preserve_last_observation: bool) -> void:
 	var previous_last_sample_metrics: Dictionary = (_debug_state.get("last_sample_metrics", {}) as Dictionary).duplicate(true)
 	var previous_last_timing_ms: Dictionary = (_debug_state.get("last_timing_ms", {}) as Dictionary).duplicate(true)
+	var previous_frame_size: Vector2i = _debug_state.get("frame_size", Vector2i.ZERO)
+	var previous_depth_map_size: Vector2i = _debug_state.get("depth_map_size", Vector2i.ZERO)
+	var previous_normalized_depth_map: Variant = _debug_state.get("normalized_depth_map", null)
+	var previous_last_sample_timestamp_ms := int(_debug_state.get("last_sample_timestamp_ms", -1))
+	var previous_last_sample_age_ms := int(_debug_state.get("last_sample_age_ms", -1))
+	var previous_failure_code := String(_debug_state.get("failure_code", ""))
+	var previous_failure_message := String(_debug_state.get("failure_message", ""))
 	for key in shared_debug.keys():
 		_debug_state[key] = shared_debug[key]
 	_debug_state["family"] = _family
 	_debug_state["depth_enabled"] = bool(_family_depth_config.get("enabled", false))
+	_apply_cadence_settings_from_request({})
 	if preserve_last_observation:
 		_debug_state["last_sample_metrics"] = previous_last_sample_metrics
 		_debug_state["last_timing_ms"] = previous_last_timing_ms
+		_debug_state["frame_size"] = previous_frame_size
+		_debug_state["depth_map_size"] = previous_depth_map_size
+		_debug_state["normalized_depth_map"] = previous_normalized_depth_map
+		_debug_state["last_sample_timestamp_ms"] = previous_last_sample_timestamp_ms
+		_debug_state["last_sample_age_ms"] = previous_last_sample_age_ms
+		_debug_state["failure_code"] = previous_failure_code
+		_debug_state["failure_message"] = previous_failure_message
 
 func _release_shared_runtime(claim_family: String = "") -> void:
 	if _active_runtime_key.is_empty():
@@ -320,6 +359,103 @@ func _normalize_precomputed_sample_result(family_payload: Dictionary, side: Stri
 		"total": 0.0,
 	}
 	return result
+
+func _apply_cadence_settings_from_request(sample_request: Dictionary) -> void:
+	var evaluation: Dictionary = {}
+	if sample_request.get("evaluation", null) is Dictionary and not (sample_request.get("evaluation", {}) as Dictionary).is_empty():
+		evaluation = (sample_request.get("evaluation", {}) as Dictionary).duplicate(true)
+	elif _family_depth_config.get("evaluation", null) is Dictionary:
+		evaluation = (_family_depth_config.get("evaluation", {}) as Dictionary).duplicate(true)
+	var fallback_max_age_ms := int(sample_request.get("window_ms", evaluation.get("window_ms", 0)))
+	_debug_state["sample_every_n_frames"] = max(1, int(evaluation.get("sample_every_n_frames", 1)))
+	_debug_state["max_sample_age_ms"] = max(0, int(evaluation.get("max_sample_age_ms", fallback_max_age_ms)))
+
+func _should_run_fresh_inference(_sample_request: Dictionary) -> bool:
+	var sample_every_n_frames := max(1, int(_debug_state.get("sample_every_n_frames", 1)))
+	if _eligible_sample_request_count <= 1:
+		return true
+	return ((_eligible_sample_request_count - 1) % sample_every_n_frames) == 0
+
+func _build_cached_reuse_result(sample_request: Dictionary) -> Dictionary:
+	var runtime_status := String(_debug_state.get("runtime_status", DepthRuntimeTypes.STATUS_READY))
+	if _last_successful_result.is_empty():
+		return _make_cache_miss_result(runtime_status, "cached_sample_missing", "No successful depth sample exists yet for cadence reuse.")
+	var timestamp_ms := int(sample_request.get("timestamp_ms", -1))
+	var last_sample_timestamp_ms := int(_debug_state.get("last_sample_timestamp_ms", -1))
+	var sample_age_ms := maxi(timestamp_ms - last_sample_timestamp_ms, 0) if timestamp_ms >= 0 and last_sample_timestamp_ms >= 0 else -1
+	var max_sample_age_ms := max(0, int(_debug_state.get("max_sample_age_ms", 0)))
+	if max_sample_age_ms > 0 and sample_age_ms > max_sample_age_ms:
+		_debug_state["last_sample_age_ms"] = sample_age_ms
+		return _make_cache_miss_result(runtime_status, "cached_sample_expired", "Cached depth sample age %d ms exceeded max_sample_age_ms=%d before the next scheduled fresh inference." % [sample_age_ms, max_sample_age_ms])
+	var result: Dictionary = _last_successful_result.duplicate(true)
+	result["ok"] = true
+	result["status"] = DepthRuntimeTypes.STATUS_READY
+	var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
+	sample_metrics["sample_source"] = "cached_reuse"
+	sample_metrics["sample_fresh"] = false
+	sample_metrics["sample_age_ms"] = sample_age_ms
+	sample_metrics["fresh_inference_request_index"] = int(sample_metrics.get("fresh_inference_request_index", _eligible_sample_request_count))
+	result["sample_metrics"] = sample_metrics
+	return result
+
+func _make_cache_miss_result(runtime_status: String, code: String, message: String) -> Dictionary:
+	var result := DepthRuntimeTypes.make_result(runtime_status)
+	result["backend_id"] = String(_debug_state.get("backend_id", "unknown"))
+	result["family_id"] = String(_debug_state.get("family_id", "unknown"))
+	result["artifact_path"] = String(_debug_state.get("artifact_path_res", ""))
+	var last_sample_metrics: Dictionary = (_debug_state.get("last_sample_metrics", {}) as Dictionary).duplicate(true)
+	var last_timing_ms: Dictionary = (_debug_state.get("last_timing_ms", {}) as Dictionary).duplicate(true)
+	result["sample_metrics"] = last_sample_metrics
+	result["timing_ms"] = last_timing_ms if not last_timing_ms.is_empty() else result.get("timing_ms", {})
+	result["frame_size"] = _debug_state.get("frame_size", Vector2i.ZERO)
+	result["depth_map_size"] = _debug_state.get("depth_map_size", Vector2i.ZERO)
+	result["normalized_depth_map"] = _debug_state.get("normalized_depth_map", null)
+	result["error_info"] = {
+		"code": code,
+		"message": message,
+	}
+	return result
+
+func _store_successful_result(result: Dictionary, sample_request: Dictionary) -> void:
+	_last_successful_result = result.duplicate(true)
+	var sample_metrics: Dictionary = _last_successful_result.get("sample_metrics", {}) if _last_successful_result.get("sample_metrics", {}) is Dictionary else {}
+	sample_metrics["sample_source"] = String(sample_metrics.get("sample_source", "fresh_inference"))
+	sample_metrics["sample_fresh"] = true
+	sample_metrics["sample_age_ms"] = 0
+	sample_metrics["fresh_inference_request_index"] = _eligible_sample_request_count
+	_last_successful_result["sample_metrics"] = sample_metrics
+	_debug_state["last_sample_timestamp_ms"] = int(sample_request.get("timestamp_ms", -1))
+	_debug_state["last_sample_age_ms"] = 0
+
+func _sync_debug_from_result(result: Dictionary, sample_request: Dictionary) -> void:
+	var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
+	var timing_ms: Dictionary = result.get("timing_ms", {}) if result.get("timing_ms", {}) is Dictionary else {}
+	_debug_state["last_sample_metrics"] = sample_metrics.duplicate(true)
+	_debug_state["last_timing_ms"] = timing_ms.duplicate(true)
+	_debug_state["frame_size"] = result.get("frame_size", Vector2i.ZERO)
+	_debug_state["depth_map_size"] = result.get("depth_map_size", Vector2i.ZERO)
+	_debug_state["normalized_depth_map"] = result.get("normalized_depth_map", null)
+	if bool(sample_metrics.get("sample_fresh", false)):
+		_debug_state["last_sample_timestamp_ms"] = int(sample_request.get("timestamp_ms", -1))
+		_debug_state["last_sample_age_ms"] = 0
+	else:
+		_debug_state["last_sample_age_ms"] = int(sample_metrics.get("sample_age_ms", -1))
+
+func _reset_sample_cache() -> void:
+	_eligible_sample_request_count = 0
+	_last_successful_result = {}
+	_debug_state["last_sample_timestamp_ms"] = -1
+	_debug_state["last_sample_age_ms"] = -1
+	_debug_state["last_sample_metrics"] = {}
+	_debug_state["last_timing_ms"] = {
+		"preprocess": 0.0,
+		"infer": 0.0,
+		"postprocess": 0.0,
+		"total": 0.0,
+	}
+	_debug_state["frame_size"] = Vector2i.ZERO
+	_debug_state["depth_map_size"] = Vector2i.ZERO
+	_debug_state["normalized_depth_map"] = null
 
 func _first_float(document: Dictionary, keys: Array, default_value: float) -> float:
 	for key_variant: Variant in keys:

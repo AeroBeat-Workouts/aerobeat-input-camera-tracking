@@ -398,6 +398,9 @@ func _sync_debug_from_response(response: Dictionary) -> void:
 		_debug_state["last_sample_metrics"] = (response.get("sample_metrics", {}) as Dictionary).duplicate(true)
 	if response.get("timing_ms", null) is Dictionary:
 		_debug_state["last_timing_ms"] = (response.get("timing_ms", {}) as Dictionary).duplicate(true)
+	_debug_state["frame_size"] = _vector2i_from_variant(response.get("frame_size", []))
+	_debug_state["depth_map_size"] = _vector2i_from_variant(response.get("depth_map_size", []))
+	_debug_state["normalized_depth_map"] = response.get("normalized_depth_map", null)
 	if response.get("runtime_provider", null) != null:
 		_debug_state["runtime_provider"] = response.get("runtime_provider")
 	_debug_state["worker_mode"] = String(response.get("worker_mode", _debug_state.get("worker_mode", _WORKER_MODE_PERSISTENT)))
@@ -428,6 +431,9 @@ func _sync_terminal_debug_state(status: String, stage: String, code: String, mes
 		"postprocess": 0.0,
 		"total": 0.0,
 	}
+	_debug_state["frame_size"] = Vector2i.ZERO
+	_debug_state["depth_map_size"] = Vector2i.ZERO
+	_debug_state["normalized_depth_map"] = null
 
 func _failed_probe(code: String, message: String) -> Dictionary:
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_FAILED

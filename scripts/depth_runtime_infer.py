@@ -132,13 +132,17 @@ def _resize_depth_to_frame(normalized_depth: Any, frame_shape: Tuple[int, int]) 
     return cv2.resize(normalized_depth, (frame_w, frame_h), interpolation=cv2.INTER_CUBIC)
 
 
-def _sample_depth(depth_map: Any, point: Dict[str, Any]) -> float:
+def _sample_depth(depth_map: Any, point: Dict[str, Any]) -> Dict[str, Any]:
     h, w = depth_map.shape[:2]
     x = float(point.get("x", 0.5))
     y = float(point.get("y", 0.5))
     px = int(round(max(0.0, min(1.0, x)) * float(max(w - 1, 0))))
     py = int(round(max(0.0, min(1.0, y)) * float(max(h - 1, 0))))
-    return float(depth_map[py, px])
+    return {
+        "depth": float(depth_map[py, px]),
+        "normalized_point": {"x": x, "y": y},
+        "pixel": {"x": px, "y": py},
+    }
 
 
 def _find_openvino_xml(model_spec: Dict[str, Any]) -> str:
@@ -240,10 +244,13 @@ class RuntimeSession:
             t2 = time.perf_counter()
             normalized_depth = _normalize_output_depth(raw_output, bool(self.family_cfg.get("output_near_is_larger", False)))
             normalized_depth = _resize_depth_to_frame(normalized_depth, (frame_h, frame_w))
-            shoulder_depth = _sample_depth(normalized_depth, sample_request.get("shoulder", {}))
-            wrist_depth = _sample_depth(normalized_depth, sample_request.get("wrist", {}))
+            shoulder_sample = _sample_depth(normalized_depth, sample_request.get("shoulder", {}))
+            wrist_sample = _sample_depth(normalized_depth, sample_request.get("wrist", {}))
+            shoulder_depth = float(shoulder_sample.get("depth", 0.0))
+            wrist_depth = float(wrist_sample.get("depth", 0.0))
             timing["postprocess"] = (time.perf_counter() - t2) * 1000.0
             timing["total"] = (time.perf_counter() - started_at) * 1000.0
+            evaluation_cfg = sample_request.get("evaluation", {}) if isinstance(sample_request.get("evaluation", {}), dict) else {}
             return {
                 "ok": True,
                 "status": "ready",
@@ -256,10 +263,23 @@ class RuntimeSession:
                 "normalized_depth_map": None,
                 "sample_metrics": {
                     "wrist_closeness": float(shoulder_depth - wrist_depth),
-                    "wrist_depth": float(wrist_depth),
-                    "torso_depth": float(shoulder_depth),
+                    "wrist_depth": wrist_depth,
+                    "torso_depth": shoulder_depth,
                     "sample_source": "fresh_inference",
                     "sample_fresh": True,
+                    "sample_geometry": {
+                        "actual_geometry_kind": "single_pixel_point",
+                        "depth_map_space": "frame_resized_normalized_depth",
+                        "requested_runtime_geometry": {
+                            "wrist_roi_radius_px": int(evaluation_cfg.get("wrist_roi_radius_px", 0)),
+                            "wrist_to_elbow_extension_px": int(evaluation_cfg.get("wrist_to_elbow_extension_px", 0)),
+                            "torso_roi_radius_px": int(evaluation_cfg.get("torso_roi_radius_px", 0)),
+                        },
+                        "actual_samples": {
+                            "shoulder": shoulder_sample,
+                            "wrist": wrist_sample,
+                        },
+                    },
                 },
                 "timing_ms": timing,
             }

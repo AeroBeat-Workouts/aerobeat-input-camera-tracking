@@ -78,9 +78,13 @@ straight_punch:
         # Repo-owned pretrained monocular depth artifact to load when depth is enabled for this family. input.
         artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
       evaluation:
-        # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
+        # Reserved config only: current Python runtime still runs the model's native input shape, so this is not a live performance knob yet. input documentation.
         model_input_size: 256
-        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> tool.
+        # Run one fresh depth inference on every N eligible gesture frames; intermediate frames reuse the last valid depth sample. input -> runtime.
+        sample_every_n_frames: 1
+        # Reused depth becomes invalid once older than this many milliseconds, even if the next scheduled fresh sample has not happened yet. input -> runtime.
+        max_sample_age_ms: 250
+        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> requested runtime geometry metadata.
         wrist_roi_radius_px: 12
         # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
         wrist_to_elbow_extension_px: 8
@@ -178,9 +182,13 @@ hook:
         # Repo-owned pretrained monocular depth artifact to load when depth is enabled for this family. input.
         artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
       evaluation:
-        # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
+        # Reserved config only: current Python runtime still runs the model's native input shape, so this is not a live performance knob yet. input documentation.
         model_input_size: 256
-        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> tool.
+        # Run one fresh depth inference on every N eligible gesture frames; intermediate frames reuse the last valid depth sample. input -> runtime.
+        sample_every_n_frames: 1
+        # Reused depth becomes invalid once older than this many milliseconds, even if the next scheduled fresh sample has not happened yet. input -> runtime.
+        max_sample_age_ms: 250
+        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> requested runtime geometry metadata.
         wrist_roi_radius_px: 12
         # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
         wrist_to_elbow_extension_px: 8
@@ -276,9 +284,13 @@ uppercut:
         # Repo-owned pretrained monocular depth artifact to load when depth is enabled for this family. input.
         artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
       evaluation:
-        # Run monocular depth inference at this square input size when depth is enabled. input -> tool.
+        # Reserved config only: current Python runtime still runs the model's native input shape, so this is not a live performance knob yet. input documentation.
         model_input_size: 256
-        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> tool.
+        # Run one fresh depth inference on every N eligible gesture frames; intermediate frames reuse the last valid depth sample. input -> runtime.
+        sample_every_n_frames: 1
+        # Reused depth becomes invalid once older than this many milliseconds, even if the next scheduled fresh sample has not happened yet. input -> runtime.
+        max_sample_age_ms: 250
+        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> requested runtime geometry metadata.
         wrist_roi_radius_px: 12
         # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
         wrist_to_elbow_extension_px: 8

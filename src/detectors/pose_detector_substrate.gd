@@ -2146,6 +2146,7 @@ func _update_family_depth_signal(family: String, side: String, state: Dictionary
 		"family": family,
 		"side": side,
 		"timestamp_ms": timestamp_ms,
+		"window_ms": int(config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS)),
 		"evaluation": (depth_config.get("evaluation", {}) as Dictionary).duplicate(true) if depth_config.get("evaluation", {}) is Dictionary else {},
 		"shoulder": shoulder.duplicate(true),
 		"elbow": elbow.duplicate(true),

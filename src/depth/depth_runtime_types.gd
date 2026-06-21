@@ -57,6 +57,13 @@ static func make_debug_state() -> Dictionary:
 			"total": 0.0,
 		},
 		"last_sample_metrics": {},
+		"frame_size": Vector2i.ZERO,
+		"depth_map_size": Vector2i.ZERO,
+		"normalized_depth_map": null,
+		"sample_every_n_frames": 1,
+		"max_sample_age_ms": 0,
+		"last_sample_timestamp_ms": -1,
+		"last_sample_age_ms": -1,
 	}
 
 static func make_result(status: String = STATUS_UNLOADED) -> Dictionary:
