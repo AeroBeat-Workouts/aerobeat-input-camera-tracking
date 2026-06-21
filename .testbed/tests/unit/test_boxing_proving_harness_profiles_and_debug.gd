@@ -29,6 +29,7 @@ class FakePreviewPresenter:
 	}
 
 	func _init() -> void:
+		size = Vector2(520.0, 293.0)
 		overlay_layer = Control.new()
 		overlay_layer.name = "OverlayLayer"
 		overlay_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -39,6 +40,12 @@ class FakePreviewPresenter:
 
 	func get_hand_debug_snapshot() -> Dictionary:
 		return hand_snapshot.duplicate(true)
+
+	func get_content_rect() -> Rect2:
+		return Rect2(Vector2.ZERO, size)
+
+	func map_landmark_to_preview_position(point: Dictionary) -> Vector2:
+		return Vector2(float(point.get("x", 0.0)) * size.x, float(point.get("y", 0.0)) * size.y)
 
 class PlaybackStateHarness:
 	extends ProvingHarnessScript
@@ -140,6 +147,61 @@ func _depth_live_debug_payload(closeness: float, delta: float, peak: float, samp
 		},
 	}
 
+func _depth_sample_geometry_payload() -> Dictionary:
+	return {
+		"actual_geometry_kind": "single_pixel_point",
+		"depth_map_space": "frame_resized_normalized_depth",
+		"actual_samples": {
+			"shoulder": {
+				"depth": 0.61,
+				"normalized_point": {"x": 0.42, "y": 0.34},
+				"pixel": {"x": 268, "y": 122},
+			},
+			"wrist": {
+				"depth": 0.31,
+				"normalized_point": {"x": 0.56, "y": 0.64},
+				"pixel": {"x": 358, "y": 230},
+			},
+		},
+	}
+
+func _depth_runtime_visual_state(texture: Variant = null) -> Dictionary:
+	return {
+		"depth_enabled": true,
+		"runtime_status": "ready",
+		"runtime_stage": "sampling",
+		"backend_id": "onnx",
+		"family_id": "depth_anything_v2_small_onnx",
+		"active_model_summary": "enabled; runtime ready via onnx backend",
+		"artifact_path_res": "res://assets/depth_models/depth_anything_v2/depth_anything_v2_vits.onnx",
+		"frame_size": Vector2i(640, 360),
+		"depth_map_size": Vector2i(640, 360),
+		"normalized_depth_map": texture,
+		"sample_every_n_frames": 3,
+		"max_sample_age_ms": 250,
+		"last_sample_timestamp_ms": 123456,
+		"last_sample_age_ms": 18,
+		"last_timing_ms": {
+			"preprocess": 1.0,
+			"infer": 2.5,
+			"postprocess": 1.2,
+			"total": 4.7,
+		},
+		"last_sample_metrics": {
+			"sample_source": "fresh_inference",
+			"sample_fresh": true,
+			"wrist_closeness": 0.30,
+			"wrist_depth": 0.31,
+			"torso_depth": 0.61,
+			"sample_geometry": _depth_sample_geometry_payload(),
+		},
+	}
+
+func _make_test_texture(color: Color = Color(0.7, 0.7, 0.7, 1.0)) -> Texture2D:
+	var image := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	image.fill(color)
+	return ImageTexture.create_from_image(image)
+
 func _has_editor_exposed_property(subject: Object, property_name: String) -> bool:
 	for property_info_variant: Variant in subject.get_property_list():
 		if not property_info_variant is Dictionary:
@@ -209,6 +271,72 @@ func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes()
 	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
 	assert_true(hand_bbox_drawer.visible)
+	var depth_debug_visuals: Dictionary = harness.get("_depth_debug_visual_config")
+	assert_true(bool(depth_debug_visuals.get("enabled", false)))
+	assert_true(bool(depth_debug_visuals.get("thumbnail_visible", false)))
+	assert_true(bool(depth_debug_visuals.get("sampling_regions_visible", false)))
+	assert_true(bool(depth_debug_visuals.get("fps_visible", false)))
+
+func test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_texture() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness: Variant = scene_root
+	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	harness.set("_preview_presenter", presenter)
+	harness.camera_view = TextureRect.new()
+	harness.camera_view.texture = _make_test_texture(Color(0.18, 0.34, 0.72, 1.0))
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"depth_runtime": {
+				"straight_punch": _depth_runtime_visual_state(null),
+			}
+		}
+	})
+	harness._refresh_debug_panels()
+	var placeholder: Label = harness.get("_depth_debug_thumbnail_placeholder_label") as Label
+	var status: Label = harness.get("_depth_debug_thumbnail_status_label") as Label
+	var sample_overlay: Variant = harness.get("_depth_debug_sample_overlay")
+	assert_not_null(placeholder)
+	assert_not_null(status)
+	assert_not_null(sample_overlay)
+	assert_true(placeholder.visible)
+	assert_string_contains(String(placeholder.text), "Depth texture unavailable")
+	assert_string_contains(String(status.text), "texture=false")
+	assert_true(sample_overlay.visible)
+	var markers: Array = sample_overlay.get_marker_snapshot()
+	assert_eq(markers.size(), 2)
+
+func test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness: Variant = scene_root
+	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	harness.set("_preview_presenter", presenter)
+	var preview_texture := _make_test_texture(Color(0.22, 0.61, 0.38, 1.0))
+	var depth_texture := _make_test_texture(Color(0.71, 0.71, 0.71, 1.0))
+	harness.camera_view = TextureRect.new()
+	harness.camera_view.texture = preview_texture
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"depth_runtime": {
+				"straight_punch": _depth_runtime_visual_state(depth_texture),
+			}
+		}
+	})
+	harness.set("_depth_debug_thumbnail_hovered", true)
+	harness._refresh_debug_panels()
+	var main_texture: TextureRect = harness.get("_depth_debug_main_texture") as TextureRect
+	var thumbnail_texture: TextureRect = harness.get("_depth_debug_thumbnail_texture") as TextureRect
+	var hint_label: Label = harness.get("_depth_debug_thumbnail_hint_label") as Label
+	assert_not_null(main_texture)
+	assert_not_null(thumbnail_texture)
+	assert_not_null(hint_label)
+	assert_false(main_texture.visible)
+	assert_same(thumbnail_texture.texture, depth_texture)
+	assert_true(hint_label.visible)
+	harness._toggle_depth_debug_swap()
+	assert_true(main_texture.visible)
+	assert_same(main_texture.texture, depth_texture)
+	assert_same(thumbnail_texture.texture, preview_texture)
+	assert_string_contains(String(hint_label.text), "restore preview")
 
 func test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface() -> void:
 	var harness: Object = _new_base_harness()

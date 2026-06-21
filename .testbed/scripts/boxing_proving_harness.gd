@@ -1,5 +1,7 @@
 extends "res://scripts/proving_harness.gd"
 
+const DepthSampleDebugOverlayScript = preload("res://scripts/depth_sample_debug_overlay.gd")
+
 const BACKGROUND_TEXTURE_PATH := "res://assets/backgrounds/perfect-hue-may-08-2026-hd.png"
 const HEADER_ICON_PATH := "res://assets/icons/boxing-glove-1.svg"
 const TILE_PULSE_MS := 420
@@ -764,6 +766,31 @@ var _straight_punch_transition_debug := {
 	"left": {},
 	"right": {},
 }
+var _depth_debug_root: Control
+var _depth_debug_main_texture: TextureRect
+var _depth_debug_thumbnail_panel: PanelContainer
+var _depth_debug_thumbnail_title_label: Label
+var _depth_debug_thumbnail_texture: TextureRect
+var _depth_debug_thumbnail_placeholder_label: Label
+var _depth_debug_thumbnail_status_label: Label
+var _depth_debug_thumbnail_hint_label: Label
+var _depth_debug_fps_label: Label
+var _depth_debug_sample_overlay: Control
+var _depth_debug_visual_config := {
+	"enabled": false,
+	"thumbnail_visible": false,
+	"swap_click_enabled": false,
+	"hover_hint_visible": false,
+	"sampling_regions_visible": false,
+	"fps_visible": false,
+	"thumbnail_corner": "bottom_right",
+	"thumbnail_width_px": 196,
+	"thumbnail_margin_px": 14,
+}
+var _depth_debug_thumbnail_hovered := false
+var _depth_debug_swapped_to_depth := false
+var _depth_debug_last_texture_available := false
+var _smoothed_preview_fps := 0.0
 
 func _ready() -> void:
 	_selected_profile_id = _default_profile_id()
@@ -771,8 +798,36 @@ func _ready() -> void:
 	_build_tile_grid_if_needed()
 	_apply_boxing_visual_shell()
 	super._ready()
+	_ensure_depth_debug_ui()
 	_refresh_profile_controls()
 	_refresh_debug_panels()
+
+func _process(delta: float) -> void:
+	if delta > 0.0:
+		var instant_fps := 1.0 / delta
+		_smoothed_preview_fps = instant_fps if _smoothed_preview_fps <= 0.0 else lerpf(_smoothed_preview_fps, instant_fps, 0.18)
+	super._process(delta)
+
+func _notification(what: int) -> void:
+	super._notification(what)
+	if what == NOTIFICATION_EXIT_TREE or what == NOTIFICATION_PREDELETE:
+		_cleanup_depth_debug_ui()
+
+func _cleanup_depth_debug_ui() -> void:
+	if _depth_debug_root != null and is_instance_valid(_depth_debug_root):
+		if _depth_debug_root.get_parent() != null:
+			_depth_debug_root.reparent(self)
+		_depth_debug_root.queue_free()
+	_depth_debug_root = null
+	_depth_debug_main_texture = null
+	_depth_debug_thumbnail_panel = null
+	_depth_debug_thumbnail_title_label = null
+	_depth_debug_thumbnail_texture = null
+	_depth_debug_thumbnail_placeholder_label = null
+	_depth_debug_thumbnail_status_label = null
+	_depth_debug_thumbnail_hint_label = null
+	_depth_debug_fps_label = null
+	_depth_debug_sample_overlay = null
 
 func _connect_mode_signals() -> void:
 	super._connect_mode_signals()
@@ -818,6 +873,7 @@ func _refresh_debug_panels() -> void:
 		notes_label.visible = false
 	_refresh_profile_controls()
 	_sync_hand_bbox_drawer()
+	_refresh_depth_debug_visuals()
 	if live_status_label:
 		live_status_label.text = _build_boxing_live_line()
 	if quick_stats_label:
@@ -886,6 +942,329 @@ func _resolve_hand_bbox_overlay_parent() -> Node:
 			return overlay_layer
 	return _preview_presenter
 
+func _ensure_depth_debug_ui() -> void:
+	if _depth_debug_root != null:
+		return
+	_depth_debug_root = Control.new()
+	_depth_debug_root.name = "DepthDebugRoot"
+	_depth_debug_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_depth_debug_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	_depth_debug_main_texture = TextureRect.new()
+	_depth_debug_main_texture.name = "DepthDebugMainTexture"
+	_depth_debug_main_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_depth_debug_main_texture.visible = false
+	_depth_debug_main_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_depth_debug_main_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_depth_debug_main_texture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_depth_debug_root.add_child(_depth_debug_main_texture)
+
+	_depth_debug_sample_overlay = DepthSampleDebugOverlayScript.new()
+	_depth_debug_sample_overlay.name = "DepthDebugSampleOverlay"
+	_depth_debug_sample_overlay.visible = false
+	_depth_debug_sample_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_depth_debug_root.add_child(_depth_debug_sample_overlay)
+
+	_depth_debug_fps_label = Label.new()
+	_depth_debug_fps_label.name = "DepthDebugFpsLabel"
+	_depth_debug_fps_label.visible = false
+	_depth_debug_fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_depth_debug_fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_depth_debug_fps_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_depth_debug_fps_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_depth_debug_fps_label.add_theme_font_size_override("font_size", 13)
+	_depth_debug_fps_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.96))
+	_depth_debug_fps_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.72))
+	_depth_debug_fps_label.add_theme_constant_override("shadow_offset_x", 1)
+	_depth_debug_fps_label.add_theme_constant_override("shadow_offset_y", 1)
+	_depth_debug_fps_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_depth_debug_fps_label.offset_left = -240.0
+	_depth_debug_fps_label.offset_top = 10.0
+	_depth_debug_fps_label.offset_right = -14.0
+	_depth_debug_fps_label.offset_bottom = 56.0
+	_depth_debug_root.add_child(_depth_debug_fps_label)
+
+	_depth_debug_thumbnail_panel = PanelContainer.new()
+	_depth_debug_thumbnail_panel.name = "DepthDebugThumbnailPanel"
+	_depth_debug_thumbnail_panel.visible = false
+	_depth_debug_thumbnail_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_depth_debug_thumbnail_panel.custom_minimum_size = Vector2(196.0, 172.0)
+	_depth_debug_thumbnail_panel.mouse_entered.connect(func() -> void:
+		_depth_debug_thumbnail_hovered = true
+		_refresh_depth_debug_visuals()
+	)
+	_depth_debug_thumbnail_panel.mouse_exited.connect(func() -> void:
+		_depth_debug_thumbnail_hovered = false
+		_refresh_depth_debug_visuals()
+	)
+	_depth_debug_thumbnail_panel.gui_input.connect(_on_depth_debug_thumbnail_gui_input)
+	_apply_panel_style(_depth_debug_thumbnail_panel, Color(0.03, 0.05, 0.08, 0.92), Color(1.0, 1.0, 1.0, 0.18), 16, 1, 0)
+	_depth_debug_root.add_child(_depth_debug_thumbnail_panel)
+
+	var margin := MarginContainer.new()
+	margin.name = "DepthDebugThumbnailMargin"
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	_depth_debug_thumbnail_panel.add_child(margin)
+
+	var column := VBoxContainer.new()
+	column.name = "DepthDebugThumbnailColumn"
+	column.add_theme_constant_override("separation", 6)
+	margin.add_child(column)
+
+	_depth_debug_thumbnail_title_label = Label.new()
+	_depth_debug_thumbnail_title_label.name = "DepthDebugThumbnailTitle"
+	_depth_debug_thumbnail_title_label.add_theme_font_size_override("font_size", 13)
+	_depth_debug_thumbnail_title_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0, 0.96))
+	column.add_child(_depth_debug_thumbnail_title_label)
+
+	_depth_debug_thumbnail_texture = TextureRect.new()
+	_depth_debug_thumbnail_texture.name = "DepthDebugThumbnailTexture"
+	_depth_debug_thumbnail_texture.visible = false
+	_depth_debug_thumbnail_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_depth_debug_thumbnail_texture.custom_minimum_size = Vector2(196.0, 112.0)
+	_depth_debug_thumbnail_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_depth_debug_thumbnail_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	column.add_child(_depth_debug_thumbnail_texture)
+
+	_depth_debug_thumbnail_placeholder_label = Label.new()
+	_depth_debug_thumbnail_placeholder_label.name = "DepthDebugThumbnailPlaceholder"
+	_depth_debug_thumbnail_placeholder_label.visible = false
+	_depth_debug_thumbnail_placeholder_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_depth_debug_thumbnail_placeholder_label.custom_minimum_size = Vector2(196.0, 112.0)
+	_depth_debug_thumbnail_placeholder_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_depth_debug_thumbnail_placeholder_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_depth_debug_thumbnail_placeholder_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_depth_debug_thumbnail_placeholder_label.add_theme_font_size_override("font_size", 12)
+	_depth_debug_thumbnail_placeholder_label.add_theme_color_override("font_color", Color(0.84, 0.90, 0.97, 0.88))
+	column.add_child(_depth_debug_thumbnail_placeholder_label)
+
+	_depth_debug_thumbnail_status_label = Label.new()
+	_depth_debug_thumbnail_status_label.name = "DepthDebugThumbnailStatus"
+	_depth_debug_thumbnail_status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_depth_debug_thumbnail_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_depth_debug_thumbnail_status_label.add_theme_font_size_override("font_size", 11)
+	_depth_debug_thumbnail_status_label.add_theme_color_override("font_color", Color(0.87, 0.92, 0.98, 0.88))
+	column.add_child(_depth_debug_thumbnail_status_label)
+
+	_depth_debug_thumbnail_hint_label = Label.new()
+	_depth_debug_thumbnail_hint_label.name = "DepthDebugThumbnailHint"
+	_depth_debug_thumbnail_hint_label.visible = false
+	_depth_debug_thumbnail_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_depth_debug_thumbnail_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_depth_debug_thumbnail_hint_label.add_theme_font_size_override("font_size", 11)
+	_depth_debug_thumbnail_hint_label.add_theme_color_override("font_color", Color(1.0, 0.97, 0.76, 0.96))
+	column.add_child(_depth_debug_thumbnail_hint_label)
+
+	_sync_depth_debug_overlay_parent()
+	_refresh_depth_debug_visuals()
+
+func _sync_depth_debug_overlay_parent() -> void:
+	if _depth_debug_root == null:
+		return
+	var overlay_parent := _resolve_depth_debug_overlay_parent()
+	if overlay_parent == null:
+		return
+	var current_parent := _depth_debug_root.get_parent()
+	if current_parent != overlay_parent:
+		if current_parent != null:
+			_depth_debug_root.reparent(overlay_parent)
+		else:
+			overlay_parent.add_child(_depth_debug_root)
+		_depth_debug_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if _depth_debug_sample_overlay != null and _depth_debug_sample_overlay.has_method("set_preview_presenter"):
+		_depth_debug_sample_overlay.set_preview_presenter(_preview_presenter)
+
+func _resolve_depth_debug_overlay_parent() -> Node:
+	if _preview_presenter != null and is_instance_valid(_preview_presenter):
+		if _preview_presenter.has_method("get_overlay_layer"):
+			var overlay_layer: Variant = _preview_presenter.get_overlay_layer()
+			if overlay_layer is Node and is_instance_valid(overlay_layer):
+				return overlay_layer
+		return _preview_presenter
+	return camera_display
+
+func _on_depth_debug_thumbnail_gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mouse_event := event as InputEventMouseButton
+	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if not _depth_debug_last_texture_available or not bool(_depth_debug_visual_config.get("swap_click_enabled", false)):
+		return
+	accept_event()
+	_toggle_depth_debug_swap()
+
+func _toggle_depth_debug_swap() -> void:
+	if not _depth_debug_last_texture_available:
+		_depth_debug_swapped_to_depth = false
+		return
+	_depth_debug_swapped_to_depth = not _depth_debug_swapped_to_depth
+	_refresh_depth_debug_visuals()
+
+func _refresh_depth_debug_visuals() -> void:
+	if _depth_debug_root == null:
+		return
+	_sync_depth_debug_overlay_parent()
+	var enabled := bool(_depth_debug_visual_config.get("enabled", false))
+	_depth_debug_root.visible = enabled
+	if not enabled:
+		if _depth_debug_main_texture != null:
+			_depth_debug_main_texture.visible = false
+		if _depth_debug_sample_overlay != null:
+			_depth_debug_sample_overlay.visible = false
+		if _depth_debug_fps_label != null:
+			_depth_debug_fps_label.visible = false
+		if _depth_debug_thumbnail_panel != null:
+			_depth_debug_thumbnail_panel.visible = false
+		return
+	var snapshot := _build_depth_debug_visual_snapshot()
+	var depth_texture: Texture2D = snapshot.get("depth_texture", null)
+	var preview_texture: Texture2D = snapshot.get("preview_texture", null)
+	_depth_debug_last_texture_available = depth_texture != null
+	if not _depth_debug_last_texture_available:
+		_depth_debug_swapped_to_depth = false
+	if _depth_debug_main_texture != null:
+		_depth_debug_main_texture.texture = depth_texture
+		_depth_debug_main_texture.visible = _depth_debug_swapped_to_depth and _depth_debug_last_texture_available
+	_refresh_depth_debug_sample_overlay(snapshot)
+	_refresh_depth_debug_fps_label(snapshot)
+	_refresh_depth_debug_thumbnail(snapshot, preview_texture, depth_texture)
+
+func _refresh_depth_debug_sample_overlay(snapshot: Dictionary) -> void:
+	if _depth_debug_sample_overlay == null:
+		return
+	var show_overlay := bool(_depth_debug_visual_config.get("sampling_regions_visible", false))
+	var sample_geometry: Dictionary = snapshot.get("sample_geometry", {}) if snapshot.get("sample_geometry", {}) is Dictionary else {}
+	_depth_debug_sample_overlay.visible = show_overlay and not sample_geometry.is_empty()
+	if not _depth_debug_sample_overlay.visible:
+		if _depth_debug_sample_overlay.has_method("clear_sample_geometry"):
+			_depth_debug_sample_overlay.clear_sample_geometry()
+		return
+	if _depth_debug_sample_overlay.has_method("update_sample_geometry"):
+		_depth_debug_sample_overlay.update_sample_geometry(sample_geometry)
+
+func _refresh_depth_debug_fps_label(snapshot: Dictionary) -> void:
+	if _depth_debug_fps_label == null:
+		return
+	var show_fps := bool(_depth_debug_visual_config.get("fps_visible", false)) and bool(_depth_debug_visual_config.get("enabled", false))
+	_depth_debug_fps_label.visible = show_fps
+	if not show_fps:
+		return
+	var timing: Dictionary = snapshot.get("timing_ms", {}) if snapshot.get("timing_ms", {}) is Dictionary else {}
+	var family_label := String(snapshot.get("family", "depth")).replace("_", " ")
+	var total_timing: Variant = timing.get("total", null)
+	var depth_timing_text := "Depth timing n/a" if total_timing == null else "%s %.1f ms" % [family_label.capitalize(), float(total_timing)]
+	_depth_debug_fps_label.text = "Preview %.1f FPS\n%s" % [maxf(_smoothed_preview_fps, 0.0), depth_timing_text]
+
+func _refresh_depth_debug_thumbnail(snapshot: Dictionary, preview_texture: Texture2D, depth_texture: Texture2D) -> void:
+	if _depth_debug_thumbnail_panel == null:
+		return
+	var show_thumbnail := bool(_depth_debug_visual_config.get("thumbnail_visible", false)) and bool(_depth_debug_visual_config.get("enabled", false))
+	_depth_debug_thumbnail_panel.visible = show_thumbnail
+	if not show_thumbnail:
+		return
+	_apply_depth_debug_thumbnail_layout()
+	var focus_family := String(snapshot.get("family", "straight_punch")).replace("_", " ")
+	var family_title := focus_family.capitalize()
+	var texture_available := depth_texture != null
+	var main_is_depth := _depth_debug_swapped_to_depth and texture_available
+	var thumbnail_texture: Texture2D = preview_texture if main_is_depth else depth_texture
+	var thumbnail_has_texture := thumbnail_texture != null
+	_depth_debug_thumbnail_title_label.text = "%s · %s" % ["Preview" if main_is_depth else "Depth", family_title]
+	_depth_debug_thumbnail_texture.visible = thumbnail_has_texture
+	_depth_debug_thumbnail_texture.texture = thumbnail_texture
+	var preferred_width := float(int(_depth_debug_visual_config.get("thumbnail_width_px", 196)))
+	_depth_debug_thumbnail_texture.custom_minimum_size = Vector2(preferred_width, roundf(preferred_width * 0.58))
+	_depth_debug_thumbnail_placeholder_label.visible = not thumbnail_has_texture
+	_depth_debug_thumbnail_placeholder_label.custom_minimum_size = _depth_debug_thumbnail_texture.custom_minimum_size
+	_depth_debug_thumbnail_placeholder_label.text = _depth_debug_placeholder_text(snapshot)
+	_depth_debug_thumbnail_status_label.text = _depth_debug_status_text(snapshot, texture_available)
+	var show_hint := bool(_depth_debug_visual_config.get("hover_hint_visible", false)) and bool(_depth_debug_visual_config.get("swap_click_enabled", false)) and texture_available and _depth_debug_thumbnail_hovered
+	_depth_debug_thumbnail_hint_label.visible = show_hint
+	_depth_debug_thumbnail_hint_label.text = "Click to restore preview" if main_is_depth else "Click to inspect depth"
+
+func _apply_depth_debug_thumbnail_layout() -> void:
+	if _depth_debug_thumbnail_panel == null:
+		return
+	var preferred_width := float(int(_depth_debug_visual_config.get("thumbnail_width_px", 196)))
+	var margin := float(int(_depth_debug_visual_config.get("thumbnail_margin_px", 14)))
+	_depth_debug_thumbnail_panel.custom_minimum_size = Vector2(preferred_width + 20.0, 0.0)
+	_depth_debug_thumbnail_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_depth_debug_thumbnail_panel.offset_left = -(preferred_width + 20.0 + margin)
+	_depth_debug_thumbnail_panel.offset_top = -190.0 - margin
+	_depth_debug_thumbnail_panel.offset_right = -margin
+	_depth_debug_thumbnail_panel.offset_bottom = -margin
+
+func _build_depth_debug_visual_snapshot() -> Dictionary:
+	var focus_family := _depth_debug_focus_family()
+	var runtime_debug := _current_depth_runtime_debug_state(focus_family)
+	var sample_metrics: Dictionary = runtime_debug.get("last_sample_metrics", {}) if runtime_debug.get("last_sample_metrics", {}) is Dictionary else {}
+	var sample_geometry: Dictionary = sample_metrics.get("sample_geometry", {}) if sample_metrics.get("sample_geometry", {}) is Dictionary else {}
+	return {
+		"family": focus_family,
+		"runtime_debug": runtime_debug,
+		"sample_metrics": sample_metrics,
+		"sample_geometry": sample_geometry,
+		"timing_ms": (runtime_debug.get("last_timing_ms", {}) as Dictionary).duplicate(true),
+		"frame_size": runtime_debug.get("frame_size", Vector2i.ZERO),
+		"depth_map_size": runtime_debug.get("depth_map_size", Vector2i.ZERO),
+		"preview_texture": camera_view.texture if camera_view != null else null,
+		"depth_texture": _depth_texture_from_runtime_debug(runtime_debug),
+	}
+
+func _depth_debug_focus_family() -> String:
+	var best_family := "straight_punch"
+	var best_timestamp := -INF
+	for family: String in ["straight_punch", "hook", "uppercut"]:
+		var runtime_debug := _current_depth_runtime_debug_state(family)
+		if runtime_debug.is_empty():
+			continue
+		var timestamp := float(runtime_debug.get("last_sample_timestamp_ms", -1))
+		if timestamp > best_timestamp:
+			best_timestamp = timestamp
+			best_family = family
+		elif best_timestamp < 0.0 and bool(runtime_debug.get("depth_enabled", false)):
+			best_family = family
+	return best_family
+
+func _depth_texture_from_runtime_debug(runtime_debug: Dictionary) -> Texture2D:
+	var source: Variant = runtime_debug.get("normalized_depth_map", null)
+	if source is Texture2D:
+		return source
+	if source is Image:
+		return ImageTexture.create_from_image(source)
+	return null
+
+func _depth_debug_placeholder_text(snapshot: Dictionary) -> String:
+	var runtime_debug: Dictionary = snapshot.get("runtime_debug", {}) if snapshot.get("runtime_debug", {}) is Dictionary else {}
+	var runtime_status := String(runtime_debug.get("runtime_status", "unloaded"))
+	var runtime_stage := String(runtime_debug.get("runtime_stage", "idle"))
+	return "Depth texture unavailable\nRuntime %s / %s\nUsing sampled debug state only." % [runtime_status, runtime_stage]
+
+func _depth_debug_status_text(snapshot: Dictionary, texture_available: bool) -> String:
+	var runtime_debug: Dictionary = snapshot.get("runtime_debug", {}) if snapshot.get("runtime_debug", {}) is Dictionary else {}
+	var sample_metrics: Dictionary = snapshot.get("sample_metrics", {}) if snapshot.get("sample_metrics", {}) is Dictionary else {}
+	var frame_size: Vector2i = snapshot.get("frame_size", Vector2i.ZERO)
+	var depth_map_size: Vector2i = snapshot.get("depth_map_size", Vector2i.ZERO)
+	var timing: Dictionary = snapshot.get("timing_ms", {}) if snapshot.get("timing_ms", {}) is Dictionary else {}
+	var status_parts := [
+		"texture=%s" % _fmt_bool(texture_available),
+		"source=%s" % String(sample_metrics.get("sample_source", "none")),
+		"fresh=%s" % _fmt_bool(bool(sample_metrics.get("sample_fresh", false))),
+		"age=%dms" % int(runtime_debug.get("last_sample_age_ms", -1)),
+		"cadence=%d/%dms" % [
+			int(runtime_debug.get("sample_every_n_frames", 1)),
+			int(runtime_debug.get("max_sample_age_ms", 0)),
+		],
+		"frame=%dx%d" % [frame_size.x, frame_size.y],
+		"depth=%dx%d" % [depth_map_size.x, depth_map_size.y],
+		"total=%.1fms" % float(timing.get("total", 0.0)),
+	]
+	return ", ".join(status_parts)
+
 func _record_event(event_name: String, payload: Dictionary) -> void:
 	if harness_mode == HarnessMode.BOXING:
 		if UI_EVENT_LABELS.has(event_name):
@@ -938,6 +1317,24 @@ func _refresh_profile_controls() -> void:
 		gesture_config_path_field.tooltip_text = String(bundle.get("gesture_detection_path", ""))
 	_sync_profile_visual_config(bundle)
 
+func _sync_depth_debug_visual_config(visuals: Dictionary) -> void:
+	var depth_debug: Dictionary = visuals.get("depth_debug", {}) if visuals.get("depth_debug", {}) is Dictionary else {}
+	_depth_debug_visual_config = {
+		"enabled": bool(depth_debug.get("enabled", false)),
+		"thumbnail_visible": bool(depth_debug.get("thumbnail_visible", false)),
+		"swap_click_enabled": bool(depth_debug.get("swap_click_enabled", false)),
+		"hover_hint_visible": bool(depth_debug.get("hover_hint_visible", false)),
+		"sampling_regions_visible": bool(depth_debug.get("sampling_regions_visible", false)),
+		"fps_visible": bool(depth_debug.get("fps_visible", false)),
+		"thumbnail_corner": String(depth_debug.get("thumbnail_corner", "bottom_right")).strip_edges().to_lower(),
+		"thumbnail_width_px": maxi(120, int(depth_debug.get("thumbnail_width_px", 196))),
+		"thumbnail_margin_px": maxi(0, int(depth_debug.get("thumbnail_margin_px", 14))),
+	}
+	if not bool(_depth_debug_visual_config.get("enabled", false)):
+		_depth_debug_swapped_to_depth = false
+		_depth_debug_thumbnail_hovered = false
+	_refresh_depth_debug_visuals()
+
 func _sync_profile_visual_config(bundle: Dictionary = {}) -> void:
 	var resolved_bundle := bundle if not bundle.is_empty() else _current_profile_bundle()
 	_apply_testbed_debug_profile_bundle(resolved_bundle)
@@ -963,6 +1360,7 @@ func _sync_profile_visual_config(bundle: Dictionary = {}) -> void:
 			hand_bbox_drawer.clear_snapshot()
 		else:
 			hand_bbox_drawer.queue_redraw()
+	_sync_depth_debug_visual_config(visuals)
 
 func _current_profile_bundle() -> Dictionary:
 	var tracking_singleton := _resolve_camera_tracking_singleton()
