@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-21  
 **Status:** In Progress  
-**Last Updated:** 2026-06-21 12:28 EDT  
+**Last Updated:** 2026-06-21 13:05 EDT  
 **Blocked Reason:** None — remaining cleanup ownership is now diagnosed, Derrick explicitly approved execution, and Task 6 implementation is the active next seam: first fix the proving/runtime re-entrant full-file rerun blocker in `aerobeat-input-camera-tracking`, then clean the mounted addon UID warning source in `aerobeat-vendor-godot-unit-test`, then re-run full-file + targeted validation.  
 **Agent:** `pico`
 
@@ -188,14 +188,18 @@ This cleanup plan will treat three seams separately so we do not blur signal: (1
 **Prompt:** Independently verify that the remaining cleanup fixes actually clear the full-file proving-harness cleanup residue and the addon UID warning noise in scope, and that the boxing proving threshold-depth path still passes the relevant validation.
 
 **Folders Created/Deleted/Modified:**
+- `.testbed/test-results/task7-qa-20260621/`
 - owning repo(s) touched by remaining cleanup work
 
 **Files Created/Deleted/Modified:**
-- proving/runtime/addon/project metadata files touched by implementation
+- `.testbed/test-results/task7-qa-20260621/mounted_startup_scene.log`
+- `.testbed/test-results/task7-qa-20260621/threshold_depth.log`
+- `.testbed/test-results/task7-qa-20260621/full_proving_file.log`
+- `.plans/mediapipe-python/2026-06-21-boxing-proving-cleanup-and-warning-reduction.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent QA re-ran the critical validations from the main repo against the landed cross-repo fixes and found the primary blocker is genuinely resolved, but Task 6 understated the remaining non-blocking noise. Fresh QA artifacts were captured under `.testbed/test-results/task7-qa-20260621/`. First, the mounted-startup path now behaves as claimed: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls -gexit` passed `1/1` in `6.863s`, and `rg` over `mounted_startup_scene.log` found no `invalid UID` / `using text path instead` warnings. Second, the boxing threshold-depth path still validates after the cleanup: `test_punch_family_inspectors_surface_live_depth_loader_truth_and_metrics` passed `1/1` with `16` asserts in `0.92s` (`threshold_depth.log`), preserving the depth-loader/debug truth seam. Third, the previously blocked full-file rerun is now viable end-to-end from the main repo: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` completed successfully with `39/39 passed`, `364` asserts, and `366.147s` (`full_proving_file.log`), so the re-entrant rerun blocker is no longer reproducible here. QA also confirmed that the prior cleanup residue stayed gone in this rerun: no `orphans`, `ObjectDB instances leaked at exit`, `resources still in use at exit`, `invalid UID`, or stack-overflow traces appeared in the fresh logs. However, the full-file log still contains repeated non-fatal runtime/script noise that Task 6 did not mention: many expected MediaPipe/TFLite warnings (`inference_feedback_manager`, `landmark_projection_calculator`), repeated existing `Replay start requested without a source path` warnings on replay-start tests, and a more important newly observed class of non-fatal `SCRIPT ERROR: Invalid call. Nonexistent function 'update_trails' in base 'Control'.` / `clear_trails` errors from `res://scripts/proving_harness.gd` during `test_boxing_proving_profile_visual_config_drives_overlay_toggles` and `test_boxing_proving_profile_visual_config_uses_camera_tracking_preview_overlays_independently_from_debug_visuals`. Those script errors do not stop the file from passing, but they are real remaining cleanup residue and should be explicitly audited/triaged instead of being folded into the harmless-warning bucket. On balance: the main Task 7 verification goals passed (rerun viability restored, addon UID warning noise gone, threshold-depth path still valid), but Task 8 should proceed only as a truth-check with this caveat front-and-center, not as a blind closure audit.
 
 ### Task 8: Audit remaining cleanup fixes and final closure
 
