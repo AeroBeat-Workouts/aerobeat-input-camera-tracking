@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 22:31 EDT  
-**Blocked Reason:** None. Tasks 3.13 QA and 3.14 audit now both validate the zombie-worker reaping fix locally; remaining planned work is the broader Task 4 seam audit, then the deeper integration seam.  
+**Last Updated:** 2026-06-20 23:46 EDT  
+**Blocked Reason:** None. Task 4.1 fixed the stale blocked-infer failure residue at shutdown/release; next planned work is QA + audit for this slice, then the broader Task 4 seam audit.  
 **Agent:** `pico`
 
 ---
@@ -576,7 +576,7 @@ Audit conclusion:
 
 ### Task 4: Audit performance-first seam truthfulness
 
-**Bead ID:** `Pending`  
+**Bead ID:** `aerobeat-input-camera-tracking-j5s9`  
 **SubAgent:** `primary`  
 **Role:** `auditor`  
 **References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`  
@@ -594,9 +594,94 @@ Audit conclusion:
 
 ---
 
+### Task 4.1: Fix stale shutdown failure residue in performance seam debug state
+
+**Bead ID:** `aerobeat-input-camera-tracking-amn7`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-06`  
+**Prompt:** Fix the remaining shutdown/release truth gap in the performance-first runtime seam. After a blocked infer (for example missing `preview_image_path`), a later `DepthRuntimeManager.shutdown()` / release must not leave stale `failure_code` or `failure_message` residue once runtime state has been reset to unloaded/idle. Keep the fix inside the runtime bridge / manager / shared-pool debug seam, preserve current performance and pooling behavior, update the active plan with actual results, run relevant validation, commit/push repo-file changes by default, and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `src/depth/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `src/depth/depth_model_adapter.gd`
+- `src/depth/depth_runtime_manager.gd`
+- `.testbed/tests/unit/test_depth_runtime_manager.gd`
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the remaining blocked-infer shutdown/release truth gap entirely inside the runtime-management seam from `REF-02` / `REF-03` / `REF-06`, without changing transport, inference, pooling, or detector-facing behavior.
+
+Concrete implementation details:
+- `src/depth/depth_model_adapter.gd` now explicitly clears `failure_code` and `failure_message` when adapter unload completes, so the pooled-release seam cannot keep reporting a stale blocked-infer error after the runtime has been unloaded to idle.
+- `src/depth/depth_runtime_manager.gd` now also clears `failure_code` and `failure_message` during `shutdown()` after shared-runtime release, so the family-facing debug surface no longer preserves residue from an earlier blocked infer once the manager reports `runtime_status=unloaded` / `runtime_stage=idle`.
+- No worker lifecycle, pooling, runtime-key sharing, or warm-path performance behavior changed; this was a debug-truth cleanup only.
+
+Truth fix outcome:
+- Repro sequence covered by the new regression: call `infer_relative_depth({}, ...)` so the bridge reports `preview_image_missing`, then call `manager.shutdown()`. After shutdown, `manager.get_debug_state()` now reports `failure_code=""` and `failure_message=""` alongside the existing unloaded/idle truth, instead of leaving the stale blocked-infer residue behind.
+- This also hardens the pooled release path because release-time adapter debug snapshots are now residue-free when the runtime is no longer loaded.
+
+Validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit`
+- Result: **10/10 passed**.
+
+Test coverage added:
+- `.testbed/tests/unit/test_depth_runtime_manager.gd` now includes `test_shutdown_clears_failure_residue_after_blocked_infer()`, which proves a real blocked infer (`preview_image_missing`) is visible before shutdown and truthfully cleared after shutdown.
+
+---
+
+### Task 4.2: QA stale shutdown failure residue fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-5361`  
+**SubAgent:** `primary`  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-06`  
+**Prompt:** Independently verify the stale shutdown failure-residue fix. Confirm that after a blocked infer followed by shutdown/release, runtime debug state no longer carries stale failure residue, and that performance, pooling, and shutdown truth did not regress. Update the active plan with actual QA findings and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `src/depth/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / tests / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 4.3: Audit stale shutdown failure residue fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-8xsm`  
+**SubAgent:** `primary`  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-06`  
+**Prompt:** Independently audit that the stale shutdown failure-residue issue is actually fixed, that plan/debug surfaces now tell the truth after blocked-infer then shutdown/release sequences, and that the performance-first seam is ready to pass its broader audit. Close the bead if it passes or report the blocking gap if it fails.
+
+**Folders Created/Deleted/Modified:**
+- `src/depth/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / tests / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
 ### Task 5: Deepen live runtime integration after performance work
 
-**Bead ID:** `Pending`  
+**Bead ID:** `aerobeat-input-camera-tracking-vpms`  
 **SubAgent:** `primary`  
 **Role:** `coder`  
 **References:** `REF-01`, `REF-02`, `REF-05`, `REF-06`  
@@ -618,7 +703,7 @@ Audit conclusion:
 
 ### Task 6: QA deeper runtime integration
 
-**Bead ID:** `Pending`  
+**Bead ID:** `aerobeat-input-camera-tracking-fr76`  
 **SubAgent:** `primary`  
 **Role:** `qa`  
 **References:** `REF-05`, `REF-06`  
@@ -638,7 +723,7 @@ Audit conclusion:
 
 ### Task 7: Audit deeper runtime integration
 
-**Bead ID:** `Pending`  
+**Bead ID:** `aerobeat-input-camera-tracking-rok8`  
 **SubAgent:** `primary`  
 **Role:** `auditor`  
 **References:** `REF-05`, `REF-06`  
@@ -660,7 +745,7 @@ Audit conclusion:
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA first found a shutdown-state truth gap, Task 3.5 fixed it inside the runtime bridge/manager debug seam, and Task 3.6 then re-verified truthful shutdown, clean worker exit, swap behavior, and the previously claimed FastDepth steady-state performance win. Task 3.9 then added runtime-key pooling across punch families, Task 3.10 QA verified that pooling while exposing the final-release zombie-child seam, Task 3.11 audit confirmed the blocker, Task 3.12 fixed that seam by retaining pooled bridge workers and unloading model state instead of letting the Godot-owned child exit, Task 3.13 QA re-verified same-key pooling / no live-session zombies / truthful released-manager debug state, and Task 3.14 audit now independently confirms those same claims with fresh unit, runtime, and host-process checks.
+**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA first found a shutdown-state truth gap, Task 3.5 fixed it inside the runtime bridge/manager debug seam, and Task 3.6 then re-verified truthful shutdown, clean worker exit, swap behavior, and the previously claimed FastDepth steady-state performance win. Task 3.9 then added runtime-key pooling across punch families, Task 3.10 QA verified that pooling while exposing the final-release zombie-child seam, Task 3.11 audit confirmed the blocker, Task 3.12 fixed that seam by retaining pooled bridge workers and unloading model state instead of letting the Godot-owned child exit, Task 3.13 QA re-verified same-key pooling / no live-session zombies / truthful released-manager debug state, and Task 3.14 audit now independently confirms those same claims with fresh unit, runtime, and host-process checks. Task 4.1 now also clears stale blocked-infer `failure_code` / `failure_message` residue during shutdown/release so unloaded/idle runtime truth no longer overstates an old failure.
 
 **Reference Check:** `REF-02` / `REF-03` / `REF-04` still hold the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. After Task 3.14, `REF-06` is aligned again at both the family-facing debug layer and the host-process layer: released managers report truthful unloaded state, the shared runtime pool keeps same-key reuse intact, retained idle workers remain honest under live-parent inspection, and host-side `ps` inspection no longer shows unreaped zombie Python children under a live Godot parent.
 

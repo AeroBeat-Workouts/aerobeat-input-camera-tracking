@@ -158,6 +158,8 @@ func shutdown() -> void:
 	_debug_state["depth_enabled"] = bool(_family_depth_config.get("enabled", false))
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_IDLE
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_DISABLED if not bool(_family_depth_config.get("enabled", false)) else DepthRuntimeTypes.STATUS_UNLOADED
+	_debug_state["failure_code"] = ""
+	_debug_state["failure_message"] = ""
 	_debug_state["active_model_summary"] = "disabled in config" if not bool(_family_depth_config.get("enabled", false)) else "depth runtime unloaded"
 	_debug_state["worker_alive"] = false
 	_debug_state["worker_pid"] = 0

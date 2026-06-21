@@ -80,4 +80,6 @@ func unload() -> void:
 		_debug_state = _runtime_bridge.get_debug_state()
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_UNLOADED
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_IDLE
+	_debug_state["failure_code"] = ""
+	_debug_state["failure_message"] = ""
 	_debug_state["active_model_summary"] = "depth runtime unloaded"
