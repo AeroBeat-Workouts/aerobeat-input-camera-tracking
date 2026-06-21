@@ -71,9 +71,15 @@ class FakeAthleteRecalibrateProvider:
 			}
 		}
 
-func _new_harness() -> Object:
+func _new_harness() -> Variant:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
-	return harness_script.new()
+	return add_child_autoqfree(harness_script.new())
+
+func _new_base_harness() -> Variant:
+	return add_child_autoqfree(ProvingHarnessScript.new())
+
+func _new_playback_harness() -> Variant:
+	return add_child_autoqfree(PlaybackStateHarness.new())
 
 func _depth_runtime_debug_payload(summary: String, artifact_path: String, backend_id: String, family_id: String, runtime_status: String, runtime_stage: String, failure_code: String = "", failure_message: String = "") -> Dictionary:
 	return {
@@ -190,7 +196,7 @@ func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes()
 	assert_true(hand_bbox_drawer.visible)
 
 func test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface() -> void:
-	var harness: Object = ProvingHarnessScript.new()
+	var harness: Object = _new_base_harness()
 	assert_true(_has_editor_exposed_property(harness, "scene_title"))
 	assert_false(_has_editor_exposed_property(harness, "overlay_visibility_threshold"))
 	assert_false(_has_editor_exposed_property(harness, "tracking_smoothing_style"))
@@ -218,7 +224,7 @@ func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> 
 
 
 func test_proving_runtime_config_uses_profile_yaml_pose_smoothing_over_hidden_scene_default() -> void:
-	var harness: Variant = ProvingHarnessScript.new()
+	var harness: Variant = _new_base_harness()
 	harness.set("harness_mode", int(ProvingHarnessScript.HarnessMode.BOXING))
 	harness.set("tracking_smoothing_style", int(ProvingHarnessScript.TrackingSmoothingStyle.LITE_RAW))
 
@@ -231,7 +237,7 @@ func test_proving_runtime_config_uses_profile_yaml_pose_smoothing_over_hidden_sc
 	assert_eq(bool(config.runtime.get("no_filter", true)), not expects_filter_enabled)
 
 func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
-	var harness: Variant = ProvingHarnessScript.new()
+	var harness: Variant = _new_base_harness()
 	harness.set("harness_mode", int(ProvingHarnessScript.HarnessMode.FLOW))
 
 	var config: Variant = harness._build_runtime_config()
@@ -246,7 +252,7 @@ func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
 func test_proving_runtime_config_can_force_prototype_backend_for_fixture_benchmarks() -> void:
 	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "prototype")
-	var harness: Variant = ProvingHarnessScript.new()
+	var harness: Variant = _new_base_harness()
 	var config: Variant = harness._build_runtime_config()
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
 
@@ -259,7 +265,7 @@ func test_proving_runtime_config_can_force_prototype_backend_for_fixture_benchma
 func test_proving_runtime_config_can_force_disabled_backend_for_fixture_benchmarks() -> void:
 	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "disabled")
-	var harness: Variant = ProvingHarnessScript.new()
+	var harness: Variant = _new_base_harness()
 	var config: Variant = harness._build_runtime_config()
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
 
@@ -272,7 +278,7 @@ func test_proving_runtime_config_can_force_disabled_backend_for_fixture_benchmar
 func test_proving_runtime_config_can_force_classifier_backend_for_fixture_benchmarks() -> void:
 	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "classifier")
-	var harness: Variant = ProvingHarnessScript.new()
+	var harness: Variant = _new_base_harness()
 	var config: Variant = harness._build_runtime_config()
 	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
 
@@ -1528,12 +1534,12 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 	assert_false(still_frozen_body.contains("Event payload snapshot"))
 
 func test_playback_step_buttons_only_enable_while_paused() -> void:
-	var harness: Variant = PlaybackStateHarness.new()
-	harness.set("_playback_toggle_button", Button.new())
-	harness.set("_playback_seek_slider", HSlider.new())
-	harness.set("_playback_time_label", Label.new())
-	var step_back := Button.new()
-	var step_forward := Button.new()
+	var harness: Variant = _new_playback_harness()
+	harness.set("_playback_toggle_button", add_child_autoqfree(Button.new()))
+	harness.set("_playback_seek_slider", add_child_autoqfree(HSlider.new()))
+	harness.set("_playback_time_label", add_child_autoqfree(Label.new()))
+	var step_back: Button = add_child_autoqfree(Button.new()) as Button
+	var step_forward: Button = add_child_autoqfree(Button.new()) as Button
 	harness.set("_playback_step_back_button", step_back)
 	harness.set("_playback_step_forward_button", step_forward)
 	harness.set("camera_source", "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
