@@ -71,6 +71,21 @@ class FakeAthleteRecalibrateProvider:
 			}
 		}
 
+class FakeTrailDrawer:
+	extends Control
+
+	var update_calls: Array[Dictionary] = []
+	var clear_call_count := 0
+
+	func update_trails(left_trail: Array, right_trail: Array) -> void:
+		update_calls.append({
+			"left_trail": left_trail.duplicate(true),
+			"right_trail": right_trail.duplicate(true),
+		})
+
+	func clear_trails() -> void:
+		clear_call_count += 1
+
 func _new_harness() -> Variant:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
 	return add_child_autoqfree(harness_script.new())
@@ -291,7 +306,7 @@ func test_proving_runtime_config_can_force_classifier_backend_for_fixture_benchm
 func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	var harness: Variant = _new_harness()
 	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
-	var trail_drawer: Control = add_child_autoqfree(Control.new())
+	var trail_drawer: Control = add_child_autoqfree(FakeTrailDrawer.new())
 	var hand_bbox_drawer: Control = add_child_autoqfree(Control.new())
 	harness.set("landmark_drawer", landmark_drawer)
 	harness.set("trail_drawer", trail_drawer)
@@ -318,7 +333,7 @@ func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 func test_boxing_proving_profile_visual_config_uses_camera_tracking_preview_overlays_independently_from_debug_visuals() -> void:
 	var harness: Variant = _new_harness()
 	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
-	var trail_drawer: Control = add_child_autoqfree(Control.new())
+	var trail_drawer: Control = add_child_autoqfree(FakeTrailDrawer.new())
 	var hand_bbox_drawer: Control = add_child_autoqfree(Control.new())
 	harness.set("landmark_drawer", landmark_drawer)
 	harness.set("trail_drawer", trail_drawer)

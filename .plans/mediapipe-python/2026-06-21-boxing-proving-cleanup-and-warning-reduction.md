@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-21  
 **Status:** In Progress  
-**Last Updated:** 2026-06-21 13:05 EDT  
-**Blocked Reason:** None — remaining cleanup ownership is now diagnosed, Derrick explicitly approved execution, and Task 6 implementation is the active next seam: first fix the proving/runtime re-entrant full-file rerun blocker in `aerobeat-input-camera-tracking`, then clean the mounted addon UID warning source in `aerobeat-vendor-godot-unit-test`, then re-run full-file + targeted validation.  
+**Last Updated:** 2026-06-21 13:00 EDT  
+**Blocked Reason:** None  
 **Agent:** `pico`
 
 ---
@@ -123,17 +123,17 @@ This cleanup plan will treat three seams separately so we do not blur signal: (1
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ❌ Blocked
 
-**What We Built:** Completed the narrow repo-local proving-scene warning-cleanup seam for the boxing threshold-depth path without overstating the broader proving-harness state. Local test-owned lifecycle leaks in `REF-03` were genuinely cleaned up, the stray root fake-`.mp4` artifact was removed from repo root by relocation into test-results, and targeted proving-harness validation still passes for the touched seams. But Derrick has now widened the completion bar, so the overall cleanup plan remains open until the sibling-addon UID warning source and the non-viable full-file proving-harness rerun path are also resolved or truthfully eliminated.
+**What We Built:** The team genuinely fixed the big cleanup blockers: the full-file proving-harness rerun is viable again, the mounted addon invalid-UID warning source is cleaned up in its owning repo, the threshold-depth proving path still validates, and the earlier local leak/orphan noise remains gone. But Task 8 audit found one remaining cleanup seam that means the plan is not fully done yet: the overlay-toggle tests still emit repeated non-fatal script errors because they wire `trail_drawer` to a plain `Control` instead of a trail drawer with the expected `update_trails` / `clear_trails` contract.
 
-**Reference Check:** `REF-02` and `REF-03` were satisfied for the scoped cleanup seam: the audited test-owned allocations now flow through GUT cleanup, targeted GUT passes still exercise the boxing proving/runtime-config and playback-control seams, and no local orphan/resource-leak summaries appeared in the fresh targeted audit logs. `REF-04` remains satisfied for the playtest-ready boxing path through the targeted runtime-config validation. Deliberate caveat: this plan does **not** claim that the entire `REF-03` file now reruns cleanly end-to-end; only the targeted cleanup seam is verified complete.
+**Reference Check:** `REF-02` and `REF-03` now satisfy the major closure criteria that were previously blocked: the full `REF-03` file reaches `39/39 passed`, `364` asserts, and no longer shows the original rerun-recursion blocker, local orphan/resource-leak summaries, or mounted-addon UID warnings. `REF-04` remains satisfied because the threshold-depth proving validation still passes after cleanup. However, `REF-03` is **not yet clean enough to call fully done**, because the two overlay-toggle tests still produce repeatable script errors under passing execution, documented in `.testbed/test-results/task8-audit-20260621/overlay_toggle_1.log` and `overlay_toggle_2.log`.
 
 **Commits:**
 - `10908b2` - Fix proving harness test cleanup leaks
 - `3d0011f` - docs: record QA for boxing proving cleanup
 
-**Lessons Learned:** For proving-harness cleanup work, targeted validation plus strict warning categorization is the trustworthy evidence path when the full-file run is not currently stable. Mounted sibling addons must be called out separately from owning-repo cleanup so we do not hide real progress behind external UID noise or over-claim end-to-end stability.
+**Lessons Learned:** Restoring a passing end-to-end rerun is not the same as finishing cleanup. When a test double violates a runtime node contract, Godot can still report the test as passing while spamming script errors; audit has to treat that as remaining cleanup debt, not harmless ambient noise.
 
 ### Task 5: Diagnose remaining cross-repo cleanup items
 
@@ -215,9 +215,33 @@ This cleanup plan will treat three seams separately so we do not blur signal: (1
 **Files Created/Deleted/Modified:**
 - proving/runtime/addon/project metadata files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** Independent audit says the cleanup plan is **not** honestly done yet. I verified the major intended fixes succeeded: the full-file proving-harness rerun blocker is gone (`.testbed/test-results/task7-qa-20260621/full_proving_file.log` reaches `39/39 passed`, `364` asserts, and no longer shows the prior recursion/stack-overflow, orphan/resource-leak, or invalid-UID noise), the mounted addon UID warning source is cleaned up (`mounted_startup_scene.log` passes `1/1` with no `invalid UID` / `using text path instead` lines), and the threshold-depth proving path still passes (`threshold_depth.log` passes `1/1` with `16` asserts). But the remaining `update_trails` / `clear_trails` errors are real current cleanup residue, not acceptable harmless background noise. I reproduced them directly in isolation with fresh audit logs under `.testbed/test-results/task8-audit-20260621/`: `overlay_toggle_1.log` (for `test_boxing_proving_profile_visual_config_drives_overlay_toggles`) emits 5 `update_trails` script errors, and `overlay_toggle_2.log` (for `test_boxing_proving_profile_visual_config_uses_camera_tracking_preview_overlays_independently_from_debug_visuals`) emits 5 `clear_trails` script errors, even though each test still reports `1/1 passed`. The root cause is narrow and truthful: those tests set `harness.trail_drawer` to `Control.new()` instead of a drawer that implements the harness contract, while `res://scripts/proving_harness.gd` unconditionally calls `trail_drawer.update_trails(...)` / `trail_drawer.clear_trails()` whenever tracking updates or teardown run. This means the errors are **not** evidence that the real scene wiring is broken—the shipped scene still mounts `TrailDrawer` with `res://scripts/hand_trail_drawer.gd`, which does implement both methods—but they **are** evidence that the test seam is still dirty and the plan cannot honestly be called complete with no cleanup items remaining. The precise blocker is therefore: finish the overlay-toggle cleanup by either using a contract-faithful fake trail drawer in those tests or guarding the harness calls with `has_method(...)` in a way that preserves the real drawer contract without hiding genuine miswiring.
+
+### Task 9: Fix overlay-toggle trail drawer cleanup residue
+
+**Bead ID:** `aerobeat-input-camera-tracking-kl2b`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`  
+**Prompt:** Fix the remaining overlay-toggle cleanup seam after Task 8 audit with the narrowest truthful change. Prefer a contract-faithful fake trail drawer in the tests, preserve the proving/runtime contract, rerun the strongest targeted validation for the two overlay-toggle tests plus nearby proving-harness checks, then update this plan with actual results.
+
+**Folders Created/Deleted/Modified:**
+- `.testbed/tests/unit/`
+- `.testbed/test-results/task9-coder-20260621/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `.testbed/test-results/task9-coder-20260621/overlay_toggle_1.log`
+- `.testbed/test-results/task9-coder-20260621/overlay_toggle_2.log`
+- `.testbed/test-results/task9-coder-20260621/scene_applies_debug_yaml.log`
+- `.plans/mediapipe-python/2026-06-21-boxing-proving-cleanup-and-warning-reduction.md`
+
+**Status:** ✅ Complete
+
+**Results:** Implemented the preferred narrow fix in `REF-03` instead of weakening `REF-02`. The two overlay-toggle tests now inject `FakeTrailDrawer`, a contract-faithful test double that extends `Control` and implements the same `update_trails(left_trail, right_trail)` and `clear_trails()` methods the harness already expects from the real `TrailDrawer`. That preserves the real proving/runtime contract and keeps genuine scene miswiring visible; I deliberately did **not** add `has_method(...)` guards to `proving_harness.gd`, because that would have hidden contract failures in runtime wiring rather than fixing the dirty test seam. Fresh targeted validation passed and no longer emitted the prior script-error residue: `overlay_toggle_1.log` shows `test_boxing_proving_profile_visual_config_drives_overlay_toggles` passing `1/1` with `12` asserts and no `Invalid call`, `Nonexistent function`, or `SCRIPT ERROR` lines; `overlay_toggle_2.log` shows `test_boxing_proving_profile_visual_config_uses_camera_tracking_preview_overlays_independently_from_debug_visuals` passing `1/1` with `3` asserts and likewise no trail-drawer script errors; and the nearby proving-harness scene/config check `test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes` also passed `1/1` with `11` asserts in `scene_applies_debug_yaml.log`. On this evidence the cleanup residue identified by Task 8 is fixed and QA should proceed to independently re-verify the seam.
 
 ---
 
