@@ -1,9 +1,9 @@
 # AeroBeat depth runtime performance then integration
 
 **Date:** 2026-06-20  
-**Status:** In Progress  
-**Last Updated:** 2026-06-21 08:02 EDT  
-**Blocked Reason:** Waiting on Task 7 audit for the now-QA-validated Task 5 runtime-integration seam.  
+**Status:** Blocked  
+**Last Updated:** 2026-06-21 08:06 EDT  
+**Blocked Reason:** Task 7 audit failed: boxing config/proving contract still does not enable threshold-backed punch-family depth for hook + uppercut, and straight-punch depth also remains disabled in the shipped boxing profile.  
 **Agent:** `pico`
 
 ---
@@ -789,17 +789,31 @@ Net QA result: pass for Task 6 scope. The live depth signal is still consumed wh
 **Files Created/Deleted/Modified:**
 - detector / proving / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** Independent audit found the Task 5 provider/runtime seam itself is genuinely live, but the broader Task 7 bar is not yet met because the shipped boxing profile still does not enable threshold-backed punch-family depth the way the proving/config contract claims. Code review confirmed the shared seam architecture remains intact: preview-path enrichment stays isolated to `src/providers/camera_tracking_provider.gd` (`_augment_tracking_frame_runtime_context()`, preview-aware frame signatures, and `preview_changed` forced re-poll), while backend/model/depth ownership still lives under `src/detectors/pose_detector_substrate.gd` + `src/depth/depth_runtime_manager.gd` rather than leaking upward into the provider seam.
+
+Strongest relevant validation run on this machine:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd -gexit` → 14/14 passed. Confirms live/replay preview descriptors are merged into tracking frames, preview changes force re-polls, and the provider seam is live where claimed.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit` → 4/4 passed. Confirms the threshold-runtime depth gate logic exists and works when family depth is enabled in substrate coverage.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=live_depth_loader -gexit` → 1/1 passed. Confirms the proving inspector text can surface truthful depth-loader state/metrics, but this is synthetic coverage, not proof that the boxing profile currently enables those paths.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → 3/4 passed, 1 failed. `test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_paths` fails because the loaded boxing gesture profile returns `hook.backend == "disabled"` and `uppercut.backend == "disabled"`, while the test contract expects both to be `"threshold"` (`.testbed/tests/unit/test_camera_tracking_config_profiles.gd:55-57`).
+
+Direct config audit of `assets/boxing.gesture_detection.yaml` explains the failure and blocks playtest-ready status:
+- `straight_punch.backend` is `threshold`, but `straight_punch.threshold.depth.enabled` is still `false`.
+- `hook.backend` is still `disabled`, and `hook.threshold.depth.enabled` is also `false`.
+- `uppercut.backend` is still `disabled`, and `uppercut.threshold.depth.enabled` is also `false`.
+- The proving-harness inspector coverage is honest about these limitations today: its live-depth-loader test explicitly expects straight-punch depth truth only, while hook/uppercut inspector text still says `disabled in selected gesture YAML` (`.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:1126-1169`). So the debug/proving surfaces are truthful, but they are truthfully reporting that hook/uppercut threshold-depth is not enabled yet.
+
+Net audit result: fail / blocked for Task 7 scope. The deeper provider/runtime integration is real and the shared seam architecture remains clean, but the boxing profile has not yet been advanced to threshold-backed punch-family depth across the proving-scene-related seams. Precise blocking gap: update the boxing profile/runtime contract so hook + uppercut actually load as `backend: threshold` and enable their family depth blocks (and, if intended, enable straight-punch depth too), then re-run the config-profile + proving/runtime audit. Until that lands, this plan is not ready to call playtest-ready.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ❌ Blocked
 
-**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA first found a shutdown-state truth gap, Task 3.5 fixed it inside the runtime bridge/manager debug seam, and Task 3.6 then re-verified truthful shutdown, clean worker exit, swap behavior, and the previously claimed FastDepth steady-state performance win. Task 3.9 then added runtime-key pooling across punch families, Task 3.10 QA verified that pooling while exposing the final-release zombie-child seam, Task 3.11 audit confirmed the blocker, Task 3.12 fixed that seam by retaining pooled bridge workers and unloading model state instead of letting the Godot-owned child exit, Task 3.13 QA re-verified same-key pooling / no live-session zombies / truthful released-manager debug state, and Task 3.14 audit now independently confirms those same claims with fresh unit, runtime, and host-process checks. Task 4.1 now also clears stale blocked-infer `failure_code` / `failure_message` residue during shutdown/release so unloaded/idle runtime truth no longer overstates an old failure, Task 4.2 QA independently verifies that residue fix while also reconfirming pooling, shutdown truth, and warm-path performance, and Task 4.3 audit now independently confirms that exact blocked-infer → shutdown/release sequence with a fresh pooled repro so the broader Task 4 performance-seam audit can proceed.
+**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA first found a shutdown-state truth gap, Task 3.5 fixed it inside the runtime bridge/manager debug seam, and Task 3.6 then re-verified truthful shutdown, clean worker exit, swap behavior, and the previously claimed FastDepth steady-state performance win. Task 3.9 then added runtime-key pooling across punch families, Task 3.10 QA verified that pooling while exposing the final-release zombie-child seam, Task 3.11 audit confirmed the blocker, Task 3.12 fixed that seam by retaining pooled bridge workers and unloading model state instead of letting the Godot-owned child exit, Task 3.13 QA re-verified same-key pooling / no live-session zombies / truthful released-manager debug state, and Task 3.14 audit independently confirmed those same claims with fresh unit, runtime, and host-process checks. Task 4.1 also clears stale blocked-infer `failure_code` / `failure_message` residue during shutdown/release so unloaded/idle runtime truth no longer overstates an old failure, Task 4.2 QA independently verified that residue fix while also reconfirming pooling, shutdown truth, and warm-path performance, and Task 4.3 audit independently confirmed that exact blocked-infer → shutdown/release sequence with a fresh pooled repro. Task 5 then made the provider seam carry live/replay preview image paths into downstream depth consumers, and Task 6 QA verified that integration. Task 7 audit, however, found the plan is still blocked before playtest-ready: the live/shared seam work is real, but the shipped boxing profile still leaves `straight_punch.threshold.depth.enabled = false`, `hook.backend = disabled`, `hook.threshold.depth.enabled = false`, `uppercut.backend = disabled`, and `uppercut.threshold.depth.enabled = false`, so threshold-backed punch-family depth is not yet actually enabled across the boxing proving/runtime contract.
 
 **Reference Check:** `REF-02` / `REF-03` / `REF-04` still hold the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. After Task 3.14, `REF-06` is aligned again at both the family-facing debug layer and the host-process layer: released managers report truthful unloaded state, the shared runtime pool keeps same-key reuse intact, retained idle workers remain honest under live-parent inspection, and host-side `ps` inspection no longer shows unreaped zombie Python children under a live Godot parent.
 
