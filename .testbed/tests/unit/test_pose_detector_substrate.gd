@@ -392,6 +392,28 @@ func test_straight_punch_ignores_deprecated_forward_depth_spike_threshold_config
 	assert_false(left_debug.has("min_forward_depth_spike"))
 	assert_false(left_debug.has("forward_depth_spike_gate_passed"))
 
+func test_depth_runtime_request_plumbing_marks_debug_texture_request_from_runtime_config() -> void:
+	config.runtime = {
+		"depth_debug": {
+			"request_runtime_texture": true,
+		}
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	var request: Dictionary = substrate.call(
+		"_build_depth_sample_request",
+		"straight_punch",
+		"left",
+		1234,
+		{"x": 0.45, "y": 0.42},
+		{"x": 0.48, "y": 0.55},
+		{"x": 0.56, "y": 0.66},
+		{"window_ms": 180},
+		{"evaluation": {"sample_every_n_frames": 3}}
+	)
+	assert_true(bool(request.get("debug_texture_requested", false)))
+	assert_eq(int(request.get("window_ms", 0)), 180)
+	assert_eq(int(request.get("evaluation", {}).get("sample_every_n_frames", 0)), 3)
+
 func test_straight_punch_depth_gate_reports_preview_image_block_truthfully() -> void:
 	config.tracker_profile_document = {
 		"tracking": {

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import secrets
@@ -132,6 +133,21 @@ def _resize_depth_to_frame(normalized_depth: Any, frame_shape: Tuple[int, int]) 
     return cv2.resize(normalized_depth, (frame_w, frame_h), interpolation=cv2.INTER_CUBIC)
 
 
+def _encode_normalized_depth_png_base64(normalized_depth: Any) -> Optional[str]:
+    import cv2  # type: ignore
+    import numpy as np  # type: ignore
+
+    depth = np.asarray(normalized_depth, dtype=np.float32)
+    if depth.ndim != 2:
+        return None
+    clipped = np.clip(depth, 0.0, 1.0)
+    depth_u8 = np.rint(clipped * 255.0).astype(np.uint8)
+    ok, encoded = cv2.imencode(".png", depth_u8)
+    if not ok:
+        return None
+    return base64.b64encode(encoded.tobytes()).decode("ascii")
+
+
 def _sample_depth(depth_map: Any, point: Dict[str, Any]) -> Dict[str, Any]:
     h, w = depth_map.shape[:2]
     x = float(point.get("x", 0.5))
@@ -248,6 +264,8 @@ class RuntimeSession:
             wrist_sample = _sample_depth(normalized_depth, sample_request.get("wrist", {}))
             shoulder_depth = float(shoulder_sample.get("depth", 0.0))
             wrist_depth = float(wrist_sample.get("depth", 0.0))
+            request_debug_texture = bool(sample_request.get("debug_texture_requested", False))
+            normalized_depth_map_png_base64 = _encode_normalized_depth_png_base64(normalized_depth) if request_debug_texture else None
             timing["postprocess"] = (time.perf_counter() - t2) * 1000.0
             timing["total"] = (time.perf_counter() - started_at) * 1000.0
             evaluation_cfg = sample_request.get("evaluation", {}) if isinstance(sample_request.get("evaluation", {}), dict) else {}
@@ -261,6 +279,7 @@ class RuntimeSession:
                 "frame_size": [int(frame_w), int(frame_h)],
                 "depth_map_size": [int(frame_w), int(frame_h)],
                 "normalized_depth_map": None,
+                "normalized_depth_map_png_base64": normalized_depth_map_png_base64,
                 "sample_metrics": {
                     "wrist_closeness": float(shoulder_depth - wrist_depth),
                     "wrist_depth": wrist_depth,

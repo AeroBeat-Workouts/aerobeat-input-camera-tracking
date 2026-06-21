@@ -139,25 +139,26 @@ func infer(frame_payload: Dictionary, request: Dictionary) -> Dictionary:
 		"preview_image_path": preview_image_path,
 		"sample_request": request.duplicate(true),
 	})
-	if not bool(response.get("ok", false)):
-		result["status"] = String(response.get("status", DepthRuntimeTypes.STATUS_FAILED))
-		result["sample_metrics"] = (response.get("sample_metrics", {}) as Dictionary).duplicate(true) if response.get("sample_metrics", {}) is Dictionary else {}
-		result["timing_ms"] = (response.get("timing_ms", {}) as Dictionary).duplicate(true) if response.get("timing_ms", {}) is Dictionary else result.get("timing_ms", {})
+	var hydrated_response := _hydrate_depth_texture_response(response)
+	if not bool(hydrated_response.get("ok", false)):
+		result["status"] = String(hydrated_response.get("status", DepthRuntimeTypes.STATUS_FAILED))
+		result["sample_metrics"] = (hydrated_response.get("sample_metrics", {}) as Dictionary).duplicate(true) if hydrated_response.get("sample_metrics", {}) is Dictionary else {}
+		result["timing_ms"] = (hydrated_response.get("timing_ms", {}) as Dictionary).duplicate(true) if hydrated_response.get("timing_ms", {}) is Dictionary else result.get("timing_ms", {})
 		result["error_info"] = {
-			"code": String(response.get("failure_code", "infer_failed")),
-			"message": String(response.get("failure_message", "Depth inference failed.")),
+			"code": String(hydrated_response.get("failure_code", "infer_failed")),
+			"message": String(hydrated_response.get("failure_message", "Depth inference failed.")),
 		}
-		_sync_debug_from_response(response)
+		_sync_debug_from_response(hydrated_response)
 		return result
 	result["ok"] = true
 	result["status"] = DepthRuntimeTypes.STATUS_READY
-	result["sample_metrics"] = (response.get("sample_metrics", {}) as Dictionary).duplicate(true) if response.get("sample_metrics", {}) is Dictionary else {}
-	result["timing_ms"] = (response.get("timing_ms", {}) as Dictionary).duplicate(true) if response.get("timing_ms", {}) is Dictionary else result.get("timing_ms", {})
-	result["depth_orientation"] = String(response.get("depth_orientation", "smaller_is_closer"))
-	result["frame_size"] = _vector2i_from_variant(response.get("frame_size", []))
-	result["depth_map_size"] = _vector2i_from_variant(response.get("depth_map_size", []))
-	result["normalized_depth_map"] = response.get("normalized_depth_map", null)
-	_sync_debug_from_response(response)
+	result["sample_metrics"] = (hydrated_response.get("sample_metrics", {}) as Dictionary).duplicate(true) if hydrated_response.get("sample_metrics", {}) is Dictionary else {}
+	result["timing_ms"] = (hydrated_response.get("timing_ms", {}) as Dictionary).duplicate(true) if hydrated_response.get("timing_ms", {}) is Dictionary else result.get("timing_ms", {})
+	result["depth_orientation"] = String(hydrated_response.get("depth_orientation", "smaller_is_closer"))
+	result["frame_size"] = _vector2i_from_variant(hydrated_response.get("frame_size", []))
+	result["depth_map_size"] = _vector2i_from_variant(hydrated_response.get("depth_map_size", []))
+	result["normalized_depth_map"] = hydrated_response.get("normalized_depth_map", null)
+	_sync_debug_from_response(hydrated_response)
 	return result
 
 func get_debug_state() -> Dictionary:
@@ -387,6 +388,43 @@ func _resolve_preview_image_path(frame_payload: Dictionary) -> String:
 	if not nested_candidate.is_empty() and FileAccess.file_exists(nested_candidate):
 		return nested_candidate
 	return ""
+
+func _hydrate_depth_texture_response(response: Dictionary) -> Dictionary:
+	if response.is_empty():
+		return response
+	var hydrated := response.duplicate(true)
+	var encoded_variant: Variant = hydrated.get("normalized_depth_map_png_base64", "")
+	if encoded_variant == null:
+		hydrated["normalized_depth_map"] = null
+		return hydrated
+	var depth_map_png_base64 := str(encoded_variant).strip_edges()
+	if depth_map_png_base64.is_empty():
+		hydrated["normalized_depth_map"] = null
+		return hydrated
+	var texture := _decode_normalized_depth_map_texture(depth_map_png_base64)
+	hydrated["normalized_depth_map"] = texture
+	return hydrated
+
+func _decode_normalized_depth_map_texture(depth_map_png_base64: String) -> Texture2D:
+	if depth_map_png_base64.is_empty():
+		return null
+	var png_bytes := Marshalls.base64_to_raw(depth_map_png_base64)
+	if png_bytes.is_empty() or not _looks_like_png_buffer(png_bytes):
+		return null
+	var image := Image.new()
+	var load_error := image.load_png_from_buffer(png_bytes)
+	if load_error != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+func _looks_like_png_buffer(buffer: PackedByteArray) -> bool:
+	if buffer.size() < 8:
+		return false
+	var png_signature := PackedByteArray([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+	for index in range(png_signature.size()):
+		if buffer[index] != png_signature[index]:
+			return false
+	return true
 
 func _sync_debug_from_response(response: Dictionary) -> void:
 	_debug_state["runtime_status"] = String(response.get("status", _debug_state.get("runtime_status", DepthRuntimeTypes.STATUS_READY)))

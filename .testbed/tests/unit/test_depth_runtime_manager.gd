@@ -10,6 +10,7 @@ class FakeDepthSharedRuntimePool:
 	var infer_call_count := 0
 	var runtime_debug := DepthRuntimeTypes.make_debug_state()
 	var next_result: Dictionary = {}
+	var last_request: Dictionary = {}
 
 	func acquire(family: String, model_spec: Dictionary) -> Dictionary:
 		runtime_debug = DepthRuntimeTypes.make_debug_state()
@@ -30,6 +31,7 @@ class FakeDepthSharedRuntimePool:
 
 	func infer(_runtime_key: String, _frame_payload: Dictionary, request: Dictionary) -> Dictionary:
 		infer_call_count += 1
+		last_request = request.duplicate(true)
 		var result := next_result.duplicate(true)
 		var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
 		sample_metrics["fresh_inference_request_index"] = infer_call_count
@@ -144,6 +146,80 @@ func test_repeated_inference_reuses_persistent_worker_session() -> void:
 	assert_true(bool(debug_state.get("model_loaded", false)))
 	assert_true(int(debug_state.get("model_load_count", 0)) >= 1)
 	assert_eq(int(debug_state.get("model_reload_count", 0)), 0)
+
+func test_requested_fresh_inference_surfaces_runtime_depth_texture() -> void:
+	var shared_pool = FakeDepthSharedRuntimePool.new()
+	var expected_texture := _make_test_texture()
+	var depth_result := _fake_depth_result()
+	depth_result["normalized_depth_map"] = expected_texture
+	shared_pool.next_result = depth_result
+	var manager = DepthRuntimeManagerScript.new()
+	manager.set_shared_runtime_pool(shared_pool)
+	manager.configure_from_family("straight_punch", {
+		"enabled": true,
+		"model": {
+			"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx",
+		},
+	})
+	var request := _sample_request("straight_punch", "left")
+	request["debug_texture_requested"] = true
+	var result: Dictionary = manager.infer_relative_depth(_preview_frame_payload(), request)
+	assert_true(bool(result.get("ok", false)))
+	assert_true(bool(shared_pool.last_request.get("debug_texture_requested", false)))
+	assert_same(result.get("normalized_depth_map", null), expected_texture)
+	var debug_state: Dictionary = manager.get_debug_state()
+	assert_same(debug_state.get("normalized_depth_map", null), expected_texture)
+
+func test_cached_reuse_preserves_last_runtime_depth_texture() -> void:
+	var shared_pool = FakeDepthSharedRuntimePool.new()
+	var expected_texture := _make_test_texture()
+	var depth_result := _fake_depth_result()
+	depth_result["normalized_depth_map"] = expected_texture
+	shared_pool.next_result = depth_result
+	var manager = DepthRuntimeManagerScript.new()
+	manager.set_shared_runtime_pool(shared_pool)
+	manager.configure_from_family("straight_punch", {
+		"enabled": true,
+		"model": {
+			"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx",
+		},
+		"evaluation": {
+			"sample_every_n_frames": 3,
+			"max_sample_age_ms": 250,
+		}
+	})
+	var first_request := _sample_request("straight_punch", "left")
+	first_request["timestamp_ms"] = 1000
+	first_request["debug_texture_requested"] = true
+	var first_result: Dictionary = manager.infer_relative_depth(_preview_frame_payload(), first_request)
+	var second_request := first_request.duplicate(true)
+	second_request["timestamp_ms"] = 1033
+	var second_result: Dictionary = manager.infer_relative_depth(_preview_frame_payload(), second_request)
+	assert_true(bool(first_result.get("ok", false)))
+	assert_true(bool(second_result.get("ok", false)))
+	assert_eq(String(second_result.get("sample_metrics", {}).get("sample_source", "")), "cached_reuse")
+	assert_same(first_result.get("normalized_depth_map", null), expected_texture)
+	assert_same(second_result.get("normalized_depth_map", null), expected_texture)
+	var debug_state: Dictionary = manager.get_debug_state()
+	assert_same(debug_state.get("normalized_depth_map", null), expected_texture)
+
+func test_non_requested_inference_keeps_runtime_depth_texture_truthfully_null() -> void:
+	var shared_pool = FakeDepthSharedRuntimePool.new()
+	shared_pool.next_result = _fake_depth_result()
+	var manager = DepthRuntimeManagerScript.new()
+	manager.set_shared_runtime_pool(shared_pool)
+	manager.configure_from_family("straight_punch", {
+		"enabled": true,
+		"model": {
+			"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx",
+		},
+	})
+	var result: Dictionary = manager.infer_relative_depth(_preview_frame_payload(), _sample_request("straight_punch", "left"))
+	assert_true(bool(result.get("ok", false)))
+	assert_false(bool(shared_pool.last_request.get("debug_texture_requested", false)))
+	assert_eq(result.get("normalized_depth_map", null), null)
+	var debug_state: Dictionary = manager.get_debug_state()
+	assert_eq(debug_state.get("normalized_depth_map", null), null)
 
 func test_sample_every_n_frames_reuses_last_valid_depth_between_fresh_runs() -> void:
 	var shared_pool = FakeDepthSharedRuntimePool.new()
@@ -372,6 +448,11 @@ func _fake_depth_result() -> Dictionary:
 			"total": 6.0,
 		},
 	}
+
+func _make_test_texture() -> Texture2D:
+	var image := Image.create(2, 2, false, Image.FORMAT_L8)
+	image.fill(Color(0.75, 0.75, 0.75, 1.0))
+	return ImageTexture.create_from_image(image)
 
 func _preview_frame_payload() -> Dictionary:
 	return {

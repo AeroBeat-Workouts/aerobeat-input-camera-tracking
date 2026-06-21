@@ -2142,16 +2142,7 @@ func _update_family_depth_signal(family: String, side: String, state: Dictionary
 	if not bool(depth_config.get("enabled", false)):
 		return analysis
 	var manager = _get_depth_runtime_manager(family)
-	var sample_request := {
-		"family": family,
-		"side": side,
-		"timestamp_ms": timestamp_ms,
-		"window_ms": int(config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS)),
-		"evaluation": (depth_config.get("evaluation", {}) as Dictionary).duplicate(true) if depth_config.get("evaluation", {}) is Dictionary else {},
-		"shoulder": shoulder.duplicate(true),
-		"elbow": elbow.duplicate(true),
-		"wrist": wrist.duplicate(true),
-	}
+	var sample_request := _build_depth_sample_request(family, side, timestamp_ms, shoulder, elbow, wrist, config, depth_config)
 	var result: Dictionary = manager.infer_relative_depth(tracking_frame, sample_request)
 	var runtime_debug: Dictionary = manager.get_debug_state()
 	var sample_metrics: Dictionary = result.get("sample_metrics", {}) if result.get("sample_metrics", {}) is Dictionary else {}
@@ -2213,6 +2204,30 @@ func _update_family_depth_signal(family: String, side: String, state: Dictionary
 		analysis["gate_passed"] = float(analysis.get("closeness_delta", 0.0)) <= float(analysis.get("threshold_a", 0.0)) + 0.000001 and float(analysis.get("peak_closeness", 0.0)) <= float(analysis.get("threshold_b", 0.0)) + 0.000001
 		analysis["gate_reason"] = "max_closeness_delta_and_max_peak_closeness"
 	return analysis
+
+func _build_depth_sample_request(family: String, side: String, timestamp_ms: int, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, config: Dictionary, depth_config: Dictionary) -> Dictionary:
+	var request := {
+		"family": family,
+		"side": side,
+		"timestamp_ms": timestamp_ms,
+		"window_ms": int(config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS)),
+		"evaluation": (depth_config.get("evaluation", {}) as Dictionary).duplicate(true) if depth_config.get("evaluation", {}) is Dictionary else {},
+		"shoulder": shoulder.duplicate(true),
+		"elbow": elbow.duplicate(true),
+		"wrist": wrist.duplicate(true),
+	}
+	if _depth_runtime_debug_texture_requested():
+		request["debug_texture_requested"] = true
+	return request
+
+func _depth_runtime_debug_texture_requested() -> bool:
+	if _config == null or not _config.has_method("get"):
+		return false
+	var runtime_config: Variant = _config.get("runtime")
+	if not runtime_config is Dictionary:
+		return false
+	var depth_debug: Dictionary = (runtime_config as Dictionary).get("depth_debug", {}) if (runtime_config as Dictionary).get("depth_debug", {}) is Dictionary else {}
+	return bool(depth_debug.get("request_runtime_texture", false))
 
 func _moving_average_float_window(values: Array, window_size: int) -> Array:
 	var smoothed: Array = []
