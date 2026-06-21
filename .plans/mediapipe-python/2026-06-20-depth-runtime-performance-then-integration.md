@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 20:52 EDT  
-**Blocked Reason:** None. Task 3.6 QA passed; awaiting Task 3.7 audit, with Task 3.8 design now completed and Task 3.9 pooling implementation remaining as the approved follow-up.  
+**Last Updated:** 2026-06-20 21:13 EDT  
+**Blocked Reason:** Task 3.10 QA found that same-key pooling works, but final-release worker shutdown currently leaves zombie child processes (`ps stat=Zs`) behind until the parent Godot process exits. Pooling is not ready for audit/next integration work until that lifecycle gap is fixed.  
 **Agent:** `pico`
 
 ---
@@ -389,9 +389,32 @@ Risk notes for implementation: the biggest correctness risk is lifecycle churn d
 **Files Created/Deleted/Modified:**
 - runtime / detector / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ❌ Failed
 
-**Results:** Pending.
+**Results:** Independently QA-validated the new cross-family pooling seam with real runtime calls, then found one blocking lifecycle bug that keeps this slice from passing yet.
+
+Validation runs executed:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit`
+- `godot --headless --path .testbed --script /tmp/qa_cross_family_pooling.gd`
+- Direct process-state checks from the headless probe via `ps -p <pid> -o stat=`.
+
+What QA confirmed as true:
+- Same-key sharing is real. `straight_punch` and `hook` configured to the same FastDepth ONNX artifact both resolved to the same `shared_runtime_key`, reported the same worker PID (`3376672` in the probe run), and showed `shared_runtime_refcount=2` with both families listed in `shared_runtime_family_claims`.
+- Different-key separation is real. `uppercut` configured to the OpenVINO artifact resolved to a distinct `shared_runtime_key` and a different worker PID (`3376695`), so pooling did not collapse unlike backends/models together.
+- Per-family debug overlays stayed truthful while sharing one backend/session. `straight_punch` debug still reported `family=straight_punch` with its own last sample metrics (`wrist_closeness=-0.615728...`), while `hook` still reported `family=hook` with a different last sample (`wrist_closeness=-0.245138...`). Sharing the runtime did not overwrite the family-local observation fields in either manager.
+- Same-key pooling avoided duplicate loads. Both same-key families reported `model_load_count=1` and `model_reload_count=0`, which matches a single backend/session instance being loaded once and then reused.
+- Warm performance remained in the previously validated range on the shared worker. After the initial FastDepth load (`worker_load=114.00 ms`, `bridge_roundtrip=123.84 ms`), the shared-session warm inferences landed at `23.93 ms` worker total / `30.31 ms` bridge roundtrip for `hook`, with the peer `straight_punch` request also warm (`session_warm=true`).
+- Partial release behavior is correct. After `straight_punch.shutdown()`, `hook.ensure_runtime_ready()` still reported the same worker PID (`3376672`), `shared_runtime_refcount=1`, `shared_runtime_shared=false`, and only `hook` remaining in `shared_runtime_family_claims`. A mid-share release does not tear down the runtime out from under the remaining family.
+
+Blocking issue found:
+- Final-release worker cleanup is not actually complete while the parent Godot process is still alive. After the last claimant released the shared FastDepth runtime, and after `uppercut` later released its own separate runtime, both worker PIDs remained present in `ps` for the full 5-second wait window. Their `ps` state was `Zs`, which means the workers had exited but were left behind as zombie child processes until the parent headless Godot process terminated. The manager/debug surface reported shutdown truthfully, but the OS-level lifecycle did not fully clean up/reap the child processes during the live session.
+
+QA conclusion:
+- Same-key pooling: **verified**.
+- Different-key separation: **verified**.
+- Per-family semantics/debug truth: **verified**.
+- Release behavior when one family lets go and another still claims the shared runtime: **verified**.
+- Final-release lifecycle stability: **failed** due to unreaped zombie worker processes after shutdown.
 
 ---
 
@@ -501,9 +524,9 @@ Risk notes for implementation: the biggest correctness risk is lifecycle churn d
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA first found a shutdown-state truth gap, Task 3.5 fixed it inside the runtime bridge/manager debug seam, and Task 3.6 then re-verified truthful shutdown, clean worker exit, swap behavior, and the previously claimed FastDepth steady-state performance win.
+**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA first found a shutdown-state truth gap, Task 3.5 fixed it inside the runtime bridge/manager debug seam, and Task 3.6 then re-verified truthful shutdown, clean worker exit, swap behavior, and the previously claimed FastDepth steady-state performance win. Task 3.9 then added runtime-key pooling across punch families, and Task 3.10 QA verified the pooling behavior itself while finding a new final-release lifecycle cleanup gap: after the last claimant releases a pooled runtime, the child worker exits but remains as an unreaped zombie until the parent Godot process exits.
 
-**Reference Check:** `REF-02` / `REF-03` / `REF-04` still hold the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. `REF-06` is now truthful for this shutdown slice as well: after unload/shutdown, the surfaced worker/model fields no longer overstate readiness or aliveness.
+**Reference Check:** `REF-02` / `REF-03` / `REF-04` still hold the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. `REF-06` remains truthful at the manager/debug surface for ready/shared state and family-local observation state, but the latest QA slice showed the OS-level teardown lifecycle is still not fully truthful to the "clean shutdown/release behavior" goal because worker processes are not reaped promptly after final release.
 
 **Commits:**
 - Pending.
