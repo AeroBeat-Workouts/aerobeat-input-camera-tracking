@@ -104,28 +104,35 @@ This cleanup plan will treat three seams separately so we do not blur signal: (1
 
 **Folders Created/Deleted/Modified:**
 - runtime / proving / tests / repo hygiene files touched by implementation
+- `.testbed/test-results/task4-audit-20260621/`
 
 **Files Created/Deleted/Modified:**
 - runtime / proving / tests / project metadata / cleanup artifacts touched by implementation
+- `.testbed/test-results/task4-audit-20260621/tuning_fields.log`
+- `.testbed/test-results/task4-audit-20260621/selected_flow_bundle.log`
+- `.testbed/test-results/task4-audit-20260621/playback_step_buttons.log`
+- `.testbed/test-results/task4-audit-20260621/full_file_bounded_45s.log`
+- `.plans/mediapipe-python/2026-06-21-boxing-proving-cleanup-and-warning-reduction.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit passes for the narrow cleanup seam, with strict caveats preserved. I audited the actual code delta in `REF-03` and confirmed the fix is genuine local lifecycle cleanup rather than warning suppression: `_new_harness()` now routes `boxing_proving_harness.gd` instances through `add_child_autoqfree(...)`, new helpers `_new_base_harness()` / `_new_playback_harness()` do the same for direct `ProvingHarnessScript.new()` / `PlaybackStateHarness.new()` allocations, and the playback-controls test now registers its temporary `Button`, `HSlider`, and `Label` nodes plus step buttons with GUT-owned auto-free cleanup. Independent targeted validation reproduced the three claimed passes via headless GUT on this machine: `test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface`, `test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle`, and `test_playback_step_buttons_only_enable_while_paused`. I saved fresh audit logs under `.testbed/test-results/task4-audit-20260621/` and scanned them for the prior local leak markers (`orphans`, `ObjectDB instances leaked at exit`, `resources still in use at exit`, generic `leaked` summaries); none appeared in the targeted runs, which is strong evidence that the touched local leak seam is actually cleaned up. The playback-controls targeted test still truthfully emits `Replay start requested without a source path`, but it passes and no longer emits local orphan/resource-leak summaries, so that warning remains separate from the leak cleanup claim. Workspace hygiene also checks out: the confusing root-level fake artifact `knee_left_repeat_04_take_01.mp4` is absent, and the relocated capture note exists at `.testbed/test-results/task62-qa-20260619/fixture-captures/knee_left/proving-session.log` with the expected proving-session text content. Remaining warnings are only partially reproducible but are still truthfully bounded as follows: the six invalid-UID startup warnings are independently reproducible and clearly come from the mounted sibling addon `res://addons/aerobeat-vendor-godot-unit-test/...`, so they remain out-of-scope addon hygiene rather than an owning-repo cleanup miss; a bounded 45-second full-file rerun of `REF-03` again failed to reach a GUT summary, so full-file proving-harness validation remains non-viable as a clean truth source on this machine. I did not independently reproduce the previously reported recursion/stack-overflow trace during this audit pass, so the strongest truthful statement is narrower: the full-file path is still blocked/non-reliable here, and this cleanup plan should be called complete only for the targeted warning-reduction seam, not as a claim that the entire proving-harness file now reruns cleanly end-to-end. On that bounded evidence, the boxing threshold-depth proving setup remains playtest-ready for the validated targeted path after cleanup, and the cleanup plan can be marked complete as long as the still-noisy addon UID warnings and the separate full-file validation blocker stay explicitly documented.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** Completed the proving-scene warning-cleanup seam for the boxing threshold-depth path without overstating the broader proving-harness state. Local test-owned lifecycle leaks in `REF-03` were genuinely cleaned up, the stray root fake-`.mp4` artifact was removed from repo root by relocation into test-results, targeted proving-harness validation still passes for the touched seams, and the remaining warning surface is now truthfully bounded to sibling-addon UID noise plus a separate full-file validation blocker.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02` and `REF-03` were satisfied for the scoped cleanup seam: the audited test-owned allocations now flow through GUT cleanup, targeted GUT passes still exercise the boxing proving/runtime-config and playback-control seams, and no local orphan/resource-leak summaries appeared in the fresh targeted audit logs. `REF-04` remains satisfied for the playtest-ready boxing path through the targeted runtime-config validation. Deliberate caveat: this plan does **not** claim that the entire `REF-03` file now reruns cleanly end-to-end; only the targeted cleanup seam is verified complete.
 
 **Commits:**
-- Pending.
+- `10908b2` - Fix proving harness test cleanup leaks
+- `3d0011f` - docs: record QA for boxing proving cleanup
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** For proving-harness cleanup work, targeted validation plus strict warning categorization is the trustworthy evidence path when the full-file run is not currently stable. Mounted sibling addons must be called out separately from owning-repo cleanup so we do not hide real progress behind external UID noise or over-claim end-to-end stability.
 
 ---
 
