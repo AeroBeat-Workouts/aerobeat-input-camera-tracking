@@ -23,9 +23,7 @@ func configure_from_family(family: String, family_depth_config: Dictionary) -> v
 	_debug_state["active_model_summary"] = "disabled in config" if not bool(_debug_state.get("depth_enabled", false)) else "depth runtime configured; waiting for artifact resolution"
 	_active_runtime_key = ""
 	_active_model_spec = {}
-	if _adapter != null:
-		_adapter.unload()
-		_adapter = null
+	_release_adapter()
 
 func ensure_runtime_ready() -> Dictionary:
 	if _family.is_empty():
@@ -248,6 +246,7 @@ func _release_adapter() -> void:
 	if _adapter == null:
 		return
 	_adapter.unload()
+	_merge_adapter_debug()
 	_adapter = null
 
 func _extract_precomputed_result(frame_payload: Dictionary, sample_request: Dictionary, fallback_status: String) -> Dictionary:

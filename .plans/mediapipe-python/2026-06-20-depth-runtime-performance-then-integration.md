@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 19:13 EDT  
-**Blocked Reason:** None.  
+**Last Updated:** 2026-06-20 20:42 EDT  
+**Blocked Reason:** Shutdown/unload leaves stale worker/model fields in shared debug state after the worker has exited. Follow-up fix slice approved and in progress.  
 **Agent:** `pico`
 
 ---
@@ -195,6 +195,91 @@ QA conclusion:
 - Performance improvement claim: **verified**.
 - Shared model/backend seam truth during ready/infer/swap: **verified**.
 - Worker/runtime lifecycle stability: **mostly verified operationally**, but **fails truthfulness on shutdown state reporting**.
+
+---
+
+### Task 3.5: Fix shutdown-state debug truth for persistent worker runtime
+
+**Bead ID:** `aerobeat-input-camera-tracking-7iso`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-06`  
+**Prompt:** Fix the shutdown/unload debug truth gap in the persistent-worker runtime seam. After `DepthRuntimeManager.shutdown()` / adapter unload, shared debug state must no longer report stale worker/model fields like `worker_alive=true`, populated `worker_pid`, or `model_loaded=true` once the worker has actually exited. Keep the fix inside the runtime bridge / manager debug seam, preserve truthful swap behavior, update the active plan with actual results, run relevant validation, commit/push repo-file changes by default, and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `src/depth/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- `src/depth/depth_model_adapter.gd`
+- `src/depth/depth_runtime_manager.gd`
+- `.testbed/tests/unit/test_depth_runtime_manager.gd`
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the shutdown/unload truth gap entirely inside the runtime bridge / manager debug seam from `REF-02` / `REF-06`, without touching detector-facing runtime usage or the measured performance path.
+
+Concrete implementation details:
+- `src/depth/depth_model_adapter.gd` now snapshots the bridge debug state immediately after `_runtime_bridge.shutdown()`, so adapter-level debug state preserves the bridge's cleared post-shutdown worker/model truth instead of retaining the last pre-shutdown ready state.
+- `src/depth/depth_runtime_manager.gd` now routes reconfiguration teardown through `_release_adapter()` and merges the adapter's post-unload debug state before nulling the adapter, so manager-level shared debug output also reflects the cleared worker/model fields after shutdown/config reload.
+- No transport/protocol/inference-path behavior changed. The persistent worker still serves warm requests the same way, and model/backend swap behavior stays truthful because the manager still recreates adapters per runtime-key/model change.
+
+Truth fix outcome:
+- After `DepthRuntimeManager.shutdown()`, shared debug state now reports `worker_alive=false`, `worker_pid=0`, `model_loaded=false`, and `model_runtime_key=""` instead of leaving stale ready-state values behind after the worker has already exited.
+- This also covers the adapter unload path used during manager reconfiguration, so teardown no longer overstates worker/model readiness between configurations.
+
+Validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit`
+- Result: **5/5 passed**.
+
+Test coverage added:
+- `.testbed/tests/unit/test_depth_runtime_manager.gd` now includes `test_shutdown_clears_worker_and_model_debug_truth()`, which proves a real ready worker/model becomes truthfully cleared after `manager.shutdown()`.
+
+---
+
+### Task 3.6: QA shutdown-state debug truth fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-49bk`  
+**SubAgent:** `primary`  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-06`  
+**Prompt:** Independently verify the shutdown-state debug truth fix. Confirm the worker can still shut down cleanly, that post-shutdown debug state no longer overstates readiness/aliveness/model-loaded fields, and that performance/swap behavior did not regress. Update the active plan with actual QA findings and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `src/depth/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / tests / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 3.7: Audit shutdown-state debug truth fix
+
+**Bead ID:** `aerobeat-input-camera-tracking-zjnh`  
+**SubAgent:** `primary`  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-06`  
+**Prompt:** Independently audit that the shutdown-state debug truth gap is actually fixed, that the plan/debug surfaces now tell the truth after unload/shutdown, and that the persistent-worker seam remains architecture-clean and truthful. Close the bead if it passes or report the blocking gap if it fails.
+
+**Folders Created/Deleted/Modified:**
+- `src/depth/`
+- `.testbed/tests/unit/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime / tests / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 

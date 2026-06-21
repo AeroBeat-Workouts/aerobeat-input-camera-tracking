@@ -70,6 +70,7 @@ func unload() -> void:
 	_model_spec = {}
 	if _runtime_bridge != null and _runtime_bridge.has_method("shutdown"):
 		_runtime_bridge.shutdown()
+		_debug_state = _runtime_bridge.get_debug_state()
 	_runtime_bridge = null
 	_debug_state["runtime_status"] = DepthRuntimeTypes.STATUS_UNLOADED
 	_debug_state["runtime_stage"] = DepthRuntimeTypes.STAGE_IDLE

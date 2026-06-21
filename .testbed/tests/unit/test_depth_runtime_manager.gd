@@ -87,6 +87,28 @@ func test_repeated_inference_reuses_persistent_worker_session() -> void:
 	assert_true(int(debug_state.get("model_load_count", 0)) >= 1)
 	assert_eq(int(debug_state.get("model_reload_count", 0)), 0)
 
+func test_shutdown_clears_worker_and_model_debug_truth() -> void:
+	var manager = DepthRuntimeManagerScript.new()
+	manager.configure_from_family("straight_punch", {
+		"enabled": true,
+		"model": {
+			"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx",
+		}
+	})
+	var ready_state: Dictionary = manager.ensure_runtime_ready()
+	assert_eq(String(ready_state.get("runtime_status", "")), DepthRuntimeTypes.STATUS_READY)
+	assert_true(bool(ready_state.get("worker_alive", false)))
+	assert_true(int(ready_state.get("worker_pid", 0)) > 0)
+	assert_true(bool(ready_state.get("model_loaded", false)))
+	manager.shutdown()
+	var debug_state: Dictionary = manager.get_debug_state()
+	assert_eq(String(debug_state.get("runtime_status", "")), DepthRuntimeTypes.STATUS_UNLOADED)
+	assert_eq(String(debug_state.get("runtime_stage", "")), DepthRuntimeTypes.STAGE_IDLE)
+	assert_false(bool(debug_state.get("worker_alive", false)))
+	assert_eq(int(debug_state.get("worker_pid", 0)), 0)
+	assert_false(bool(debug_state.get("model_loaded", false)))
+	assert_eq(String(debug_state.get("model_runtime_key", "")), "")
+
 func _preview_frame_payload() -> Dictionary:
 	return {
 		"preview_descriptor": {
