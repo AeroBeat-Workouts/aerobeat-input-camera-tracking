@@ -2,6 +2,7 @@ extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const LandmarkDrawerScript = preload("res://scripts/landmark_drawer.gd")
 const HandBBoxDrawerScript = preload("res://scripts/hand_bbox_state_drawer.gd")
+const DepthDebugViewerScript = preload("res://scripts/depth_debug_viewer.gd")
 const ProvingHarnessScript = preload("res://scripts/proving_harness.gd")
 const BoxingProvingScene = preload("res://scenes/boxing_proving.tscn")
 const FlowProvingScene = preload("res://scenes/flow_proving.tscn")
@@ -197,6 +198,37 @@ func _depth_runtime_visual_state(texture: Variant = null) -> Dictionary:
 		},
 	}
 
+func _depth_debug_viewer_snapshot(texture: Variant = null) -> Dictionary:
+	return {
+		"family": "straight_punch",
+		"preview_texture": _make_test_texture(Color(0.18, 0.34, 0.72, 1.0)),
+		"depth_texture": texture,
+		"runtime_status": "ready",
+		"runtime_stage": "sampling",
+		"active_model_summary": "enabled; runtime ready via onnx backend",
+		"failure_code": "",
+		"failure_message": "",
+		"frame_size": Vector2i(640, 360),
+		"depth_map_size": Vector2i(640, 360),
+		"timing_ms": {
+			"preprocess": 1.0,
+			"infer": 2.5,
+			"postprocess": 1.2,
+			"total": 4.7,
+		},
+		"sample_every_n_frames": 3,
+		"max_sample_age_ms": 250,
+		"last_sample_age_ms": 18,
+		"sample_metrics": {
+			"sample_source": "fresh_inference",
+			"sample_fresh": true,
+			"wrist_closeness": 0.30,
+			"wrist_depth": 0.31,
+			"torso_depth": 0.61,
+		},
+		"sample_geometry": _depth_sample_geometry_payload(),
+	}
+
 func _make_test_texture(color: Color = Color(0.7, 0.7, 0.7, 1.0)) -> Texture2D:
 	var image := Image.create(4, 4, false, Image.FORMAT_RGBA8)
 	image.fill(color)
@@ -278,6 +310,30 @@ func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes()
 	assert_true(bool(depth_debug_visuals.get("sampling_regions_visible", false)))
 	assert_true(bool(depth_debug_visuals.get("fps_visible", false)))
 
+func test_depth_debug_viewer_renders_prepared_snapshot_and_reparents_to_presenter_overlay() -> void:
+	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	var viewer: Variant = add_child_autoqfree(DepthDebugViewerScript.new())
+	viewer.configure({
+		"enabled": true,
+		"thumbnail_visible": true,
+		"swap_click_enabled": true,
+		"hover_hint_visible": true,
+		"sampling_regions_visible": true,
+		"fps_visible": true,
+		"thumbnail_corner": "bottom_right",
+		"thumbnail_width_px": 196,
+		"thumbnail_margin_px": 14,
+	}, _depth_debug_viewer_snapshot(), 59.4, presenter)
+	var refs: Dictionary = viewer.get_node_refs()
+	assert_same(viewer.get_parent(), presenter.get_overlay_layer())
+	assert_not_null(refs.get("thumbnail_panel", null))
+	assert_true(bool((refs.get("thumbnail_panel", null) as PanelContainer).visible))
+	assert_true(bool((refs.get("sample_overlay", null) as Control).visible))
+	assert_string_contains(String((refs.get("fps_label", null) as Label).text), "Preview 59.4 FPS")
+	assert_string_contains(String((refs.get("thumbnail_status_label", null) as Label).text), "texture=false")
+	var markers: Array = ((refs.get("sample_overlay", null) as Object).get_marker_snapshot() as Array)
+	assert_eq(markers.size(), 2)
+
 func test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_texture() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	var harness: Variant = scene_root
@@ -322,11 +378,13 @@ func test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available() -> 
 			}
 		}
 	})
-	harness.set("_depth_debug_thumbnail_hovered", true)
 	harness._refresh_debug_panels()
 	var main_texture: TextureRect = harness.get("_depth_debug_main_texture") as TextureRect
 	var thumbnail_texture: TextureRect = harness.get("_depth_debug_thumbnail_texture") as TextureRect
 	var hint_label: Label = harness.get("_depth_debug_thumbnail_hint_label") as Label
+	var thumbnail_panel: PanelContainer = harness.get("_depth_debug_thumbnail_panel") as PanelContainer
+	assert_not_null(thumbnail_panel)
+	thumbnail_panel.emit_signal("mouse_entered")
 	assert_not_null(main_texture)
 	assert_not_null(thumbnail_texture)
 	assert_not_null(hint_label)
