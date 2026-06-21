@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-21 00:44 EDT  
-**Blocked Reason:** Waiting for next session QA/audit on Task 5 deeper runtime integration before evaluating completion of the broader plan.  
+**Last Updated:** 2026-06-21 00:53 EDT  
+**Blocked Reason:** Waiting on Task 6 QA and Task 7 audit for the now-landed Task 5 runtime-integration seam.  
 **Agent:** `pico`
 
 ---
@@ -732,11 +732,13 @@ Audit conclusion:
 - `.plans/mediapipe-python/`
 
 **Files Created/Deleted/Modified:**
-- detector / proving / tests / plan files touched by implementation
+- `src/providers/camera_tracking_provider.gd`
+- `.testbed/tests/unit/test_camera_tracking_provider.gd`
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**Results:** Task 5 coder work returned with a malformed completion payload, so I inspected the repo state directly instead of trusting the event text. Local uncommitted implementation is present in `src/providers/camera_tracking_provider.gd` and `.testbed/tests/unit/test_camera_tracking_provider.gd`, with the active plan header also updated during execution. The implementation deepens live runtime integration by enriching provider-owned tracking frames with preview descriptors / preview image paths from the tracking session, wiring `preview_changed` into forced re-polls, and adding unit coverage for live-camera, replay-polling, and preview-change paths so real depth runtime consumers downstream can receive preview-backed frame context. This is a coder-only local landing point for the next session: QA and audit were intentionally deferred per Derrick’s instruction, so this task is not yet considered complete.
+**Results:** Task 5 is now landed as an incremental shared-seam integration slice. `CameraTrackingProvider` now augments provider-owned tracking frames with the tracking session’s current `preview_descriptor`, mirrors `preview_image_path` / `image_path` onto the frame context that downstream depth consumers already understand, and subscribes to `preview_changed` so replay/live preview swaps force a re-poll even when the landmark signature is otherwise stable. That keeps backend-specific preview sourcing inside the shared provider seam while letting existing boxing depth-runtime consumers receive truthful preview-backed frame context in both live-camera and replay polling flows. I also updated provider unit coverage for live-frame preview merging, replay-frame preview merging, and preview-change re-poll behavior, and validated the seam with a targeted headless provider-plumbing script plus the existing depth runtime manager suite (`test_depth_runtime_manager.gd`). QA and audit remain pending as separate Tasks 6-7.
 
 ---
 

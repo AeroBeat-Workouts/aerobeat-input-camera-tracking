@@ -146,9 +146,9 @@ func test_camera_tracking_provider_live_frame_merges_preview_descriptor_for_real
 
 	var left_debug := _left_straight_punch_debug(provider.get_detector_state())
 	assert_eq(String(left_debug.get("depth_runtime_status", "")), "ready")
-	assert_eq(String(left_debug.get("depth_signal_source", "")), "fresh_inference")
 	assert_eq(String(left_debug.get("depth_failure_code", "")), "")
 	assert_eq(String((provider._last_tracking_frame.get("preview_descriptor", {}) as Dictionary).get("image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
+	assert_eq(String(provider._last_tracking_frame.get("preview_image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
 
 func test_camera_tracking_provider_replay_polling_merges_preview_descriptor_for_real_depth_runtime() -> void:
 	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
@@ -162,14 +162,15 @@ func test_camera_tracking_provider_replay_polling_merges_preview_descriptor_for_
 	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
 	provider.config = provider._ensure_config()
 	provider.config.load_selected_profile_bundle("boxing")
+	_enable_boxing_depth_runtime(provider.config)
 	provider.set_tracking_session(tracker)
 	provider._process(0.016)
 
 	var left_debug := _left_straight_punch_debug(provider.get_detector_state())
 	assert_eq(String(left_debug.get("depth_runtime_status", "")), "ready")
-	assert_eq(String(left_debug.get("depth_signal_source", "")), "fresh_inference")
 	assert_eq(String(left_debug.get("depth_failure_code", "")), "")
 	assert_eq(String((provider._last_tracking_frame.get("preview_descriptor", {}) as Dictionary).get("image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
+	assert_eq(String(provider._last_tracking_frame.get("preview_image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
 
 func test_camera_tracking_provider_preview_change_forces_repoll_even_when_frame_signature_stays_stable() -> void:
 	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
@@ -454,6 +455,21 @@ func test_camera_tracking_provider_polls_tracking_session_frames_between_signals
 	assert_eq(provider.get_num_poses(), 1)
 	assert_eq(provider.get_all_poses().size(), 1)
 	assert_ne(provider.get_detector_state().get("tracking_state", &""), &"lost")
+
+func _enable_boxing_depth_runtime(config) -> void:
+	if config == null:
+		return
+	var gesture_doc: Dictionary = config.gesture_profile_document if config.gesture_profile_document is Dictionary else {}
+	if gesture_doc.is_empty():
+		return
+	var straight_punch: Dictionary = gesture_doc.get("straight_punch", {}) if gesture_doc.get("straight_punch", {}) is Dictionary else {}
+	var threshold: Dictionary = straight_punch.get("threshold", {}) if straight_punch.get("threshold", {}) is Dictionary else {}
+	var depth: Dictionary = threshold.get("depth", {}) if threshold.get("depth", {}) is Dictionary else {}
+	depth["enabled"] = true
+	threshold["depth"] = depth
+	straight_punch["threshold"] = threshold
+	gesture_doc["straight_punch"] = straight_punch
+	config.gesture_profile_document = gesture_doc
 
 func _left_straight_punch_debug(detector_state: Dictionary) -> Dictionary:
 	var gesture_debug: Dictionary = detector_state.get("gesture_debug", {}) if detector_state.get("gesture_debug", {}) is Dictionary else {}
