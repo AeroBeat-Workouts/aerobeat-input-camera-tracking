@@ -854,9 +854,37 @@ A broader combined proving-harness sweep was intentionally not used as final evi
 **Files Created/Deleted/Modified:**
 - config / proving / runtime / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independently QA-validated the shipped boxing threshold-depth contract and the linked proving/runtime/config truth on this machine.
+
+Direct contract check against `REF-08` confirmed the intended shipped state is now real, not just asserted in tests: `straight_punch.backend`, `hook.backend`, and `uppercut.backend` all resolve to `threshold`, and all three families now ship with `threshold.depth.enabled: true`. The selected threshold-depth model/artifact path is also present for each family, so the punch-family depth blocks are materially configured rather than left half-enabled.
+
+Targeted config truth coverage in `REF-09` now matches that contract exactly. `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` asserts all three boxing punch families load from the canonical boxing profile bundle with `backend == "threshold"` and `threshold.depth.enabled == true`, and the headless suite passed cleanly.
+
+Proving/runtime truth coverage also supports the contract rather than contradicting it:
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` now expects hook/uppercut inspectors to say `enabled in selected gesture YAML` when runtime debug has not yet overridden config truth, while straight-punch still surfaces live runtime-loader/debug metrics when present.
+- `.testbed/tests/unit/test_pose_detector_substrate.gd` still exercises threshold-depth runtime behavior for all three relevant punch families: straight-punch blocked preview-image truth, straight-punch placeholder closeness pass, hook excessive-forward-closeness block, and uppercut in-threshold placeholder pass.
+- `.testbed/tests/unit/test_depth_runtime_manager.gd` still passes its full runtime suite, covering blocked-state truth (`preview_image_missing`), runtime shutdown/debug truth, same-key pooling, different-key separation, and warm-session runtime behavior.
+
+Strongest targeted validation run for this slice:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → **4/4 passed**.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_punch_family_inspectors_surface_live_depth_loader_truth_and_metrics -gexit` → **1/1 passed**.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit` → **4/4 passed**.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit` → **10/10 passed**.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=force_ -gexit` → **3/3 passed**.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=model_open_error -gexit` → **1/1 passed**.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=per_family -gexit` → **2/2 passed**.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=per_family_backend -gexit` → **3/3 passed**.
+
+What QA confirmed as true:
+- Shipped boxing profile enablement is real for `straight_punch`, `hook`, and `uppercut` in `REF-08`.
+- Config-profile truth in `REF-09` matches that shipped contract.
+- Proving-harness inspector text now tells the truth for both runtime-backed and config-only depth-enable states.
+- Threshold-backed punch-family depth remains live in the runtime/proving seams, not only in YAML.
+- Blocked-state truth (`preview_image_missing` / staged-or-unavailable seam), proving backend-force behavior, and per-family backend/model-swap truth did not regress in the targeted coverage.
+
+QA conclusion: **pass** for Task 9 scope. No blocking regressions were found in the targeted enablement/proving/runtime/config checks, and **Task 10 audit should proceed**.
 
 ### Task 10: Audit shipped boxing punch-family threshold depth profile
 
