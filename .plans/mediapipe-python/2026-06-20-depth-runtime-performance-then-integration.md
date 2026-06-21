@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-20  
 **Status:** In Progress  
-**Last Updated:** 2026-06-20 20:42 EDT  
-**Blocked Reason:** Shutdown/unload leaves stale worker/model fields in shared debug state after the worker has exited. Follow-up fix slice approved and in progress.  
+**Last Updated:** 2026-06-20 20:52 EDT  
+**Blocked Reason:** None. Task 3.6 QA passed; awaiting Task 3.7 audit, with cross-family shared runtime/session pooling still approved as the next implementation follow-up after audit.  
 **Agent:** `pico`
 
 ---
@@ -255,9 +255,28 @@ Test coverage added:
 **Files Created/Deleted/Modified:**
 - runtime / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independently QA-validated the shutdown-state truth fix, worker exit behavior, model/backend swap behavior, and current performance on this machine.
+
+Validation runs executed:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit`
+- `godot --headless --path .testbed --script /tmp/qa_depth_runtime_shutdown_and_swap.gd`
+- `python3 /tmp/qa_depth_runtime_legacy_benchmark.py`
+- Shell PID verification immediately after the lifecycle probe: `ps -p <fastdepth_pid>` and `ps -p <openvino_pid>`
+
+What QA confirmed as true:
+- The shutdown truth fix holds at the shared manager/debug surface. After a real ready OpenVINO runtime was shut down, `manager.get_debug_state()` reported `runtime_status=unloaded`, `runtime_stage=idle`, `worker_alive=false`, `worker_pid=0`, `model_loaded=false`, and `model_runtime_key=""` instead of retaining stale ready-state fields.
+- The worker still shuts down cleanly. In the live lifecycle probe, FastDepth used worker PID `3368021` and the swapped OpenVINO runtime used worker PID `3368074`; both PIDs were confirmed exited immediately after the headless run completed.
+- Model/backend swap behavior did not regress. A FastDepth ready state still reported `backend_id=onnx` / `family_id=fastdepth_224_onnx`, then a reconfigured OpenVINO ready state reported `backend_id=openvino` / `family_id=midas_openvino_v21_small_256`, with a distinct worker PID for the swapped runtime.
+- FastDepth persistent-worker performance remains in the same verified range as the prior QA pass. This run measured a cold FastDepth `ensure_runtime_ready()` at **168.86 ms wall** with **112.59 ms** reported `worker_load`, then three warm inferences at **74.36 ms**, **30.67 ms**, and **30.84 ms** wall, with the last warm request reporting **20.03 ms** worker `total`. The first warm request was slower than the steady-state requests, but the stable warm range remained ~30 ms wall / ~20-24 ms worker total.
+- The legacy single-shot benchmark still shows the persistent path has not regressed back toward cold-per-request costs. Five direct legacy runs averaged **222.06 ms wall**, **57.44 ms** worker `total`, and **107.98 ms** `worker_load`, so the current warm persistent path remains materially faster in steady state.
+
+QA conclusion:
+- Shutdown-state debug truth fix: **verified**.
+- Clean worker shutdown after the fix: **verified**.
+- Swap truth/performance regression check: **verified**.
+- Issues found: **none blocking** in this QA slice.
 
 ---
 
@@ -276,6 +295,92 @@ Test coverage added:
 
 **Files Created/Deleted/Modified:**
 - runtime / tests / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 3.8: Design cross-family shared runtime/session pooling by runtime key
+
+**Bead ID:** `aerobeat-input-camera-tracking-o3k0`  
+**SubAgent:** `primary`  
+**Role:** `research`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Design the lowest-risk way to share one live depth runtime/backend instance across straight_punch, hook, and uppercut when they resolve to the same runtime key. The design must preserve family-specific threshold semantics while consolidating identical backend/model/artifact work, keep truthful debug/proving visibility per family, and avoid leaking backend-specific behavior into detector code.
+
+**Folders Created/Deleted/Modified:**
+- `src/depth/`
+- `src/detectors/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- performance design notes / plan updates
+- `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 3.9: Implement cross-family shared runtime/session pooling
+
+**Bead ID:** `aerobeat-input-camera-tracking-q8oi`  
+**SubAgent:** `primary`  
+**Role:** `coder`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Implement cross-family shared runtime/session pooling by runtime key so identical depth backends/models/artifacts are not duplicated just because multiple punch families use depth. Preserve family-specific threshold logic, truthful per-family debug state, clean shutdown/release behavior, and the existing shared seam boundaries.
+
+**Folders Created/Deleted/Modified:**
+- `src/depth/`
+- `src/detectors/`
+- `.testbed/tests/`
+- `.plans/mediapipe-python/`
+
+**Files Created/Deleted/Modified:**
+- runtime manager / bridge / detector / tests / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 3.10: QA cross-family shared runtime/session pooling
+
+**Bead ID:** `aerobeat-input-camera-tracking-j08l`  
+**SubAgent:** `primary`  
+**Role:** `qa`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently verify that identical runtime keys across punch families now share one backend/session instance, that per-family semantics/debug state remain truthful, and that performance/lifecycle behavior remains stable.
+
+**Folders Created/Deleted/Modified:**
+- runtime / detector / tests / plan files touched by implementation
+
+**Files Created/Deleted/Modified:**
+- runtime / detector / tests / plan files touched by implementation
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 3.11: Audit cross-family shared runtime/session pooling
+
+**Bead ID:** `aerobeat-input-camera-tracking-yv9o`  
+**SubAgent:** `primary`  
+**Role:** `auditor`  
+**References:** `REF-02`, `REF-03`, `REF-05`, `REF-06`  
+**Prompt:** Independently audit that cross-family pooling is genuinely sharing one runtime/backend instance for identical runtime keys, that family-local threshold semantics remain clean, and that plan/debug surfaces still tell the truth about what is shared vs family-specific.
+
+**Folders Created/Deleted/Modified:**
+- runtime / detector / tests / plan files touched by implementation
+
+**Files Created/Deleted/Modified:**
+- runtime / detector / tests / plan files touched by implementation
 
 **Status:** ⏳ Pending
 
@@ -369,14 +474,14 @@ Test coverage added:
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA then verified the warm-request performance win and truthful ready/infer/swap reporting, but found that shutdown/unload leaves stale worker/model fields in the shared debug state.
+**What We Built:** Tasks 1-2 landed a persistent authenticated localhost TCP depth worker behind the existing `DepthRuntimeManager` seam. Task 3 QA first found a shutdown-state truth gap, Task 3.5 fixed it inside the runtime bridge/manager debug seam, and Task 3.6 then re-verified truthful shutdown, clean worker exit, swap behavior, and the previously claimed FastDepth steady-state performance win.
 
-**Reference Check:** `REF-02` / `REF-03` / `REF-04` still hold the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. However, `REF-06` is **not yet fully truthful** after shutdown because the surfaced worker/model fields are not cleared even when the worker has exited.
+**Reference Check:** `REF-02` / `REF-03` / `REF-04` still hold the architecture boundary: runtime-key ownership and model-path truth remain in `DepthRuntimeManager`, the transport/worker lifecycle stays inside `DepthPythonRuntimeBridge`, and no backend/model logic was pushed up into `REF-05`. `REF-06` is now truthful for this shutdown slice as well: after unload/shutdown, the surfaced worker/model fields no longer overstate readiness or aliveness.
 
 **Commits:**
 - Pending.
 
-**Lessons Learned:** The big win really was below the seam. Warm repeated inference got dramatically faster once process start + model/session reconstruction moved out of the steady-state path. But truth surfaces need explicit shutdown-state cleanup too; otherwise a stable worker lifecycle can still be reported dishonestly at the manager/debug layer.
+**Lessons Learned:** The big win really was below the seam. Warm repeated inference got dramatically faster once process start + model/session reconstruction moved out of the steady-state path. The follow-up QA also proved that truthful lifecycle reporting needs explicit teardown-state propagation, not just a clean runtime exit underneath.
 
 ---
 
