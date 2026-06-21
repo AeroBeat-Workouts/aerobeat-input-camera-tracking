@@ -3,7 +3,7 @@
 **Date:** 2026-06-20  
 **Status:** In Progress  
 **Last Updated:** 2026-06-20 20:52 EDT  
-**Blocked Reason:** None. Task 3.6 QA passed; awaiting Task 3.7 audit, with cross-family shared runtime/session pooling still approved as the next implementation follow-up after audit.  
+**Blocked Reason:** None. Task 3.6 QA passed; awaiting Task 3.7 audit, with Task 3.8 design now completed and Task 3.9 pooling implementation remaining as the approved follow-up.  
 **Agent:** `pico`
 
 ---
@@ -319,9 +319,31 @@ QA conclusion:
 - performance design notes / plan updates
 - `.plans/mediapipe-python/2026-06-20-depth-runtime-performance-then-integration.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Reviewed `REF-02`, `REF-03`, and `REF-05` together and confirmed the duplication problem sits at the family-manager layer, not inside detector threshold logic. Right now `pose_detector_substrate.gd` owns one `DepthRuntimeManager` per family (`_depth_runtime_managers[family]`), and each manager resolves a `runtime_key`, loads an adapter, and lets `DepthPythonRuntimeBridge` own its own persistent worker/session. That means `straight_punch`, `hook`, and `uppercut` can all truthfully ask for the same artifact/backend/runtime key and still spin up duplicate live runtimes because sharing stops at the per-family manager boundary. The family-specific semantics are still clean today because thresholds/evaluation windows stay in detector-side family state, but the backend/model/artifact work is duplicated.
+
+Lowest-risk pooling design: keep `DepthRuntimeManager` as the family-facing facade, but move actual live runtime ownership into a new shared depth-layer pool keyed by the existing `runtime_key` from `REF-02`. Concretely, add a `DepthSharedRuntimePool` (or similarly named depth-layer helper) that owns one live adapter/bridge lease per runtime key, plus lightweight pooled entry records containing the resolved `model_spec`, adapter instance, refcount/claimers, and the last shared runtime debug snapshot. Each family manager still does its own `_resolve_model_spec()` and still exposes `ensure_runtime_ready()`, `infer_relative_depth()`, and family debug state, but instead of constructing/unloading its own adapter directly it acquires/releases a shared runtime entry from the pool. This preserves the clean detector seam because detector code continues talking only to `DepthRuntimeManager`; backend-specific behavior still lives below that seam in the depth layer.
+
+Recommended ownership split:
+- `DepthRuntimeManager` keeps family config, artifact resolution, family-local summary/debug overlay, and detector-facing inference contract.
+- New pooled runtime object (for example `DepthRuntimeLease` or `DepthSharedRuntimeEntry`) owns the actual adapter instance and backend lifecycle for one `runtime_key`.
+- `DepthPythonRuntimeBridge` stays per live runtime instance, not per family. If three families resolve to the same key, they should all land on the same bridge/worker/session through the shared entry.
+- `pose_detector_substrate.gd` should keep one manager per family for truthful family-local semantics/debug, but those managers should be constructed with or bound to one shared pool instance instead of being fully isolated runtime owners.
+
+Critical semantic rule: family thresholds must remain outside the pool. `sample_request.evaluation`, detector-side motion windows, grace/rearm timers, and emitted gate results remain family/state specific in `pose_detector_substrate.gd`. The pooled runtime only returns backend-normalized sample truth (`sample_metrics`, timing, runtime status, provider/load state, artifact/runtime identity). Each family then applies its own threshold semantics to that shared sample stream. This keeps straight-punch forward-depth spike gating separate from hook/uppercut closeness-delta gating even when the same runtime produced the underlying depth sample.
+
+Debug/proving design: preserve one truthful per-family debug state, but split it into shared-runtime truth plus family overlay truth. Each `DepthRuntimeManager.get_debug_state()` should continue returning a family-shaped dictionary so proving surfaces in `REF-06` do not lose per-family visibility. Add a nested shared block or mirrored fields that make reuse obvious, for example: `shared_runtime_key`, `shared_runtime_owner_id`, `shared_runtime_refcount`, `shared_runtime_family_claims`, `shared_worker_pid`, `shared_worker_generation`, and `shared_model_runtime_key`. Then keep the existing family-local fields (`family`, `depth_enabled`, family failure summary, last sample metrics/timing as observed by that family request) truthful per manager. That way hook and uppercut can honestly show that they are sharing one worker/session while still exposing their own gate outcomes and latest per-family sample interpretation. Avoid storing one global `last_sample_metrics` blindly on the shared entry as the only truth source, because that would make the most recent family request overwrite proving visibility for the others.
+
+Recommended implementation approach for Task 3.9:
+1. Add a new depth-layer pool file, e.g. `src/depth/depth_shared_runtime_pool.gd`, with acquire/release/get_debug helpers keyed by `runtime_key`.
+2. Refactor `DepthRuntimeManager` so `_active_runtime_key`/`_adapter` become a reference to a pooled entry/lease rather than direct ownership of the adapter.
+3. Keep `_resolve_model_spec()` and `_apply_model_spec_to_debug()` in `DepthRuntimeManager`; they are still the right architecture boundary for family config → runtime key resolution.
+4. Update `_configure_depth_runtime_managers()` / `_get_depth_runtime_manager()` in `pose_detector_substrate.gd` so all family managers share one pool instance for the substrate lifetime.
+5. Make shutdown/reconfigure release the family claim; only unload the underlying adapter/worker when the last family using that runtime key releases it or when the runtime key changes.
+6. Add unit coverage for: same-key families share one entry, different keys do not share, refcount drops correctly on reconfigure/shutdown, and per-family debug still reports truthful family plus shared-runtime fields.
+
+Risk notes for implementation: the biggest correctness risk is lifecycle churn during `configure()`, `reset()`, and family runtime-key changes, because `pose_detector_substrate.gd` currently reconfigures all managers eagerly and `DepthRuntimeManager.configure_from_family()` immediately releases its owned adapter. The pooling implementation should therefore use explicit acquire/release semantics and only destroy the shared runtime when the last claimant is gone. The biggest truth risk is accidentally turning per-family debug into one shared mutable blob; fix that by treating shared worker/runtime facts as pooled state and family gating/sample summaries as manager-local overlays. The lowest-risk bridge boundary is unchanged: do not let detector code know whether the runtime came from a pool or a dedicated instance, and do not move threshold semantics into `DepthPythonRuntimeBridge` or the Python worker.
 
 ---
 
