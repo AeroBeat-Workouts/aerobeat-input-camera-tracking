@@ -1154,7 +1154,8 @@ func _build_runtime_config() -> Variant:
 	var config := CameraTrackingConfigScript.new()
 	var selected_profile_id := _profile_id_for_harness_mode()
 	config.set_profile_id(selected_profile_id)
-	_apply_testbed_debug_profile_bundle(config.get_selected_profile_bundle())
+	var selected_bundle := config.get_selected_profile_bundle()
+	_apply_testbed_debug_profile_bundle(selected_bundle)
 	config.min_visibility = overlay_visibility_threshold
 	config.track_left_foot = true
 	config.track_right_foot = true
@@ -1168,8 +1169,21 @@ func _build_runtime_config() -> Variant:
 	config.model_complexity = int(tracking_style.get("model_complexity", config.model_complexity))
 	var filter_enabled := not bool(tracking_style.get("no_filter", false))
 	config.runtime = _build_vendor_runtime_config(config.model_complexity, filter_enabled)
+	_apply_runtime_depth_debug_config(config, selected_bundle)
 	_apply_runtime_gesture_backend_override(config)
 	return config
+
+func _apply_runtime_depth_debug_config(config: CameraTrackingConfigScript, bundle: Dictionary) -> void:
+	if config == null:
+		return
+	var testbed_debug: Dictionary = bundle.get("testbed_debug", {}) if bundle.get("testbed_debug", {}) is Dictionary else {}
+	var visuals: Dictionary = testbed_debug.get("visuals", {}) if testbed_debug.get("visuals", {}) is Dictionary else {}
+	var depth_debug: Dictionary = visuals.get("depth_debug", {}) if visuals.get("depth_debug", {}) is Dictionary else {}
+	var runtime: Dictionary = config.runtime.duplicate(true) if config.runtime is Dictionary else {}
+	runtime["depth_debug"] = {
+		"request_runtime_texture": bool(depth_debug.get("request_runtime_texture", false)),
+	}
+	config.runtime = runtime
 
 func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript) -> void:
 	if config == null:

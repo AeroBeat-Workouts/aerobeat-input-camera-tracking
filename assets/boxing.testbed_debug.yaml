@@ -17,6 +17,8 @@ visuals:
     enabled: true
     # Show a bottom-right thumbnail/debug card for depth inspection.
     thumbnail_visible: true
+    # Ask the runtime to surface the real normalized depth texture for the thumbnail/swap flow.
+    request_runtime_texture: true
     # Allow click-to-swap only when a real runtime depth texture exists.
     swap_click_enabled: true
     # Show hover affordance text when swapping is actually available.

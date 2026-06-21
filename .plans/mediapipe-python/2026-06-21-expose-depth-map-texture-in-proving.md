@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-21  
 **Status:** In Progress  
-**Last Updated:** 2026-06-21 17:28 EDT  
+**Last Updated:** 2026-06-21 17:58 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -96,9 +96,9 @@ A key constraint is performance. Surfacing the texture must not silently become 
 **Files Created/Deleted/Modified:**
 - proving scripts / tests / config / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Wired the boxing proving YAML into the runtime request seam so `assets/boxing.testbed_debug.yaml` now explicitly controls `visuals.depth_debug.request_runtime_texture`, and `_build_runtime_config()` copies that into `config.runtime.depth_debug.request_runtime_texture` before startup. The proving UI keeps its truthful unavailable path when that runtime texture is absent, but when the runtime does surface a real `normalized_depth_map` texture the thumbnail now uses that texture directly and click-to-swap cleanly flips the main preview between RGB and depth. Swap state now resets automatically if YAML disables the thumbnail or click-swap path, so the behavior stays YAML-driven instead of leaving the scene stuck on a depth view after config changes. Sample-point overlays and FPS/timing surfaces remain independent and continue to render from the same runtime debug snapshot whether or not a texture is available. Also tightened the thumbnail layout so the configured `thumbnail_corner` value is now actually honored instead of being silently treated as bottom-right only. Added focused GUT coverage for the new runtime-config request flag, the no-request flow profile default, and the YAML-disabled swap reset path; also re-ran the existing substrate request-plumbing test to confirm the new proving config still reaches the lower runtime request contract in `REF-06`.
 
 ### Task 4: QA depth-texture proving flow
 

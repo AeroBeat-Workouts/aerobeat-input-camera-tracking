@@ -274,6 +274,7 @@ func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes()
 	var depth_debug_visuals: Dictionary = harness.get("_depth_debug_visual_config")
 	assert_true(bool(depth_debug_visuals.get("enabled", false)))
 	assert_true(bool(depth_debug_visuals.get("thumbnail_visible", false)))
+	assert_true(bool(depth_debug_visuals.get("request_runtime_texture", false)))
 	assert_true(bool(depth_debug_visuals.get("sampling_regions_visible", false)))
 	assert_true(bool(depth_debug_visuals.get("fps_visible", false)))
 
@@ -338,6 +339,42 @@ func test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available() -> 
 	assert_same(thumbnail_texture.texture, preview_texture)
 	assert_string_contains(String(hint_label.text), "restore preview")
 
+func test_boxing_depth_debug_swap_resets_when_yaml_disables_thumbnail_click_swap() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness: Variant = scene_root
+	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	harness.set("_preview_presenter", presenter)
+	harness.camera_view = TextureRect.new()
+	harness.camera_view.texture = _make_test_texture(Color(0.22, 0.61, 0.38, 1.0))
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"depth_runtime": {
+				"straight_punch": _depth_runtime_visual_state(_make_test_texture(Color(0.71, 0.71, 0.71, 1.0))),
+			}
+		}
+	})
+	harness._refresh_debug_panels()
+	harness._toggle_depth_debug_swap()
+	assert_true(bool(harness.get("_depth_debug_swapped_to_depth")))
+	harness._sync_depth_debug_visual_config({
+		"depth_debug": {
+			"enabled": true,
+			"thumbnail_visible": true,
+			"swap_click_enabled": false,
+			"hover_hint_visible": true,
+			"sampling_regions_visible": true,
+			"fps_visible": true,
+			"request_runtime_texture": true,
+		}
+	})
+	var main_texture: TextureRect = harness.get("_depth_debug_main_texture") as TextureRect
+	var hint_label: Label = harness.get("_depth_debug_thumbnail_hint_label") as Label
+	assert_false(bool(harness.get("_depth_debug_swapped_to_depth")))
+	assert_not_null(main_texture)
+	assert_false(main_texture.visible)
+	assert_not_null(hint_label)
+	assert_false(hint_label.visible)
+
 func test_proving_harness_runtime_tuning_fields_are_hidden_from_editor_surface() -> void:
 	var harness: Object = _new_base_harness()
 	assert_true(_has_editor_exposed_property(harness, "scene_title"))
@@ -378,6 +415,21 @@ func test_proving_runtime_config_uses_profile_yaml_pose_smoothing_over_hidden_sc
 	var expects_filter_enabled := selected_style == "lite_filtered"
 	assert_eq(bool(config.runtime.get("filter_enabled", false)), expects_filter_enabled)
 	assert_eq(bool(config.runtime.get("no_filter", true)), not expects_filter_enabled)
+
+func test_boxing_proving_runtime_config_requests_depth_texture_from_testbed_yaml() -> void:
+	var harness: Variant = _new_harness()
+	var config: Variant = harness._build_runtime_config()
+	assert_not_null(config)
+	var depth_debug: Dictionary = config.runtime.get("depth_debug", {}) if config.runtime.get("depth_debug", {}) is Dictionary else {}
+	assert_true(bool(depth_debug.get("request_runtime_texture", false)))
+
+func test_flow_proving_runtime_config_does_not_request_depth_texture_without_yaml_flag() -> void:
+	var harness: Variant = _new_base_harness()
+	harness.set("harness_mode", int(ProvingHarnessScript.HarnessMode.FLOW))
+	var config: Variant = harness._build_runtime_config()
+	assert_not_null(config)
+	var depth_debug: Dictionary = config.runtime.get("depth_debug", {}) if config.runtime.get("depth_debug", {}) is Dictionary else {}
+	assert_false(bool(depth_debug.get("request_runtime_texture", false)))
 
 func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
 	var harness: Variant = _new_base_harness()

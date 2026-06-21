@@ -783,6 +783,7 @@ var _depth_debug_visual_config := {
 	"hover_hint_visible": false,
 	"sampling_regions_visible": false,
 	"fps_visible": false,
+	"request_runtime_texture": false,
 	"thumbnail_corner": "bottom_right",
 	"thumbnail_width_px": 196,
 	"thumbnail_margin_px": 14,
@@ -1092,17 +1093,23 @@ func _on_depth_debug_thumbnail_gui_input(event: InputEvent) -> void:
 	var mouse_event := event as InputEventMouseButton
 	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
 		return
-	if not _depth_debug_last_texture_available or not bool(_depth_debug_visual_config.get("swap_click_enabled", false)):
+	if not _depth_debug_can_swap(_depth_debug_last_texture_available):
 		return
 	accept_event()
 	_toggle_depth_debug_swap()
 
 func _toggle_depth_debug_swap() -> void:
-	if not _depth_debug_last_texture_available:
+	if not _depth_debug_can_swap(_depth_debug_last_texture_available):
 		_depth_debug_swapped_to_depth = false
 		return
 	_depth_debug_swapped_to_depth = not _depth_debug_swapped_to_depth
 	_refresh_depth_debug_visuals()
+
+func _depth_debug_can_swap(texture_available: bool) -> bool:
+	return texture_available \
+		and bool(_depth_debug_visual_config.get("enabled", false)) \
+		and bool(_depth_debug_visual_config.get("thumbnail_visible", false)) \
+		and bool(_depth_debug_visual_config.get("swap_click_enabled", false))
 
 func _refresh_depth_debug_visuals() -> void:
 	if _depth_debug_root == null:
@@ -1124,11 +1131,11 @@ func _refresh_depth_debug_visuals() -> void:
 	var depth_texture: Texture2D = snapshot.get("depth_texture", null)
 	var preview_texture: Texture2D = snapshot.get("preview_texture", null)
 	_depth_debug_last_texture_available = depth_texture != null
-	if not _depth_debug_last_texture_available:
+	if not _depth_debug_can_swap(_depth_debug_last_texture_available):
 		_depth_debug_swapped_to_depth = false
 	if _depth_debug_main_texture != null:
 		_depth_debug_main_texture.texture = depth_texture
-		_depth_debug_main_texture.visible = _depth_debug_swapped_to_depth and _depth_debug_last_texture_available
+		_depth_debug_main_texture.visible = _depth_debug_swapped_to_depth and _depth_debug_can_swap(_depth_debug_last_texture_available)
 	_refresh_depth_debug_sample_overlay(snapshot)
 	_refresh_depth_debug_fps_label(snapshot)
 	_refresh_depth_debug_thumbnail(snapshot, preview_texture, depth_texture)
@@ -1182,7 +1189,7 @@ func _refresh_depth_debug_thumbnail(snapshot: Dictionary, preview_texture: Textu
 	_depth_debug_thumbnail_placeholder_label.custom_minimum_size = _depth_debug_thumbnail_texture.custom_minimum_size
 	_depth_debug_thumbnail_placeholder_label.text = _depth_debug_placeholder_text(snapshot)
 	_depth_debug_thumbnail_status_label.text = _depth_debug_status_text(snapshot, texture_available)
-	var show_hint := bool(_depth_debug_visual_config.get("hover_hint_visible", false)) and bool(_depth_debug_visual_config.get("swap_click_enabled", false)) and texture_available and _depth_debug_thumbnail_hovered
+	var show_hint := bool(_depth_debug_visual_config.get("hover_hint_visible", false)) and _depth_debug_can_swap(texture_available) and _depth_debug_thumbnail_hovered
 	_depth_debug_thumbnail_hint_label.visible = show_hint
 	_depth_debug_thumbnail_hint_label.text = "Click to restore preview" if main_is_depth else "Click to inspect depth"
 
@@ -1191,12 +1198,35 @@ func _apply_depth_debug_thumbnail_layout() -> void:
 		return
 	var preferred_width := float(int(_depth_debug_visual_config.get("thumbnail_width_px", 196)))
 	var margin := float(int(_depth_debug_visual_config.get("thumbnail_margin_px", 14)))
-	_depth_debug_thumbnail_panel.custom_minimum_size = Vector2(preferred_width + 20.0, 0.0)
-	_depth_debug_thumbnail_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	_depth_debug_thumbnail_panel.offset_left = -(preferred_width + 20.0 + margin)
-	_depth_debug_thumbnail_panel.offset_top = -190.0 - margin
-	_depth_debug_thumbnail_panel.offset_right = -margin
-	_depth_debug_thumbnail_panel.offset_bottom = -margin
+	var panel_width := preferred_width + 20.0
+	var panel_height := 190.0
+	var corner := String(_depth_debug_visual_config.get("thumbnail_corner", "bottom_right")).strip_edges().to_lower()
+	_depth_debug_thumbnail_panel.custom_minimum_size = Vector2(panel_width, 0.0)
+	match corner:
+		"top_left":
+			_depth_debug_thumbnail_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+			_depth_debug_thumbnail_panel.offset_left = margin
+			_depth_debug_thumbnail_panel.offset_top = margin
+			_depth_debug_thumbnail_panel.offset_right = panel_width + margin
+			_depth_debug_thumbnail_panel.offset_bottom = panel_height + margin
+		"top_right":
+			_depth_debug_thumbnail_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+			_depth_debug_thumbnail_panel.offset_left = -(panel_width + margin)
+			_depth_debug_thumbnail_panel.offset_top = margin
+			_depth_debug_thumbnail_panel.offset_right = -margin
+			_depth_debug_thumbnail_panel.offset_bottom = panel_height + margin
+		"bottom_left":
+			_depth_debug_thumbnail_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+			_depth_debug_thumbnail_panel.offset_left = margin
+			_depth_debug_thumbnail_panel.offset_top = -(panel_height + margin)
+			_depth_debug_thumbnail_panel.offset_right = panel_width + margin
+			_depth_debug_thumbnail_panel.offset_bottom = -margin
+		_:
+			_depth_debug_thumbnail_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+			_depth_debug_thumbnail_panel.offset_left = -(panel_width + margin)
+			_depth_debug_thumbnail_panel.offset_top = -(panel_height + margin)
+			_depth_debug_thumbnail_panel.offset_right = -margin
+			_depth_debug_thumbnail_panel.offset_bottom = -margin
 
 func _build_depth_debug_visual_snapshot() -> Dictionary:
 	var focus_family := _depth_debug_focus_family()
@@ -1326,11 +1356,12 @@ func _sync_depth_debug_visual_config(visuals: Dictionary) -> void:
 		"hover_hint_visible": bool(depth_debug.get("hover_hint_visible", false)),
 		"sampling_regions_visible": bool(depth_debug.get("sampling_regions_visible", false)),
 		"fps_visible": bool(depth_debug.get("fps_visible", false)),
+		"request_runtime_texture": bool(depth_debug.get("request_runtime_texture", false)),
 		"thumbnail_corner": String(depth_debug.get("thumbnail_corner", "bottom_right")).strip_edges().to_lower(),
 		"thumbnail_width_px": maxi(120, int(depth_debug.get("thumbnail_width_px", 196))),
 		"thumbnail_margin_px": maxi(0, int(depth_debug.get("thumbnail_margin_px", 14))),
 	}
-	if not bool(_depth_debug_visual_config.get("enabled", false)):
+	if not bool(_depth_debug_visual_config.get("enabled", false)) or not bool(_depth_debug_visual_config.get("thumbnail_visible", false)) or not bool(_depth_debug_visual_config.get("swap_click_enabled", false)):
 		_depth_debug_swapped_to_depth = false
 		_depth_debug_thumbnail_hovered = false
 	_refresh_depth_debug_visuals()
