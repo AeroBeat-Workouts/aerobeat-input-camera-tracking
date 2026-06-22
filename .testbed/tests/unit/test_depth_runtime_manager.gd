@@ -221,6 +221,47 @@ func test_non_requested_inference_keeps_runtime_depth_texture_truthfully_null() 
 	var debug_state: Dictionary = manager.get_debug_state()
 	assert_eq(debug_state.get("normalized_depth_map", null), null)
 
+func test_region_aware_sampling_request_and_runtime_metadata_round_trip_truthfully() -> void:
+	var shared_pool = FakeDepthSharedRuntimePool.new()
+	shared_pool.next_result = _fake_region_aware_depth_result()
+	var manager = DepthRuntimeManagerScript.new()
+	manager.set_shared_runtime_pool(shared_pool)
+	manager.configure_from_family("straight_punch", {
+		"enabled": true,
+		"model": {
+			"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx",
+		},
+	})
+	var request := _sample_request("straight_punch", "left")
+	request["evaluation"] = {
+		"sampling_mode": "region_aware",
+		"region_geometry": {
+			"wrist_shape": "extended_capsule",
+			"wrist_radius_px": 12,
+			"wrist_extension_toward_elbow_px": 8,
+			"torso_shape": "center_box",
+			"torso_half_width_px": 18,
+			"torso_half_height_px": 18,
+			"torso_anchor": "shoulder_landmark",
+		},
+		"aggregation": {
+			"wrist_depth_stat": "median",
+			"torso_depth_stat": "median",
+			"trim_fraction": 0.0,
+			"min_valid_samples": 5,
+		},
+	}
+	var result: Dictionary = manager.infer_relative_depth(_preview_frame_payload(), request)
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(String(shared_pool.last_request.get("evaluation", {}).get("sampling_mode", "")), "region_aware")
+	assert_eq(int(shared_pool.last_request.get("evaluation", {}).get("region_geometry", {}).get("wrist_radius_px", 0)), 12)
+	assert_eq(String(result.get("sample_metrics", {}).get("sampling_mode", "")), "region_aware")
+	var sample_geometry: Dictionary = result.get("sample_metrics", {}).get("sample_geometry", {}) if result.get("sample_metrics", {}).get("sample_geometry", {}) is Dictionary else {}
+	assert_eq(String(sample_geometry.get("actual_geometry_kind", "")), "landmark_region")
+	assert_true(bool(sample_geometry.get("aggregation", {}).get("fallback_used", false)))
+	assert_eq(String(sample_geometry.get("aggregation", {}).get("fallback_reason", "")), "center_point_due_to_sparse_region")
+	assert_eq(String(sample_geometry.get("requested_runtime_geometry", {}).get("region_geometry", {}).get("torso_anchor", "")), "shoulder_landmark")
+
 func test_sample_every_n_frames_reuses_last_valid_depth_between_fresh_runs() -> void:
 	var shared_pool = FakeDepthSharedRuntimePool.new()
 	shared_pool.next_result = _fake_depth_result()
@@ -432,13 +473,80 @@ func _fake_depth_result() -> Dictionary:
 		"depth_map_size": Vector2i(640, 360),
 		"normalized_depth_map": null,
 		"sample_metrics": {
+			"sampling_mode": "single_point",
 			"wrist_closeness": 0.21,
 			"wrist_depth": 0.31,
 			"torso_depth": 0.52,
 			"sample_source": "fresh_inference",
 			"sample_fresh": true,
 			"sample_geometry": {
+				"sampling_mode": "single_point",
 				"actual_geometry_kind": "single_pixel_point",
+				"aggregation": {
+					"fallback_used": false,
+					"fallback_reason": "",
+				},
+			},
+		},
+		"timing_ms": {
+			"preprocess": 1.0,
+			"infer": 2.0,
+			"postprocess": 3.0,
+			"total": 6.0,
+		},
+	}
+
+func _fake_region_aware_depth_result() -> Dictionary:
+	return {
+		"ok": true,
+		"status": DepthRuntimeTypes.STATUS_READY,
+		"backend_id": "onnx",
+		"family_id": "fastdepth_224_onnx",
+		"artifact_path": "res://addons/aerobeat-input-camera-tracking/assets/depth_models/fastdepth/fastdepth_224_onnx/fastdepth.onnx",
+		"frame_size": Vector2i(640, 360),
+		"depth_map_size": Vector2i(640, 360),
+		"normalized_depth_map": null,
+		"sample_metrics": {
+			"sampling_mode": "region_aware",
+			"wrist_closeness": 0.18,
+			"wrist_depth": 0.34,
+			"torso_depth": 0.52,
+			"sample_source": "fresh_inference",
+			"sample_fresh": true,
+			"sample_geometry": {
+				"sampling_mode": "region_aware",
+				"actual_geometry_kind": "landmark_region",
+				"requested_runtime_geometry": {
+					"region_geometry": {
+						"wrist_shape": "extended_capsule",
+						"wrist_radius_px": 12,
+						"wrist_extension_toward_elbow_px": 8,
+						"torso_shape": "center_box",
+						"torso_half_width_px": 18,
+						"torso_half_height_px": 18,
+						"torso_anchor": "shoulder_landmark",
+					},
+					"aggregation": {
+						"wrist_depth_stat": "median",
+						"torso_depth_stat": "median",
+						"trim_fraction": 0.0,
+						"min_valid_samples": 5,
+					},
+				},
+				"aggregation": {
+					"fallback_used": true,
+					"fallback_reason": "center_point_due_to_sparse_region",
+					"applied": {
+						"wrist": {
+							"stat_applied": "center_point",
+							"valid_sample_count": 1,
+						},
+						"torso": {
+							"stat_applied": "median",
+							"valid_sample_count": 9,
+						},
+					},
+				},
 			},
 		},
 		"timing_ms": {

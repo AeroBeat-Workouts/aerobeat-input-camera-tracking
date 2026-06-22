@@ -345,13 +345,13 @@ func _normalize_precomputed_sample_result(family_payload: Dictionary, side: Stri
 	result["backend_id"] = String(sample_payload.get("backend_id", _debug_state.get("backend_id", "unknown")))
 	result["family_id"] = String(sample_payload.get("family_id", _debug_state.get("family_id", "unknown")))
 	result["artifact_path"] = String(sample_payload.get("artifact_path", _debug_state.get("artifact_path_res", "")))
-	result["sample_metrics"] = {
-		"wrist_closeness": closeness,
-		"wrist_depth": _first_float(sample_metrics, ["wrist_depth", "wrist_depth_normalized"], 0.0),
-		"torso_depth": _first_float(sample_metrics, ["torso_depth", "torso_depth_normalized"], 0.0),
-		"sample_source": String(sample_metrics.get("sample_source", sample_payload.get("sample_source", "placeholder"))),
-		"sample_fresh": bool(sample_metrics.get("sample_fresh", sample_payload.get("sample_fresh", true))),
-	}
+	var normalized_metrics: Dictionary = sample_metrics.duplicate(true)
+	normalized_metrics["wrist_closeness"] = closeness
+	normalized_metrics["wrist_depth"] = _first_float(sample_metrics, ["wrist_depth", "wrist_depth_normalized"], 0.0)
+	normalized_metrics["torso_depth"] = _first_float(sample_metrics, ["torso_depth", "torso_depth_normalized"], 0.0)
+	normalized_metrics["sample_source"] = String(sample_metrics.get("sample_source", sample_payload.get("sample_source", "placeholder")))
+	normalized_metrics["sample_fresh"] = bool(sample_metrics.get("sample_fresh", sample_payload.get("sample_fresh", true)))
+	result["sample_metrics"] = normalized_metrics
 	result["timing_ms"] = (sample_payload.get("timing_ms", {}) as Dictionary).duplicate(true) if sample_payload.get("timing_ms", {}) is Dictionary else {
 		"preprocess": 0.0,
 		"infer": 0.0,

@@ -148,16 +148,318 @@ def _encode_normalized_depth_png_base64(normalized_depth: Any) -> Optional[str]:
     return base64.b64encode(encoded.tobytes()).decode("ascii")
 
 
-def _sample_depth(depth_map: Any, point: Dict[str, Any]) -> Dict[str, Any]:
+def _clamp01(value: Any, default: float = 0.5) -> float:
+    try:
+        numeric = float(value)
+    except Exception:
+        numeric = default
+    return max(0.0, min(1.0, numeric))
+
+
+def _point_to_pixel(depth_map: Any, point: Dict[str, Any]) -> Tuple[float, float, int, int]:
     h, w = depth_map.shape[:2]
-    x = float(point.get("x", 0.5))
-    y = float(point.get("y", 0.5))
-    px = int(round(max(0.0, min(1.0, x)) * float(max(w - 1, 0))))
-    py = int(round(max(0.0, min(1.0, y)) * float(max(h - 1, 0))))
+    x = _clamp01(point.get("x", 0.5))
+    y = _clamp01(point.get("y", 0.5))
+    px = int(round(x * float(max(w - 1, 0))))
+    py = int(round(y * float(max(h - 1, 0))))
+    return x, y, px, py
+
+
+def _sample_depth(depth_map: Any, point: Dict[str, Any]) -> Dict[str, Any]:
+    x, y, px, py = _point_to_pixel(depth_map, point)
     return {
         "depth": float(depth_map[py, px]),
         "normalized_point": {"x": x, "y": y},
         "pixel": {"x": px, "y": py},
+    }
+
+
+def _sampling_mode_from_evaluation(evaluation_cfg: Dict[str, Any]) -> str:
+    mode = str(evaluation_cfg.get("sampling_mode", "single_point")).strip().lower()
+    if mode not in {"single_point", "region_aware"}:
+        return "single_point"
+    return mode
+
+
+def _requested_region_geometry(evaluation_cfg: Dict[str, Any]) -> Dict[str, Any]:
+    region_geometry = evaluation_cfg.get("region_geometry", {}) if isinstance(evaluation_cfg.get("region_geometry", {}), dict) else {}
+    wrist_radius_px = int(region_geometry.get("wrist_radius_px", evaluation_cfg.get("wrist_roi_radius_px", 0)))
+    wrist_extension_px = int(region_geometry.get("wrist_extension_toward_elbow_px", evaluation_cfg.get("wrist_to_elbow_extension_px", 0)))
+    torso_half_width_px = int(region_geometry.get("torso_half_width_px", evaluation_cfg.get("torso_roi_radius_px", 0)))
+    torso_half_height_px = int(region_geometry.get("torso_half_height_px", evaluation_cfg.get("torso_roi_radius_px", 0)))
+    return {
+        "wrist_shape": str(region_geometry.get("wrist_shape", "extended_capsule")),
+        "wrist_radius_px": max(0, wrist_radius_px),
+        "wrist_extension_toward_elbow_px": max(0, wrist_extension_px),
+        "torso_shape": str(region_geometry.get("torso_shape", "center_box")),
+        "torso_half_width_px": max(0, torso_half_width_px),
+        "torso_half_height_px": max(0, torso_half_height_px),
+        "torso_anchor": str(region_geometry.get("torso_anchor", "shoulder_landmark")),
+    }
+
+
+def _requested_aggregation(evaluation_cfg: Dict[str, Any]) -> Dict[str, Any]:
+    aggregation = evaluation_cfg.get("aggregation", {}) if isinstance(evaluation_cfg.get("aggregation", {}), dict) else {}
+    trim_fraction = float(aggregation.get("trim_fraction", 0.0))
+    trim_fraction = max(0.0, min(0.49, trim_fraction))
+    return {
+        "wrist_depth_stat": str(aggregation.get("wrist_depth_stat", "median")),
+        "torso_depth_stat": str(aggregation.get("torso_depth_stat", "median")),
+        "trim_fraction": trim_fraction,
+        "min_valid_samples": max(1, int(aggregation.get("min_valid_samples", 1))),
+    }
+
+
+def _segment_distance(px: float, py: float, ax: float, ay: float, bx: float, by: float) -> float:
+    abx = bx - ax
+    aby = by - ay
+    apx = px - ax
+    apy = py - ay
+    denom = abx * abx + aby * aby
+    if denom <= 1e-6:
+        dx = px - ax
+        dy = py - ay
+        return (dx * dx + dy * dy) ** 0.5
+    t = max(0.0, min(1.0, (apx * abx + apy * aby) / denom))
+    closest_x = ax + abx * t
+    closest_y = ay + aby * t
+    dx = px - closest_x
+    dy = py - closest_y
+    return (dx * dx + dy * dy) ** 0.5
+
+
+def _gather_wrist_region_samples(depth_map: Any, wrist_point: Dict[str, Any], elbow_point: Dict[str, Any], region_geometry: Dict[str, Any]) -> Dict[str, Any]:
+    _, _, wrist_px, wrist_py = _point_to_pixel(depth_map, wrist_point)
+    _, _, elbow_px, elbow_py = _point_to_pixel(depth_map, elbow_point)
+    radius_px = max(0, int(region_geometry.get("wrist_radius_px", 0)))
+    extension_px = max(0, int(region_geometry.get("wrist_extension_toward_elbow_px", 0)))
+    direction_x = float(elbow_px - wrist_px)
+    direction_y = float(elbow_py - wrist_py)
+    length = (direction_x * direction_x + direction_y * direction_y) ** 0.5
+    if length > 1e-6:
+        unit_x = direction_x / length
+        unit_y = direction_y / length
+    else:
+        unit_x = 0.0
+        unit_y = 0.0
+    end_x = float(wrist_px) + unit_x * float(extension_px)
+    end_y = float(wrist_py) + unit_y * float(extension_px)
+    min_x = max(0, int(min(wrist_px, round(end_x)) - radius_px))
+    max_x = min(int(depth_map.shape[1]) - 1, int(max(wrist_px, round(end_x)) + radius_px))
+    min_y = max(0, int(min(wrist_py, round(end_y)) - radius_px))
+    max_y = min(int(depth_map.shape[0]) - 1, int(max(wrist_py, round(end_y)) + radius_px))
+    samples = []
+    pixels = []
+    for py in range(min_y, max_y + 1):
+        for px in range(min_x, max_x + 1):
+            if _segment_distance(float(px), float(py), float(wrist_px), float(wrist_py), end_x, end_y) <= float(radius_px) + 0.5:
+                samples.append(float(depth_map[py, px]))
+                pixels.append({"x": px, "y": py})
+    return {
+        "anchor_sample": _sample_depth(depth_map, wrist_point),
+        "anchor_pixel": {"x": wrist_px, "y": wrist_py},
+        "elbow_pixel": {"x": elbow_px, "y": elbow_py},
+        "extension_endpoint_pixel": {"x": int(round(end_x)), "y": int(round(end_y))},
+        "shape": str(region_geometry.get("wrist_shape", "extended_capsule")),
+        "radius_px": radius_px,
+        "extension_toward_elbow_px": extension_px,
+        "bounds_px": {"min_x": min_x, "min_y": min_y, "max_x": max_x, "max_y": max_y},
+        "samples": samples,
+        "sampled_pixels": pixels,
+    }
+
+
+def _gather_torso_region_samples(depth_map: Any, torso_point: Dict[str, Any], region_geometry: Dict[str, Any]) -> Dict[str, Any]:
+    _, _, torso_px, torso_py = _point_to_pixel(depth_map, torso_point)
+    half_width_px = max(0, int(region_geometry.get("torso_half_width_px", 0)))
+    half_height_px = max(0, int(region_geometry.get("torso_half_height_px", 0)))
+    min_x = max(0, torso_px - half_width_px)
+    max_x = min(int(depth_map.shape[1]) - 1, torso_px + half_width_px)
+    min_y = max(0, torso_py - half_height_px)
+    max_y = min(int(depth_map.shape[0]) - 1, torso_py + half_height_px)
+    samples = []
+    pixels = []
+    for py in range(min_y, max_y + 1):
+        for px in range(min_x, max_x + 1):
+            samples.append(float(depth_map[py, px]))
+            pixels.append({"x": px, "y": py})
+    return {
+        "anchor_sample": _sample_depth(depth_map, torso_point),
+        "anchor_pixel": {"x": torso_px, "y": torso_py},
+        "shape": str(region_geometry.get("torso_shape", "center_box")),
+        "half_width_px": half_width_px,
+        "half_height_px": half_height_px,
+        "torso_anchor": str(region_geometry.get("torso_anchor", "shoulder_landmark")),
+        "bounds_px": {"min_x": min_x, "min_y": min_y, "max_x": max_x, "max_y": max_y},
+        "samples": samples,
+        "sampled_pixels": pixels,
+    }
+
+
+def _aggregate_depth_samples(samples: list[float], anchor_depth: float, stat: str, trim_fraction: float, min_valid_samples: int) -> Dict[str, Any]:
+    valid_samples = [float(sample) for sample in samples]
+    fallback_used = len(valid_samples) < max(1, min_valid_samples)
+    fallback_reason = "center_point_due_to_sparse_region" if fallback_used else ""
+    if fallback_used:
+        return {
+            "depth": float(anchor_depth),
+            "stat_requested": stat,
+            "stat_applied": "center_point",
+            "trim_fraction": trim_fraction,
+            "sample_count": len(samples),
+            "valid_sample_count": len(valid_samples),
+            "fallback_used": True,
+            "fallback_reason": fallback_reason,
+        }
+    ordered = sorted(valid_samples)
+    trim_count = min(int(len(ordered) * trim_fraction), max((len(ordered) - 1) // 2, 0))
+    trimmed = ordered[trim_count:len(ordered) - trim_count] if trim_count > 0 else ordered
+    stat_key = stat.strip().lower()
+    if stat_key == "mean":
+        depth = sum(trimmed) / float(max(len(trimmed), 1))
+        stat_applied = "mean"
+    elif stat_key == "trimmed_mean":
+        depth = sum(trimmed) / float(max(len(trimmed), 1))
+        stat_applied = "trimmed_mean"
+    else:
+        mid = len(trimmed) // 2
+        if len(trimmed) % 2 == 0:
+            depth = (trimmed[mid - 1] + trimmed[mid]) / 2.0
+        else:
+            depth = trimmed[mid]
+        stat_applied = "median"
+    return {
+        "depth": float(depth),
+        "stat_requested": stat,
+        "stat_applied": stat_applied,
+        "trim_fraction": trim_fraction,
+        "sample_count": len(samples),
+        "valid_sample_count": len(valid_samples),
+        "fallback_used": False,
+        "fallback_reason": "",
+    }
+
+
+def _build_single_point_sampling_result(depth_map: Any, shoulder_point: Dict[str, Any], wrist_point: Dict[str, Any], evaluation_cfg: Dict[str, Any]) -> Dict[str, Any]:
+    shoulder_sample = _sample_depth(depth_map, shoulder_point)
+    wrist_sample = _sample_depth(depth_map, wrist_point)
+    region_geometry = _requested_region_geometry(evaluation_cfg)
+    aggregation_cfg = _requested_aggregation(evaluation_cfg)
+    requested_runtime_geometry = {
+        "region_geometry": region_geometry,
+        "aggregation": aggregation_cfg,
+        "wrist_roi_radius_px": int(region_geometry.get("wrist_radius_px", 0)),
+        "wrist_to_elbow_extension_px": int(region_geometry.get("wrist_extension_toward_elbow_px", 0)),
+        "torso_roi_radius_px": int(max(region_geometry.get("torso_half_width_px", 0), region_geometry.get("torso_half_height_px", 0))),
+    }
+    return {
+        "shoulder_sample": shoulder_sample,
+        "wrist_sample": wrist_sample,
+        "shoulder_depth": float(shoulder_sample.get("depth", 0.0)),
+        "wrist_depth": float(wrist_sample.get("depth", 0.0)),
+        "sample_geometry": {
+            "sampling_mode": "single_point",
+            "actual_geometry_kind": "single_pixel_point",
+            "depth_map_space": "frame_resized_normalized_depth",
+            "requested_runtime_geometry": requested_runtime_geometry,
+            "actual_samples": {
+                "shoulder": shoulder_sample,
+                "wrist": wrist_sample,
+            },
+            "aggregation": {
+                "configured": {
+                    "wrist_depth_stat": "point_sample",
+                    "torso_depth_stat": "point_sample",
+                    "trim_fraction": 0.0,
+                    "min_valid_samples": 1,
+                },
+                "applied": {
+                    "wrist": {"stat_applied": "point_sample", "sample_count": 1, "valid_sample_count": 1},
+                    "torso": {"stat_applied": "point_sample", "sample_count": 1, "valid_sample_count": 1},
+                },
+                "fallback_used": False,
+                "fallback_reason": "",
+            },
+        },
+    }
+
+
+def _build_region_aware_sampling_result(depth_map: Any, shoulder_point: Dict[str, Any], elbow_point: Dict[str, Any], wrist_point: Dict[str, Any], evaluation_cfg: Dict[str, Any]) -> Dict[str, Any]:
+    region_geometry = _requested_region_geometry(evaluation_cfg)
+    aggregation_cfg = _requested_aggregation(evaluation_cfg)
+    wrist_region = _gather_wrist_region_samples(depth_map, wrist_point, elbow_point, region_geometry)
+    torso_region = _gather_torso_region_samples(depth_map, shoulder_point, region_geometry)
+    wrist_aggregation = _aggregate_depth_samples(
+        wrist_region.get("samples", []),
+        float(wrist_region.get("anchor_sample", {}).get("depth", 0.0)),
+        str(aggregation_cfg.get("wrist_depth_stat", "median")),
+        float(aggregation_cfg.get("trim_fraction", 0.0)),
+        int(aggregation_cfg.get("min_valid_samples", 1)),
+    )
+    torso_aggregation = _aggregate_depth_samples(
+        torso_region.get("samples", []),
+        float(torso_region.get("anchor_sample", {}).get("depth", 0.0)),
+        str(aggregation_cfg.get("torso_depth_stat", "median")),
+        float(aggregation_cfg.get("trim_fraction", 0.0)),
+        int(aggregation_cfg.get("min_valid_samples", 1)),
+    )
+    fallback_used = bool(wrist_aggregation.get("fallback_used", False)) or bool(torso_aggregation.get("fallback_used", False))
+    fallback_reason = str(wrist_aggregation.get("fallback_reason", "") or torso_aggregation.get("fallback_reason", ""))
+    return {
+        "shoulder_sample": torso_region.get("anchor_sample", {}),
+        "wrist_sample": wrist_region.get("anchor_sample", {}),
+        "shoulder_depth": float(torso_aggregation.get("depth", 0.0)),
+        "wrist_depth": float(wrist_aggregation.get("depth", 0.0)),
+        "sample_geometry": {
+            "sampling_mode": "region_aware",
+            "actual_geometry_kind": "landmark_region",
+            "depth_map_space": "frame_resized_normalized_depth",
+            "requested_runtime_geometry": {
+                "region_geometry": region_geometry,
+                "aggregation": aggregation_cfg,
+            },
+            "actual_samples": {
+                "shoulder": torso_region.get("anchor_sample", {}),
+                "wrist": wrist_region.get("anchor_sample", {}),
+            },
+            "region_anchors": {
+                "shoulder": torso_region.get("anchor_sample", {}),
+                "elbow": _sample_depth(depth_map, elbow_point),
+                "wrist": wrist_region.get("anchor_sample", {}),
+            },
+            "actual_regions": {
+                "wrist": {
+                    "shape": wrist_region.get("shape", "extended_capsule"),
+                    "anchor_pixel": wrist_region.get("anchor_pixel", {}),
+                    "elbow_pixel": wrist_region.get("elbow_pixel", {}),
+                    "extension_endpoint_pixel": wrist_region.get("extension_endpoint_pixel", {}),
+                    "radius_px": int(wrist_region.get("radius_px", 0)),
+                    "extension_toward_elbow_px": int(wrist_region.get("extension_toward_elbow_px", 0)),
+                    "bounds_px": wrist_region.get("bounds_px", {}),
+                    "sampled_pixel_count": len(wrist_region.get("sampled_pixels", [])),
+                    "valid_pixel_count": len(wrist_region.get("samples", [])),
+                },
+                "torso": {
+                    "shape": torso_region.get("shape", "center_box"),
+                    "anchor_pixel": torso_region.get("anchor_pixel", {}),
+                    "torso_anchor": torso_region.get("torso_anchor", "shoulder_landmark"),
+                    "half_width_px": int(torso_region.get("half_width_px", 0)),
+                    "half_height_px": int(torso_region.get("half_height_px", 0)),
+                    "bounds_px": torso_region.get("bounds_px", {}),
+                    "sampled_pixel_count": len(torso_region.get("sampled_pixels", [])),
+                    "valid_pixel_count": len(torso_region.get("samples", [])),
+                },
+            },
+            "aggregation": {
+                "configured": aggregation_cfg,
+                "applied": {
+                    "wrist": wrist_aggregation,
+                    "torso": torso_aggregation,
+                },
+                "fallback_used": fallback_used,
+                "fallback_reason": fallback_reason,
+            },
+        },
     }
 
 
@@ -260,15 +562,29 @@ class RuntimeSession:
             t2 = time.perf_counter()
             normalized_depth = _normalize_output_depth(raw_output, bool(self.family_cfg.get("output_near_is_larger", False)))
             normalized_depth = _resize_depth_to_frame(normalized_depth, (frame_h, frame_w))
-            shoulder_sample = _sample_depth(normalized_depth, sample_request.get("shoulder", {}))
-            wrist_sample = _sample_depth(normalized_depth, sample_request.get("wrist", {}))
-            shoulder_depth = float(shoulder_sample.get("depth", 0.0))
-            wrist_depth = float(wrist_sample.get("depth", 0.0))
             request_debug_texture = bool(sample_request.get("debug_texture_requested", False))
             normalized_depth_map_png_base64 = _encode_normalized_depth_png_base64(normalized_depth) if request_debug_texture else None
             timing["postprocess"] = (time.perf_counter() - t2) * 1000.0
             timing["total"] = (time.perf_counter() - started_at) * 1000.0
             evaluation_cfg = sample_request.get("evaluation", {}) if isinstance(sample_request.get("evaluation", {}), dict) else {}
+            sampling_mode = _sampling_mode_from_evaluation(evaluation_cfg)
+            if sampling_mode == "region_aware":
+                sampling_result = _build_region_aware_sampling_result(
+                    normalized_depth,
+                    sample_request.get("shoulder", {}),
+                    sample_request.get("elbow", {}),
+                    sample_request.get("wrist", {}),
+                    evaluation_cfg,
+                )
+            else:
+                sampling_result = _build_single_point_sampling_result(
+                    normalized_depth,
+                    sample_request.get("shoulder", {}),
+                    sample_request.get("wrist", {}),
+                    evaluation_cfg,
+                )
+            shoulder_depth = float(sampling_result.get("shoulder_depth", 0.0))
+            wrist_depth = float(sampling_result.get("wrist_depth", 0.0))
             return {
                 "ok": True,
                 "status": "ready",
@@ -281,24 +597,13 @@ class RuntimeSession:
                 "normalized_depth_map": None,
                 "normalized_depth_map_png_base64": normalized_depth_map_png_base64,
                 "sample_metrics": {
+                    "sampling_mode": sampling_mode,
                     "wrist_closeness": float(shoulder_depth - wrist_depth),
                     "wrist_depth": wrist_depth,
                     "torso_depth": shoulder_depth,
                     "sample_source": "fresh_inference",
                     "sample_fresh": True,
-                    "sample_geometry": {
-                        "actual_geometry_kind": "single_pixel_point",
-                        "depth_map_space": "frame_resized_normalized_depth",
-                        "requested_runtime_geometry": {
-                            "wrist_roi_radius_px": int(evaluation_cfg.get("wrist_roi_radius_px", 0)),
-                            "wrist_to_elbow_extension_px": int(evaluation_cfg.get("wrist_to_elbow_extension_px", 0)),
-                            "torso_roi_radius_px": int(evaluation_cfg.get("torso_roi_radius_px", 0)),
-                        },
-                        "actual_samples": {
-                            "shoulder": shoulder_sample,
-                            "wrist": wrist_sample,
-                        },
-                    },
+                    "sample_geometry": sampling_result.get("sample_geometry", {}),
                 },
                 "timing_ms": timing,
             }

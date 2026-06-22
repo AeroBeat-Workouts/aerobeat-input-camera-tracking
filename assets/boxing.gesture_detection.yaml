@@ -84,12 +84,32 @@ straight_punch:
         sample_every_n_frames: 1
         # Reused depth becomes invalid once older than this many milliseconds, even if the next scheduled fresh sample has not happened yet. input -> runtime.
         max_sample_age_ms: 250
-        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> requested runtime geometry metadata.
-        wrist_roi_radius_px: 12
-        # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
-        wrist_to_elbow_extension_px: 8
-        # Sample this many torso-centered depth pixels on each side of the torso ROI center for the body reference depth. input -> tool.
-        torso_roi_radius_px: 18
+        # Pick the runtime depth sampling backend for this family without changing detector-facing depth gate formulas. input -> runtime.
+        sampling_mode: single_point
+        region_geometry:
+          # Wrist regions extend from the wrist landmark toward the elbow in depth-map pixel space when region-aware sampling is enabled. input -> runtime geometry metadata.
+          wrist_shape: extended_capsule
+          # Grow the wrist region this many pixels outward around the wrist-to-elbow segment. input -> runtime geometry metadata.
+          wrist_radius_px: 12
+          # Extend the wrist region this many pixels toward the elbow to stabilize forearm-adjacent reads. input -> runtime geometry metadata.
+          wrist_extension_toward_elbow_px: 8
+          # Torso regions use a landmark-centered box in depth-map pixel space when region-aware sampling is enabled. input -> runtime geometry metadata.
+          torso_shape: center_box
+          # Grow the torso region this many pixels left/right from the torso anchor. input -> runtime geometry metadata.
+          torso_half_width_px: 18
+          # Grow the torso region this many pixels up/down from the torso anchor. input -> runtime geometry metadata.
+          torso_half_height_px: 18
+          # Anchor the torso region to the current torso-reference landmark used by the detector request. input -> runtime geometry metadata.
+          torso_anchor: shoulder_landmark
+        aggregation:
+          # Aggregate wrist-region depth with this statistic when region-aware sampling is enabled. input -> runtime aggregation metadata.
+          wrist_depth_stat: median
+          # Aggregate torso-region depth with this statistic when region-aware sampling is enabled. input -> runtime aggregation metadata.
+          torso_depth_stat: median
+          # Trim this fraction from each tail before trimmed aggregations run. input -> runtime aggregation metadata.
+          trim_fraction: 0.0
+          # Fall back to the center point if a region resolves fewer than this many valid pixels. input -> runtime fallback metadata.
+          min_valid_samples: 1
         # Smooth the per-frame wrist-vs-torso depth signal across this many recent frames before window scoring. input -> tool.
         smoothing_window_samples: 3
         # Use this much of the window from the front as the early depth baseline slice. input -> tool.
@@ -188,12 +208,32 @@ hook:
         sample_every_n_frames: 1
         # Reused depth becomes invalid once older than this many milliseconds, even if the next scheduled fresh sample has not happened yet. input -> runtime.
         max_sample_age_ms: 250
-        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> requested runtime geometry metadata.
-        wrist_roi_radius_px: 12
-        # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
-        wrist_to_elbow_extension_px: 8
-        # Sample this many torso-centered depth pixels on each side of the torso ROI center for the body reference depth. input -> tool.
-        torso_roi_radius_px: 18
+        # Pick the runtime depth sampling backend for this family without changing detector-facing depth gate formulas. input -> runtime.
+        sampling_mode: single_point
+        region_geometry:
+          # Wrist regions extend from the wrist landmark toward the elbow in depth-map pixel space when region-aware sampling is enabled. input -> runtime geometry metadata.
+          wrist_shape: extended_capsule
+          # Grow the wrist region this many pixels outward around the wrist-to-elbow segment. input -> runtime geometry metadata.
+          wrist_radius_px: 12
+          # Extend the wrist region this many pixels toward the elbow to stabilize forearm-adjacent reads. input -> runtime geometry metadata.
+          wrist_extension_toward_elbow_px: 8
+          # Torso regions use a landmark-centered box in depth-map pixel space when region-aware sampling is enabled. input -> runtime geometry metadata.
+          torso_shape: center_box
+          # Grow the torso region this many pixels left/right from the torso anchor. input -> runtime geometry metadata.
+          torso_half_width_px: 18
+          # Grow the torso region this many pixels up/down from the torso anchor. input -> runtime geometry metadata.
+          torso_half_height_px: 18
+          # Anchor the torso region to the current torso-reference landmark used by the detector request. input -> runtime geometry metadata.
+          torso_anchor: shoulder_landmark
+        aggregation:
+          # Aggregate wrist-region depth with this statistic when region-aware sampling is enabled. input -> runtime aggregation metadata.
+          wrist_depth_stat: median
+          # Aggregate torso-region depth with this statistic when region-aware sampling is enabled. input -> runtime aggregation metadata.
+          torso_depth_stat: median
+          # Trim this fraction from each tail before trimmed aggregations run. input -> runtime aggregation metadata.
+          trim_fraction: 0.0
+          # Fall back to the center point if a region resolves fewer than this many valid pixels. input -> runtime fallback metadata.
+          min_valid_samples: 1
         # Smooth the per-frame wrist-vs-torso depth signal across this many recent frames before window scoring. input -> tool.
         smoothing_window_samples: 3
         # Use this much of the window from the front as the early depth baseline slice. input -> tool.
@@ -290,12 +330,32 @@ uppercut:
         sample_every_n_frames: 1
         # Reused depth becomes invalid once older than this many milliseconds, even if the next scheduled fresh sample has not happened yet. input -> runtime.
         max_sample_age_ms: 250
-        # Sample this many wrist-centered depth pixels on each side of the wrist ROI center. input -> requested runtime geometry metadata.
-        wrist_roi_radius_px: 12
-        # Extend the wrist ROI this far toward the elbow direction to stabilize forearm-adjacent depth reads. input -> tool.
-        wrist_to_elbow_extension_px: 8
-        # Sample this many torso-centered depth pixels on each side of the torso ROI center for the body reference depth. input -> tool.
-        torso_roi_radius_px: 18
+        # Pick the runtime depth sampling backend for this family without changing detector-facing depth gate formulas. input -> runtime.
+        sampling_mode: single_point
+        region_geometry:
+          # Wrist regions extend from the wrist landmark toward the elbow in depth-map pixel space when region-aware sampling is enabled. input -> runtime geometry metadata.
+          wrist_shape: extended_capsule
+          # Grow the wrist region this many pixels outward around the wrist-to-elbow segment. input -> runtime geometry metadata.
+          wrist_radius_px: 12
+          # Extend the wrist region this many pixels toward the elbow to stabilize forearm-adjacent reads. input -> runtime geometry metadata.
+          wrist_extension_toward_elbow_px: 8
+          # Torso regions use a landmark-centered box in depth-map pixel space when region-aware sampling is enabled. input -> runtime geometry metadata.
+          torso_shape: center_box
+          # Grow the torso region this many pixels left/right from the torso anchor. input -> runtime geometry metadata.
+          torso_half_width_px: 18
+          # Grow the torso region this many pixels up/down from the torso anchor. input -> runtime geometry metadata.
+          torso_half_height_px: 18
+          # Anchor the torso region to the current torso-reference landmark used by the detector request. input -> runtime geometry metadata.
+          torso_anchor: shoulder_landmark
+        aggregation:
+          # Aggregate wrist-region depth with this statistic when region-aware sampling is enabled. input -> runtime aggregation metadata.
+          wrist_depth_stat: median
+          # Aggregate torso-region depth with this statistic when region-aware sampling is enabled. input -> runtime aggregation metadata.
+          torso_depth_stat: median
+          # Trim this fraction from each tail before trimmed aggregations run. input -> runtime aggregation metadata.
+          trim_fraction: 0.0
+          # Fall back to the center point if a region resolves fewer than this many valid pixels. input -> runtime fallback metadata.
+          min_valid_samples: 1
         # Smooth the per-frame wrist-vs-torso depth signal across this many recent frames before window scoring. input -> tool.
         smoothing_window_samples: 3
         # Use this much of the window from the front as the early depth baseline slice. input -> tool.

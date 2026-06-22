@@ -408,11 +408,34 @@ func test_depth_runtime_request_plumbing_marks_debug_texture_request_from_runtim
 		{"x": 0.48, "y": 0.55},
 		{"x": 0.56, "y": 0.66},
 		{"window_ms": 180},
-		{"evaluation": {"sample_every_n_frames": 3}}
+		{
+			"evaluation": {
+				"sample_every_n_frames": 3,
+				"sampling_mode": "region_aware",
+				"region_geometry": {
+					"wrist_shape": "extended_capsule",
+					"wrist_radius_px": 12,
+					"wrist_extension_toward_elbow_px": 8,
+					"torso_shape": "center_box",
+					"torso_half_width_px": 18,
+					"torso_half_height_px": 14,
+					"torso_anchor": "shoulder_landmark",
+				},
+				"aggregation": {
+					"wrist_depth_stat": "median",
+					"torso_depth_stat": "trimmed_mean",
+					"trim_fraction": 0.2,
+					"min_valid_samples": 5,
+				},
+			}
+		}
 	)
 	assert_true(bool(request.get("debug_texture_requested", false)))
 	assert_eq(int(request.get("window_ms", 0)), 180)
 	assert_eq(int(request.get("evaluation", {}).get("sample_every_n_frames", 0)), 3)
+	assert_eq(String(request.get("evaluation", {}).get("sampling_mode", "")), "region_aware")
+	assert_eq(int(request.get("evaluation", {}).get("region_geometry", {}).get("wrist_radius_px", 0)), 12)
+	assert_eq(String(request.get("evaluation", {}).get("aggregation", {}).get("torso_depth_stat", "")), "trimmed_mean")
 
 func test_straight_punch_depth_gate_reports_preview_image_block_truthfully() -> void:
 	config.tracker_profile_document = {
