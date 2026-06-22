@@ -234,6 +234,21 @@ func _make_test_texture(color: Color = Color(0.7, 0.7, 0.7, 1.0)) -> Texture2D:
 	image.fill(color)
 	return ImageTexture.create_from_image(image)
 
+func _boxing_depth_debug_viewer(harness: Object) -> Object:
+	var viewer := harness.get("_depth_debug_viewer") as Object
+	assert_not_null(viewer)
+	return viewer
+
+func _boxing_depth_debug_refs(harness: Object) -> Dictionary:
+	var viewer := _boxing_depth_debug_viewer(harness)
+	assert_true(viewer.has_method("get_node_refs"))
+	return viewer.get_node_refs()
+
+func _boxing_depth_debug_state(harness: Object) -> Dictionary:
+	var viewer := _boxing_depth_debug_viewer(harness)
+	assert_true(viewer.has_method("get_state_snapshot"))
+	return viewer.get_state_snapshot()
+
 func _has_editor_exposed_property(subject: Object, property_name: String) -> bool:
 	for property_info_variant: Variant in subject.get_property_list():
 		if not property_info_variant is Dictionary:
@@ -349,9 +364,10 @@ func test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_text
 		}
 	})
 	harness._refresh_debug_panels()
-	var placeholder: Label = harness.get("_depth_debug_thumbnail_placeholder_label") as Label
-	var status: Label = harness.get("_depth_debug_thumbnail_status_label") as Label
-	var sample_overlay: Variant = harness.get("_depth_debug_sample_overlay")
+	var refs := _boxing_depth_debug_refs(harness)
+	var placeholder: Label = refs.get("thumbnail_placeholder_label", null) as Label
+	var status: Label = refs.get("thumbnail_status_label", null) as Label
+	var sample_overlay: Variant = refs.get("sample_overlay", null)
 	assert_not_null(placeholder)
 	assert_not_null(status)
 	assert_not_null(sample_overlay)
@@ -379,10 +395,11 @@ func test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available() -> 
 		}
 	})
 	harness._refresh_debug_panels()
-	var main_texture: TextureRect = harness.get("_depth_debug_main_texture") as TextureRect
-	var thumbnail_texture: TextureRect = harness.get("_depth_debug_thumbnail_texture") as TextureRect
-	var hint_label: Label = harness.get("_depth_debug_thumbnail_hint_label") as Label
-	var thumbnail_panel: PanelContainer = harness.get("_depth_debug_thumbnail_panel") as PanelContainer
+	var refs := _boxing_depth_debug_refs(harness)
+	var main_texture: TextureRect = refs.get("main_texture", null) as TextureRect
+	var thumbnail_texture: TextureRect = refs.get("thumbnail_texture", null) as TextureRect
+	var hint_label: Label = refs.get("thumbnail_hint_label", null) as Label
+	var thumbnail_panel: PanelContainer = refs.get("thumbnail_panel", null) as PanelContainer
 	assert_not_null(thumbnail_panel)
 	thumbnail_panel.emit_signal("mouse_entered")
 	assert_not_null(main_texture)
@@ -413,7 +430,7 @@ func test_boxing_depth_debug_swap_resets_when_yaml_disables_thumbnail_click_swap
 	})
 	harness._refresh_debug_panels()
 	harness._toggle_depth_debug_swap()
-	assert_true(bool(harness.get("_depth_debug_swapped_to_depth")))
+	assert_true(bool(_boxing_depth_debug_state(harness).get("swapped_to_depth", false)))
 	harness._sync_depth_debug_visual_config({
 		"depth_debug": {
 			"enabled": true,
@@ -425,9 +442,10 @@ func test_boxing_depth_debug_swap_resets_when_yaml_disables_thumbnail_click_swap
 			"request_runtime_texture": true,
 		}
 	})
-	var main_texture: TextureRect = harness.get("_depth_debug_main_texture") as TextureRect
-	var hint_label: Label = harness.get("_depth_debug_thumbnail_hint_label") as Label
-	assert_false(bool(harness.get("_depth_debug_swapped_to_depth")))
+	var refs := _boxing_depth_debug_refs(harness)
+	var main_texture: TextureRect = refs.get("main_texture", null) as TextureRect
+	var hint_label: Label = refs.get("thumbnail_hint_label", null) as Label
+	assert_false(bool(_boxing_depth_debug_state(harness).get("swapped_to_depth", false)))
 	assert_not_null(main_texture)
 	assert_false(main_texture.visible)
 	assert_not_null(hint_label)

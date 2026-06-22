@@ -767,16 +767,6 @@ var _straight_punch_transition_debug := {
 	"right": {},
 }
 var _depth_debug_viewer: Control
-var _depth_debug_root: Control
-var _depth_debug_main_texture: TextureRect
-var _depth_debug_thumbnail_panel: PanelContainer
-var _depth_debug_thumbnail_title_label: Label
-var _depth_debug_thumbnail_texture: TextureRect
-var _depth_debug_thumbnail_placeholder_label: Label
-var _depth_debug_thumbnail_status_label: Label
-var _depth_debug_thumbnail_hint_label: Label
-var _depth_debug_fps_label: Label
-var _depth_debug_sample_overlay: Control
 var _depth_debug_visual_config := {
 	"enabled": false,
 	"thumbnail_visible": false,
@@ -789,9 +779,6 @@ var _depth_debug_visual_config := {
 	"thumbnail_width_px": 196,
 	"thumbnail_margin_px": 14,
 }
-var _depth_debug_thumbnail_hovered := false
-var _depth_debug_swapped_to_depth := false
-var _depth_debug_last_texture_available := false
 var _smoothed_preview_fps := 0.0
 
 func _ready() -> void:
@@ -821,19 +808,6 @@ func _cleanup_depth_debug_ui() -> void:
 			_depth_debug_viewer.reparent(self)
 		_depth_debug_viewer.queue_free()
 	_depth_debug_viewer = null
-	_depth_debug_root = null
-	_depth_debug_main_texture = null
-	_depth_debug_thumbnail_panel = null
-	_depth_debug_thumbnail_title_label = null
-	_depth_debug_thumbnail_texture = null
-	_depth_debug_thumbnail_placeholder_label = null
-	_depth_debug_thumbnail_status_label = null
-	_depth_debug_thumbnail_hint_label = null
-	_depth_debug_fps_label = null
-	_depth_debug_sample_overlay = null
-	_depth_debug_thumbnail_hovered = false
-	_depth_debug_swapped_to_depth = false
-	_depth_debug_last_texture_available = false
 
 func _connect_mode_signals() -> void:
 	super._connect_mode_signals()
@@ -958,8 +932,6 @@ func _ensure_depth_debug_ui() -> void:
 	var initial_parent: Node = camera_display if camera_display != null else self
 	initial_parent.add_child(_depth_debug_viewer)
 	_sync_depth_debug_overlay_parent()
-	_sync_depth_debug_viewer_refs()
-	_sync_depth_debug_viewer_state()
 	_refresh_depth_debug_visuals()
 
 func _sync_depth_debug_overlay_parent() -> void:
@@ -970,11 +942,8 @@ func _sync_depth_debug_overlay_parent() -> void:
 
 func _toggle_depth_debug_swap() -> void:
 	if _depth_debug_viewer == null or not _depth_debug_viewer.has_method("toggle_swap"):
-		_depth_debug_swapped_to_depth = false
 		return
 	_depth_debug_viewer.toggle_swap()
-	_sync_depth_debug_viewer_state()
-	_sync_depth_debug_viewer_refs()
 
 func _depth_debug_can_swap(texture_available: bool) -> bool:
 	if _depth_debug_viewer == null or not _depth_debug_viewer.has_method("can_swap"):
@@ -994,31 +963,6 @@ func _refresh_depth_debug_visuals() -> void:
 		_depth_debug_viewer.set_preview_fps(_smoothed_preview_fps)
 		_depth_debug_viewer.set_preview_presenter(_preview_presenter)
 		_depth_debug_viewer.refresh()
-	_sync_depth_debug_viewer_refs()
-	_sync_depth_debug_viewer_state()
-
-func _sync_depth_debug_viewer_refs() -> void:
-	if _depth_debug_viewer == null or not _depth_debug_viewer.has_method("get_node_refs"):
-		return
-	var refs: Dictionary = _depth_debug_viewer.get_node_refs()
-	_depth_debug_root = refs.get("root", _depth_debug_viewer) as Control
-	_depth_debug_main_texture = refs.get("main_texture", null) as TextureRect
-	_depth_debug_thumbnail_panel = refs.get("thumbnail_panel", null) as PanelContainer
-	_depth_debug_thumbnail_title_label = refs.get("thumbnail_title_label", null) as Label
-	_depth_debug_thumbnail_texture = refs.get("thumbnail_texture", null) as TextureRect
-	_depth_debug_thumbnail_placeholder_label = refs.get("thumbnail_placeholder_label", null) as Label
-	_depth_debug_thumbnail_status_label = refs.get("thumbnail_status_label", null) as Label
-	_depth_debug_thumbnail_hint_label = refs.get("thumbnail_hint_label", null) as Label
-	_depth_debug_fps_label = refs.get("fps_label", null) as Label
-	_depth_debug_sample_overlay = refs.get("sample_overlay", null) as Control
-
-func _sync_depth_debug_viewer_state() -> void:
-	if _depth_debug_viewer == null or not _depth_debug_viewer.has_method("get_state_snapshot"):
-		return
-	var state: Dictionary = _depth_debug_viewer.get_state_snapshot()
-	_depth_debug_thumbnail_hovered = bool(state.get("thumbnail_hovered", false))
-	_depth_debug_swapped_to_depth = bool(state.get("swapped_to_depth", false))
-	_depth_debug_last_texture_available = bool(state.get("last_texture_available", false))
 
 func _build_depth_debug_visual_snapshot() -> Dictionary:
 	var focus_family := _depth_debug_focus_family()
@@ -1133,9 +1077,6 @@ func _sync_depth_debug_visual_config(visuals: Dictionary) -> void:
 		"thumbnail_width_px": maxi(120, int(depth_debug.get("thumbnail_width_px", 196))),
 		"thumbnail_margin_px": maxi(0, int(depth_debug.get("thumbnail_margin_px", 14))),
 	}
-	if not bool(_depth_debug_visual_config.get("enabled", false)) or not bool(_depth_debug_visual_config.get("thumbnail_visible", false)) or not bool(_depth_debug_visual_config.get("swap_click_enabled", false)):
-		_depth_debug_swapped_to_depth = false
-		_depth_debug_thumbnail_hovered = false
 	_refresh_depth_debug_visuals()
 
 func _sync_profile_visual_config(bundle: Dictionary = {}) -> void:
