@@ -292,7 +292,7 @@ func _refresh_sample_overlay() -> void:
 			_sample_overlay.clear_sample_geometry()
 		return
 	if _sample_overlay.has_method("update_sample_geometry"):
-		_sample_overlay.update_sample_geometry(sample_geometry)
+		_sample_overlay.update_sample_geometry(sample_geometry, snapshot.get("depth_map_size", Vector2i.ZERO) as Vector2i)
 
 func _refresh_fps_label() -> void:
 	if _fps_label == null:

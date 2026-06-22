@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-21  
 **Status:** In Progress  
-**Last Updated:** 2026-06-22 08:31 EDT  
+**Last Updated:** 2026-06-22 09:49 EDT  
 **Blocked Reason:** None.  
 **Agent:** `pico`
 
@@ -138,9 +138,9 @@ Concrete next seam for implementation:
 **Files Created/Deleted/Modified:**
 - proving/debug viewer / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Ready for implementation. Task 2 now supplies the concrete runtime seam the overlay should consume directly: `sample_metrics.sample_geometry.sampling_mode`, `region_anchors`, `actual_regions.wrist`, `actual_regions.torso`, and `aggregation` (including fallback flags/reasons). For `single_point`, draw only the runtime-reported point samples; for `region_aware`, draw the reported wrist capsule/extension endpoint and torso box from runtime metadata, plus sampled/valid counts and aggregation/fallback labels. Do not reconstruct geometry from config when runtime metadata is present.
+**Results:** Completed on 2026-06-22. Updated `.testbed/scripts/depth_sample_debug_overlay.gd` to branch on runtime `sample_geometry.sampling_mode` and draw only runtime-reported point samples for `single_point`, while `region_aware` now consumes runtime `region_anchors`, `actual_regions.wrist`, `actual_regions.torso`, and `aggregation` metadata directly for truthful overlay rendering. The overlay now maps runtime pixel geometry through the viewer's reported `depth_map_size`, draws the wrist capsule/extension line and torso box only when runtime metadata exists, and surfaces sampled/valid counts plus aggregation/fallback labels without reconstructing ROI geometry from config. Preserved the existing depth texture / thumbnail / swap / timing behavior by only widening the sample overlay contract in `.testbed/scripts/depth_debug_viewer.gd`. Added proving-scene tests in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` that assert single-point mode stays marker-only, region-aware mode renders runtime anchors + regions + fallback metadata, and the boxing harness consumes the same truthful runtime seam. QA follow-on for Task 4 is now concrete: verify the rendered overlay in a live proving session for both modes, especially that region-aware labels remain readable and that no config-derived geometry appears when runtime region metadata is missing.
 
 ### Task 4: QA single-point vs region-aware evaluation path
 

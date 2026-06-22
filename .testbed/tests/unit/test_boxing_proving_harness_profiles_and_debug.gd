@@ -150,6 +150,7 @@ func _depth_live_debug_payload(closeness: float, delta: float, peak: float, samp
 
 func _depth_sample_geometry_payload() -> Dictionary:
 	return {
+		"sampling_mode": "single_point",
 		"actual_geometry_kind": "single_pixel_point",
 		"depth_map_space": "frame_resized_normalized_depth",
 		"actual_samples": {
@@ -164,9 +165,93 @@ func _depth_sample_geometry_payload() -> Dictionary:
 				"pixel": {"x": 358, "y": 230},
 			},
 		},
+		"aggregation": {
+			"fallback_used": false,
+			"fallback_reason": "",
+		},
 	}
 
-func _depth_runtime_visual_state(texture: Variant = null) -> Dictionary:
+func _depth_region_aware_sample_geometry_payload() -> Dictionary:
+	return {
+		"sampling_mode": "region_aware",
+		"actual_geometry_kind": "landmark_region",
+		"depth_map_space": "frame_resized_normalized_depth",
+		"actual_samples": {
+			"shoulder": {
+				"depth": 0.61,
+				"normalized_point": {"x": 0.42, "y": 0.34},
+				"pixel": {"x": 268, "y": 122},
+			},
+			"wrist": {
+				"depth": 0.31,
+				"normalized_point": {"x": 0.56, "y": 0.64},
+				"pixel": {"x": 358, "y": 230},
+			},
+		},
+		"region_anchors": {
+			"shoulder": {
+				"depth": 0.61,
+				"normalized_point": {"x": 0.42, "y": 0.34},
+				"pixel": {"x": 268, "y": 122},
+			},
+			"elbow": {
+				"depth": 0.43,
+				"normalized_point": {"x": 0.50, "y": 0.50},
+				"pixel": {"x": 320, "y": 180},
+			},
+			"wrist": {
+				"depth": 0.31,
+				"normalized_point": {"x": 0.56, "y": 0.64},
+				"pixel": {"x": 358, "y": 230},
+			},
+		},
+		"actual_regions": {
+			"wrist": {
+				"shape": "extended_capsule",
+				"anchor_pixel": {"x": 358, "y": 230},
+				"elbow_pixel": {"x": 320, "y": 180},
+				"extension_endpoint_pixel": {"x": 376, "y": 254},
+				"radius_px": 12,
+				"extension_toward_elbow_px": 8,
+				"bounds_px": {"min_x": 308, "min_y": 168, "max_x": 388, "max_y": 266},
+				"sampled_pixel_count": 46,
+				"valid_pixel_count": 3,
+			},
+			"torso": {
+				"shape": "center_box",
+				"anchor_pixel": {"x": 268, "y": 122},
+				"torso_anchor": "shoulder_landmark",
+				"half_width_px": 18,
+				"half_height_px": 18,
+				"bounds_px": {"min_x": 250, "min_y": 104, "max_x": 286, "max_y": 140},
+				"sampled_pixel_count": 36,
+				"valid_pixel_count": 36,
+			},
+		},
+		"aggregation": {
+			"fallback_used": true,
+			"fallback_reason": "center_point_due_to_sparse_region",
+			"applied": {
+				"wrist": {
+					"stat_applied": "center_point",
+					"sample_count": 46,
+					"valid_sample_count": 3,
+					"fallback_used": true,
+					"fallback_reason": "center_point_due_to_sparse_region",
+				},
+				"torso": {
+					"stat_applied": "median",
+					"sample_count": 36,
+					"valid_sample_count": 36,
+					"fallback_used": false,
+					"fallback_reason": "",
+				},
+			},
+		},
+	}
+
+func _depth_runtime_visual_state(texture: Variant = null, sample_geometry: Dictionary = {}) -> Dictionary:
+	var resolved_sample_geometry := sample_geometry if not sample_geometry.is_empty() else _depth_sample_geometry_payload()
 	return {
 		"depth_enabled": true,
 		"runtime_status": "ready",
@@ -194,11 +279,12 @@ func _depth_runtime_visual_state(texture: Variant = null) -> Dictionary:
 			"wrist_closeness": 0.30,
 			"wrist_depth": 0.31,
 			"torso_depth": 0.61,
-			"sample_geometry": _depth_sample_geometry_payload(),
+			"sample_geometry": resolved_sample_geometry.duplicate(true),
 		},
 	}
 
-func _depth_debug_viewer_snapshot(texture: Variant = null) -> Dictionary:
+func _depth_debug_viewer_snapshot(texture: Variant = null, sample_geometry: Dictionary = {}) -> Dictionary:
+	var resolved_sample_geometry := sample_geometry if not sample_geometry.is_empty() else _depth_sample_geometry_payload()
 	return {
 		"family": "straight_punch",
 		"preview_texture": _make_test_texture(Color(0.18, 0.34, 0.72, 1.0)),
@@ -226,7 +312,7 @@ func _depth_debug_viewer_snapshot(texture: Variant = null) -> Dictionary:
 			"wrist_depth": 0.31,
 			"torso_depth": 0.61,
 		},
-		"sample_geometry": _depth_sample_geometry_payload(),
+		"sample_geometry": resolved_sample_geometry.duplicate(true),
 	}
 
 func _make_test_texture(color: Color = Color(0.7, 0.7, 0.7, 1.0)) -> Texture2D:
@@ -349,6 +435,73 @@ func test_depth_debug_viewer_renders_prepared_snapshot_and_reparents_to_presente
 	var markers: Array = ((refs.get("sample_overlay", null) as Object).get_marker_snapshot() as Array)
 	assert_eq(markers.size(), 2)
 
+func test_depth_debug_viewer_uses_runtime_reported_point_samples_for_single_point_mode() -> void:
+	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	var viewer: Variant = add_child_autoqfree(DepthDebugViewerScript.new())
+	viewer.configure({
+		"enabled": true,
+		"thumbnail_visible": true,
+		"swap_click_enabled": true,
+		"hover_hint_visible": true,
+		"sampling_regions_visible": true,
+		"fps_visible": true,
+	}, _depth_debug_viewer_snapshot(null, _depth_sample_geometry_payload()), 59.4, presenter)
+	var sample_overlay: Object = viewer.get_node_refs().get("sample_overlay", null) as Object
+	assert_not_null(sample_overlay)
+	var overlay_snapshot: Dictionary = sample_overlay.get_overlay_snapshot()
+	assert_eq(String(overlay_snapshot.get("sampling_mode", "")), "single_point")
+	assert_eq((overlay_snapshot.get("markers", []) as Array).size(), 2)
+	assert_eq((overlay_snapshot.get("regions", []) as Array).size(), 0)
+	var marker_names: Array[String] = []
+	for marker_variant: Variant in overlay_snapshot.get("markers", []):
+		var marker: Dictionary = marker_variant as Dictionary
+		marker_names.append(String(marker.get("name", "")))
+	assert_true(marker_names.has("shoulder"))
+	assert_true(marker_names.has("wrist"))
+
+func test_depth_debug_viewer_uses_runtime_region_metadata_for_region_aware_mode() -> void:
+	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	var viewer: Variant = add_child_autoqfree(DepthDebugViewerScript.new())
+	viewer.configure({
+		"enabled": true,
+		"thumbnail_visible": true,
+		"swap_click_enabled": true,
+		"hover_hint_visible": true,
+		"sampling_regions_visible": true,
+		"fps_visible": true,
+	}, _depth_debug_viewer_snapshot(null, _depth_region_aware_sample_geometry_payload()), 59.4, presenter)
+	var sample_overlay: Object = viewer.get_node_refs().get("sample_overlay", null) as Object
+	assert_not_null(sample_overlay)
+	var overlay_snapshot: Dictionary = sample_overlay.get_overlay_snapshot()
+	assert_eq(String(overlay_snapshot.get("sampling_mode", "")), "region_aware")
+	assert_true(bool(overlay_snapshot.get("fallback_used", false)))
+	assert_eq(String(overlay_snapshot.get("fallback_reason", "")), "center_point_due_to_sparse_region")
+	var markers: Array = overlay_snapshot.get("markers", []) as Array
+	assert_eq(markers.size(), 3)
+	var marker_names: Array[String] = []
+	for marker_variant: Variant in markers:
+		var marker: Dictionary = marker_variant as Dictionary
+		marker_names.append(String(marker.get("name", "")))
+	assert_true(marker_names.has("shoulder"))
+	assert_true(marker_names.has("elbow"))
+	assert_true(marker_names.has("wrist"))
+	var regions: Array = overlay_snapshot.get("regions", []) as Array
+	assert_eq(regions.size(), 2)
+	var wrist_region: Dictionary = regions[0] as Dictionary
+	var torso_region: Dictionary = regions[1] as Dictionary
+	assert_eq(String(wrist_region.get("name", "")), "wrist")
+	assert_eq(String(wrist_region.get("shape", "")), "extended_capsule")
+	assert_eq(int(wrist_region.get("sampled_pixel_count", 0)), 46)
+	assert_eq(int(wrist_region.get("valid_pixel_count", 0)), 3)
+	assert_eq(String(wrist_region.get("aggregation_label", "")), "center_point")
+	assert_eq(String(wrist_region.get("fallback_label", "")), "fallback: center point due to sparse region")
+	assert_eq(String(torso_region.get("name", "")), "torso")
+	assert_eq(String(torso_region.get("shape", "")), "center_box")
+	assert_eq(int(torso_region.get("sampled_pixel_count", 0)), 36)
+	assert_eq(int(torso_region.get("valid_pixel_count", 0)), 36)
+	assert_eq(String(torso_region.get("aggregation_label", "")), "median")
+	assert_eq(String(torso_region.get("anchor_label", "")), "anchor: shoulder landmark")
+
 func test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_texture() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	var harness: Variant = scene_root
@@ -377,6 +530,28 @@ func test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_text
 	assert_true(sample_overlay.visible)
 	var markers: Array = sample_overlay.get_marker_snapshot()
 	assert_eq(markers.size(), 2)
+
+func test_boxing_depth_debug_overlay_consumes_runtime_region_metadata_without_config_reconstruction() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness: Variant = scene_root
+	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	harness.set("_preview_presenter", presenter)
+	harness.camera_view = TextureRect.new()
+	harness.camera_view.texture = _make_test_texture(Color(0.18, 0.34, 0.72, 1.0))
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"depth_runtime": {
+				"straight_punch": _depth_runtime_visual_state(null, _depth_region_aware_sample_geometry_payload()),
+			}
+		}
+	})
+	harness._refresh_debug_panels()
+	var sample_overlay: Object = _boxing_depth_debug_refs(harness).get("sample_overlay", null) as Object
+	assert_not_null(sample_overlay)
+	var overlay_snapshot: Dictionary = sample_overlay.get_overlay_snapshot()
+	assert_eq(String(overlay_snapshot.get("sampling_mode", "")), "region_aware")
+	assert_eq((overlay_snapshot.get("regions", []) as Array).size(), 2)
+	assert_eq((overlay_snapshot.get("markers", []) as Array).size(), 3)
 
 func test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
