@@ -1,8 +1,8 @@
 # AeroBeat depth knobs and proving visual debug
 
 **Date:** 2026-06-21
-**Status:** In Progress
-**Last Updated:** 2026-06-21 17:15 EDT
+**Status:** Complete
+**Last Updated:** 2026-06-21 17:30 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -130,9 +130,9 @@ The implementation bar is not just "draw something on screen." The knobs and deb
 **Files Created/Deleted/Modified:**
 - config / proving / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified the landed claims with focused headless Godot suites plus code truth-checks. Runtime cadence/reuse knobs are genuinely wired: `.testbed/tests/unit/test_depth_runtime_manager.gd` passed 12/12, including `test_sample_every_n_frames_reuses_last_valid_depth_between_fresh_runs` and `test_cached_depth_reuse_expires_when_max_sample_age_ms_is_exceeded`, which prove `depth.evaluation.sample_every_n_frames` drives fresh-vs-cached sampling and `depth.evaluation.max_sample_age_ms` truthfully expires reused samples. Code inspection confirms the runtime surfaces those same values via `src/depth/depth_runtime_manager.gd` debug state (`sample_every_n_frames`, `max_sample_age_ms`, `last_sample_age_ms`, `last_sample_metrics`) and the boxing proving harness renders them in the thumbnail status/FPS text instead of inventing values. Boxing proving visual ownership is now correctly YAML-driven: `assets/boxing.testbed_debug.yaml` owns `visuals.depth_debug.*`, and `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=applies_boxing_testbed_debug_yaml -gexit` passed 1/1 while `... -gunit_test_name=depth_debug -gexit` passed 2/2, confirming the bottom-right depth card, truthful unavailable-state text, sample-point overlay, top-right FPS/timing text, and swap plumbing that only activates when a real runtime depth texture exists. Code truth-checks on `.testbed/scripts/depth_sample_debug_overlay.gd`, `.testbed/scripts/boxing_proving_harness.gd`, and `scripts/depth_runtime_infer.py` confirm no fake ROI/range rectangles or fake depth texture were introduced: the runtime still returns `normalized_depth_map: None`, the placeholder explicitly says `Depth texture unavailable / Using sampled debug state only`, and the overlay only draws runtime-reported `actual_samples` with `actual_geometry_kind: single_pixel_point`. Threshold-depth behavior also held: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit` passed 4/4, covering truthful preview-image blocking, straight-punch placeholder closeness sampling, hook forward-closeness blocking, and uppercut family-threshold allowance. Profile/YAML bundle loading also stayed intact: `... -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gunit_test_name=loads_boxing_profile_bundle -gexit` passed 1/1. Remaining runtime noise appears non-blocking and pre-existing for this slice: Mediapipe/TFLite/onnxruntime stderr warnings, plus `Replay start requested without a source path` in broader proving-harness runs, but none caused the focused QA suites above to fail or indicated a regression in the new depth/debug work. Task 5 audit should proceed.
 
 ### Task 5: Audit final evaluation readiness for Chip playtesting and future mobile direction
 
@@ -148,24 +148,29 @@ The implementation bar is not just "draw something on screen." The knobs and deb
 **Files Created/Deleted/Modified:**
 - config / proving / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit passed, with strict caveats recorded. I re-checked the landed seams in `185e9de` and `0c24bcc`, re-ran the focused validation stack locally, and confirmed the implementation is truthful about what exists today versus what does not. Runtime cadence/reuse is genuinely live in `src/depth/depth_runtime_manager.gd`: `sample_every_n_frames` gates fresh inference scheduling, cached reuse returns `sample_source: cached_reuse`, and stale reuse fails closed via `cached_sample_expired` once `max_sample_age_ms` is exceeded. The Python runtime payload in `scripts/depth_runtime_infer.py` still returns `normalized_depth_map: None` while surfacing only truthful point-sample metadata (`actual_geometry_kind: single_pixel_point`, shoulder+wrist `actual_samples`), so the proving harness is correct to show an unavailable-state debug card instead of a fake texture or fake ROI/range boxes. I verified the proving UI text is honest: `.testbed/scripts/boxing_proving_harness.gd` labels the top-right readout as `Preview %.1f FPS` plus latest depth timing, gates click-to-swap on a real runtime texture only, and renders sample overlays from runtime-reported geometry via `.testbed/scripts/depth_sample_debug_overlay.gd` rather than inventing geometry in UI space.
+
+Focused validation I re-ran passed cleanly: `python3 -m py_compile scripts/depth_runtime_infer.py`; `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_depth_runtime_manager.gd -gexit`; `... -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=depth_debug -gexit`; `... -gunit_test_name=applies_boxing_testbed_debug_yaml -gexit`; `... -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=depth_gate -gexit`; and `... -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gunit_test_name=loads_boxing_profile_bundle -gexit`. That is sufficient to call this slice genuinely useful for Chip playtesting because it now exposes the two key truths Derrick needs on-device: (1) whether cadence/reuse meaningfully reduces depth cost, and (2) what the runtime actually sampled when punch thresholds fired or failed. The honest limit is that this audit did **not** measure on Chip hardware directly, so the claim is readiness for Chip evaluation, not proven Chip performance.
+
+Mobile-minded caveat: the current desktop depth path is still a desktop/Python/OpenVINO-style proving path, not a portable mobile deployment path. `model_input_size` remains reserved documentation rather than a live performance knob, `normalized_depth_map` is still unavailable as a runtime texture, the sampled geometry is still single-point rather than ROI/forearm-volume truth, and future mobile work will likely need a different backend/runtime integration plus renewed performance validation. So the plan can honestly be called complete for desktop/Chip playtest instrumentation and for future mobile-minded evaluation scaffolding, but **not** for desktop-to-mobile parity or production-ready mobile depth rendering.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** Threshold-family boxing depth now has truthful cadence/reuse controls in gesture YAML plus truthful proving-scene instrumentation for preview FPS, latest depth timing, current sample source/age/cadence, and runtime-reported sample-point overlays. The proving scene is now useful for real Chip playtesting because it can show both the cost side and the decision-truth side of the current depth path without fabricating a depth map or ROI geometry.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02`, `REF-03`, `REF-04`, and `REF-06` were satisfied with strict caveats. The implementation is truthful about current limits: no live runtime resolution knob, no surfaced `normalized_depth_map` texture today, and no fake ROI/range overlays. Mobile-minded claims must stay narrow because the present path is still desktop/Python/OpenVINO-oriented and needs separate future backend work for mobile parity.
 
 **Commits:**
-- Pending.
+- `185e9de` - Add truthful depth cadence and debug metadata
+- `0c24bcc` - Add truthful proving depth debug overlay
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** The most valuable next-step instrumentation was not prettier visuals; it was truthful debug state that exposes when depth was actually recomputed, when cached reuse was used, and what geometry was really sampled. That gives Derrick a trustworthy way to judge whether depth earns its keep on Chip. Separately, desktop proving convenience should not be confused with mobile readiness; portability claims need a different backend/runtime slice before they become honest.
 
 ---
 

@@ -1,8 +1,8 @@
 # AeroBeat expose depth map texture in proving
 
 **Date:** 2026-06-21  
-**Status:** In Progress  
-**Last Updated:** 2026-06-21 17:58 EDT  
+**Status:** Complete  
+**Last Updated:** 2026-06-21 21:38 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -109,47 +109,50 @@ A key constraint is performance. Surfacing the texture must not silently become 
 **Prompt:** Independently verify that the real depth-map texture is exposed truthfully, that the proving YAML toggles control the thumbnail/swap flow correctly, that the unavailable state still behaves honestly when needed, and that threshold-depth behavior/regressions remain clean.
 
 **Folders Created/Deleted/Modified:**
-- proving / runtime / tests / plan files touched by implementation
+- `.testbed/test-results/task4-qa-20260621/`
+- `.plans/mediapipe-python/`
 
 **Files Created/Deleted/Modified:**
-- proving / runtime / tests / plan files touched by implementation
+- `.testbed/test-results/task4-qa-20260621/*.log`
+- `.plans/mediapipe-python/2026-06-21-expose-depth-map-texture-in-proving.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA verified the depth-texture proving seam with a focused headless GUT pass plus targeted code/config inspection. Fresh passing coverage from `.testbed/test-results/task4-qa-20260621/` confirmed: (1) boxing YAML explicitly requests the runtime depth texture while flow defaults to no request unless the YAML adds that flag; (2) the lower substrate/runtime seam remains truthful and opt-in, with request-plumbing passing and the runtime manager surfacing a real `normalized_depth_map` texture only for requested fresh inference while keeping it null when not requested; (3) the proving thumbnail truthfully shows the unavailable placeholder when no texture exists, uses the surfaced runtime depth texture when it does exist, and click-to-swap resets cleanly when YAML disables thumbnail/click-swap; and (4) threshold/nearby-adjacent proving seams still behave cleanly, with focused hook/uppercut/weave depth-threshold tests passing. Code inspection also confirmed the proving overlay still derives sample-region geometry, FPS/timing text, and placeholder copy from surfaced runtime debug state rather than fabricating ROI/range visuals or fake depth data. QA outcome: claims hold as implemented, and Task 5 audit should proceed.
 
 ### Task 5: Audit depth-texture readiness for Chip evaluation
 
 **Bead ID:** `aerobeat-input-camera-tracking-s71a`  
 **SubAgent:** `primary`  
 **Role:** `auditor`  
-**References:** `REF-02`, `REF-04`, `REF-05`, `REF-06`, `REF-08`  
+**References:** `REF-02`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`  
 **Prompt:** Independently audit that the proving scene now exposes a real depth-map texture truthfully, that the thumbnail/swap YAML path is clean, and that the result is useful for Chip evaluation without overstating performance or portability.
 
 **Folders Created/Deleted/Modified:**
-- proving / runtime / tests / plan files touched by implementation
+- `.plans/mediapipe-python/`
 
 **Files Created/Deleted/Modified:**
-- proving / runtime / tests / plan files touched by implementation
+- `.plans/mediapipe-python/2026-06-21-expose-depth-map-texture-in-proving.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit says this plan can now honestly be called complete for its stated scope: proving now surfaces a real runtime depth texture when explicitly requested, stays truthful when that texture is unavailable or not requested, and keeps the boxing YAML as the control point for the thumbnail/swap seam. I verified the end-to-end request path in code: `assets/boxing.testbed_debug.yaml` sets `visuals.depth_debug.request_runtime_texture: true` (`REF-05`), `proving_harness.gd` copies that into `config.runtime.depth_debug.request_runtime_texture` (`REF-02`), `pose_detector_substrate.gd` turns that into `debug_texture_requested` on depth sample requests, `scripts/depth_runtime_infer.py` only emits `normalized_depth_map_png_base64` when that flag is present (`REF-08`), and `depth_python_runtime_bridge.gd` rehydrates that optional PNG payload back into a real `Texture2D` while preserving truthful null on missing/invalid payloads (`REF-07`). On the proving side, `boxing_proving_harness.gd` consumes only surfaced runtime debug state for `depth_texture`, keeps the unavailable placeholder honest, and allows click-to-swap only when a real runtime texture is present and YAML still enables the swap path (`REF-02`). Independent validation evidence: existing QA logs under `.testbed/test-results/task4-qa-20260621/` already showed the targeted request-plumbing, requested/non-requested runtime behavior, truthful unavailable thumbnail path, real texture swap path, and YAML-disabled reset path all passing; I also re-inspected the relevant unit coverage in `REF-04` plus the depth runtime/bridge/substrate tests and spot-checked the current tree with a fresh headless GUT launch covering `test_boxing_proving_harness_profiles_and_debug.gd`, `test_pose_detector_substrate.gd`, and `test_depth_runtime_manager.gd` while finalizing this audit, without finding contradictory behavior in the exercised seams. Caveats for Chip evaluation: this is useful because it gives Derrick/Chip a truthful visual of the real normalized depth output in proving, but it should not be oversold as a gameplay/runtime-performance guarantee or a portability promise for lower-end hardware. The implementation intentionally keeps texture transport opt-in because PNG+base64 of a full-frame normalized depth map adds postprocess/transport cost and memory churn on fresh inference frames. Conclusion: useful and honest for Chip evaluation of the proving/debug seam; not evidence that always-on texture surfacing is free or that all target devices will sustain it outside this proving-only path.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** The proving stack now has an opt-in, truthful depth-texture seam for boxing evaluation. When boxing proving YAML requests it, the runtime exposes the real normalized depth map as a surfaced debug texture, the proving thumbnail can show/swap to that real texture, and the UI stays honest when the texture is unavailable or when the request/swap path is disabled.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, and `REF-08` are satisfied for the plan’s stated scope. The proving harness reads only surfaced runtime debug state, the YAML request path is explicit and boxing-specific, requested vs non-requested runtime behavior is truthful, and the unavailable path remains honest. Deliberate non-claim: this plan does not prove that always-on depth texture transport is free, production-ready for all devices, or appropriate as a default gameplay path.
 
 **Commits:**
-- Pending.
+- `bad1883` - Expose runtime depth textures for proving
+- `6663908` - Wire proving YAML depth texture swap flow
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** Keeping the texture path opt-in was the right truth-preserving boundary. It gives a useful proving artifact for Chip evaluation without pretending the extra PNG/base64 transport cost is negligible or universally portable. The strongest pattern here was to let YAML request the seam explicitly and let the runtime/debug payload stay null unless a real texture was actually surfaced.
 
 ---
 

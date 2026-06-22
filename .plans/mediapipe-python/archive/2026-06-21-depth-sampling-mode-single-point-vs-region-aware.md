@@ -1,8 +1,8 @@
 # AeroBeat depth sampling mode: single-point vs region-aware
 
 **Date:** 2026-06-21  
-**Status:** In Progress  
-**Last Updated:** 2026-06-22 09:49 EDT  
+**Status:** Complete  
+**Last Updated:** 2026-06-22 12:12 EDT  
 **Blocked Reason:** None.  
 **Agent:** `pico`
 
@@ -151,14 +151,39 @@ Concrete next seam for implementation:
 **Prompt:** Independently verify that both sampling modes work as claimed, that proving/debug visuals match real runtime behavior, and that the mode switch is useful for Chip-side A/B evaluation without introducing fake geometry or regressions.
 
 **Folders Created/Deleted/Modified:**
-- proving / runtime / tests / plan files touched by implementation
+- `.plans/mediapipe-python/`
 
 **Files Created/Deleted/Modified:**
-- proving / runtime / tests / plan files touched by implementation
+- `.plans/mediapipe-python/2026-06-21-depth-sampling-mode-single-point-vs-region-aware.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA completed on 2026-06-22 with a pass verdict for Task 2 + Task 3. Automated validation run during QA:
+- `python3 -m py_compile scripts/depth_runtime_infer.py`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_depth_runtime_manager.gd -gunit_test_name=region_aware_sampling_request_and_runtime_metadata_round_trip_truthfully -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_depth_runtime_manager.gd -gunit_test_name=sample_every_n_frames_reuses_last_valid_depth_between_fresh_runs -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_pose_detector_substrate.gd -gunit_test_name=depth_runtime_request_plumbing_marks_debug_texture_request_from_runtime_config -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=renders_prepared_snapshot_and_reparents_to_presenter_overlay -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=runtime_reported_point_samples_for_single_point_mode -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=runtime_region_metadata_for_region_aware_mode -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=overlay_consumes_runtime_region_metadata_without_config_reconstruction -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=thumbnail_truthfully_reports_unavailable_depth_texture -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=swap_uses_real_runtime_texture_when_available -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=swap_resets_when_yaml_disables_thumbnail_click_swap -gexit`
+
+What QA directly verified:
+- `single_point` overlay remains marker-only and reports exactly the runtime-reported point samples (`shoulder` + `wrist`), with no region boxes/capsules drawn.
+- `region_aware` overlay consumes runtime `region_anchors`, `actual_regions`, and `aggregation` metadata directly, surfaces wrist capsule/extension and torso box only when runtime metadata exists, and shows truthful sampled/valid counts plus aggregation/fallback labels.
+- No config-derived fake geometry appears when runtime `actual_regions` metadata is absent; the proving harness test explicitly verifies runtime-metadata consumption without config reconstruction.
+- Depth debug thumbnail, click-swap behavior, swap-disable reset behavior, and FPS/timing label rendering remain intact in the updated viewer path.
+- The detector/runtime seam still exposes the same threshold-facing metrics while allowing the `sampling_mode` switch and preserving cadence/window reuse behavior (`sample_every_n_frames` reuse test passed).
+- Boxing-family config defaults remain `sampling_mode: single_point`, so existing families keep their prior behavior unless explicitly switched for A/B evaluation.
+
+Live/high-fidelity exercise notes:
+- I did not run an interactive human-observed proving window on this host.
+- I did run headless Godot proving-harness tests that instantiate the real proving harness/viewer path and exercise the runtime-backed debug overlay flow, which is the highest-fidelity repo-local validation I could execute directly here without a manual GUI session.
+
+No QA bugs were found in this slice. Remaining caution is unchanged from plan scope: Chip-side performance/usability of `region_aware` still needs real-device human evaluation, but the mode switch, runtime truth contract, and proving/debug surfaces all passed repo-local QA.
 
 ### Task 5: Audit next-step readiness for Chip and future mobile-minded work
 
@@ -174,25 +199,50 @@ Concrete next seam for implementation:
 **Files Created/Deleted/Modified:**
 - proving / runtime / tests / plan files touched by implementation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit completed on 2026-06-22 with a pass verdict for Task 2 + Task 3 + Task 4. Evidence checked:
+- Landed implementation commits `f5de7f1` (runtime sampling modes) and `198fbcb` (sampling-mode-aware proving overlay), plus current `main` repo state.
+- Config/runtime/detector seam in `assets/boxing.gesture_detection.yaml`, `scripts/depth_runtime_infer.py`, `src/depth/depth_runtime_manager.gd`, and `src/detectors/pose_detector_substrate.gd`.
+- Proving/debug viewer flow in `.testbed/scripts/depth_debug_viewer.gd`, `.testbed/scripts/depth_sample_debug_overlay.gd`, and boxing harness wiring.
+- Repo-local validation already recorded by QA, plus auditor reruns of:
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=overlay_consumes_runtime_region_metadata_without_config_reconstruction -gexit`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -gselect=test_depth_runtime_manager.gd -gunit_test_name=region_aware_sampling_request_and_runtime_metadata_round_trip_truthfully -gexit`
+  - a direct Python helper check showing current `single_point` sampling still matches the pre-change center-point math while `region_aware` returns different aggregated depths from multi-pixel regions on the same synthetic depth map.
+
+Audit conclusions:
+- Detector-facing metrics stayed stable. The detector still consumes `wrist_closeness`, `wrist_depth`, `torso_depth`, cadence state, and `sample_geometry`; threshold formulas/window scoring in `pose_detector_substrate.gd` were not rewritten for this bead.
+- `single_point` remains the honest baseline. Config defaults still select `sampling_mode: single_point`, and the worker’s single-point path reproduces the prior one-pixel wrist/torso sampling behavior rather than approximating region mode.
+- `region_aware` is runtime-driven. The worker actually gathers wrist/torso regions, aggregates them, and returns runtime `actual_regions`, `region_anchors`, and aggregation metadata; the overlay reads those runtime fields directly and does not reconstruct fake ROI geometry from config when metadata is absent.
+- Fallback and aggregation labeling are surfaced honestly. Region mode reports configured/applied aggregation, sampled/valid counts, and explicit `center_point_due_to_sparse_region` fallback metadata; proving/debug tests cover those labels.
+- QA evidence is sufficient for the repo-local seam: request plumbing, cadence reuse, runtime metadata round-trip, overlay truth, and proving-harness rendering paths all have targeted automated coverage.
+- Chip/mobile caveats are still caveats, not silently solved. The implementation is ready for Chip-side A/B and manual proving evaluation, but there is still no live Chip/manual performance run proving that `region_aware` is acceptable at production cadence with runtime texture/debug overlays enabled.
+
+Remaining gap called out precisely:
+- Need a real Chip/manual proving pass to characterize `region_aware` usability/perf under device conditions. That is a handoff item, not a hidden defect in the landed truth contract.
+
+The bead is ready to close as implemented/audited, with the next step being explicit Chip-side manual comparison rather than more repo-local rework.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** A truthful, switchable depth-sampling seam for boxing depth evaluation: `single_point` preserves the prior center-point wrist/torso baseline, `region_aware` computes the same detector-facing metrics from runtime landmark-centered regions, and the proving/debug viewer now renders whichever geometry the runtime actually used.
 
-**Reference Check:** Pending.
+**Reference Check:**
+- `REF-04`, `REF-05`: satisfied — proving harness and reusable debug viewer consume runtime sample geometry without inventing config-only regions.
+- `REF-06`: satisfied — boxing-family depth configs now own `sampling_mode`, `region_geometry`, and `aggregation` with `single_point` as default baseline.
+- `REF-07`, `REF-09`, `REF-10`: satisfied — runtime manager, Python worker, and detector substrate preserve the threshold-facing metric contract while switching sampling backends underneath.
+- Deliberate non-claim: Chip/mobile performance is not marked solved; only repo-local readiness plus explicit handoff caveats are claimed.
 
 **Commits:**
-- Pending.
+- `f5de7f1` - Add switchable depth sampling runtime modes
+- `198fbcb` - Make depth debug overlay honor sampling mode
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** Truthful runtime metadata matters more than overlay cleverness for this seam. Keeping the detector contract stable made the A/B mode switch cheap to audit, and the remaining risk is now correctly isolated to real-device manual evaluation instead of hidden in repo-local assumptions.
 
 ---
 
-*Created on 2026-06-21*
+*Completed on 2026-06-22*

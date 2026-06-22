@@ -1,8 +1,8 @@
 # AeroBeat generalize depth debug viewer
 
 **Date:** 2026-06-21  
-**Status:** In Progress  
-**Last Updated:** 2026-06-21 18:27 EDT  
+**Status:** Complete  
+**Last Updated:** 2026-06-21 20:31 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -127,9 +127,25 @@ References validated: `REF-02`, `REF-03`, `REF-04`, `REF-05`, and `REF-06`.
 **Files Created/Deleted/Modified:**
 - tests / plan files touched by QA validation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independently QA-verified commit `4e2ea94` as a real extraction, not a rename-only shuffle. Inspection of the landed diff showed `REF-02` dropped the inlined depth-debug UI construction/refresh implementation (about 300 lines removed from boxing proving) while new `res://scripts/depth_debug_viewer.gd` now owns the reusable behavior: UI construction, overlay parenting, thumbnail layout, hover/swap gating, truthful unavailable placeholder + status text, FPS/timing label, and sample-overlay rendering via `REF-04`. Boxing proving now limits itself to viewer wiring, focus-family choice, snapshot construction from `gesture_debug.depth_runtime`, preview-FPS measurement, YAML-driven `request_runtime_texture` config propagation, and boxing-specific inspector / hover-card / hand-debug text.
+
+Focused QA validation passed against `REF-05`:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=depth_debug -gexit` → 4/4 passed.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=requests_depth_texture_from_testbed_yaml -gexit` → 1/1 passed.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=applies_boxing_testbed_debug_yaml_to_live_nodes -gexit` → 1/1 passed.
+
+What was specifically verified:
+- truthful unavailable behavior still shows the explicit placeholder/status text when no runtime depth texture exists, while still rendering sample markers when sample geometry is present;
+- swap behavior still uses the real runtime depth texture when available;
+- swap state still resets and hover hint hides when YAML disables thumbnail click-swap;
+- `request_runtime_texture` remains YAML-driven and still lands in runtime config;
+- the generic viewer reparents into the preview presenter overlay layer and renders prepared snapshot data without boxing-specific assumptions.
+
+Caveat: boxing still mirrors viewer node refs/state into private harness vars as a compatibility bridge for existing tests, so the consumer is not completely oblivious to the viewer internals yet. That does not invalidate the extraction boundary, but Task 4 audit should check whether those compatibility hooks are an acceptable long-term reuse seam.
+
+References validated: `REF-02`, `REF-04`, `REF-05`, and `REF-06`. Task 4 audit should proceed.
 
 ### Task 4: Audit reuse-readiness for future assembly integration
 
@@ -146,24 +162,44 @@ References validated: `REF-02`, `REF-03`, `REF-04`, `REF-05`, and `REF-06`.
 **Files Created/Deleted/Modified:**
 - tests / plan files touched by audit validation
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit passes with a caveat explicitly recorded as acceptable technical debt for this plan.
+
+What was audited:
+- Re-read `REF-02`, the new `res://scripts/depth_debug_viewer.gd`, and `REF-05` to verify the seam is real and not a cosmetic rename.
+- Re-ran focused validation from audit perspective:
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=depth_debug -gexit` → 4/4 passed.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=requests_depth_texture_from_testbed_yaml -gexit` → 1/1 passed.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=applies_boxing_testbed_debug_yaml_to_live_nodes -gexit` → 1/1 passed.
+- Searched all `_depth_debug_*` mirror fields in `REF-02`/`REF-05` to determine whether boxing runtime logic still depends on the viewer internals.
+
+Audit conclusion:
+- The extraction is genuinely reuse-ready enough to call this plan complete and materially useful for future assembly adoption.
+- Boxing proving now depends on the reusable viewer through a prepared snapshot + config seam for production behavior: boxing chooses the focus family, builds the snapshot, supplies preview FPS/presenter, and leaves thumbnail rendering, swap gating, truthful unavailable messaging, overlay parenting, FPS label, and sample geometry drawing to the viewer.
+- Boxing proving integration remains truthful. When no runtime depth texture exists, the viewer still renders the explicit unavailable placeholder/status while preserving sample markers; when a real runtime depth texture exists, swap uses that real texture; when YAML disables swap, the viewer resets the swap state and hides the hint.
+- The compatibility bridge is present but acceptable for this plan because it is not the production seam: the mirrored node refs/state in `REF-02` are only used as a harness/test bridge after viewer refresh/toggle calls, not as inputs that drive viewer behavior. The audit search found those mirrored vars are assigned/reset in the harness and then consumed by `REF-05` assertions; the runtime behavior itself still flows from the viewer instance plus snapshot/config, not from boxing mutating those private mirrors.
+
+Remaining coupling concern:
+- `get_node_refs()` / `get_state_snapshot()` plus the mirrored `_depth_debug_*` harness vars are still a consumer-visible compatibility crutch around tests. That means the extraction is not yet perfectly minimal/clean. Future cleanup should migrate tests toward direct viewer assertions or higher-level behavior checks so boxing can drop the mirrored internals entirely.
+- That concern is not severe enough to fail this bead because the extracted runtime boundary is already honest and reusable for another consumer that does **not** adopt the boxing compatibility vars.
+
+References validated: `REF-02`, `REF-04`, `REF-05`, and `REF-06`.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** A reusable `DepthDebugViewer` now owns depth thumbnail/swap/unavailable/FPS/sample-overlay behavior while boxing proving has been reduced to a truthful snapshot producer/config consumer. Future assembly adoption can reuse the viewer by emitting the same prepared snapshot contract instead of re-implementing the proving-specific UI plumbing.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02`, `REF-04`, `REF-05`, and `REF-06` were satisfied. The only deliberate caveat is the temporary boxing-side mirror of viewer refs/state for legacy harness tests; audit judged that acceptable because it is not the runtime reuse seam.
 
 **Commits:**
-- Pending.
+- `4e2ea94` - Extract reusable depth debug viewer
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** The useful reuse seam is the prepared snapshot contract, not just moving code into a new file. Test-compatibility mirrors can be tolerated temporarily, but only when they remain observational and do not become part of the production integration contract.
 
 ---
 
