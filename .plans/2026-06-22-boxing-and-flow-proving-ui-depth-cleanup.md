@@ -122,7 +122,7 @@ Execution will follow the normal coder → QA → auditor loop. The coder will i
 
 **Status:** ✅ Complete
 
-**Results:** Added the narrowest repo-local ignore rules needed for the generated depth-only Godot UID sidecars in `REF-06` without touching the existing intentionally tracked non-depth `.uid` files elsewhere in the repo. Exact rules added in `REF-07`: `.testbed/scripts/depth_*.gd.uid`, `.testbed/tests/unit/test_depth_*.gd.uid`, and `src/depth/**/*.gd.uid`. Validation/evidence: `git ls-files --stage -- <target>` returned no tracked entries for the surfaced depth UID paths; temporary throwaway files created at each surfaced path were all matched by `git check-ignore -v` against those new rules; `git status --short --untracked-files=all -- <targeted paths>` returned no output while those throwaway files existed; and the control path `.testbed/scripts/proving_harness.gd.uid` remained tracked and was not ignored. Intentional proving-scene / YAML edits stayed out of scope and were not included in this slice.
+**Results:** Added the narrowest repo-local ignore rules needed for the generated depth-only Godot UID sidecars in `REF-06` without touching the existing intentionally tracked non-depth `.uid` files elsewhere in the repo. Exact rules added in `REF-07`: `.testbed/scripts/depth_*.gd.uid`, `.testbed/tests/unit/test_depth_*.gd.uid`, and `src/depth/**/*.gd.uid`. Validation/evidence: `git ls-files --stage -- <target>` returned no tracked entries for the surfaced depth UID paths; temporary throwaway files created at each surfaced path were all matched by `git check-ignore -v` against those new rules; `git status --short --untracked-files=all -- <targeted paths>` returned no output while those throwaway files existed; and the control path `.testbed/scripts/proving_harness.gd.uid` remained tracked and was not ignored. Intentional proving-scene / YAML edits stayed out of scope and were not included in this slice. Commit: `e07c3dc` (`Ignore generated depth UID artifacts`).
 
 ---
 
@@ -175,7 +175,7 @@ Execution will follow the normal coder → QA → auditor loop. The coder will i
 **Reference Check:** `REF-01`, `REF-02`, and `REF-03` were updated to satisfy the requested cleanup; `REF-04` and `REF-05` were used as exact UI cleanup targets. QA validated behavior against those references via headless scene/harness probing plus targeted GUT coverage. Auditor verification is still pending.
 
 **Commits:**
-- Pending coder commit
+- `e07c3dc` - Ignore generated depth UID artifacts
 
 **Lessons Learned:** The missing visual preview was not a fake-texture problem; it was primarily a focus/texture-plumbing issue where the overlay could stick to a stale family with no surfaced depth map and could miss the mounted preview-presenter texture path.
 
