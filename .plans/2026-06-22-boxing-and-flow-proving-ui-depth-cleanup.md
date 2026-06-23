@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Status:** In Progress
-**Last Updated:** 2026-06-22 23:11 EDT
-**Blocked Reason:** None
+**Last Updated:** 2026-06-22 23:06 EDT
+**Blocked Reason:** Awaiting Derrick's next bug/feedback slice to continue on the same active plan.
 **Agent:** `pico`
 
 ---
@@ -272,9 +272,13 @@ Gap/risk note: under the headless dummy renderer, `root.get_texture()` returned 
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA claimed bead `aerobeat-input-camera-tracking-2gqf` and verified coder commit `bc24933` against `REF-02` and `REF-09` with two independent checks plus direct source review. Exact verification steps: (1) re-ran the focused inspector unit coverage via `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=compact_depth_backend_and_thresholds -gexit`, which passed `1/1` tests with `15` asserts in `0.942s`; (2) re-ran the depth-debug regression subset via `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=depth_debug -gexit`, which passed `9/9` tests with `91` asserts in `110.635s`; (3) ran a lightweight headless probe script at `/home/derrick/.openclaw/workspace/.temp/qa-aerobeat-2gqf-20260623/qa_probe_simple.gd`, writing JSON evidence to `/home/derrick/.openclaw/workspace/.temp/qa-aerobeat-2gqf-20260623/qa_probe_report.json`; and (4) reviewed the live source in `REF-02` around the compact depth-row wiring (`depth_*` rows plus `_compact_depth_backend_label`, `_depth_threshold_compact_text`, `_build_depth_config_row`).
+
+Evidence by requirement: (1) compact/no off-screen verbose dump passed — the probe JSON shows the inspector depth block reduced to exactly four lines (`Depth tuning`, backend, delta threshold, peak threshold) for runtime and configured cases, and none of the old verbose tokens from `REF-09` (`Depth runtime status / stage`, `Depth loader truth`, `Active depth artifact path`, `Depth failure reason`, `Active normalized depth metrics`, `Depth window slices`, `Depth ROI sizes`) appear in the inspector body; (2) only chosen backend plus relevant threshold values passed — the probe reported `onnx / depth_anything_v2_small_onnx` with `min 0.060` / `min 0.040` for straight punch, and `configured / openvino_midas_v21_small_256` with `max 0.030` / `max 0.060` for hook and uppercut; (3) backend labeling truthfulness passed — the direct helper probe returned `disabled` for a disabled family, runtime-resolved labels surfaced as `<backend> / <family>`, and YAML-only enabled families without surfaced runtime resolution reported `configured / <artifact-basename>`; (4) threshold direction truthfulness passed — straight-punch rows stayed `min ...`, while hook and uppercut rows stayed `max ...`; (5) thumbnail behavior and FPS-corner cleanup remained intact — the `depth_debug` subset still passed `test_depth_debug_viewer_renders_prepared_snapshot_and_reparents_to_presenter_overlay`, `test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_texture`, `test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available`, and `test_boxing_depth_debug_hides_thumbnail_when_all_boxing_depth_families_are_disabled`, confirming the earlier thumbnail and FPS-only viewer behaviors remained green after the inspector simplification.
+
+QA verdict: pass. Residual risk is low and limited to live desktop/editor visual confirmation of exact popup fit on a rendered session; the content/label truth itself is strongly covered by direct inspector-body evidence, helper-path review, and passing regression tests.
 
 ---
 
@@ -292,9 +296,9 @@ Gap/risk note: under the headless dummy renderer, `root.get_texture()` returned 
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Auditor independently truth-checked the boxing gesture inspector simplification against the actual `bc24933` diff in `REF-02`, the current source, the uploaded overflowing inspector screenshot in `REF-09`, the QA probe artifacts (`/home/derrick/.openclaw/workspace/.temp/qa-aerobeat-2gqf-20260623/qa_probe_simple.gd` and `/home/derrick/.openclaw/workspace/.temp/qa-aerobeat-2gqf-20260623/qa_probe_report.json`), and fresh local reruns of both targeted GUT coverage and the QA probe. Audit verdict: pass. Requirement-by-requirement: (1) compact/off-screen cleanup passed — the `PUNCH_REQUIREMENT_ROWS` and `POSE_STRIKE_REQUIREMENT_ROWS` depth section in `REF-02` was reduced from the verbose runtime/config dump shown in `REF-09` to exactly `Depth tuning`, `Depth backend`, `Depth delta threshold`, and `Depth peak threshold`; the fresh probe JSON again showed only those four depth lines and none of the old verbose tokens (`Depth runtime status / stage`, `Depth loader truth`, `Active depth artifact path`, `Depth failure reason`, `Active normalized depth metrics`, `Depth window slices`, `Depth ROI sizes`); (2) only chosen backend plus relevant threshold values passed — `_build_depth_config_row()` now only emits `_compact_depth_backend_label(...)` and `_depth_threshold_compact_text(...)`, and the fresh probe again reported runtime `onnx / depth_anything_v2_small_onnx` plus `min 0.060` / `min 0.040`, and configured hook/uppercut `openvino / midas_openvino_v21_small_256` plus `max 0.030` / `max 0.060`; (3) backend labeling truthfulness passed — `_compact_depth_backend_label()` returns `disabled` when the family config is off, `%s / %s` when runtime `backend_id` and `family_id` are surfaced, and `configured / %s` with the model artifact basename when YAML is enabled but runtime resolution is absent; the fresh QA probe again captured the runtime-resolved and configured-without-runtime cases, and direct helper review confirmed the disabled branch; (4) threshold direction truthfulness passed — `_depth_threshold_direction_label()` returns `min` only for `straight_punch` and `max` for hook/uppercut, and `_depth_threshold_compact_text()` uses that direction with the correct threshold keys; the rerun `compact_depth_backend_and_thresholds` GUT subset passed `1/1` tests with `15` asserts, confirming `min` for straight punch and `max` for hook/uppercut; (5) thumbnail behavior and FPS-corner cleanup remained intact — independent rerun of the `depth_debug` GUT subset passed `9/9` tests with `91` asserts, covering the compact clipped thumbnail failure state, swap/live-texture path, hidden-thumbnail-when-all-depth-disabled gating, focus-family preference, and `Preview %.1f FPS`-only corner label. Residual risk: low and limited to live desktop-rendered popup fit/pixel spacing, because the strongest evidence remains source/diff review plus headless inspector/probe output rather than an authoritative framebuffer screenshot of the final popup.
 
 ---
 
@@ -302,17 +306,19 @@ Gap/risk note: under the headless dummy renderer, `root.get_texture()` returned 
 
 **Status:** ⚠️ Partial
 
-**What We Built:** The earlier slices in this plan remain landed and verified: prerecorded replay timelines hide the obsolete frame-step buttons, the boxing depth viewer shows FPS-only corner text, all-depth-disabled boxing profiles suppress the depth thumbnail/swap affordances, and the narrow depth-UID ignore rules keep the screenshot-targeted generated depth `.uid` files out of git noise. The compact failed-thumbnail fallback implementation in Task 7 has already passed both QA and independent audit in Tasks 8-9: when depth is enabled but the texture is missing, the thumbnail shows a compact clipped `✕` state inside the intended footprint, body diagnostics are suppressed, the live success path still swaps correctly, the all-depth-disabled hide path still holds, and the removed FPS-corner family text remains absent. Task 10 is now implemented as well: the boxing gesture inspector depth section has been reduced to a compact `Depth tuning` block that only shows the chosen backend label plus the relevant depth delta/peak thresholds for fast tune/retry loops.
+**What We Built:** The current boxing / flow proving cleanup chain is landed and independently audited. Prerecorded replay timelines hide the obsolete frame-step buttons, the boxing depth viewer shows an FPS-only corner label, all-depth-disabled boxing profiles suppress the depth thumbnail/swap affordances, the depth preview path truthfully swaps to live runtime textures when available, generated depth-only `.uid` files no longer create git noise, the failed-thumbnail fallback is now a compact clipped `✕` state instead of an overflowing diagnostic block, and the boxing gesture inspector depth section is reduced to a compact `Depth tuning` block showing only the chosen backend label plus the relevant threshold values for quick tuning. Per Derrick’s request, this same plan stays active for next-session bug/feedback continuation rather than being archived tonight.
 
-**Reference Check:** `REF-01` through `REF-08` remain satisfied by the completed slices already audited in this plan. `REF-09` is now satisfied at the coder stage: the boxing gesture inspector no longer includes the off-screen runtime/config/debug dump from the uploaded screenshot and instead shows only the compact backend + threshold rows. Residual risk remains limited to the normal pending QA/auditor truth-check for Task 10 and to live raster confirmation under a rendered desktop/editor session because the headless dummy renderer cannot produce authoritative framebuffer screenshots.
+**Reference Check:** `REF-01` through `REF-09` are satisfied for the completed slices in this plan. `REF-09` specifically now matches the requested cleanup: the inspector no longer includes the off-screen runtime/config/debug dump from the uploaded screenshot and instead shows only compact backend + threshold rows with truthful labeling (`disabled`, runtime `<backend> / <family>`, or YAML-only `configured / <artifact-basename>`) and truthful threshold direction (`min` for straight punch, `max` for hook/uppercut). Residual risk is low and limited to live desktop-rendered pixel fit/spacing, because headless validation cannot produce authoritative framebuffer captures. Remaining plan status is open only because Derrick wants to resume on this same active plan with additional feedback/bugs next session.
 
 **Commits:**
 - `93b3b11` - Clean up proving replay and depth preview UI
 - `e07c3dc` - Ignore generated depth UID artifacts
 - `3bb52e8` - Update plan with depth UID ignore results
+- `16ac872` - Compact failed thumbnail fallback in proving UI
+- `bc24933` - Compact boxing inspector depth tuning
 
-**Lessons Learned:** The missing visual preview was not a fake-texture problem; it was primarily a focus/texture-plumbing issue where the overlay could stick to a stale family with no surfaced depth map and could miss the mounted preview-presenter texture path. For git hygiene, the safest fix was path-scoped depth UID ignores plus explicit control checks, not a blanket `*.uid` rule.
+**Lessons Learned:** The missing visual preview was not a fake-texture problem; it was primarily a focus/texture-plumbing issue where the overlay could stick to a stale family with no surfaced depth map and could miss the mounted preview-presenter texture path. For git hygiene, the safest fix was path-scoped depth UID ignores plus explicit control checks, not a blanket `*.uid` rule. For the inspector, the durable fix was to keep the event-feed/debug dump available elsewhere while giving the popup a purpose-built compact depth summary for fast tune/retry loops.
 
 ---
 
-*Completed on 2026-06-22*
+*Completed on Pending — active plan retained for next-session continuation per Derrick*
