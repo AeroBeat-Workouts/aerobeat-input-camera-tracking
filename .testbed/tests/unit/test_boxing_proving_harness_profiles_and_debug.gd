@@ -79,6 +79,12 @@ class FakeAthleteRecalibrateProvider:
 			}
 		}
 
+class AllDepthDisabledHarness:
+	extends "res://scripts/boxing_proving_harness.gd"
+
+	func _punch_depth_profile_config(_family: String) -> Dictionary:
+		return {"enabled": false}
+
 class FakeTrailDrawer:
 	extends Control
 
@@ -100,6 +106,9 @@ func _new_harness() -> Variant:
 
 func _new_base_harness() -> Variant:
 	return add_child_autoqfree(ProvingHarnessScript.new())
+
+func _new_depth_disabled_harness() -> Variant:
+	return add_child_autoqfree(AllDepthDisabledHarness.new())
 
 func _new_playback_harness() -> Variant:
 	return add_child_autoqfree(PlaybackStateHarness.new())
@@ -430,7 +439,7 @@ func test_depth_debug_viewer_renders_prepared_snapshot_and_reparents_to_presente
 	assert_not_null(refs.get("thumbnail_panel", null))
 	assert_true(bool((refs.get("thumbnail_panel", null) as PanelContainer).visible))
 	assert_true(bool((refs.get("sample_overlay", null) as Control).visible))
-	assert_string_contains(String((refs.get("fps_label", null) as Label).text), "Preview 59.4 FPS")
+	assert_eq(String((refs.get("fps_label", null) as Label).text), "Preview 59.4 FPS")
 	assert_string_contains(String((refs.get("thumbnail_status_label", null) as Label).text), "texture=false")
 	var markers: Array = ((refs.get("sample_overlay", null) as Object).get_marker_snapshot() as Array)
 	assert_eq(markers.size(), 2)
@@ -1979,7 +1988,48 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 	assert_string_contains(still_frozen_body, "Recent bbox area growth peak >= 0.010 - 0.012")
 	assert_false(still_frozen_body.contains("Event payload snapshot"))
 
-func test_playback_step_buttons_only_enable_while_paused() -> void:
+func test_boxing_depth_debug_hides_thumbnail_when_all_boxing_depth_families_are_disabled() -> void:
+	var harness = _new_depth_disabled_harness()
+	harness._sync_depth_debug_visual_config({
+		"depth_debug": {
+			"enabled": true,
+			"thumbnail_visible": true,
+			"swap_click_enabled": true,
+			"hover_hint_visible": true,
+			"sampling_regions_visible": true,
+			"fps_visible": true,
+			"request_runtime_texture": true,
+		}
+	})
+	var depth_debug_visual_config: Dictionary = harness.get("_depth_debug_visual_config")
+	assert_false(bool(depth_debug_visual_config.get("thumbnail_visible", true)))
+	assert_false(bool(depth_debug_visual_config.get("swap_click_enabled", true)))
+	assert_false(bool(depth_debug_visual_config.get("hover_hint_visible", true)))
+	assert_false(bool(depth_debug_visual_config.get("sampling_regions_visible", true)))
+
+func test_boxing_depth_debug_focus_family_prefers_enabled_family_with_runtime_texture() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"depth_runtime": {
+				"straight_punch": {
+					"depth_enabled": false,
+					"runtime_status": "unloaded",
+					"last_sample_timestamp_ms": -1,
+				},
+				"hook": _depth_runtime_visual_state(_make_test_texture(Color(0.71, 0.71, 0.71, 1.0))),
+				"uppercut": {
+					"depth_enabled": true,
+					"runtime_status": "ready",
+					"last_sample_timestamp_ms": 123455,
+					"last_sample_metrics": {"sample_source": "fresh_inference"},
+				},
+			}
+		}
+	})
+	assert_eq(String(harness._depth_debug_focus_family()), "hook")
+
+func test_playback_replay_step_buttons_are_hidden_in_timeline() -> void:
 	var harness: Variant = _new_playback_harness()
 	harness.set("_playback_toggle_button", add_child_autoqfree(Button.new()))
 	harness.set("_playback_seek_slider", add_child_autoqfree(HSlider.new()))
@@ -2004,11 +2054,15 @@ func test_playback_step_buttons_only_enable_while_paused() -> void:
 	harness._refresh_playback_controls_state()
 	assert_false(step_back.disabled)
 	assert_false(step_forward.disabled)
+	assert_false(step_back.visible)
+	assert_false(step_forward.visible)
 
 	harness.set("_playback_status", {"paused": false, "current_time_sec": 1.0, "duration_sec": 2.0, "progress": 0.5})
 	harness._refresh_playback_controls_state()
 	assert_true(step_back.disabled)
 	assert_true(step_forward.disabled)
+	assert_false(step_back.visible)
+	assert_false(step_forward.visible)
 
 func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -> void:
 	var harness = _new_harness()

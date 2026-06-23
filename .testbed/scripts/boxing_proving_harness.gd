@@ -971,7 +971,7 @@ func _build_depth_debug_visual_snapshot() -> Dictionary:
 	var sample_geometry: Dictionary = sample_metrics.get("sample_geometry", {}) if sample_metrics.get("sample_geometry", {}) is Dictionary else {}
 	return {
 		"family": focus_family,
-		"preview_texture": camera_view.texture if camera_view != null else null,
+		"preview_texture": _depth_debug_preview_texture(),
 		"depth_texture": _depth_texture_from_runtime_debug(runtime_debug),
 		"runtime_status": String(runtime_debug.get("runtime_status", "unloaded")),
 		"runtime_stage": String(runtime_debug.get("runtime_stage", "idle")),
@@ -988,20 +988,44 @@ func _build_depth_debug_visual_snapshot() -> Dictionary:
 		"sample_geometry": sample_geometry,
 	}
 
+func _depth_debug_preview_texture() -> Texture2D:
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("get_preview_surface"):
+		var preview_surface: Variant = _preview_presenter.get_preview_surface()
+		if preview_surface is TextureRect and preview_surface.texture != null:
+			return preview_surface.texture
+	if camera_view != null:
+		return camera_view.texture
+	return null
+
 func _depth_debug_focus_family() -> String:
-	var best_family := "straight_punch"
-	var best_timestamp := -INF
-	for family: String in ["straight_punch", "hook", "uppercut"]:
+	var enabled_families: Array = _depth_debug_enabled_families()
+	var candidate_families: Array = enabled_families if not enabled_families.is_empty() else ["straight_punch", "hook", "uppercut"]
+	var best_family := String(candidate_families[0])
+	var best_score: Array[int] = [-1, -1, -1, -1]
+	for family: String in candidate_families:
 		var runtime_debug := _current_depth_runtime_debug_state(family)
-		if runtime_debug.is_empty():
-			continue
-		var timestamp := float(runtime_debug.get("last_sample_timestamp_ms", -1))
-		if timestamp > best_timestamp:
-			best_timestamp = timestamp
-			best_family = family
-		elif best_timestamp < 0.0 and bool(runtime_debug.get("depth_enabled", false)):
+		var sample_metrics: Dictionary = runtime_debug.get("last_sample_metrics", {}) if runtime_debug.get("last_sample_metrics", {}) is Dictionary else {}
+		var score: Array[int] = [
+			1 if _depth_runtime_debug_has_texture(runtime_debug) else 0,
+			1 if not sample_metrics.is_empty() else 0,
+			1 if String(runtime_debug.get("runtime_status", "unloaded")) == "ready" else 0,
+			int(runtime_debug.get("last_sample_timestamp_ms", -1)),
+		]
+		if _depth_debug_family_score_beats(score, best_score):
+			best_score = score
 			best_family = family
 	return best_family
+
+func _depth_debug_family_score_beats(score: Array[int], best_score: Array[int]) -> bool:
+	var compare_len := mini(score.size(), best_score.size())
+	for index in range(compare_len):
+		if score[index] == best_score[index]:
+			continue
+		return score[index] > best_score[index]
+	return false
+
+func _depth_runtime_debug_has_texture(runtime_debug: Dictionary) -> bool:
+	return _depth_texture_from_runtime_debug(runtime_debug) != null
 
 func _depth_texture_from_runtime_debug(runtime_debug: Dictionary) -> Texture2D:
 	var source: Variant = runtime_debug.get("normalized_depth_map", null)
@@ -1010,6 +1034,13 @@ func _depth_texture_from_runtime_debug(runtime_debug: Dictionary) -> Texture2D:
 	if source is Image:
 		return ImageTexture.create_from_image(source)
 	return null
+
+func _depth_debug_enabled_families() -> Array:
+	var families: Array = []
+	for family: String in ["straight_punch", "hook", "uppercut"]:
+		if bool(_punch_depth_profile_config(family).get("enabled", false)):
+			families.append(family)
+	return families
 
 func _record_event(event_name: String, payload: Dictionary) -> void:
 	if harness_mode == HarnessMode.BOXING:
@@ -1065,12 +1096,13 @@ func _refresh_profile_controls() -> void:
 
 func _sync_depth_debug_visual_config(visuals: Dictionary) -> void:
 	var depth_debug: Dictionary = visuals.get("depth_debug", {}) if visuals.get("depth_debug", {}) is Dictionary else {}
+	var any_depth_family_enabled := not _depth_debug_enabled_families().is_empty()
 	_depth_debug_visual_config = {
 		"enabled": bool(depth_debug.get("enabled", false)),
-		"thumbnail_visible": bool(depth_debug.get("thumbnail_visible", false)),
-		"swap_click_enabled": bool(depth_debug.get("swap_click_enabled", false)),
-		"hover_hint_visible": bool(depth_debug.get("hover_hint_visible", false)),
-		"sampling_regions_visible": bool(depth_debug.get("sampling_regions_visible", false)),
+		"thumbnail_visible": bool(depth_debug.get("thumbnail_visible", false)) and any_depth_family_enabled,
+		"swap_click_enabled": bool(depth_debug.get("swap_click_enabled", false)) and any_depth_family_enabled,
+		"hover_hint_visible": bool(depth_debug.get("hover_hint_visible", false)) and any_depth_family_enabled,
+		"sampling_regions_visible": bool(depth_debug.get("sampling_regions_visible", false)) and any_depth_family_enabled,
 		"fps_visible": bool(depth_debug.get("fps_visible", false)),
 		"request_runtime_texture": bool(depth_debug.get("request_runtime_texture", false)),
 		"thumbnail_corner": String(depth_debug.get("thumbnail_corner", "bottom_right")).strip_edges().to_lower(),

@@ -2039,11 +2039,14 @@ func _refresh_playback_controls_state() -> void:
 	_playback_seek_slider.editable = controls_enabled
 	var can_step_backward := controls_enabled and paused and _playback_transport_step_supported(-1)
 	var can_step_forward := controls_enabled and paused and _playback_transport_step_supported(1)
+	var hide_step_buttons := _is_prerecorded_source_active()
 	var step_status_text := _playback_transport_step_status_text(controls_enabled)
 	if _playback_step_back_button != null:
+		_playback_step_back_button.visible = not hide_step_buttons
 		_playback_step_back_button.disabled = not can_step_backward
 		_playback_step_back_button.tooltip_text = _playback_step_tooltip_text(-1, step_status_text)
 	if _playback_step_forward_button != null:
+		_playback_step_forward_button.visible = not hide_step_buttons
 		_playback_step_forward_button.disabled = not can_step_forward
 		_playback_step_forward_button.tooltip_text = _playback_step_tooltip_text(1, step_status_text)
 	if _playback_step_status_label != null:

@@ -301,11 +301,7 @@ func _refresh_fps_label() -> void:
 	_fps_label.visible = show_fps
 	if not show_fps:
 		return
-	var timing: Dictionary = snapshot.get("timing_ms", {}) if snapshot.get("timing_ms", {}) is Dictionary else {}
-	var family_label := String(snapshot.get("family", "depth")).replace("_", " ")
-	var total_timing: Variant = timing.get("total", null)
-	var depth_timing_text := "Depth timing n/a" if total_timing == null else "%s %.1f ms" % [family_label.capitalize(), float(total_timing)]
-	_fps_label.text = "Preview %.1f FPS\n%s" % [preview_fps, depth_timing_text]
+	_fps_label.text = "Preview %.1f FPS" % preview_fps
 
 func _refresh_thumbnail(preview_texture: Texture2D, depth_texture: Texture2D) -> void:
 	if _thumbnail_panel == null:
