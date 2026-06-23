@@ -155,6 +155,7 @@ func _build_ui() -> void:
 	_thumbnail_panel.name = "DepthDebugThumbnailPanel"
 	_thumbnail_panel.visible = false
 	_thumbnail_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_thumbnail_panel.clip_contents = true
 	_thumbnail_panel.custom_minimum_size = Vector2(196.0, 172.0)
 	_thumbnail_panel.mouse_entered.connect(func() -> void:
 		_thumbnail_hovered = true
@@ -203,15 +204,16 @@ func _build_ui() -> void:
 	_thumbnail_placeholder_label.custom_minimum_size = Vector2(196.0, 112.0)
 	_thumbnail_placeholder_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_thumbnail_placeholder_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_thumbnail_placeholder_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_thumbnail_placeholder_label.add_theme_font_size_override("font_size", 12)
-	_thumbnail_placeholder_label.add_theme_color_override("font_color", Color(0.84, 0.90, 0.97, 0.88))
+	_thumbnail_placeholder_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_thumbnail_placeholder_label.add_theme_font_size_override("font_size", 46)
+	_thumbnail_placeholder_label.add_theme_color_override("font_color", Color(1.0, 0.72, 0.72, 0.94))
 	column.add_child(_thumbnail_placeholder_label)
 
 	_thumbnail_status_label = Label.new()
 	_thumbnail_status_label.name = "DepthDebugThumbnailStatus"
 	_thumbnail_status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_thumbnail_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_thumbnail_status_label.visible = false
 	_thumbnail_status_label.add_theme_font_size_override("font_size", 11)
 	_thumbnail_status_label.add_theme_color_override("font_color", Color(0.87, 0.92, 0.98, 0.88))
 	column.add_child(_thumbnail_status_label)
@@ -325,7 +327,13 @@ func _refresh_thumbnail(preview_texture: Texture2D, depth_texture: Texture2D) ->
 	_thumbnail_placeholder_label.visible = not thumbnail_has_texture
 	_thumbnail_placeholder_label.custom_minimum_size = _thumbnail_texture.custom_minimum_size
 	_thumbnail_placeholder_label.text = _placeholder_text()
-	_thumbnail_status_label.text = _status_text(texture_available)
+	var failure_state := not thumbnail_has_texture
+	_thumbnail_status_label.visible = not failure_state
+	_thumbnail_status_label.text = "" if failure_state else _status_text(texture_available)
+	var diagnostic_tooltip := _thumbnail_diagnostic_tooltip(texture_available)
+	_thumbnail_panel.tooltip_text = diagnostic_tooltip
+	_thumbnail_placeholder_label.tooltip_text = diagnostic_tooltip
+	_thumbnail_status_label.tooltip_text = diagnostic_tooltip
 	var show_hint := bool(visual_config.get("hover_hint_visible", false)) and _can_swap(texture_available) and _thumbnail_hovered
 	_thumbnail_hint_label.visible = show_hint
 	_thumbnail_hint_label.text = "Click to restore preview" if main_is_depth else "Click to inspect depth"
@@ -366,10 +374,22 @@ func _apply_thumbnail_layout() -> void:
 			_thumbnail_panel.offset_bottom = -margin
 
 func _placeholder_text() -> String:
-	return "Depth texture unavailable\nRuntime %s / %s\nUsing sampled debug state only." % [
-		String(snapshot.get("runtime_status", "unloaded")),
-		String(snapshot.get("runtime_stage", "idle")),
+	return "✕"
+
+func _thumbnail_diagnostic_tooltip(texture_available: bool) -> String:
+	var status_parts := [
+		"Depth texture %s" % ("available" if texture_available else "unavailable"),
+		"Runtime %s / %s" % [
+			String(snapshot.get("runtime_status", "unloaded")),
+			String(snapshot.get("runtime_stage", "idle")),
+		],
 	]
+	var failure_code := String(snapshot.get("failure_code", "")).strip_edges()
+	var failure_message := String(snapshot.get("failure_message", "")).strip_edges()
+	if not failure_code.is_empty() or not failure_message.is_empty():
+		status_parts.append("Failure %s" % _join_non_empty(" - ", [failure_code, failure_message]))
+	status_parts.append(_status_text(texture_available))
+	return "\n".join(status_parts)
 
 func _status_text(texture_available: bool) -> String:
 	var sample_metrics: Dictionary = snapshot.get("sample_metrics", {}) if snapshot.get("sample_metrics", {}) is Dictionary else {}
@@ -405,6 +425,14 @@ func _set_swapped_to_depth(value: bool) -> void:
 
 func _fmt_bool(value: bool) -> String:
 	return "true" if value else "false"
+
+func _join_non_empty(separator: String, parts: Array[String]) -> String:
+	var filtered: Array[String] = []
+	for part: String in parts:
+		if part.is_empty():
+			continue
+		filtered.append(part)
+	return separator.join(filtered)
 
 func _apply_panel_style(panel: PanelContainer, bg: Color, border: Color, radius: int, border_width: int, expand_margin: int) -> void:
 	var style := StyleBoxFlat.new()

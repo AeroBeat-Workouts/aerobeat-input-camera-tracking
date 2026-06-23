@@ -440,7 +440,14 @@ func test_depth_debug_viewer_renders_prepared_snapshot_and_reparents_to_presente
 	assert_true(bool((refs.get("thumbnail_panel", null) as PanelContainer).visible))
 	assert_true(bool((refs.get("sample_overlay", null) as Control).visible))
 	assert_eq(String((refs.get("fps_label", null) as Label).text), "Preview 59.4 FPS")
-	assert_string_contains(String((refs.get("thumbnail_status_label", null) as Label).text), "texture=false")
+	var placeholder: Label = refs.get("thumbnail_placeholder_label", null) as Label
+	var status: Label = refs.get("thumbnail_status_label", null) as Label
+	assert_not_null(placeholder)
+	assert_not_null(status)
+	assert_true(placeholder.visible)
+	assert_eq(String(placeholder.text), "✕")
+	assert_false(status.visible)
+	assert_string_contains(String((refs.get("thumbnail_panel", null) as PanelContainer).tooltip_text), "texture=false")
 	var markers: Array = ((refs.get("sample_overlay", null) as Object).get_marker_snapshot() as Array)
 	assert_eq(markers.size(), 2)
 
@@ -529,13 +536,21 @@ func test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_text
 	var refs := _boxing_depth_debug_refs(harness)
 	var placeholder: Label = refs.get("thumbnail_placeholder_label", null) as Label
 	var status: Label = refs.get("thumbnail_status_label", null) as Label
+	var panel: PanelContainer = refs.get("thumbnail_panel", null) as PanelContainer
+	var texture_rect: TextureRect = refs.get("thumbnail_texture", null) as TextureRect
 	var sample_overlay: Variant = refs.get("sample_overlay", null)
 	assert_not_null(placeholder)
 	assert_not_null(status)
+	assert_not_null(panel)
+	assert_not_null(texture_rect)
 	assert_not_null(sample_overlay)
 	assert_true(placeholder.visible)
-	assert_string_contains(String(placeholder.text), "Depth texture unavailable")
-	assert_string_contains(String(status.text), "texture=false")
+	assert_eq(String(placeholder.text), "✕")
+	assert_false(status.visible)
+	assert_true(panel.clip_contents)
+	assert_eq(placeholder.custom_minimum_size, texture_rect.custom_minimum_size)
+	assert_string_contains(String(placeholder.tooltip_text), "Depth texture unavailable")
+	assert_string_contains(String(placeholder.tooltip_text), "texture=false")
 	assert_true(sample_overlay.visible)
 	var markers: Array = sample_overlay.get_marker_snapshot()
 	assert_eq(markers.size(), 2)
