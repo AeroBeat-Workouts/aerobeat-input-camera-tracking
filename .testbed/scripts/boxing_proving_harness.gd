@@ -212,72 +212,22 @@ const PUNCH_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "depth_section",
-		"label": "Depth runtime + config",
+		"label": "Depth tuning",
 		"row_kind": "section",
 	},
 	{
-		"id": "depth_runtime_status",
-		"label": "Depth runtime status / stage",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_loader_truth",
-		"label": "Depth loader truth",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_artifact_path",
-		"label": "Active depth artifact path",
-		"row_kind": "info",
-	},
-	{
 		"id": "depth_backend_family",
-		"label": "Resolved backend / family",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_failure_reason",
-		"label": "Depth failure reason",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_live_metrics",
-		"label": "Active normalized depth metrics",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_enabled",
-		"label": "Depth config enabled",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_window_shape",
-		"label": "Depth window slices (early / late)",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_roi_shape",
-		"label": "Depth ROI sizes (wrist / extend / torso)",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_smoothing_window_samples",
-		"label": "Depth smoothing window samples",
+		"label": "Depth backend",
 		"row_kind": "info",
 	},
 	{
 		"id": "depth_family_delta_threshold",
-		"label": "Depth closeness delta threshold",
+		"label": "Depth delta threshold",
 		"row_kind": "info",
 	},
 	{
 		"id": "depth_family_peak_threshold",
-		"label": "Depth peak closeness threshold",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_debug_flags",
-		"label": "Depth debug flags",
+		"label": "Depth peak threshold",
 		"row_kind": "info",
 	},
 ]
@@ -438,72 +388,22 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "depth_section",
-		"label": "Depth runtime + config",
+		"label": "Depth tuning",
 		"row_kind": "section",
 	},
 	{
-		"id": "depth_runtime_status",
-		"label": "Depth runtime status / stage",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_loader_truth",
-		"label": "Depth loader truth",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_artifact_path",
-		"label": "Active depth artifact path",
-		"row_kind": "info",
-	},
-	{
 		"id": "depth_backend_family",
-		"label": "Resolved backend / family",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_failure_reason",
-		"label": "Depth failure reason",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_live_metrics",
-		"label": "Active normalized depth metrics",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_enabled",
-		"label": "Depth config enabled",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_window_shape",
-		"label": "Depth window slices (early / late)",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_roi_shape",
-		"label": "Depth ROI sizes (wrist / extend / torso)",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_smoothing_window_samples",
-		"label": "Depth smoothing window samples",
+		"label": "Depth backend",
 		"row_kind": "info",
 	},
 	{
 		"id": "depth_family_delta_threshold",
-		"label": "Depth closeness delta threshold",
+		"label": "Depth delta threshold",
 		"row_kind": "info",
 	},
 	{
 		"id": "depth_family_peak_threshold",
-		"label": "Depth peak closeness threshold",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_debug_flags",
-		"label": "Depth debug flags",
+		"label": "Depth peak threshold",
 		"row_kind": "info",
 	},
 ]
@@ -1190,6 +1090,43 @@ func _depth_threshold_label(family: String, field_name: String) -> String:
 		return "max_closeness_delta"
 	return "max_peak_closeness"
 
+func _depth_threshold_direction_label(family: String) -> String:
+	return "min" if family == "straight_punch" else "max"
+
+func _compact_depth_model_label(depth_config: Dictionary) -> String:
+	var model_document: Dictionary = depth_config.get("model", {}) if depth_config.get("model", {}) is Dictionary else {}
+	var configured_path := String(model_document.get("artifact_path", "")).strip_edges()
+	if configured_path.is_empty():
+		return "configured"
+	var normalized_path := configured_path
+	while normalized_path.ends_with("/"):
+		normalized_path = normalized_path.left(normalized_path.length() - 1)
+	var basename := normalized_path.get_file().strip_edges()
+	if basename.is_empty():
+		return "configured"
+	return basename
+
+func _compact_depth_backend_label(depth_config: Dictionary, runtime_debug: Dictionary) -> String:
+	if depth_config.is_empty():
+		return "missing"
+	if not bool(depth_config.get("enabled", false)):
+		return "disabled"
+	var backend_id := String(runtime_debug.get("backend_id", "")).strip_edges()
+	var family_id := String(runtime_debug.get("family_id", "")).strip_edges()
+	if not backend_id.is_empty() and not family_id.is_empty():
+		return "%s / %s" % [backend_id, family_id]
+	if not family_id.is_empty():
+		return family_id
+	if not backend_id.is_empty():
+		return backend_id
+	return "configured / %s" % _compact_depth_model_label(depth_config)
+
+func _depth_threshold_compact_text(family: String, field_name: String, thresholds: Dictionary) -> String:
+	var key := _depth_threshold_label(family, field_name)
+	if thresholds.is_empty() or not thresholds.has(key):
+		return "missing"
+	return "%s %s" % [_depth_threshold_direction_label(family), _fmt_float(thresholds.get(key, 0.0))]
+
 func _depth_config_runtime_status_text(depth_config: Dictionary) -> String:
 	if depth_config.is_empty():
 		return "not present in selected gesture YAML"
@@ -1293,68 +1230,18 @@ func _build_depth_config_row(row_spec: Dictionary, family: String, live_depth_st
 	var row := row_spec.duplicate(true)
 	var row_id := String(row.get("id", ""))
 	var depth_config := _punch_depth_profile_config(family)
-	var evaluation: Dictionary = depth_config.get("evaluation", {}) if depth_config.get("evaluation", {}) is Dictionary else {}
 	var thresholds: Dictionary = depth_config.get("thresholds", {}) if depth_config.get("thresholds", {}) is Dictionary else {}
-	var debug_config: Dictionary = depth_config.get("debug", {}) if depth_config.get("debug", {}) is Dictionary else {}
 	var runtime_debug := _current_depth_runtime_debug_state(family, live_depth_state)
 	var current_text := ""
 	match row_id:
 		"depth_section":
 			current_text = ""
-		"depth_runtime_status":
-			if runtime_debug.is_empty():
-				current_text = _depth_config_runtime_status_text(depth_config)
-			else:
-				current_text = "%s / %s" % [
-					String(runtime_debug.get("runtime_status", "unloaded")),
-					String(runtime_debug.get("runtime_stage", "idle")),
-				]
-		"depth_loader_truth":
-			current_text = _depth_loader_truth_text(depth_config, runtime_debug)
-		"depth_artifact_path":
-			current_text = _depth_artifact_path_text(depth_config, runtime_debug)
 		"depth_backend_family":
-			current_text = _depth_backend_family_text(runtime_debug)
-		"depth_failure_reason":
-			current_text = _depth_failure_reason_text(runtime_debug)
-		"depth_live_metrics":
-			current_text = _depth_live_metrics_text(live_depth_state)
-		"depth_enabled":
-			current_text = _fmt_bool(bool(depth_config.get("enabled", false))) if not depth_config.is_empty() else "missing"
-		"depth_window_shape":
-			if depth_config.is_empty():
-				current_text = "missing"
-			else:
-				current_text = "%s / %s at %dpx model input" % [
-					_fmt_float(evaluation.get("early_window_fraction", 0.0)),
-					_fmt_float(evaluation.get("late_window_fraction", 0.0)),
-					int(evaluation.get("model_input_size", 0)),
-				]
-		"depth_roi_shape":
-			if depth_config.is_empty():
-				current_text = "missing"
-			else:
-				current_text = "%dpx / %dpx / %dpx" % [
-					int(evaluation.get("wrist_roi_radius_px", 0)),
-					int(evaluation.get("wrist_to_elbow_extension_px", 0)),
-					int(evaluation.get("torso_roi_radius_px", 0)),
-				]
-		"depth_smoothing_window_samples":
-			current_text = str(int(evaluation.get("smoothing_window_samples", 0))) if not depth_config.is_empty() else "missing"
+			current_text = _compact_depth_backend_label(depth_config, runtime_debug)
 		"depth_family_delta_threshold":
-			var delta_key := _depth_threshold_label(family, "closeness_delta")
-			current_text = "%s = %s" % [delta_key, _fmt_float(thresholds.get(delta_key, 0.0))] if not depth_config.is_empty() else "missing"
+			current_text = _depth_threshold_compact_text(family, "closeness_delta", thresholds)
 		"depth_family_peak_threshold":
-			var peak_key := _depth_threshold_label(family, "peak_closeness")
-			current_text = "%s = %s" % [peak_key, _fmt_float(thresholds.get(peak_key, 0.0))] if not depth_config.is_empty() else "missing"
-		"depth_debug_flags":
-			if depth_config.is_empty():
-				current_text = "missing"
-			else:
-				current_text = "show_depth_signal=%s, show_depth_window_analysis=%s" % [
-					_fmt_bool(bool(debug_config.get("show_depth_signal", false))),
-					_fmt_bool(bool(debug_config.get("show_depth_window_analysis", false))),
-				]
+			current_text = _depth_threshold_compact_text(family, "peak_closeness", thresholds)
 		_:
 			current_text = "pending"
 	row["current_text"] = current_text

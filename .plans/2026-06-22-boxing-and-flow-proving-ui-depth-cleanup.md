@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-22
 **Status:** In Progress
-**Last Updated:** 2026-06-22 22:26 EDT
+**Last Updated:** 2026-06-22 23:11 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -36,6 +36,7 @@ Execution will follow the normal coder → QA → auditor loop. The coder will i
 | `REF-06` | Uploaded screenshot showing generated depth-related `.uid` files surfacing in git UI | `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/06/23/image-afd905f9.png` |
 | `REF-07` | Repo ignore policy baseline | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.gitignore` |
 | `REF-08` | Uploaded screenshot showing over-verbose failed depth thumbnail state overflowing thumbnail area | `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/06/23/image-592e6636.png` |
+| `REF-09` | Uploaded screenshot showing over-verbose boxing gesture inspector depth section running off-screen | `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/06/23/image-44f36ef6.png` |
 
 ---
 
@@ -204,9 +205,13 @@ Execution will follow the normal coder → QA → auditor loop. The coder will i
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA claimed bead `aerobeat-input-camera-tracking-cxy6` and verified the compact failed-thumbnail fallback on coder commit `16ac872` with two independent checks: (1) a focused headless probe script at `/home/derrick/.openclaw/workspace/.temp/qa-aerobeat-cxy6-20260623/qa_probe.gd`, run via `godot --headless --path .testbed --script /home/derrick/.openclaw/workspace/.temp/qa-aerobeat-cxy6-20260623/qa_probe.gd -- /home/derrick/.openclaw/workspace/.temp/qa-aerobeat-cxy6-20260623`, producing JSON evidence at `/home/derrick/.openclaw/workspace/.temp/qa-aerobeat-cxy6-20260623/qa_probe_report.json`; and (2) the targeted depth-debug GUT subset via `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=depth_debug -gexit`, which passed `9/9` tests with `91` asserts in `110.491s`.
+
+Requirement-by-requirement evidence: (1) compact obvious failure state inside the thumbnail footprint passed — the probe reported `thumbnail_visible=true`, `placeholder_visible=true`, `placeholder_text="✕"`, matched placeholder/texture minimum sizes (`196x114`), `panel_clip_contents=true`, and fixed panel offsets (`left=-230 top=-204 right=-14 bottom=-14`) consistent with a bounded 190px-tall panel rather than the overflowing multiline block shown in `REF-08`; (2) no verbose multiline diagnostic block in the thumbnail body passed — `status_visible=false`, `status_text=""`, and the body content reduced to the centered `✕`, while diagnostics moved to tooltip text; (3) no overflow below the intended thumbnail/video area passed in node-state terms — the panel remained clipped and size-bounded, with the failure details no longer rendered as body text below the thumbnail region; (4) successful depth-preview path still works passed — the probe reported `focus_family="hook"`, `thumbnail_texture_visible=true`, `thumbnail_has_texture=true`, `thumbnail_placeholder_visible=false`, `last_texture_available_before_swap=true`, then after swap `main_texture_visible_after_swap=true` and `swapped_to_depth_after_swap=true`; (5) hidden-thumbnail-when-all-depth-disabled still works passed — the probe reported `thumbnail_visible=false` and visual config kept `swap_click_enabled=false`, `hover_hint_visible=false`, and `sampling_regions_visible=false` when all boxing depth families were disabled; (6) no removed FPS-corner text reintroduced passed — the probe reported `fps_text="Preview 59.4 FPS"` with `contains_straight=false`, `contains_hook=false`, `contains_uppercut=false`, and `contains_ms=false`. The targeted unit subset also explicitly covered `test_depth_debug_viewer_renders_prepared_snapshot_and_reparents_to_presenter_overlay`, `test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_texture`, `test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available`, `test_boxing_depth_debug_hides_thumbnail_when_all_boxing_depth_families_are_disabled`, and `test_boxing_depth_debug_focus_family_prefers_enabled_family_with_runtime_texture`.
+
+Gap/risk note: under the headless dummy renderer, `root.get_texture()` returned null, so the probe could not save authoritative PNG screenshots; QA evidence is therefore JSON node-state output plus passing targeted GUT coverage rather than a live raster capture. QA verdict: pass, with low residual risk limited to desktop-rendered visual confirmation for exact pixels/spacing.
 
 ---
 
@@ -224,6 +229,69 @@ Execution will follow the normal coder → QA → auditor loop. The coder will i
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
 
+**Status:** ✅ Complete
+
+**Results:** Auditor independently truth-checked the compact failed-thumbnail fallback against the actual `16ac872` diff in `REF-03`, the bad overflowing screenshot in `REF-08`, the active worktree, the QA probe artifacts, and fresh direct validation runs. Audit verdict: pass. Requirement-by-requirement: (1) compact obvious failure state inside the thumbnail footprint passed — in `REF-03`, `_thumbnail_panel.clip_contents = true`, `_placeholder_text()` now returns only `✕`, and `_refresh_thumbnail()` forces the placeholder to reuse the texture rectangle size; the fresh QA probe again reported `thumbnail_visible=true`, `placeholder_visible=true`, `placeholder_text="✕"`, matched placeholder/texture minimum sizes (`196x114`), and bounded bottom-right panel offsets (`left=-230 top=-204 right=-14 bottom=-14`), which is materially different from the overflowing multiline body shown in `REF-08`; (2) no verbose multiline diagnostic block in the thumbnail body passed — the actual `16ac872` diff hides `_thumbnail_status_label` during failure (`failure_state := not thumbnail_has_texture`, `visible = not failure_state`) and moves the diagnostics into `_thumbnail_diagnostic_tooltip(...)`; the fresh probe again showed `status_visible=false`, `status_text=""`, with only the centered `✕` in the body while the tooltip still preserved truthful runtime diagnostics; (3) no overflow below the intended thumbnail/video area passed — the current viewer code hard-bounds the panel to a 190px-tall layout via `_apply_thumbnail_layout()`, clips contents, and no longer renders multiline placeholder/status body text that could spill below the video edge; the fresh probe values (`panel_custom_minimum_size=[216,0]`, clipped panel, fixed offsets) match that bounded layout; (4) successful depth-preview path still works passed — I re-ran the targeted `depth_debug` GUT subset directly and it passed `9/9` tests (`91` asserts, `107.426s`), including `test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available` and `test_boxing_depth_debug_focus_family_prefers_enabled_family_with_runtime_texture`; the fresh probe also again showed `focus_family="hook"`, `thumbnail_has_texture=true`, `thumbnail_placeholder_visible=false`, and `main_texture_visible_after_swap=true`; (5) hidden-thumbnail-when-all-depth-disabled still works passed — the same fresh GUT run passed `test_boxing_depth_debug_hides_thumbnail_when_all_boxing_depth_families_are_disabled`, and the fresh probe again showed `thumbnail_visible=false` with `swap_click_enabled=false`, `hover_hint_visible=false`, and `sampling_regions_visible=false`; (6) no removed FPS-corner text is reintroduced passed — current `REF-03` still renders `_fps_label.text = "Preview %.1f FPS"`, the fresh GUT subset passed the viewer coverage that asserts that exact string, and the fresh probe again reported `fps_text="Preview 59.4 FPS"` with `contains_straight=false`, `contains_hook=false`, `contains_uppercut=false`, and `contains_ms=false`. Residual risk: low, but not zero — the headless dummy renderer still cannot produce authoritative framebuffer screenshots (`root.get_texture()` is null in the probe path), so the remaining uncertainty is limited to pixel-perfect live raster spacing on a desktop-rendered session rather than logic/layout truth in the scene tree.
+
+---
+
+### Task 10: Simplify boxing gesture inspector depth section
+
+**Bead ID:** `aerobeat-input-camera-tracking-9pce`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-02`, `REF-09`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `aerobeat-input-camera-tracking-9pce` with `bd update aerobeat-input-camera-tracking-9pce --status in_progress --json`. Simplify the boxing gesture inspector popup’s depth section so it only shows what Derrick needs for fast threshold tuning: which backend is chosen (disabled or a short backend/depth label) and the relevant depth threshold value(s). Remove the extra runtime/loader/artifact/failure/metrics dump that currently runs off-screen. Keep the panel compact and readable, preserve truthful data, and keep the successful/failed thumbnail work intact. Update the active plan with actual results, run relevant repo-local validation, commit/push by default unless blocked, and close the bead with a concrete reason.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-9pce` and simplified the boxing gesture inspector popup depth section in `/.testbed/scripts/boxing_proving_harness.gd` so the punch and pose-strike inspector models now keep only three compact depth rows: `Depth backend`, `Depth delta threshold`, and `Depth peak threshold` under a `Depth tuning` section. The backend row now stays truthful but short: it shows `disabled` when the family depth config is off, `backend / family` when runtime debug has a resolved backend, or `configured / <artifact-basename>` when the YAML enables depth but runtime resolution is not yet surfaced. The threshold rows now compress to `min <value>` for straight-punch depth gates and `max <value>` for hook/uppercut depth gates, instead of dumping runtime stage, loader truth, artifact path, failure reason, live metrics, ROI/window shapes, smoothing, or debug flags. Preserved behavior: the earlier depth thumbnail/fps cleanup code paths were not changed. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=compact_depth_backend_and_thresholds -gexit` passed `1/1` tests with `15` asserts; the targeted depth-thumbnail subset `-gunit_test_name=depth_debug` also remained green at `9/9` tests with `91` asserts.
+
+---
+
+### Task 11: QA simplified boxing gesture inspector depth section
+
+**Bead ID:** `aerobeat-input-camera-tracking-2gqf`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-02`, `REF-09`
+**Prompt:** After coder completion, claim bead `aerobeat-input-camera-tracking-2gqf` with `bd update aerobeat-input-camera-tracking-2gqf --status in_progress --json`, then verify the boxing gesture inspector depth section is compact and only shows the chosen backend plus relevant threshold value(s). Confirm the off-screen verbose runtime/config dump is gone, and that the remaining values are truthful for quick tune/retry loops. Update the active plan with QA evidence and close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 12: Audit simplified boxing gesture inspector depth section
+
+**Bead ID:** `aerobeat-input-camera-tracking-uz00`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-02`, `REF-09`
+**Prompt:** After QA completion, claim bead `aerobeat-input-camera-tracking-uz00` with `bd update aerobeat-input-camera-tracking-uz00 --status in_progress --json`, then independently truth-check that the boxing gesture inspector depth section now only shows the chosen backend and relevant threshold value(s), without the off-screen verbose dump. Use Derrick’s screenshot in `REF-09`, the diff, and QA evidence. Close the bead only if the compact inspector behavior actually matches the requested tuning workflow.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
+
 **Status:** ⏳ Pending
 
 **Results:** Pending.
@@ -234,9 +302,9 @@ Execution will follow the normal coder → QA → auditor loop. The coder will i
 
 **Status:** ⚠️ Partial
 
-**What We Built:** The earlier slices in this plan remain landed and verified: prerecorded replay timelines hide the obsolete frame-step buttons, the boxing depth viewer shows FPS-only corner text, all-depth-disabled boxing profiles suppress the depth thumbnail/swap affordances, and the narrow depth-UID ignore rules keep the screenshot-targeted generated depth `.uid` files out of git noise. However, live user verification surfaced a new UI defect in the failed-depth-thumbnail fallback: when straight-punch depth is enabled but the thumbnail texture does not load, the fallback state is too verbose and overflows below the intended thumbnail area. Tasks 7-9 now own that compact-failure-state cleanup.
+**What We Built:** The earlier slices in this plan remain landed and verified: prerecorded replay timelines hide the obsolete frame-step buttons, the boxing depth viewer shows FPS-only corner text, all-depth-disabled boxing profiles suppress the depth thumbnail/swap affordances, and the narrow depth-UID ignore rules keep the screenshot-targeted generated depth `.uid` files out of git noise. The compact failed-thumbnail fallback implementation in Task 7 has already passed both QA and independent audit in Tasks 8-9: when depth is enabled but the texture is missing, the thumbnail shows a compact clipped `✕` state inside the intended footprint, body diagnostics are suppressed, the live success path still swaps correctly, the all-depth-disabled hide path still holds, and the removed FPS-corner family text remains absent. Task 10 is now implemented as well: the boxing gesture inspector depth section has been reduced to a compact `Depth tuning` block that only shows the chosen backend label plus the relevant depth delta/peak thresholds for fast tune/retry loops.
 
-**Reference Check:** `REF-01` through `REF-07` remain satisfied by the completed slices already audited in this plan. `REF-08` adds a new live user-verified failure-state UI target that is not yet satisfied: the compact failed-thumbnail fallback still needs implementation, QA, and audit. Residual risk remains limited to live raster confirmation under a rendered desktop/editor session because the headless dummy renderer cannot produce authoritative framebuffer screenshots, plus future depth-adjacent generated `.uid` paths outside the three explicit ignore patterns would still need a deliberate follow-up rule.
+**Reference Check:** `REF-01` through `REF-08` remain satisfied by the completed slices already audited in this plan. `REF-09` is now satisfied at the coder stage: the boxing gesture inspector no longer includes the off-screen runtime/config/debug dump from the uploaded screenshot and instead shows only the compact backend + threshold rows. Residual risk remains limited to the normal pending QA/auditor truth-check for Task 10 and to live raster confirmation under a rendered desktop/editor session because the headless dummy renderer cannot produce authoritative framebuffer screenshots.
 
 **Commits:**
 - `93b3b11` - Clean up proving replay and depth preview UI
@@ -247,4 +315,4 @@ Execution will follow the normal coder → QA → auditor loop. The coder will i
 
 ---
 
-*Completed on Pending*
+*Completed on 2026-06-22*

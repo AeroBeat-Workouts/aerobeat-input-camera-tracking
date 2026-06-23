@@ -1599,7 +1599,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_string_contains(body, "Preview-space wrist stays on required mirrored hook side - true (left_of_elbow)")
 	assert_string_contains(body, "Pose-only rearm - ")
 
-func test_punch_family_inspectors_surface_live_depth_loader_truth_and_metrics() -> void:
+func test_punch_family_inspectors_keep_only_compact_depth_backend_and_thresholds() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
@@ -1621,28 +1621,27 @@ func test_punch_family_inspectors_surface_live_depth_loader_truth_and_metrics() 
 
 	var straight_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var straight_body := String(straight_inspector.get("body", ""))
-	assert_string_contains(straight_body, "Depth runtime status / stage - ready / sampling")
-	assert_string_contains(straight_body, "Depth loader truth - enabled; runtime ready via onnx backend")
-	assert_string_contains(straight_body, "Active depth artifact path - res://assets/depth_models/depth_anything_v2/depth_anything_v2_vits.onnx")
-	assert_string_contains(straight_body, "Resolved backend / family - onnx / depth_anything_v2_small_onnx")
-	assert_string_contains(straight_body, "Depth failure reason - none")
-	assert_string_contains(straight_body, "Active normalized depth metrics - available=true, fresh=true, source=placeholder, closeness=0.120, delta=0.080")
-	assert_string_contains(straight_body, "Depth closeness delta threshold - min_closeness_delta = 0.060")
-	assert_string_contains(straight_body, "Depth peak closeness threshold - min_peak_closeness = 0.040")
+	assert_string_contains(straight_body, "Depth tuning")
+	assert_string_contains(straight_body, "Depth backend - onnx / depth_anything_v2_small_onnx")
+	assert_string_contains(straight_body, "Depth delta threshold - min 0.060")
+	assert_string_contains(straight_body, "Depth peak threshold - min 0.040")
+	assert_false(straight_body.contains("Depth runtime status / stage"))
+	assert_false(straight_body.contains("Depth loader truth"))
+	assert_false(straight_body.contains("Active depth artifact path"))
+	assert_false(straight_body.contains("Depth failure reason"))
+	assert_false(straight_body.contains("Active normalized depth metrics"))
 
 	var hook_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
 	var hook_body := String(hook_inspector.get("body", ""))
-	assert_string_contains(hook_body, "Depth runtime status / stage - enabled in selected gesture YAML")
-	assert_string_contains(hook_body, "Depth loader truth - enabled in selected gesture YAML")
-	assert_string_contains(hook_body, "Depth closeness delta threshold - max_closeness_delta = 0.030")
-	assert_string_contains(hook_body, "Depth peak closeness threshold - max_peak_closeness = 0.060")
+	assert_string_contains(hook_body, "Depth backend - configured / openvino_midas_v21_small_256")
+	assert_string_contains(hook_body, "Depth delta threshold - max 0.030")
+	assert_string_contains(hook_body, "Depth peak threshold - max 0.060")
 
 	var uppercut_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "uppercut_left")
 	var uppercut_body := String(uppercut_inspector.get("body", ""))
-	assert_string_contains(uppercut_body, "Depth runtime status / stage - enabled in selected gesture YAML")
-	assert_string_contains(uppercut_body, "Depth loader truth - enabled in selected gesture YAML")
-	assert_string_contains(uppercut_body, "Depth closeness delta threshold - max_closeness_delta = 0.030")
-	assert_string_contains(uppercut_body, "Depth peak closeness threshold - max_peak_closeness = 0.060")
+	assert_string_contains(uppercut_body, "Depth backend - configured / openvino_midas_v21_small_256")
+	assert_string_contains(uppercut_body, "Depth delta threshold - max 0.030")
+	assert_string_contains(uppercut_body, "Depth peak threshold - max 0.060")
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:
 	var harness = _new_harness()
