@@ -56,6 +56,11 @@ test_report*.json
 # Downloaded depth-model artifacts are fetched locally, not committed.
 assets/depth_models/
 
+# Generated Godot UID sidecars for the depth stack are local/editor-created noise.
+.testbed/scripts/depth_*.gd.uid
+.testbed/tests/unit/test_depth_*.gd.uid
+src/depth/**/*.gd.uid
+
 # MediaPipe model files are committed under python_mediapipe/assets/models/
 *.task
 !python_mediapipe/assets/models/*.task
