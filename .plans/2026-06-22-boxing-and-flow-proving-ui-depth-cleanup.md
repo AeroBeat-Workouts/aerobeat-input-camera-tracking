@@ -1,8 +1,8 @@
 # Aerobeat Input Camera Tracking - Boxing / Flow Proving UI + Depth Cleanup
 
 **Date:** 2026-06-22
-**Status:** In Progress
-**Last Updated:** 2026-07-19 21:19 EDT
+**Status:** Complete
+**Last Updated:** 2026-07-19 22:30 EDT
 **Blocked Reason:** None
 **Agent:** `pico`
 
@@ -456,7 +456,7 @@ QA verdict: pass. The default boxing replay/tuning config is now truthful to Der
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
 **What We Built:** The original boxing/flow proving UI cleanup remains landed, and this plan’s new continuation seam is now also implemented: the repo contract has been cut down to the live pose-threshold system only. Boxing depth config blocks are gone from `assets/boxing.gesture_detection.yaml` and `assets/boxing.testbed_debug.yaml`; committed hand-overlay contract residue is gone from the boxing/flow camera-tracking + flow testbed-debug YAMLs; the cross-repo contract doc now describes threshold-only truth; committed hand-tracking-only proving overlays/scenes/tests are gone; and the dead classifier/prototype detector/tool/history payload has been aggressively deleted from the repo.
 
@@ -475,4 +475,4 @@ QA verdict: pass. The default boxing replay/tuning config is now truthful to Der
 
 ---
 
-*Completed on Pending — active plan retained for next-session continuation per Derrick*
+*Completed on 2026-07-19 — later continuation seams were executed and the plan is now complete.*
