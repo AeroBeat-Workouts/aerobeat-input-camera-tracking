@@ -39,37 +39,6 @@ straight_punch:
       min_bbox_area_growth: 0.003
       max_elbow_shoulder_xy_distance: 0.140
       min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
-    depth:
-      enabled: true
-      model:
-        artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
-      evaluation:
-        model_input_size: 256
-        sample_every_n_frames: 1
-        max_sample_age_ms: 250
-        sampling_mode: single_point
-        region_geometry:
-          wrist_shape: extended_capsule
-          wrist_radius_px: 12
-          wrist_extension_toward_elbow_px: 8
-          torso_shape: center_box
-          torso_half_width_px: 18
-          torso_half_height_px: 18
-          torso_anchor: shoulder_landmark
-        aggregation:
-          wrist_depth_stat: median
-          torso_depth_stat: median
-          trim_fraction: 0.0
-          min_valid_samples: 1
-        smoothing_window_samples: 3
-        early_window_fraction: 0.35
-        late_window_fraction: 0.35
-      thresholds:
-        min_closeness_delta: 0.06
-        min_peak_closeness: 0.04
-      debug:
-        show_depth_signal: true
-        show_depth_window_analysis: true
     timing:
       triggered_grace_ms: 10
     rearm:
@@ -86,37 +55,6 @@ hook:
     thresholds:
       min_velocity: 0.4
       max_wrist_angle_from_elbow_horizontal_deg: 25.0
-    depth:
-      enabled: true
-      model:
-        artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
-      evaluation:
-        model_input_size: 256
-        sample_every_n_frames: 1
-        max_sample_age_ms: 250
-        sampling_mode: single_point
-        region_geometry:
-          wrist_shape: extended_capsule
-          wrist_radius_px: 12
-          wrist_extension_toward_elbow_px: 8
-          torso_shape: center_box
-          torso_half_width_px: 18
-          torso_half_height_px: 18
-          torso_anchor: shoulder_landmark
-        aggregation:
-          wrist_depth_stat: median
-          torso_depth_stat: median
-          trim_fraction: 0.0
-          min_valid_samples: 1
-        smoothing_window_samples: 3
-        early_window_fraction: 0.35
-        late_window_fraction: 0.35
-      thresholds:
-        max_closeness_delta: 0.03
-        max_peak_closeness: 0.06
-      debug:
-        show_depth_signal: true
-        show_depth_window_analysis: true
     timing:
       triggered_grace_ms: 500
     rearm:
@@ -132,37 +70,6 @@ uppercut:
     thresholds:
       min_velocity: 0.5
       max_wrist_angle_from_elbow_vertical_deg: 25.0
-    depth:
-      enabled: true
-      model:
-        artifact_path: res://addons/aerobeat-input-camera-tracking/assets/depth_models/midas/openvino_midas_v21_small_256/
-      evaluation:
-        model_input_size: 256
-        sample_every_n_frames: 1
-        max_sample_age_ms: 250
-        sampling_mode: single_point
-        region_geometry:
-          wrist_shape: extended_capsule
-          wrist_radius_px: 12
-          wrist_extension_toward_elbow_px: 8
-          torso_shape: center_box
-          torso_half_width_px: 18
-          torso_half_height_px: 18
-          torso_anchor: shoulder_landmark
-        aggregation:
-          wrist_depth_stat: median
-          torso_depth_stat: median
-          trim_fraction: 0.0
-          min_valid_samples: 1
-        smoothing_window_samples: 3
-        early_window_fraction: 0.35
-        late_window_fraction: 0.35
-      thresholds:
-        max_closeness_delta: 0.03
-        max_peak_closeness: 0.06
-      debug:
-        show_depth_signal: true
-        show_depth_window_analysis: true
     timing:
       triggered_grace_ms: 500
     rearm:

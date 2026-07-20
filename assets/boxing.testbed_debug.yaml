@@ -2,34 +2,12 @@ schema: aerobeat/testbed_debug_config
 version: 1
 profile: boxing
 visuals:
-  # Show the pose/hand landmark overlay in the proving scene. input debug only.
+  # Show the pose landmark overlay in the proving scene. input debug only.
   show_landmarks: true
-  # Show movement trails in the proving scene. input debug only.
-  show_trails: false
-  # Show the per-hand bbox overlay in the proving scene. input debug only.
-  show_hand_bbox_overlay: true
   # Show debug hit targets around landmarks. input debug only.
   show_landmark_hit_targets: false
   # Show labels for those debug hit targets. input debug only.
   show_landmark_hit_target_labels: false
-  depth_debug:
-    # Truthful depth proving overlay. Never fabricates a depth texture.
-    enabled: true
-    # Opt-in only: show a bottom-right thumbnail/debug card for truthful depth inspection.
-    thumbnail_visible: false
-    # Ask the runtime to surface the real normalized depth texture for the thumbnail/swap flow.
-    request_runtime_texture: true
-    # Allow click-to-swap only when a real runtime depth texture exists.
-    swap_click_enabled: true
-    # Show hover affordance text when swapping is actually available.
-    hover_hint_visible: true
-    # Draw truthful sample-point markers from surfaced runtime geometry.
-    sampling_regions_visible: true
-    # Show preview FPS plus latest surfaced depth timing in the top-right.
-    fps_visible: true
-    thumbnail_corner: bottom_right
-    thumbnail_width_px: 196
-    thumbnail_margin_px: 14
 refresh:
   # Refresh the big debug panels this often so they stay readable. input debug only.
   debug_panel_refresh_interval_ms: 160

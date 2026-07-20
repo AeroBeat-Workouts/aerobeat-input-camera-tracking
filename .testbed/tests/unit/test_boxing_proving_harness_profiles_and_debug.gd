@@ -1,7 +1,6 @@
 extends "res://addons/aerobeat-vendor-godot-unit-test/test.gd"
 
 const LandmarkDrawerScript = preload("res://scripts/landmark_drawer.gd")
-const HandBBoxDrawerScript = preload("res://scripts/hand_bbox_state_drawer.gd")
 const DepthDebugViewerScript = preload("res://scripts/depth_debug_viewer.gd")
 const ProvingHarnessScript = preload("res://scripts/proving_harness.gd")
 const BoxingProvingScene = preload("res://scenes/boxing_proving.tscn")
@@ -84,21 +83,6 @@ class AllDepthDisabledHarness:
 
 	func _punch_depth_profile_config(_family: String) -> Dictionary:
 		return {"enabled": false}
-
-class FakeTrailDrawer:
-	extends Control
-
-	var update_calls: Array[Dictionary] = []
-	var clear_call_count := 0
-
-	func update_trails(left_trail: Array, right_trail: Array) -> void:
-		update_calls.append({
-			"left_trail": left_trail.duplicate(true),
-			"right_trail": right_trail.duplicate(true),
-		})
-
-	func clear_trails() -> void:
-		clear_call_count += 1
 
 func _new_harness() -> Variant:
 	var harness_script: Script = load("res://scripts/boxing_proving_harness.gd") as Script
@@ -354,39 +338,7 @@ func _has_editor_exposed_property(subject: Object, property_name: String) -> boo
 		return (int(property_info.get("usage", 0)) & PROPERTY_USAGE_EDITOR) != 0
 	return false
 
-func test_hand_bbox_drawer_prefers_grace_tracking_state_over_gesture_state() -> void:
-	var drawer = add_child_autoqfree(HandBBoxDrawerScript.new())
-	drawer.update_snapshot({}, {
-		"left": {
-			"state": "triggered",
-		}
-	})
-	var state_name: String = drawer._resolve_side_state("left", {
-		"tracking_valid": true,
-		"tracking_state": "grace",
-	})
-	assert_eq(String(state_name), "grace")
-	assert_eq(drawer.STATE_COLORS["grace"], Color8(0xff, 0x4f, 0xd8, 0xff))
 
-func test_hand_bbox_drawer_prefers_active_tracker_state_over_gesture_tracking_lost() -> void:
-	var drawer = add_child_autoqfree(HandBBoxDrawerScript.new())
-	drawer.update_snapshot({}, {
-		"left": {
-			"state": "tracking_lost",
-		}
-	})
-	assert_eq(String(drawer._resolve_side_state("left", {
-		"tracking_valid": false,
-		"tracking_state": "reacquiring",
-	})), "reacquiring")
-	assert_eq(String(drawer._resolve_side_state("left", {
-		"tracking_valid": true,
-		"tracking_state": "tracked",
-	})), "tracked")
-	assert_eq(String(drawer._resolve_side_state("left", {
-		"tracking_valid": true,
-		"tracking_state": "stale",
-	})), "stale")
 
 func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
@@ -401,24 +353,20 @@ func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes()
 	assert_not_null(scene_root)
 	var harness := scene_root as Object
 	var landmark_drawer := scene_root.find_child("LandmarkDrawer", true, false) as Control
-	var trail_drawer := scene_root.find_child("TrailDrawer", true, false) as Control
-	var hand_bbox_drawer := scene_root.find_child("HandBBoxDrawer", true, false) as Control
 	assert_not_null(landmark_drawer)
-	assert_not_null(trail_drawer)
-	assert_not_null(hand_bbox_drawer)
+	assert_null(scene_root.find_child("TrailDrawer", true, false))
+	assert_null(scene_root.find_child("HandBBoxDrawer", true, false))
 	assert_eq(int(harness.get("debug_panel_refresh_interval_ms")), 160)
 	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
 	assert_true(bool(harness.get("show_landmarks")))
-	assert_false(bool(harness.get("show_trails")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
-	assert_true(hand_bbox_drawer.visible)
 	var depth_debug_visuals: Dictionary = harness.get("_depth_debug_visual_config")
-	assert_true(bool(depth_debug_visuals.get("enabled", false)))
-	assert_false(bool(depth_debug_visuals.get("thumbnail_visible", true)))
-	assert_true(bool(depth_debug_visuals.get("request_runtime_texture", false)))
-	assert_true(bool(depth_debug_visuals.get("sampling_regions_visible", false)))
-	assert_true(bool(depth_debug_visuals.get("fps_visible", false)))
+	assert_false(bool(depth_debug_visuals.get("enabled", false)))
+	assert_false(bool(depth_debug_visuals.get("thumbnail_visible", false)))
+	assert_false(bool(depth_debug_visuals.get("request_runtime_texture", false)))
+	assert_false(bool(depth_debug_visuals.get("sampling_regions_visible", false)))
+	assert_false(bool(depth_debug_visuals.get("fps_visible", false)))
 
 func test_depth_debug_viewer_renders_prepared_snapshot_and_reparents_to_presenter_overlay() -> void:
 	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
@@ -675,7 +623,6 @@ func test_boxing_proving_runtime_config_loads_selected_flow_profile_bundle() -> 
 	assert_true(String(bundle.get("camera_tracking_path", "")).ends_with("assets/flow.camera_tracking.yaml"))
 	assert_true(String(bundle.get("gesture_detection_path", "")).ends_with("assets/flow.gesture_detection.yaml"))
 	assert_true(String(bundle.get("testbed_debug_path", "")).ends_with("assets/flow.testbed_debug.yaml"))
-	assert_false(bool(bundle.get("camera_tracking", {}).get("tracking", {}).get("hands", {}).get("enabled", true)))
 
 
 func test_proving_runtime_config_uses_profile_yaml_pose_smoothing_over_hidden_scene_default() -> void:
@@ -691,12 +638,12 @@ func test_proving_runtime_config_uses_profile_yaml_pose_smoothing_over_hidden_sc
 	assert_eq(bool(config.runtime.get("filter_enabled", false)), expects_filter_enabled)
 	assert_eq(bool(config.runtime.get("no_filter", true)), not expects_filter_enabled)
 
-func test_boxing_proving_runtime_config_requests_depth_texture_from_testbed_yaml() -> void:
+func test_boxing_proving_runtime_config_no_longer_requests_depth_texture_from_testbed_yaml() -> void:
 	var harness: Variant = _new_harness()
 	var config: Variant = harness._build_runtime_config()
 	assert_not_null(config)
 	var depth_debug: Dictionary = config.runtime.get("depth_debug", {}) if config.runtime.get("depth_debug", {}) is Dictionary else {}
-	assert_true(bool(depth_debug.get("request_runtime_texture", false)))
+	assert_false(bool(depth_debug.get("request_runtime_texture", false)))
 
 func test_flow_proving_runtime_config_does_not_request_depth_texture_without_yaml_flag() -> void:
 	var harness: Variant = _new_base_harness()
@@ -719,89 +666,25 @@ func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
 	assert_true(bool(bundle.get("ok", false)))
 	assert_eq(String(bundle.get("profile", "")), "flow")
 
-func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
+func test_boxing_proving_profile_visual_config_keeps_pose_landmark_debug_truthful() -> void:
 	var harness: Variant = _new_harness()
 	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
-	var trail_drawer: Control = add_child_autoqfree(FakeTrailDrawer.new())
-	var hand_bbox_drawer: Control = add_child_autoqfree(Control.new())
 	harness.set("landmark_drawer", landmark_drawer)
-	harness.set("trail_drawer", trail_drawer)
-	harness.set("hand_bbox_drawer", hand_bbox_drawer)
 
 	harness.set("_selected_profile_id", "boxing")
 	harness._sync_profile_visual_config()
 	assert_eq(int(harness.get("debug_panel_refresh_interval_ms")), 160)
 	assert_eq(int(harness.get("inspector_live_refresh_interval_ms")), 120)
 	assert_true(bool(harness.get("show_landmarks")))
-	assert_false(bool(harness.get("show_trails")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
-	assert_true(hand_bbox_drawer.visible)
 
 	harness.set("_selected_profile_id", "flow")
 	harness._sync_profile_visual_config()
 	assert_true(bool(harness.get("show_landmarks")))
-	assert_true(bool(harness.get("show_trails")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_targets")))
 	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
-	assert_false(hand_bbox_drawer.visible)
 
-func test_boxing_proving_profile_visual_config_uses_camera_tracking_preview_overlays_independently_from_debug_visuals() -> void:
-	var harness: Variant = _new_harness()
-	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
-	var trail_drawer: Control = add_child_autoqfree(FakeTrailDrawer.new())
-	var hand_bbox_drawer: Control = add_child_autoqfree(Control.new())
-	harness.set("landmark_drawer", landmark_drawer)
-	harness.set("trail_drawer", trail_drawer)
-	harness.set("hand_bbox_drawer", hand_bbox_drawer)
-
-	harness._sync_profile_visual_config({
-		"ok": true,
-		"camera_tracking": {
-			"preview": {
-				"overlays": {
-					"pose_skeleton_visible": false,
-					"hand_bbox_visible": true,
-				}
-			}
-		},
-		"testbed_debug": {
-			"visuals": {
-				"show_landmarks": true,
-				"show_trails": false,
-				"show_hand_bbox_overlay": false,
-			}
-		}
-	})
-
-	assert_false(bool(harness.get("show_landmarks")))
-	assert_true(hand_bbox_drawer.visible)
-	assert_false(bool(trail_drawer.visible))
-
-func test_boxing_proving_bbox_overlay_reparents_into_preview_overlay_layer_and_receives_snapshot() -> void:
-	var harness: Variant = _new_harness()
-	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new())
-	var hand_bbox_drawer: Control = add_child_autoqfree(HandBBoxDrawerScript.new())
-	hand_bbox_drawer.name = "HandBBoxDrawer"
-	harness.set("_preview_presenter", presenter)
-	harness.set("hand_bbox_drawer", hand_bbox_drawer)
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"straight_punch": {
-				"left": {"state": "ready"}
-			}
-		}
-	})
-
-	harness._sync_hand_bbox_drawer()
-
-	assert_same(hand_bbox_drawer.get_parent(), presenter.get_overlay_layer())
-	assert_same(hand_bbox_drawer.get("_preview_presenter"), presenter)
-	assert_false((hand_bbox_drawer.get("_hand_snapshot") as Dictionary).is_empty())
-	assert_eq(hand_bbox_drawer.anchor_right, 1.0)
-	assert_eq(hand_bbox_drawer.anchor_bottom, 1.0)
-	assert_eq(hand_bbox_drawer.offset_left, 0.0)
-	assert_eq(hand_bbox_drawer.offset_bottom, 0.0)
 
 func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	var harness = _new_harness()

@@ -238,7 +238,7 @@ func test_camera_tracking_provider_emits_straight_punch_state_change_signal() ->
 	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
 	provider.config = provider._ensure_config()
 	provider.config.load_selected_profile_bundle("boxing")
-	provider.config.tracker_profile_document["tracking"]["hands"]["enabled"] = true
+	provider.config.tracker_profile_document["tracking"]["hands"] = {"enabled": true}
 
 	var state_changes: Array = []
 	provider.straight_punch_state_changed.connect(func(side: String, state: String, detail: Dictionary) -> void:
@@ -392,16 +392,12 @@ func test_camera_tracking_provider_replay_start_forwards_boxing_pose_and_hand_pr
 	assert_eq(int(active_config.get("tracking", {}).get("max_fps", -1)), 30)
 	assert_eq(int(active_config.get("tracking", {}).get("state_update_max_fps", -1)), 10)
 	assert_true(bool(active_config.get("tracking", {}).get("pose", {}).get("enabled", false)))
-	assert_false(bool(active_config.get("tracking", {}).get("hands", {}).get("enabled", true)))
-	assert_eq(String(active_config.get("tracking", {}).get("hands", {}).get("landmark_mode", "")), "lite")
-	assert_true(bool(active_config.get("tracking", {}).get("hands", {}).get("bbox", {}).get("enabled", false)))
 	assert_true(bool(active_config.get("preview", {}).get("replay", {}).get("enabled", false)))
 	assert_eq(int(active_config.get("preview", {}).get("replay", {}).get("max_fps", -1)), 60)
 	assert_eq(int(active_config.get("preview", {}).get("replay", {}).get("width", -1)), 960)
 	assert_eq(int(active_config.get("preview", {}).get("replay", {}).get("height", -1)), 540)
 	assert_eq(int(active_config.get("preview", {}).get("replay", {}).get("quality", -1)), 75)
 	assert_true(bool(active_config.get("preview", {}).get("overlays", {}).get("pose_skeleton_visible", false)))
-	assert_true(bool(active_config.get("preview", {}).get("overlays", {}).get("hand_bbox_visible", false)))
 
 func test_camera_tracking_provider_live_start_forwards_boxing_pose_and_hand_profile_config() -> void:
 	var tracker = add_child_autoqfree(CapturingTrackingSession.new())
@@ -423,10 +419,6 @@ func test_camera_tracking_provider_live_start_forwards_boxing_pose_and_hand_prof
 	assert_eq(int(active_config.get("tracking", {}).get("max_fps", -1)), 30)
 	assert_eq(int(active_config.get("tracking", {}).get("state_update_max_fps", -1)), 10)
 	assert_true(bool(active_config.get("tracking", {}).get("pose", {}).get("enabled", false)))
-	assert_false(bool(active_config.get("tracking", {}).get("hands", {}).get("enabled", true)))
-	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("inference_interval_frames", -1)), 1)
-	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("validity", {}).get("max_stale_ms", -1)), 2000)
-	assert_eq(int(active_config.get("tracking", {}).get("hands", {}).get("validity", {}).get("reacquire_stable_ms", -1)), 40)
 	assert_true(bool(active_config.get("preview", {}).get("live", {}).get("enabled", false)))
 	assert_eq(int(active_config.get("preview", {}).get("live", {}).get("max_fps", -1)), 60)
 	assert_eq(int(active_config.get("preview", {}).get("live", {}).get("width", -1)), 960)
