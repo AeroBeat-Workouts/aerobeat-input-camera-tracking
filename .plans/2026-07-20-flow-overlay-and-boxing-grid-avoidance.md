@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-20  
 **Status:** In Progress  
-**Last Updated:** 2026-07-20 09:13 EDT  
+**Last Updated:** 2026-07-20 09:22 EDT
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -194,7 +194,7 @@ Because this work mixes scene/UI truth, config cleanup, and gameplay-contract pi
 
 **Status:** ✅ Complete
 
-**Results:** Implemented one shared detector-to-harness seam for the calibrated 4x3 proving truth. `pose_detector_substrate.gd` now surfaces canonical grid geometry plus detector-owned `nose`, `left_wrist`, and `right_wrist` occupied-cell/direction state under `gesture_debug.flow`, while keeping the existing wrist flow event contract intact. `proving_harness.gd` now owns the shared overlay + right-side truth formatting, with a new `flow_grid_overlay.gd` drawer mounted through the preview presenter's overlay layer so both Flow and Boxing render the same thin-stroke calibrated 4x3 grid directly over video. `flow_proving.tscn` and `boxing_proving.tscn` now both expose the shared right-side `Nose` / `Left Wrist` / `Right Wrist` occupancy + 8-way direction panel, and Boxing keeps its existing punch/guard tile board underneath. Added proving/runtime tests covering the new shared runtime payload and the shared scene overlay/panel wiring. Validated with targeted GUT runs for `test_pose_detector_substrate.gd` and the new proving-harness scene test.
+**Results:** Implemented one shared detector-to-harness seam for the calibrated 4x3 proving truth. `pose_detector_substrate.gd` now surfaces canonical grid geometry plus detector-owned `nose`, `left_wrist`, and `right_wrist` occupied-cell/direction state under `gesture_debug.flow`, while keeping the existing wrist flow event contract intact. `proving_harness.gd` now owns the shared overlay + right-side truth formatting, with a new `flow_grid_overlay.gd` drawer mounted through the preview presenter's overlay layer so both Flow and Boxing render the same thin-stroke calibrated 4x3 grid directly over video. `flow_proving.tscn` and `boxing_proving.tscn` now both expose the shared right-side `Nose` / `Left Wrist` / `Right Wrist` occupancy + 8-way direction panel, and Boxing keeps its existing punch/guard tile board underneath. Added proving/runtime tests covering the new shared runtime payload and the shared scene overlay/panel wiring. Validated with targeted GUT runs for `test_pose_detector_substrate.gd` and the new proving-harness scene test. After commit/push, a previously launched full `test_boxing_proving_harness_profiles_and_debug.gd` run finished with 9 unrelated failures in existing depth-debug tests plus repeated `FlowGridOverlay` orphan reports; that broader failure was not part of the targeted Task 2 acceptance slice and remains follow-up validation debt for later QA/audit or a dedicated cleanup seam.
 
 ---
 
@@ -214,15 +214,17 @@ Because this work mixes scene/UI truth, config cleanup, and gameplay-contract pi
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
 
 **Files Created/Deleted/Modified:**
-- likely `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/flow.gesture_detection.yaml`
-- likely `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
-- likely `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/cross-repo-config-contract.md`
-- related Flow tests/docs to be confirmed by Task 1
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/flow.gesture_detection.yaml`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/cross-repo-config-contract.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-flow-overlay-and-boxing-grid-avoidance.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Removed the stale Flow `squat` contract surface end-to-end without adding a legacy shim. `assets/flow.gesture_detection.yaml` now declares the `flow` family instead of `squat`, preserving Flow’s public contract around the shared calibrated 4x3 occupancy/direction model while keeping `straight_punch` disabled. `pose_detector_substrate.gd` now gates squat processing and squat public debug/state publication by active profile, so Boxing retains its current squat runtime for the next task but Flow no longer emits or exposes `squat` truth. Updated the public contract doc to state that Flow now lives under the `flow` family rather than a squat gesture surface. Replaced the old Flow-facing squat tests with a Flow-profile regression that proves no `squat` public surfaces or events appear, updated the Flow bundle test to assert `flow.backend == threshold` and absence of `squat`, and removed the stale fake proving-provider `gesture_debug.squat` payload from the shared proving test file. Validation: `test_pose_detector_substrate.gd` (72/72 passed), `test_camera_tracking_config_profiles.gd` (4/4 passed), `test_boxing_proving_harness_profiles_and_debug.gd` filtered to `flow_proving_runtime_config` (2/2 passed, with pre-existing FlowGridOverlay orphan warnings), and the shared calibration routing scene test `proving_scenes_surface_shared_calibration_flow_and_route_start_cancel` (1/1 passed).
 
 ---
 

@@ -84,6 +84,8 @@ func test_camera_tracking_config_switches_to_flow_profile_bundle() -> void:
 	assert_eq(String(bundle.get("camera_tracking", {}).get("profile", "")), "flow")
 	assert_eq(String(bundle.get("gesture_detection", {}).get("profile", "")), "flow")
 	assert_eq(String(bundle.get("testbed_debug", {}).get("profile", "")), "flow")
+	assert_eq(String(bundle.get("gesture_detection", {}).get("flow", {}).get("backend", "")), "threshold")
+	assert_false(bool(bundle.get("gesture_detection", {}).has("squat")))
 	assert_true(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmarks", false)))
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_targets", true)))
 	assert_false(bool(bundle.get("testbed_debug", {}).get("visuals", {}).get("show_landmark_hit_target_labels", true)))

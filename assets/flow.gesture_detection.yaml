@@ -1,15 +1,10 @@
 schema: aerobeat/gesture_detection_config
 version: 1
 profile: flow
-squat:
-  # Flow squat stays on the current calibrated torso-height threshold runtime. input.
+flow:
+  # Flow uses the shared calibrated 4x3 cell occupancy + direction contract. input.
   backend: threshold
-  threshold:
-    thresholds:
-      # Squat enters when live torso height / calibrated torso height drops to or below this ratio. input.
-      enter_height_ratio_max: 0.82
-      # Squat exits when live torso height / calibrated torso height rises back to or above this ratio. input.
-      exit_height_ratio_min: 0.92
+  threshold: {}
 straight_punch:
   # Flow keeps straight punches inactive by selecting the disabled backend. input.
   backend: disabled

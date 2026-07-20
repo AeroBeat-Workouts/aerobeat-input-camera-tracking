@@ -185,5 +185,5 @@ refresh:
 ## Contract notes
 
 - `preview.overlays.pose_skeleton_visible` is the only committed overlay intent still carried in profile config.
-- Boxing and flow remain threshold-only gameplay profiles.
+- Boxing remains a threshold-driven gameplay profile. Flow now exposes the calibrated 4x3 cell occupancy + direction contract under the `flow` family rather than a `squat` gesture surface.
 - If depth proving or hand-tracking debug ever returns, it should land as a new explicitly approved contract slice rather than lingering as undocumented legacy fields.

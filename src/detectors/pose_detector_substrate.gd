@@ -829,10 +829,9 @@ func _get_metric_dictionary(key: String) -> Dictionary:
 	return {}
 
 func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
-	return {
+	var debug_state := {
 		"ready": _gesture_state.get("ready", {}).duplicate(true),
 		"guard": _build_guard_debug_state(),
-		"squat": _build_squat_debug_state(metrics),
 		"weave": _build_weave_debug_state(metrics),
 		"punch_detection": _build_punch_detection_debug_state(),
 		"straight_punch": _build_straight_punch_debug_state(metrics),
@@ -841,6 +840,9 @@ func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 		"depth_runtime": _build_depth_runtime_debug_state(),
 		"flow": _build_flow_debug_state(metrics),
 	}
+	if _supports_squat_surface():
+		debug_state["squat"] = _build_squat_debug_state(metrics)
+	return debug_state
 
 func _build_punch_detection_debug_state() -> Dictionary:
 	var family_backends := {
@@ -1367,7 +1369,7 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	_update_flow_hand_history("right", right_wrist, right_shoulder, right_hand_confidence, timestamp_ms)
 
 	_process_guard(events, nose, left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist, shoulder_width)
-	if torso_confidence >= lower_body_confidence_gate:
+	if _supports_squat_surface() and torso_confidence >= lower_body_confidence_gate:
 		_process_squat(events, float(measurements.get("height_ratio", 1.0)))
 	_process_weave(events, float(measurements.get("head_lateral_offset", 0.0)), float(measurements.get("hip_lateral_offset", 0.0)), float(measurements.get("head_drop_ratio", 0.0)))
 	if _get_punch_backend_for_family("straight_punch") == BACKEND_THRESHOLD:
@@ -2127,7 +2129,10 @@ func _set_state_toggle(events: Array, state_name: String, active: bool) -> void:
 	events.append({"name": StringName("%s_%s" % [state_name, suffix])})
 
 func _build_public_gesture_states() -> Dictionary:
-	return (_gesture_state.get("states", {}) as Dictionary).duplicate(true)
+	var public_states := (_gesture_state.get("states", {}) as Dictionary).duplicate(true)
+	if not _supports_squat_surface():
+		public_states.erase("squat")
+	return public_states
 
 func _clear_same_family_block(state: Dictionary) -> void:
 	state["same_family_blocked"] = false
@@ -2505,6 +2510,25 @@ func _get_punch_backend_for_family(family: String) -> String:
 	if backend == "":
 		return BACKEND_THRESHOLD
 	return _normalize_punch_backend_name(backend)
+
+func _get_active_profile_id() -> String:
+	if _config != null:
+		if _config.has_method("get_selected_profile_id"):
+			var selected_profile := String(_config.get_selected_profile_id()).strip_edges().to_lower()
+			if selected_profile == "flow":
+				return "flow"
+		if _config.has_method("get"):
+			var configured_profile := String(_config.get("profile")).strip_edges().to_lower()
+			if configured_profile == "flow":
+				return "flow"
+	var gesture_profile_document := _get_gesture_profile_document()
+	var gesture_profile := String(gesture_profile_document.get("profile", "")).strip_edges().to_lower()
+	if gesture_profile == "flow":
+		return "flow"
+	return "boxing"
+
+func _supports_squat_surface() -> bool:
+	return _get_active_profile_id() != "flow"
 
 func _get_non_punch_backend_for_family(family: String) -> String:
 	var family_document := _get_family_document(family)

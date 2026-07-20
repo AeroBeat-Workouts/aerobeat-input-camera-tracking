@@ -87,13 +87,6 @@ class FakeAthleteRecalibrateProvider:
 		return {
 			"baseline": baseline.duplicate(true),
 			"calibration_session": calibration_session.duplicate(true),
-			"gesture_debug": {
-				"squat": {
-					"state": false,
-					"calibration_ready": bool(baseline.get("is_calibrated", false)),
-					"calibration_sample_frames": int(baseline.get("sample_frames", 0)),
-				}
-			}
 		}
 
 	func _make_session(state_name: String, overrides: Dictionary = {}) -> Dictionary:
