@@ -1,9 +1,9 @@
-# AeroBeat Input Camera Tracking — FlowGridOverlay Warning + Plan Cleanliness Cleanup
+# AeroBeat Input Camera Tracking - FlowGridOverlay Warning + Plan Cleanliness Cleanup
 
-**Date:** 2026-07-20  
-**Status:** In Progress  
-**Last Updated:** 2026-07-20 10:29 EDT  
-**Blocked Reason:** None  
+**Date:** 2026-07-20
+**Status:** Complete
+**Last Updated:** 2026-07-20 11:03 EDT
+**Blocked Reason:** None
 **Agent:** `pico`
 
 ---
@@ -40,10 +40,10 @@ Because this is repo hygiene with validation implications, it should still follo
 
 ### Task 1: Audit the warning root cause and classify dirty plan edits
 
-**Bead ID:** `aerobeat-input-camera-tracking-m1nh`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`  
+**Bead ID:** `aerobeat-input-camera-tracking-m1nh`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`
 **Prompt:** Audit the current `FlowGridOverlay` orphan / leaked `CanvasItem` warning seam in the proving-harness tests and classify the currently dirty plan-file edits. Identify the exact root cause of the warning, the narrowest truthful fix, and whether the dirty plan diffs are legitimate finished-work documentation that should be committed as-is or need final normalization first. Update this plan with exact findings.
 
 **Folders Created/Deleted/Modified:**
@@ -73,10 +73,10 @@ Because this is repo hygiene with validation implications, it should still follo
 
 ### Task 2: Fix the FlowGridOverlay harness-test leakage and land the dirty plan updates
 
-**Bead ID:** `aerobeat-input-camera-tracking-72ok`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`  
+**Bead ID:** `aerobeat-input-camera-tracking-72ok`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`
 **Prompt:** Implement the narrowest truthful fix for the `FlowGridOverlay` harness-test orphan / leaked `CanvasItem` warning seam, preserving the real runtime/proving contract. Also normalize and commit any legitimate dirty plan-file updates that should have been landed already so the repo worktree returns clean. Update this plan with exact edits/results, run relevant validation, commit/push to `main`, and close the bead when complete.
 
 **Folders Created/Deleted/Modified:**
@@ -106,10 +106,10 @@ Because this is repo hygiene with validation implications, it should still follo
 
 ### Task 3: QA the warning cleanup and worktree cleanliness
 
-**Bead ID:** `aerobeat-input-camera-tracking-8nyj`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`  
+**Bead ID:** `aerobeat-input-camera-tracking-8nyj`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`
 **Prompt:** Verify that the targeted harness tests no longer emit the `FlowGridOverlay` orphan / leaked `CanvasItem` warning and that the intended dirty plan-file updates are committed/pushed so the repo worktree is clean except for any explicitly documented unrelated dirt. Update this plan with exact QA evidence and close the bead when done.
 
 **Folders Created/Deleted/Modified:**
@@ -118,18 +118,26 @@ Because this is repo hygiene with validation implications, it should still follo
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-flow-grid-overlay-warning-and-plan-cleanup.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:**
+- QA source truth-check confirmed the fix is still narrow and truthful in `REF-03` (`.testbed/scripts/proving_harness.gd`). The only behavioral change in coder commit `f0d5edf` is that `_ensure_overlay_drawers_ready()` now resolves a real overlay parent first, instantiates `FlowGridOverlay` only when that parent exists, and reparents the overlay when a preview-presenter overlay layer becomes available later. No warning-suppression code, teardown hack, or `REF-04` (`flow_grid_overlay.gd`) edit was introduced.
+- Direct diff evidence: `git diff f0d5edf^ f0d5edf -- .testbed/scripts/proving_harness.gd` shows only the parent-gated/lazy overlay creation plus `_resolve_flow_grid_overlay_parent()` helper. `git log --oneline -- .testbed/scripts/flow_grid_overlay.gd | head -n 5` still shows the last touch as older commit `d422283`, confirming Task 2 did not alter the overlay drawer script.
+- Targeted harness QA reruns all passed cleanly with no `FlowGridOverlay`, `Orphans`, leaked `CanvasItem`, or `ObjectDB instances leaked` output:
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=boxing_squat_hover_card_reports_grid_avoidance_truth -gexit` ✅ `1/1 passed`, `Asserts 12`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=boxing_weave_hover_card_reports_grid_avoidance_truth -gexit` ✅ `1/1 passed`, `Asserts 14`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=flow_proving_runtime_config_defaults_to_flow_profile_bundle -gexit` ✅ `1/1 passed`, `Asserts 6`
+- Git truth checks confirm the previously dirty plan files are now landed and pushed. `git show --stat --oneline --decorate f0d5edf` includes `REF-01`, `REF-02`, and this cleanup plan; `git branch -r --contains f0d5edf` reports `origin/main`; `git ls-tree --name-only HEAD ...` shows all three plan files present at `HEAD`.
+- Repo cleanliness check passed: `git status --short --branch` returned only `## main...origin/main` before this QA plan update, meaning coder handoff was clean and in sync with remote. After this QA evidence was added, the only expected local modification is this active cleanup plan awaiting the audit/final documentation pass.
 
 ---
 
 ### Task 4: Audit the cleanup truth
 
-**Bead ID:** `aerobeat-input-camera-tracking-zte4`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`  
+**Bead ID:** `aerobeat-input-camera-tracking-zte4`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`
 **Prompt:** Independently truth-check that the FlowGridOverlay warning cleanup is real and that the repo is no longer dirty from the previously finished plan files. Close the audit only if the warning is actually gone for the targeted tests and the plan-file cleanup is landed truthfully.
 
 **Folders Created/Deleted/Modified:**
@@ -138,25 +146,33 @@ Because this is repo hygiene with validation implications, it should still follo
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-flow-grid-overlay-warning-and-plan-cleanup.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:**
+- Independent audit PASS. Fresh targeted reruns reproduced the three exact cleanup checks with no `FlowGridOverlay`, `Orphans`, leaked `CanvasItem`, or `ObjectDB instances leaked` output:
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=boxing_squat_hover_card_reports_grid_avoidance_truth -gexit` ✅ `1/1 passed`, `Asserts 12`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=boxing_weave_hover_card_reports_grid_avoidance_truth -gexit` ✅ `1/1 passed`, `Asserts 14`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=flow_proving_runtime_config_defaults_to_flow_profile_bundle -gexit` ✅ `1/1 passed`, `Asserts 6`
+- The fix remains narrow and truthful in `REF-03` only. `git diff f0d5edf^ f0d5edf -- .testbed/scripts/proving_harness.gd .testbed/scripts/flow_grid_overlay.gd` shows only the parent-gated/lazy `FlowGridOverlay` creation and `_resolve_flow_grid_overlay_parent()` helper in `proving_harness.gd`; there is no Task 2 diff in `REF-04` (`flow_grid_overlay.gd`).
+- Source truth-check matches the claim: `_ensure_overlay_drawers_ready()` now resolves a real overlay parent first, creates `FlowGridOverlay` only when that parent exists, and reparents it if the preview-presenter overlay layer becomes available later. No suppression hack, fake teardown, or warning-filtering path was added.
+- Dirty-plan cleanup truth also passes. `git show --stat --oneline f0d5edf` includes the two previously dirty finished plan files (`REF-01`, `REF-02`) plus this cleanup plan, and `git branch -r --contains f0d5edf` shows `origin/main`, confirming the cleanup commit is landed/pushed.
+- Current repo cleanliness matches the intended story. `git diff --name-only HEAD` shows only this cleanup plan metadata/finalization pass as modified during the audit. The previously dirty finished plans are no longer causing worktree dirt, and landing this final housekeeping update returns the repo to a fully clean state.
 
 ---
 
 ## Final Results
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** The repo now has a truthful FlowGridOverlay cleanup: script-only harness tests no longer fabricate an unattached overlay node, the targeted warning is gone on fresh reruns, and the previously dirty completed plan files are landed in `origin/main` instead of lingering as local worktree dirt.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-03` changed exactly as the audit called for, `REF-04` remained untouched, `REF-01` and `REF-02` are now landed truthfully, and `REF-05` is clean on fresh targeted validation.
 
 **Commits:**
-- Pending.
+- `f0d5edf` - Fix FlowGridOverlay harness warning seam
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** This warning really was a lifecycle seam, not a runtime-logic bug. Parent-gated lazy creation fixed it honestly, and plan hygiene needs the same audit discipline as code so completed slices do not keep the repo artificially dirty.
 
 ---
 
-*Created on 2026-07-20*
+*Completed on 2026-07-20*
