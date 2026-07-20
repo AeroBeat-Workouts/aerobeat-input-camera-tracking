@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Status:** In Progress
-**Last Updated:** 2026-06-22 23:06 EDT
-**Blocked Reason:** Awaiting Derrick's next bug/feedback slice to continue on the same active plan.
+**Last Updated:** 2026-07-19 21:22 EDT
+**Blocked Reason:** None
 **Agent:** `pico`
 
 ---
@@ -37,6 +37,8 @@ Execution will follow the normal coder → QA → auditor loop. The coder will i
 | `REF-07` | Repo ignore policy baseline | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.gitignore` |
 | `REF-08` | Uploaded screenshot showing over-verbose failed depth thumbnail state overflowing thumbnail area | `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/06/23/image-592e6636.png` |
 | `REF-09` | Uploaded screenshot showing over-verbose boxing gesture inspector depth section running off-screen | `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/06/23/image-44f36ef6.png` |
+| `REF-10` | Uploaded screenshot showing residual depth viewer still visible in boxing proving replay | `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/20/image-b1c177b9.png` |
+| `REF-11` | Boxing tuning/testbed config surfaces Derrick can edit | `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml`, `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.testbed_debug.yaml`, `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.camera_tracking.yaml` |
 
 ---
 
@@ -299,6 +301,77 @@ QA verdict: pass. Residual risk is low and limited to live desktop/editor visual
 **Status:** ✅ Complete
 
 **Results:** Auditor independently truth-checked the boxing gesture inspector simplification against the actual `bc24933` diff in `REF-02`, the current source, the uploaded overflowing inspector screenshot in `REF-09`, the QA probe artifacts (`/home/derrick/.openclaw/workspace/.temp/qa-aerobeat-2gqf-20260623/qa_probe_simple.gd` and `/home/derrick/.openclaw/workspace/.temp/qa-aerobeat-2gqf-20260623/qa_probe_report.json`), and fresh local reruns of both targeted GUT coverage and the QA probe. Audit verdict: pass. Requirement-by-requirement: (1) compact/off-screen cleanup passed — the `PUNCH_REQUIREMENT_ROWS` and `POSE_STRIKE_REQUIREMENT_ROWS` depth section in `REF-02` was reduced from the verbose runtime/config dump shown in `REF-09` to exactly `Depth tuning`, `Depth backend`, `Depth delta threshold`, and `Depth peak threshold`; the fresh probe JSON again showed only those four depth lines and none of the old verbose tokens (`Depth runtime status / stage`, `Depth loader truth`, `Active depth artifact path`, `Depth failure reason`, `Active normalized depth metrics`, `Depth window slices`, `Depth ROI sizes`); (2) only chosen backend plus relevant threshold values passed — `_build_depth_config_row()` now only emits `_compact_depth_backend_label(...)` and `_depth_threshold_compact_text(...)`, and the fresh probe again reported runtime `onnx / depth_anything_v2_small_onnx` plus `min 0.060` / `min 0.040`, and configured hook/uppercut `openvino / midas_openvino_v21_small_256` plus `max 0.030` / `max 0.060`; (3) backend labeling truthfulness passed — `_compact_depth_backend_label()` returns `disabled` when the family config is off, `%s / %s` when runtime `backend_id` and `family_id` are surfaced, and `configured / %s` with the model artifact basename when YAML is enabled but runtime resolution is absent; the fresh QA probe again captured the runtime-resolved and configured-without-runtime cases, and direct helper review confirmed the disabled branch; (4) threshold direction truthfulness passed — `_depth_threshold_direction_label()` returns `min` only for `straight_punch` and `max` for hook/uppercut, and `_depth_threshold_compact_text()` uses that direction with the correct threshold keys; the rerun `compact_depth_backend_and_thresholds` GUT subset passed `1/1` tests with `15` asserts, confirming `min` for straight punch and `max` for hook/uppercut; (5) thumbnail behavior and FPS-corner cleanup remained intact — independent rerun of the `depth_debug` GUT subset passed `9/9` tests with `91` asserts, covering the compact clipped thumbnail failure state, swap/live-texture path, hidden-thumbnail-when-all-depth-disabled gating, focus-family preference, and `Preview %.1f FPS`-only corner label. Residual risk: low and limited to live desktop-rendered popup fit/pixel spacing, because the strongest evidence remains source/diff review plus headless inspector/probe output rather than an authoritative framebuffer screenshot of the final popup.
+
+---
+
+### Task 13: Remove residual boxing depth thumbnail and prune non-pose-threshold residue
+
+**Bead ID:** `aerobeat-input-camera-tracking-jgbf`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-02`, `REF-03`, `REF-10`, `REF-11`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, claim bead `aerobeat-input-camera-tracking-jgbf` with `bd update aerobeat-input-camera-tracking-jgbf --status in_progress --json` when you start. Serve as the coder. Derrick reopened the same active plan with a new bug/cleanup slice. First, remove the residual boxing depth viewer/thumbnail from the proving replay surface so the extra bottom-right depth panel shown in `REF-10` no longer appears during the normal boxing replay/tuning flow unless there is still an explicitly intended truthful opt-in path documented in the current config; verify whether the remaining visibility comes from `assets/boxing.testbed_debug.yaml`, `/.testbed/scripts/boxing_proving_harness.gd`, `/.testbed/scripts/depth_debug_viewer.gd`, or other still-wired defaults, and fix the actual source rather than masking it. Second, do a quick root-level repo audit for scripts/configs/assets/docs that still belong to older non-pose-threshold tracking methods outside the current pose-threshold system, then remove only the clearly stale root-level residue that is no longer part of the approved active contract. Be conservative: if something is still plausibly active, document it instead of deleting it. Record the exact files audited, removed, kept, and why. Update this active plan with actual findings/results. Run the minimum relevant validation/tests you can execute. Commit and push to `main` by default unless blocked. Close the bead with a concrete reason when coder work is complete.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/scripts/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.testbed_debug.yaml`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/flow.gesture_detection.yaml`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/scripts/freeze_boxing_punch_classifier_snapshot.py`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
+
+**Status:** ✅ Complete
+
+**Results:** Root-caused the residual boxing depth panel in `REF-10` to the live tuning config itself, not to a hidden viewer default: `REF-02` and `REF-03` already default `thumbnail_visible` false internally, but `assets/boxing.testbed_debug.yaml` in `REF-11` was still explicitly opting the bottom-right thumbnail on. Fixed the actual source by changing that config opt-in to `thumbnail_visible: false` and clarifying in the YAML comment that the thumbnail is an explicit truthful opt-in only. Updated `test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes` so the live-node assertion now matches the intended default-hidden replay/tuning path while preserving the separate depth-viewer tests that still cover the explicit opt-in path with `thumbnail_visible: true`.
+
+Quick root-level non-pose-threshold residue audit (conservative): audited `assets/boxing.testbed_debug.yaml`, `assets/boxing.gesture_detection.yaml`, `assets/flow.gesture_detection.yaml`, `scripts/boxing_classifier_harness.py`, `scripts/derive_prototype_library_from_fixtures.py`, `scripts/export_boxing_punch_classifier_dataset.py`, `scripts/freeze_boxing_punch_classifier_snapshot.py`, `scripts/run_prototype_matcher_fixture_benchmark.py`, `scripts/train_boxing_punch_mlp_baseline.py`, `scripts/train_boxing_punch_temporal_cnn.py`, `assets/prototype_libraries/`, `docs/baselines/`, and `docs/reviews/`. Findings: kept `assets/boxing.gesture_detection.yaml` because it is the active pose-threshold boxing contract; kept the prototype/classifier benchmarking/training scripts, prototype libraries, and historical docs because they are still explicitly referenced by committed docs/baseline artifacts even though they are outside the active runtime contract; pruned the stale config residue in `assets/flow.gesture_detection.yaml` by removing the old `prototype`/`classifier` placeholder blocks and comments so the root-level flow config now states only the current threshold/disabled contract; removed `scripts/freeze_boxing_punch_classifier_snapshot.py` because it was an unreferenced classifier-era helper with no remaining callers or docs pointing at it.
+
+Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes -gexit` passed (1/1, 16 asserts); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gunit_test_name=test_camera_tracking_config_switches_to_flow_profile_bundle -gexit` passed (1/1, 21 asserts); `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gunit_test_name=test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_paths -gexit` passed (1/1, 74 asserts).
+
+---
+
+### Task 14: QA residual depth-thumbnail removal and repo-residue prune
+
+**Bead ID:** `aerobeat-input-camera-tracking-f7d1`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-02`, `REF-03`, `REF-10`, `REF-11`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, wait until coder bead `aerobeat-input-camera-tracking-jgbf` is complete, then claim bead `aerobeat-input-camera-tracking-f7d1` with `bd update aerobeat-input-camera-tracking-f7d1 --status in_progress --json`. Serve as QA. Verify the residual boxing depth thumbnail/panel shown in `REF-10` is actually gone from the normal replay/tuning surface, and verify the root-level prune only removed clearly stale non-pose-threshold residue while preserving still-active pose-threshold contract files. Record exact verification steps, evidence, any remaining suspicious residue, and whether the tuning config locations in `REF-11` remain truthful. Update the active plan with QA results. Close the bead with a concrete reason when done.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
+
+---
+
+### Task 15: Audit residual depth-thumbnail removal and repo-residue prune
+
+**Bead ID:** `aerobeat-input-camera-tracking-gqcf`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-02`, `REF-03`, `REF-10`, `REF-11`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, wait until QA bead `aerobeat-input-camera-tracking-f7d1` is complete, then claim bead `aerobeat-input-camera-tracking-gqcf` with `bd update aerobeat-input-camera-tracking-gqcf --status in_progress --json`. Serve as auditor. Independently truth-check that the residual boxing depth thumbnail/panel in `REF-10` is removed from the normal replay/tuning experience and that any root-level cleanup only pruned clearly stale non-pose-threshold residue without harming the active pose-threshold system. Use the diff, config truth, coder/QA evidence, and current repo state. If the work passes, close the bead directly with a concrete reason; if not, leave clear gap notes. Update the active plan with the audit outcome.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-22-boxing-and-flow-proving-ui-depth-cleanup.md`
+
+**Status:** ⏳ Pending
+
+**Results:** Pending.
 
 ---
 
