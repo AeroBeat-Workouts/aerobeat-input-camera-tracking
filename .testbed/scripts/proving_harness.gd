@@ -890,14 +890,25 @@ func _playback_controller_step_frames(delta_frames: int) -> Dictionary:
 	}
 
 func _ensure_overlay_drawers_ready() -> void:
+	var overlay_parent := _resolve_flow_grid_overlay_parent()
 	if flow_grid_overlay == null:
-		flow_grid_overlay = FlowGridOverlayScript.new()
-		flow_grid_overlay.name = "FlowGridOverlay"
-		if camera_display != null:
-			camera_display.add_child(flow_grid_overlay)
+		if overlay_parent != null:
+			flow_grid_overlay = FlowGridOverlayScript.new()
+			flow_grid_overlay.name = "FlowGridOverlay"
+			overlay_parent.add_child(flow_grid_overlay)
+	elif overlay_parent != null and flow_grid_overlay.get_parent() != overlay_parent:
+		flow_grid_overlay.reparent(overlay_parent)
 	_configure_overlay_drawer(flow_grid_overlay, FLOW_GRID_OVERLAY_Z_INDEX)
 	_configure_overlay_drawer(landmark_drawer, LANDMARK_DRAWER_Z_INDEX)
 	_configure_overlay_drawer(trail_drawer, TRAIL_DRAWER_Z_INDEX)
+
+func _resolve_flow_grid_overlay_parent() -> Node:
+	var overlay_parent := _resolve_preview_overlay_parent()
+	if overlay_parent != null and is_instance_valid(overlay_parent):
+		return overlay_parent
+	if camera_display != null and is_instance_valid(camera_display):
+		return camera_display
+	return null
 
 func _configure_overlay_drawer(drawer: Control, z_index_value: int) -> void:
 	if drawer == null:

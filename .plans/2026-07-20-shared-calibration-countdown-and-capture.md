@@ -1,8 +1,8 @@
 # AeroBeat Input Camera Tracking — Shared Calibration Countdown + Capture
 
 **Date:** 2026-07-20  
-**Status:** In Progress  
-**Last Updated:** 2026-07-20 07:58 EDT  
+**Status:** Complete  
+**Last Updated:** 2026-07-20 08:12 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -166,9 +166,33 @@ This work is explicitly connected to the broader BeatSaver-conversion architectu
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-shared-calibration-countdown-and-capture.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:**
+- QA completed at the highest-fidelity repo-local level available via headless Godot/GUT runs against the real runtime substrate, provider/singleton wrappers, and the actual Boxing + Flow proving scenes.
+- Validation commands run:
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_aero_camera_tracking.gd -gunit_test_name=calibration -gexit` ✅ passed (8/8, 72 asserts). This covered runtime countdown/session state, readiness truth, successful capture, failure-on-expiry, cancel behavior, plus wrapper forwarding.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=shared_calibration -gexit` ✅ passed (2/2, 64 asserts). This exercised the actual Boxing + Flow proving scenes and confirmed start/cancel routing, 5-second countdown copy, shared T-pose + centering guidance, capture-progress copy, retry messaging, and truthful success/failure/cancelled UI states.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=pose_only_punch_event_still_activates_left_tile_badge -gexit` ✅ passed (1/1). Boxing pose-only contract truth still survives after the calibration changes.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=flow_cell -gexit` ✅ passed (2/2, 24 asserts). Flow nose-anchored 4x3 grid quantization and cell-entry contract truth still survives after calibration changes.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=runtime_config -gexit` ✅ passed (5/5, 21 asserts). Boxing/Flow proving harness runtime config selection still matches the post-pivot contract after the calibration UI additions.
+- Direct source/scene truth inspection completed for `REF-03`, `REF-04`, `REF-05`, `REF-06`, `src/providers/camera_tracking_provider.gd`, `src/AeroCameraTracking.gd`, and `.testbed/scripts/boxing_proving_harness.gd`:
+  - `REF-04` keeps the real calibration logic centralized in the substrate: shared session states `countdown`, `capture_pending`, `capturing`, `succeeded`, `failed`, `cancelled`; a 5000 ms countdown; capture-window gating; centering + T-pose readiness; baseline commit only while actively capturing; and shared baseline metadata including `capture_source = "calibration_session"` on success.
+  - `REF-03` owns the athlete-facing proving UX only: start/retry button, cancel button, countdown/status/instruction labels, shared event reflection, and no duplicate timing/readiness logic.
+  - `src/providers/camera_tracking_provider.gd` and `src/AeroCameraTracking.gd` remain thin forwarding layers for `start_athlete_calibration`, `request_athlete_recalibration`, `cancel_athlete_calibration`, and `get_calibration_session`.
+  - `.testbed/scripts/boxing_proving_harness.gd` still extends `res://scripts/proving_harness.gd`; calibration ownership did not fork into Boxing-specific script logic.
+  - `REF-05` and `REF-06` only contain calibration panel nodes/default copy/styling placement for the shared harness surface; the scenes do not own countdown timing, pose-readiness heuristics, or capture-state transitions.
+- Required QA checks passed cleanly:
+  - starting calibration from the proving scenes/harness ✅
+  - 5-second countdown visibility/truth ✅
+  - centered-in-camera + T-pose guidance visibility/truth ✅
+  - shared runtime calibration state transitions ✅
+  - successful capture path ✅
+  - cancel path ✅
+  - failure/retry path ✅
+  - preservation of current Boxing + Flow contract truth after calibration ✅
+  - scene files remain mostly placement/styling while runtime/proving harness own real logic ✅
+- No new blocker found in this QA slice.
 
 ---
 
@@ -186,24 +210,35 @@ This work is explicitly connected to the broader BeatSaver-conversion architectu
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-shared-calibration-countdown-and-capture.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:**
+- **PASS.** Independent audit against the current repo state, Task 2 commit `dc5d10b`, Task 3 commit `4c20ded`, the prior architecture-pivot cleanup plan in `REF-02`, and fresh validation output confirms the calibration lane now matches the intended shared Boxing + Flow proving story.
+- **Shared contract really is shared across Boxing + Flow:** the session state machine lives centrally in `REF-04` (`src/detectors/pose_detector_substrate.gd`) with one runtime-owned contract: `idle`, `countdown`, `capture_pending`, `capturing`, `succeeded`, `failed`, `cancelled`; shared readiness/instruction payloads; one shared baseline payload; and shared capture metadata (`captured_at_ms`, `capture_source`). Provider/singleton wrappers in `src/providers/camera_tracking_provider.gd` and `src/AeroCameraTracking.gd` remain thin pass-throughs only, which prevents per-mode drift.
+- **No regression to divergent gameplay-specific calibration semantics:** Boxing-specific code still inherits from the shared proving harness (`.testbed/scripts/boxing_proving_harness.gd` extends `res://scripts/proving_harness.gd`) and does not fork countdown, readiness, or capture rules. Flow proving uses the same shared harness directly. The only scene changes in `REF-05` / `REF-06` are athlete-calibration panel placement/styling nodes, while the runtime/session semantics stay shared in `REF-03` / `REF-04`.
+- **Athlete-facing proving UX is present and truthful:** both proving scenes now expose the same repo-visible calibration affordances: Start/Retry/Recalibrate button states, cancel while active, 5-second countdown text, shared T-pose + centering checklist, capture progress text, and truthful success/failure/cancelled messaging. `REF-03` renders runtime-owned state via `_refresh_calibration_flow_ui()` rather than inventing scene-local timers or fake completion states.
+- **Proving harness/runtime own the logic; scenes are mostly placement/styling:** `REF-03` owns button wiring, state refresh, event logging, and human-readable status strings; `REF-04` owns readiness heuristics, countdown timing, capture-window timing, baseline reset, and capture commit. `boxing_proving.tscn` and `flow_proving.tscn` only add the visible panel nodes and copy surfaces, which matches the ownership split required by Task 1.
+- **Countdown/T-pose capture is now the intended proving-scene path in repo-visible truth:** the old proving-harness instant-status copy (`Athlete baseline recalibration requested`) is gone. Fresh grep over `.testbed/` + `src/` only found the backward-compatible wrapper method names (`request_athlete_recalibration`) plus the new proving-scene UI copy (`Start Calibration`, `Recalibrate Athlete`) and calibration-session tests; no remaining proving-scene string or code path advertises the old one-press/instant-reset UX as the athlete-facing story.
+- **Fresh validation evidence reproduced during audit:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_aero_camera_tracking.gd -gunit_test_name=calibration -gexit` ✅ passed (`8/8`, `72` asserts).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=shared_calibration -gexit` ✅ passed (`2/2`).
+- Minor audit note, not a blocker: repo execution truth passes, but workflow bookkeeping is stale because the QA bead `aerobeat-input-camera-tracking-naxc` still shows `in_progress` in Beads metadata. That does not invalidate the implementation, but it should be cleaned up by the orchestrator so plan/Beads state matches the passing repo state.
 
 ---
 
 ## Final Results
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** The repo now presents one shared athlete calibration story for Boxing + Flow: a runtime-owned 5-second countdown into centered T-pose capture, one shared baseline payload for both gameplay styles, and proving scenes that surface truthful start/cancel/retry/progress/result UX without owning calibration semantics themselves.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-02` remains satisfied: Flow still presents the direct calibrated 4x3 direction and Boxing still stays on the simplified pose-threshold path, while calibration is now shared instead of drifting back into gameplay-specific meanings. `REF-03` through `REF-08` now align on the same repo-visible calibration contract and proving behavior.
 
 **Commits:**
-- Pending.
+- `dc5d10b` - Add shared calibration session runtime contract
+- `4c20ded` - Wire proving-scene calibration countdown UX
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** When the runtime contract already centralizes state, the safest proving-scene change is to let scenes surface that truth instead of adding scene-local timers. Also, Beads/plan bookkeeping can still drift even when the code and tests pass, so the audit needs to record that administrative gap explicitly.
 
 ---
 

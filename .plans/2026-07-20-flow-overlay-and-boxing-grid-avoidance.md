@@ -1,8 +1,8 @@
 # AeroBeat Input Camera Tracking — Flow Overlay + Boxing Grid Avoidance Pivot
 
 **Date:** 2026-07-20  
-**Status:** In Progress  
-**Last Updated:** 2026-07-20 09:40 EDT
+**Status:** Complete  
+**Last Updated:** 2026-07-20 09:54 EDT
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -275,9 +275,25 @@ Because this work mixes scene/UI truth, config cleanup, and gameplay-contract pi
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-flow-overlay-and-boxing-grid-avoidance.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA passed for the approved slice using the highest-fidelity repo-local checks available: targeted GUT coverage for detector/config/proving-harness seams plus direct scene/config/runtime-source inspection. Evidence summary:
+- Shared overlay + calibration anchor truth: `test_proving_scenes_surface_shared_calibration_flow_and_route_start_cancel` passed (1/1) and `test_proving_scenes_share_grid_truth_panel_and_preview_overlay` passed (1/1), confirming both proving scenes expose shared athlete calibration controls, the Flow overlay is parented into the preview presenter overlay layer, and the overlay snapshot reports the canonical calibrated `4 x 3` / `12-cell` grid instead of scene-local math.
+- Shared nose / left-wrist / right-wrist occupancy + 8-way direction truth: `test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth` plus the full `test_pose_detector_substrate.gd` run (73/73 passed) confirmed detector-owned `gesture_debug.flow.tracked_landmarks.nose|left_wrist|right_wrist` surfaces each carry live `current_cell`, `current_direction`, `landmark_key`, confidence, and the shared `grid_anchor`. Direct harness inspection verified `_build_grid_truth_text()` now formats those exact `Nose`, `Left Wrist`, and `Right Wrist` sections from detector-owned truth, while `_refresh_flow_ring_board()` still drives the chart panels from the same current cell/direction state.
+- Flow squat removal: `test_flow_profile_bundle_removes_squat_public_surfaces` passed inside the 73/73 detector run; `test_camera_tracking_config_profiles.gd` passed 4/4 and asserts the Flow bundle exposes `flow.backend == threshold` with no `squat` family. Direct config/doc checks verified `assets/flow.gesture_detection.yaml` contains only `flow` + disabled `straight_punch`, `pose_detector_substrate.gd` gates squat publication with `_supports_squat_surface()`, and `docs/cross-repo-config-contract.md` now documents Flow as a `flow` family rather than a squat contract surface.
+- Boxing squat/weave grid-avoidance pivot: detector tests `test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth` and `test_weave_uses_nose_grid_avoidance_and_surfaces_debug_truth` passed inside the 73/73 detector run, proving Boxing squat/weave now resolve from calibrated nose-cell obstacle avoidance and surface occupied rows/columns/cells truthfully. `test_camera_tracking_config_profiles.gd` also passed 4/4 and asserts Boxing `squat.backend == grid_avoidance`, `weave.backend == grid_avoidance`, while hook/uppercut remain `threshold` with the shorter `window_ms` path and no retired `wrist_velocity_window_ms` or `depth` config expectations.
+- Boxing hook/uppercut preservation while overlay/instrumentation lands: detector tests `test_hook_uses_pose_primary_state_machine_and_debug_surfaces` and `test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth` passed inside the 73/73 detector run. Direct `boxing_proving_harness.gd` inspection confirmed the hover-card / inspector path still reads `hook` and `uppercut` from threshold config and preview-space pose-strike debug truth, while squat/weave hover cards now explicitly read calibrated grid-avoidance debug payloads.
+- Scene/layout vs runtime ownership: direct `flow_proving.tscn` / `boxing_proving.tscn` inspection shows the scenes are now mostly layout/styling containers (`AthleteCalibrationPanel`, `CameraPanel`, `GridTruthLabel`, `BoardGrid`, direction/placement cards), while shared logic lives in `.testbed/scripts/proving_harness.gd`, `.testbed/scripts/boxing_proving_harness.gd`, `.testbed/scripts/flow_grid_overlay.gd`, and detector/runtime/config code under `src/`.
+
+Repo-local QA command outcomes:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → passed `77/77`.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=proving_scenes_surface_shared_calibration_flow_and_route_start_cancel -gexit` → passed `1/1`.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=proving_scenes_share_grid_truth_panel_and_preview_overlay -gexit` → passed `1/1`.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=boxing_squat_hover_card_reports_grid_avoidance_truth -gexit` → passed `1/1` with a pre-existing `FlowGridOverlay` orphan/resource-leak warning after success.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=boxing_weave_hover_card_reports_grid_avoidance_truth -gexit` → passed `1/1` with the same pre-existing `FlowGridOverlay` orphan/resource-leak warning after success.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=flow_proving_runtime_config_defaults_to_flow_profile_bundle -gexit` → passed `1/1` with the same pre-existing `FlowGridOverlay` orphan/resource-leak warning after success.
+
+QA conclusion: the approved Flow overlay + Flow squat removal + Boxing nose-grid avoidance pivot passes cleanly for the required product slice. One follow-up hygiene note remains for audit/coder awareness: isolated harness tests still emit a pre-existing `FlowGridOverlay` orphan / leaked CanvasItem resource warning even when the assertions pass, but that did not block or contradict the requested architectural truth checks.
 
 ---
 
@@ -295,25 +311,39 @@ Because this work mixes scene/UI truth, config cleanup, and gameplay-contract pi
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-flow-overlay-and-boxing-grid-avoidance.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Audit passed. Independent truth-check against diff, current repo state, and fresh validation confirms the repo-visible architecture now matches the approved Flow overlay + Boxing nose-grid avoidance pivot.
+
+Audit evidence summary:
+- **Calibrated 4x3 direction is the shared repo-visible truth across runtime, scenes, config, tests, and docs (`REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-07`, `REF-08`).** Runtime still defines `FLOW_GRID_COLUMNS = 4` / `FLOW_GRID_ROWS = 3`, computes one canonical grid in `_build_flow_grid_debug()`, and exposes detector-owned `tracked_landmarks.nose|left_wrist|right_wrist` under `gesture_debug.flow`. Fresh detector/config validation passed with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` → `77/77` passed. `test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth()` asserts `columns == 4`, `rows == 3`, `cell_rects.size() == 12`, and occupied-cell truth for nose and both wrists. `docs/cross-repo-config-contract.md` now documents the same Flow/Boxing contract shape.
+- **Shared thin-stroke overlay plus shared nose/wrist occupancy + 8-way direction UI are now true in both proving scenes (`REF-03`, `REF-04`, `REF-05`, `REF-06`).** `flow_grid_overlay.gd` is a dedicated shared overlay drawer; `proving_harness.gd` owns `_refresh_shared_flow_grid_truth_surfaces()`, `_refresh_flow_grid_overlay()`, and `_build_grid_truth_text()`; `flow_proving.tscn` and `boxing_proving.tscn` only declare layout containers and labels/cards. Fresh proving-scene validation passed with `... -gunit_test_name=proving_scenes_share_grid_truth_panel_and_preview_overlay -gexit` → `1/1` passed, asserting both scenes expose `GridTruthLabel`, attach `FlowGridOverlay` to the preview presenter overlay layer, and report the canonical `4 x 3` / `12-cell` snapshot. The same test also asserts `Nose`, `Left Wrist`, and `Right Wrist` text appears in both scenes.
+- **Flow squat is gone as current truth (`REF-06`, `REF-07`, `REF-08`).** `assets/flow.gesture_detection.yaml` now contains `flow` plus disabled `straight_punch`, with no `squat` family. Runtime gates squat public truth through `_supports_squat_surface()` so Flow no longer publishes `gesture_debug.squat` or public squat state. Detector/config validation includes `test_flow_profile_bundle_removes_squat_public_surfaces()` and the Flow profile bundle assertions inside `test_camera_tracking_config_profiles.gd`; both were covered by the fresh `77/77` passing run.
+- **Boxing squat/weave are explicitly nose-grid avoidance mechanics, not retained threshold gestures (`REF-05`, `REF-06`, `REF-08`, `REF-09`).** `assets/boxing.gesture_detection.yaml` now sets `squat.backend: grid_avoidance` with the top row obstacle and `weave.backend: grid_avoidance` with left/right column obstacles. Runtime `_process_squat()` and `_process_weave()` now call `_build_grid_avoidance_debug_payload()` and publish occupied rows/columns/cells, `nose_in_blocked_region`, and `avoidance_clear` truth. Fresh detector coverage passed for `test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth()` and `test_weave_uses_nose_grid_avoidance_and_surfaces_debug_truth()` inside the `77/77` run. Fresh harness validation also passed with `... -gunit_test_name=boxing_squat_hover_card_reports_grid_avoidance_truth -gexit` and `... -gunit_test_name=boxing_weave_hover_card_reports_grid_avoidance_truth -gexit`, confirming the proving UI now teaches blocked rows/columns/cells and nose occupied-cell truth rather than body-threshold numbers.
+- **Boxing hook/uppercut still preserve the intended gesture path (`REF-05`, `REF-06`, `REF-08`).** Boxing config keeps `hook.backend: threshold` and `uppercut.backend: threshold`. Runtime still routes those families through `_process_hook()` / `_process_uppercut()` and pose-strike debug state, while loader sanitization in `profile_config_loader.gd` preserves threshold handling for those punch families. Fresh detector validation passed for `test_hook_uses_pose_primary_state_machine_and_debug_surfaces()` and `test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth()` inside the `77/77` run, confirming the overlay/avoidance pivot did not replace hook/uppercut with grid logic.
+- **Scene files are now mostly layout/styling while runtime/harness own the logic (`REF-03`, `REF-04`, `REF-05`, `REF-06`).** Direct scene inspection shows `flow_proving.tscn` binds `res://scripts/proving_harness.gd` and `boxing_proving.tscn` binds `res://scripts/boxing_proving_harness.gd`, with scene nodes primarily declaring panels, labels, charts, and camera containers. The main logic lives in shared/runtime scripts: `src/detectors/pose_detector_substrate.gd`, `.testbed/scripts/proving_harness.gd`, `.testbed/scripts/boxing_proving_harness.gd`, and `.testbed/scripts/flow_grid_overlay.gd`.
+- **Diff evidence matches the claimed pivot.** `git log --oneline -5` shows the exact landing sequence: `d422283 Add shared proving grid overlay and occupancy UI`, `51ce670 Remove stale Flow squat contract surfaces`, and `c0fba9d Pivot boxing squat and weave to nose grid avoidance`. `git diff --stat HEAD~5..HEAD -- . ':(exclude).plans'` shows the work concentrated in runtime/config/proving harness/tests/docs rather than scene-local one-off logic.
+
+Audit note / non-blocking hygiene debt:
+- Targeted harness tests still emit a pre-existing `FlowGridOverlay` orphan / leaked `CanvasItem` resource warning after passing (`boxing_squat_hover_card_reports_grid_avoidance_truth`, `boxing_weave_hover_card_reports_grid_avoidance_truth`, and `flow_proving_runtime_config_defaults_to_flow_profile_bundle`). This did **not** contradict the architectural truth under audit, so it is recorded as follow-up cleanup debt rather than an audit blocker.
 
 ---
 
 ## Final Results
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** The repo now visibly teaches one shared calibrated 4x3 truth across Flow and Boxing: both proving scenes render the same thin-stroke overlay over video, both expose shared `Nose` / `Left Wrist` / `Right Wrist` occupied-cell + 8-way direction instrumentation, Flow no longer carries squat as a live contract surface, and Boxing squat/weave now resolve through calibrated nose-grid obstacle avoidance while hook/uppercut stay on the intended threshold gesture path.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-03` through `REF-08` now agree on the landed architecture, and the Boxing avoidance interpretation also matches the decision record in `REF-09`. No blocking deviation found in the audited slice.
 
 **Commits:**
-- Pending.
+- `d422283` - Add shared proving grid overlay and occupancy UI
+- `51ce670` - Remove stale Flow squat contract surfaces
+- `c0fba9d` - Pivot boxing squat and weave to nose grid avoidance
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** The architectural pivot landed cleanly because the shared runtime/harness seam became the single source of truth. The remaining `FlowGridOverlay` orphan/leak warning is real hygiene debt, but it does not currently falsify the repo-visible product contract.
 
 ---
 
-*Created on 2026-07-20*
+*Completed on 2026-07-20*
