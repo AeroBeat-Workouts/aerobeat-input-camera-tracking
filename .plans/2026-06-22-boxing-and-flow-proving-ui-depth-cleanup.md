@@ -469,7 +469,7 @@ QA verdict: pass. The default boxing replay/tuning config is now truthful to Der
 - `16ac872` - Compact failed thumbnail fallback in proving UI
 - `bc24933` - Compact boxing inspector depth tuning
 - `9d7438a` - Hide boxing depth thumbnail by default
-- `7962e3b` - Purge non-pose threshold tracking artifacts
+- `79c9e4f` - Purge non-pose threshold tracking artifacts
 
 **Lessons Learned:** Once Derrick changed policy from “keep history around” to “history is noise,” the truthful cleanup boundary shifted from conservative documentation retention to aggressive removal of contract lies, dead overlays, and obsolete artifact piles. Focused `-gunit_test_name` validation was the safest way to prove the touched contract/proving surfaces still worked without getting blocked by unrelated long-running depth-runtime coverage.
 
