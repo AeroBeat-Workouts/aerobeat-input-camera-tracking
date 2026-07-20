@@ -22,17 +22,18 @@ func test_builds_session_baseline_after_stable_frames() -> void:
 	assert_true(is_equal_approx(float(baseline.get("shoulder_width", 0.0)), 0.20))
 	assert_true(is_equal_approx(float(baseline.get("torso_height", 0.0)), 0.30))
 
-func test_boxing_profile_bundle_keeps_guard_squat_and_weave_threshold_surfaces_active() -> void:
+func test_boxing_profile_bundle_keeps_guard_threshold_and_grid_avoidance_surfaces_active() -> void:
 	var bundle: Dictionary = config.get_selected_profile_bundle()
 	assert_true(bool(bundle.get("ok", false)))
+	config.gesture_profile_document = bundle.get("gesture_detection", {})
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
 	var gesture_debug: Dictionary = state.get("gesture_debug", {})
 	assert_eq(String(gesture_debug.get("guard", {}).get("backend", "")), "threshold")
 	assert_true(bool(gesture_debug.get("guard", {}).get("enabled", false)))
-	assert_eq(String(gesture_debug.get("squat", {}).get("backend", "")), "threshold")
+	assert_eq(String(gesture_debug.get("squat", {}).get("backend", "")), "grid_avoidance")
 	assert_true(bool(gesture_debug.get("squat", {}).get("enabled", false)))
-	assert_eq(String(gesture_debug.get("weave", {}).get("backend", "")), "threshold")
+	assert_eq(String(gesture_debug.get("weave", {}).get("backend", "")), "grid_avoidance")
 	assert_true(bool(gesture_debug.get("weave", {}).get("enabled", false)))
 
 func test_flow_profile_bundle_removes_squat_public_surfaces() -> void:
@@ -1612,53 +1613,91 @@ func test_cancel_athlete_recalibration_keeps_runtime_uncalibrated_until_retry() 
 		state = substrate.process_landmarks(_make_pose_frame(), 6100 + idx * 16)
 	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
 
-func test_weave_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
+func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	config.gesture_profile_document = {
-		"weave": {
-			"enabled": true,
-			"thresholds": {
-				"enter_head_lateral_offset_min": 0.28,
-				"enter_relative_head_hip_offset_min": 0.10,
-				"enter_head_drop_ratio_min": 0.04,
-				"exit_head_lateral_offset_max": 0.10,
-				"exit_relative_head_hip_offset_max": 0.06,
+		"squat": {
+			"backend": "grid_avoidance",
+			"grid_avoidance": {
+				"obstacle": {
+					"label": "top_row",
+					"occupied_rows": [0],
+					"occupied_cells": [0, 1, 2, 3],
+				}
 			}
 		}
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 
+	var blocked_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.50, "y": 0.84},
+	}), 1200)
+	assert_false(_event_names(blocked_state.get("events", [])).has("squat_start"))
+	var squat_debug: Dictionary = blocked_state.get("gesture_debug", {}).get("squat", {})
+	assert_eq(String(squat_debug.get("backend", "")), "grid_avoidance")
+	assert_false(bool(squat_debug.get("state", true)))
+	assert_eq(int(squat_debug.get("current_cell", -1)), 2)
+	assert_eq(squat_debug.get("occupied_cells", []), [0, 1, 2, 3])
+	assert_true(bool(squat_debug.get("nose_in_blocked_region", false)))
+	assert_false(bool(squat_debug.get("avoidance_clear", true)))
+
+	var clear_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.50, "y": 0.72},
+	}), 1300)
+	assert_true(_event_names(clear_state.get("events", [])).has("squat_start"))
+	squat_debug = clear_state.get("gesture_debug", {}).get("squat", {})
+	assert_true(bool(squat_debug.get("state", false)))
+	assert_eq(int(squat_debug.get("current_cell", -1)), 6)
+	assert_false(bool(squat_debug.get("nose_in_blocked_region", true)))
+	assert_true(bool(squat_debug.get("avoidance_clear", false)))
+
+func test_weave_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
+	config.gesture_profile_document = {
+		"weave": {
+			"backend": "grid_avoidance",
+			"grid_avoidance": {
+				"left_obstacle": {
+					"label": "left_columns",
+					"occupied_columns": [0, 1],
+					"occupied_cells": [0, 1, 4, 5, 8, 9],
+				},
+				"right_obstacle": {
+					"label": "right_columns",
+					"occupied_columns": [2, 3],
+					"occupied_cells": [2, 3, 6, 7, 10, 11],
+				},
+			}
+		}
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+
+	var blocked_left_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.45, "y": 0.72},
+	}), 1100)
+	assert_false(_event_names(blocked_left_state.get("events", [])).has("weave_left_start"))
 	var weave_left_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.84},
-		PoseLandmarkIds.LEFT_HIP: {"x": 0.42, "y": 0.46},
-		PoseLandmarkIds.RIGHT_HIP: {"x": 0.58, "y": 0.46},
+		PoseLandmarkIds.NOSE: {"x": 0.56, "y": 0.72},
 	}), 1200)
 	assert_true(_event_names(weave_left_state.get("events", [])).has("weave_left_start"))
 	var weave_debug: Dictionary = weave_left_state.get("gesture_debug", {}).get("weave", {})
+	assert_eq(String(weave_debug.get("backend", "")), "grid_avoidance")
 	assert_eq(String(weave_debug.get("state", "")), "left")
-	assert_true(is_equal_approx(float(weave_debug.get("enter_head_lateral_offset_min", 0.0)), 0.28))
-	assert_true(is_equal_approx(float(weave_debug.get("enter_relative_head_hip_offset_min", 0.0)), 0.10))
-	assert_true(is_equal_approx(float(weave_debug.get("enter_head_drop_ratio_min", 0.0)), 0.04))
-	assert_true(is_equal_approx(float(weave_debug.get("exit_head_lateral_offset_max", 0.0)), 0.10))
-	assert_true(is_equal_approx(float(weave_debug.get("exit_relative_head_hip_offset_max", 0.0)), 0.06))
-	assert_true(float(weave_debug.get("head_lateral_offset", 0.0)) > 0.0)
-	assert_true(absf(float(weave_debug.get("hip_lateral_offset", 0.0))) < float(weave_debug.get("enter_head_lateral_offset_min", 0.0)))
-	assert_true(float(weave_debug.get("relative_head_hip_offset", 0.0)) > 0.0)
-	assert_true(float(weave_debug.get("head_drop_ratio", 0.0)) >= float(weave_debug.get("enter_head_drop_ratio_min", 0.0)))
+	assert_eq(int(weave_debug.get("current_cell", -1)), 6)
 	assert_true(bool(weave_debug.get("left_candidate", false)))
 	assert_false(bool(weave_debug.get("right_candidate", true)))
 	assert_false(bool(weave_debug.get("neutral_candidate", true)))
-	assert_true(bool(weave_debug.get("head_offset_left_ready", false)))
-	assert_true(bool(weave_debug.get("relative_offset_left_ready", false)))
-	assert_true(bool(weave_debug.get("head_drop_ready", false)))
+	assert_eq(_weave_obstacle_cells(weave_debug, "left_obstacle"), [0, 1, 4, 5, 8, 9])
+	assert_true(bool(_weave_obstacle_debug(weave_debug, "left_obstacle").get("avoidance_clear", false)))
+	assert_true(bool(_weave_obstacle_debug(weave_debug, "right_obstacle").get("nose_in_blocked_region", false)))
 
 	var weave_end_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.49, "y": 0.80},
+		PoseLandmarkIds.NOSE: {"x": 0.45, "y": 0.72},
 	}), 1300)
 	assert_true(_event_names(weave_end_state.get("events", [])).has("weave_left_end"))
 	weave_debug = weave_end_state.get("gesture_debug", {}).get("weave", {})
-	assert_eq(String(weave_debug.get("state", "")), "inactive")
-	assert_true(bool(weave_debug.get("neutral_candidate", false)))
+	assert_eq(String(weave_debug.get("state", "")), "right")
+	assert_false(bool(weave_debug.get("neutral_candidate", true)))
 
 func test_guard_no_longer_uses_old_elbow_shoulder_head_composite_rule() -> void:
 	_calibrate_stance()
@@ -1695,14 +1734,18 @@ func test_guard_requires_both_wrists_to_stay_near_nose() -> void:
 	assert_false(bool(guard_debug.get("candidate", true)))
 	assert_true(float(guard_debug.get("left_wrist_nose_distance", 0.0)) > float(guard_debug.get("max_wrist_nose_distance", 0.0)))
 
-func test_weave_remains_active_only_while_live_weave_criteria_still_pass() -> void:
+func test_weave_remains_active_only_while_nose_stays_outside_the_blocked_columns() -> void:
 	_calibrate_stance()
+	var blocked_left_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.45, "y": 0.72},
+	}), 1100)
+	assert_false(_event_names(blocked_left_state.get("events", [])).has("weave_left_start"))
 	var weave_left_start_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.57, "y": 0.85},
+		PoseLandmarkIds.NOSE: {"x": 0.56, "y": 0.72},
 	}), 1200)
 	assert_true(_event_names(weave_left_start_state.get("events", [])).has("weave_left_start"))
 	var held_weave_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.86},
+		PoseLandmarkIds.NOSE: {"x": 0.60, "y": 0.72},
 	}), 1300)
 	assert_false(_event_names(held_weave_state.get("events", [])).has("weave_left_start"))
 	assert_false(_event_names(held_weave_state.get("events", [])).has("weave_left_end"))
@@ -1710,7 +1753,7 @@ func test_weave_remains_active_only_while_live_weave_criteria_still_pass() -> vo
 	assert_eq(String(held_weave_debug.get("state", "")), "left")
 	assert_true(bool(held_weave_debug.get("left_candidate", false)))
 	var weave_end_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.53, "y": 0.80},
+		PoseLandmarkIds.NOSE: {"x": 0.45, "y": 0.72},
 	}), 1400)
 	assert_true(_event_names(weave_end_state.get("events", [])).has("weave_left_end"))
 
@@ -1808,6 +1851,12 @@ func test_disabled_straight_family_suppresses_punch_events_while_threshold_famil
 	var punch_detection_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
 	assert_eq(String(punch_detection_debug.get("straight_backend", "")), "disabled")
 	assert_true(bool(punch_detection_debug.get("threshold_enabled", false)))
+
+func _weave_obstacle_debug(weave_debug: Dictionary, key: String) -> Dictionary:
+	return weave_debug.get(key, {}) if weave_debug.get(key, {}) is Dictionary else {}
+
+func _weave_obstacle_cells(weave_debug: Dictionary, key: String) -> Array:
+	return _weave_obstacle_debug(weave_debug, key).get("occupied_cells", []) as Array
 
 func _calibrate_stance() -> void:
 	for idx in range(5):

@@ -331,51 +331,48 @@ const SQUAT_REQUIREMENT_ROWS := [
 		"row_kind": "info",
 	},
 	{
+		"id": "current_cell",
+		"label": "Nose occupied cell",
+		"row_kind": "info",
+	},
+	{
+		"id": "nose_tracked",
+		"label": "Nose tracked",
+		"row_kind": "info",
+	},
+	{
+		"id": "obstacle_section",
+		"label": "Top-row obstacle",
+		"row_kind": "section",
+	},
+	{
+		"id": "occupied_rows",
+		"label": "Blocked rows",
+		"row_kind": "info",
+	},
+	{
+		"id": "occupied_cells",
+		"label": "Blocked cells",
+		"row_kind": "info",
+	},
+	{
+		"id": "nose_in_blocked_region",
+		"label": "Nose in blocked region",
+		"row_kind": "info",
+	},
+	{
+		"id": "avoidance_section",
+		"label": "Avoidance truth",
+		"row_kind": "section",
+	},
+	{
+		"id": "avoidance_clear",
+		"label": "Obstacle avoided",
+		"row_kind": "info",
+	},
+	{
 		"id": "calibration_ready",
 		"label": "Calibration ready",
-		"row_kind": "info",
-	},
-	{
-		"id": "calibration_sample_frames",
-		"label": "Calibration sample frames",
-		"row_kind": "info",
-	},
-	{
-		"id": "threshold_section",
-		"label": "Calibrated torso-height thresholds",
-		"row_kind": "section",
-	},
-	{
-		"id": "enter_height_ratio_max",
-		"label": "Squat enter height ratio <= {threshold}",
-	},
-	{
-		"id": "exit_height_ratio_min",
-		"label": "Squat exit height ratio >= {threshold}",
-	},
-	{
-		"id": "live_section",
-		"label": "Live measurements",
-		"row_kind": "section",
-	},
-	{
-		"id": "height_ratio",
-		"label": "Live torso / calibrated torso",
-		"row_kind": "info",
-	},
-	{
-		"id": "squat_depth",
-		"label": "Squat depth",
-		"row_kind": "info",
-	},
-	{
-		"id": "height_state",
-		"label": "Height state",
-		"row_kind": "info",
-	},
-	{
-		"id": "torso_height_pair",
-		"label": "Torso height (live / baseline)",
 		"row_kind": "info",
 	},
 ]
@@ -391,68 +388,53 @@ const WEAVE_REQUIREMENT_ROWS := [
 		"row_kind": "info",
 	},
 	{
-		"id": "left_candidate",
-		"label": "Left weave candidate",
+		"id": "current_cell",
+		"label": "Nose occupied cell",
 		"row_kind": "info",
 	},
 	{
-		"id": "right_candidate",
-		"label": "Right weave candidate",
+		"id": "nose_tracked",
+		"label": "Nose tracked",
 		"row_kind": "info",
 	},
 	{
-		"id": "neutral_candidate",
-		"label": "Neutral release candidate",
-		"row_kind": "info",
-	},
-	{
-		"id": "threshold_section",
-		"label": "Pose-only thresholds",
+		"id": "left_section",
+		"label": "Left-side obstacle",
 		"row_kind": "section",
 	},
 	{
-		"id": "enter_head_lateral_offset_min",
-		"label": "Head lateral offset magnitude >= {threshold}",
+		"id": "left_occupied_columns",
+		"label": "Blocked columns",
+		"row_kind": "info",
 	},
 	{
-		"id": "enter_relative_head_hip_offset_min",
-		"label": "Head-vs-hip offset magnitude >= {threshold}",
+		"id": "left_occupied_cells",
+		"label": "Blocked cells",
+		"row_kind": "info",
 	},
 	{
-		"id": "enter_head_drop_ratio_min",
-		"label": "Head drop ratio >= {threshold}",
+		"id": "left_avoidance_clear",
+		"label": "Left obstacle avoided",
+		"row_kind": "info",
 	},
 	{
-		"id": "exit_head_lateral_offset_max",
-		"label": "Neutral head lateral offset magnitude <= {threshold}",
-	},
-	{
-		"id": "exit_relative_head_hip_offset_max",
-		"label": "Neutral head-vs-hip offset magnitude <= {threshold}",
-	},
-	{
-		"id": "live_section",
-		"label": "Live measurements",
+		"id": "right_section",
+		"label": "Right-side obstacle",
 		"row_kind": "section",
 	},
 	{
-		"id": "head_lateral_offset",
-		"label": "Head lateral offset",
+		"id": "right_occupied_columns",
+		"label": "Blocked columns",
 		"row_kind": "info",
 	},
 	{
-		"id": "hip_lateral_offset",
-		"label": "Hip lateral offset",
+		"id": "right_occupied_cells",
+		"label": "Blocked cells",
 		"row_kind": "info",
 	},
 	{
-		"id": "relative_head_hip_offset",
-		"label": "Head-vs-hip lateral offset",
-		"row_kind": "info",
-	},
-	{
-		"id": "head_drop_ratio",
-		"label": "Head drop ratio",
+		"id": "right_avoidance_clear",
+		"label": "Right obstacle avoided",
 		"row_kind": "info",
 	},
 ]
@@ -1561,7 +1543,7 @@ func _build_squat_hover_card_model(spec: Dictionary) -> Dictionary:
 	return {
 		"title": spec.get("title", "Squat"),
 		"rows": rows,
-		"footer": spec.get("footer", "Live values come from the calibrated torso-height squat detector."),
+		"footer": spec.get("footer", "Live values come from the calibrated nose-grid top-row avoidance detector."),
 	}
 
 func _build_weave_hover_card_model(spec: Dictionary) -> Dictionary:
@@ -1575,7 +1557,7 @@ func _build_weave_hover_card_model(spec: Dictionary) -> Dictionary:
 	return {
 		"title": spec.get("title", "Weave"),
 		"rows": rows,
-		"footer": spec.get("footer", "Live values come from the pose-only weave detector."),
+		"footer": spec.get("footer", "Live values come from the calibrated nose-grid side-obstacle avoidance detector."),
 	}
 
 func _boxing_reference_time_ms() -> int:
@@ -1586,45 +1568,36 @@ func _build_squat_requirement_row(row_spec: Dictionary, squat_debug: Dictionary)
 	var row_id := String(row_spec.get("id", ""))
 	var passed := false
 	var current_text := ""
-	var threshold_text := ""
-	var state_active := bool(squat_debug.get("state", false))
-	var height_ratio := float(squat_debug.get("height_ratio", 1.0))
 	match row_id:
-		"state_section", "threshold_section", "live_section":
+		"state_section", "obstacle_section", "avoidance_section":
 			current_text = ""
-			passed = false
 		"current_state":
-			current_text = "active" if state_active else "inactive"
-			passed = state_active
+			passed = bool(squat_debug.get("state", false))
+			current_text = "active" if passed else "inactive"
+		"current_cell":
+			current_text = _fmt_flow_cell(int(squat_debug.get("current_cell", -1)))
+			passed = int(squat_debug.get("current_cell", -1)) >= 0
+		"nose_tracked":
+			passed = bool(squat_debug.get("nose_tracked", false))
+			current_text = _fmt_bool(passed)
+		"occupied_rows":
+			current_text = _fmt_int_list(squat_debug.get("occupied_rows", []))
+			passed = true
+		"occupied_cells":
+			current_text = _fmt_int_list(squat_debug.get("occupied_cells", []))
+			passed = true
+		"nose_in_blocked_region":
+			passed = not bool(squat_debug.get("nose_in_blocked_region", false))
+			current_text = _fmt_bool(bool(squat_debug.get("nose_in_blocked_region", false)))
+		"avoidance_clear":
+			passed = bool(squat_debug.get("avoidance_clear", false))
+			current_text = _fmt_bool(passed)
 		"calibration_ready":
-			current_text = _fmt_bool(bool(squat_debug.get("calibration_ready", false)))
 			passed = bool(squat_debug.get("calibration_ready", false))
-		"calibration_sample_frames":
-			current_text = str(int(squat_debug.get("calibration_sample_frames", 0)))
-			passed = int(squat_debug.get("calibration_sample_frames", 0)) > 0
-		"enter_height_ratio_max":
-			threshold_text = _fmt_float(squat_debug.get("enter_height_ratio_max", 0.0))
-			current_text = _fmt_float(height_ratio)
-			passed = height_ratio <= float(squat_debug.get("enter_height_ratio_max", 0.0))
-		"exit_height_ratio_min":
-			threshold_text = _fmt_float(squat_debug.get("exit_height_ratio_min", 0.0))
-			current_text = _fmt_float(height_ratio)
-			passed = height_ratio >= float(squat_debug.get("exit_height_ratio_min", 0.0))
-		"height_ratio":
-			current_text = _fmt_float(height_ratio)
-			passed = state_active
-		"squat_depth":
-			current_text = _fmt_float(squat_debug.get("squat_depth", 0.0))
-			passed = float(squat_debug.get("squat_depth", 0.0)) > 0.0
-		"height_state":
-			current_text = String(squat_debug.get("height_state", "unknown"))
-			passed = current_text == "lowered"
-		"torso_height_pair":
-			current_text = "%s / %s" % [_fmt_float(squat_debug.get("torso_height", 0.0)), _fmt_float(squat_debug.get("baseline_torso_height", 0.0))]
-			passed = float(squat_debug.get("baseline_torso_height", 0.0)) > 0.0
+			current_text = _fmt_bool(passed)
 		_:
 			current_text = String(squat_debug.get(row_id, ""))
-	row["threshold_text"] = threshold_text
+	row["threshold_text"] = ""
 	row["current_text"] = current_text
 	row["passed"] = passed
 	return row
@@ -1685,68 +1658,57 @@ func _build_weave_requirement_row(row_spec: Dictionary, weave_debug: Dictionary)
 	var label := String(row_spec.get("label", ""))
 	var passed := false
 	var current_text := ""
-	var threshold_text := ""
-	var state_name := String(weave_debug.get("state", "inactive"))
-	var head_offset := float(weave_debug.get("head_lateral_offset", 0.0))
-	var hip_offset := float(weave_debug.get("hip_lateral_offset", 0.0))
-	var relative_offset := float(weave_debug.get("relative_head_hip_offset", 0.0))
-	var head_drop_ratio := float(weave_debug.get("head_drop_ratio", 0.0))
+	var left_obstacle := _weave_obstacle_debug(weave_debug, "left_obstacle")
+	var right_obstacle := _weave_obstacle_debug(weave_debug, "right_obstacle")
 	match row_id:
-		"state_section", "threshold_section", "live_section":
+		"state_section", "left_section", "right_section":
 			current_text = ""
-			passed = false
 		"current_state":
-			current_text = state_name
-			passed = state_name != "inactive"
-		"left_candidate":
-			current_text = _fmt_bool(bool(weave_debug.get("left_candidate", false)))
-			passed = bool(weave_debug.get("left_candidate", false))
-		"right_candidate":
-			current_text = _fmt_bool(bool(weave_debug.get("right_candidate", false)))
-			passed = bool(weave_debug.get("right_candidate", false))
-		"neutral_candidate":
-			current_text = _fmt_bool(bool(weave_debug.get("neutral_candidate", false)))
-			passed = bool(weave_debug.get("neutral_candidate", false))
-		"enter_head_lateral_offset_min":
-			threshold_text = _fmt_float(weave_debug.get("enter_head_lateral_offset_min", 0.0))
-			current_text = _fmt_float(absf(head_offset))
-			passed = bool(weave_debug.get("head_offset_left_ready", false)) or bool(weave_debug.get("head_offset_right_ready", false))
-		"enter_relative_head_hip_offset_min":
-			threshold_text = _fmt_float(weave_debug.get("enter_relative_head_hip_offset_min", 0.0))
-			current_text = _fmt_float(absf(relative_offset))
-			passed = bool(weave_debug.get("relative_offset_left_ready", false)) or bool(weave_debug.get("relative_offset_right_ready", false))
-		"enter_head_drop_ratio_min":
-			threshold_text = _fmt_float(weave_debug.get("enter_head_drop_ratio_min", 0.0))
-			current_text = _fmt_float(head_drop_ratio)
-			passed = bool(weave_debug.get("head_drop_ready", false))
-		"exit_head_lateral_offset_max":
-			threshold_text = _fmt_float(weave_debug.get("exit_head_lateral_offset_max", 0.0))
-			current_text = _fmt_float(absf(head_offset))
-			passed = absf(head_offset) <= float(weave_debug.get("exit_head_lateral_offset_max", 0.0))
-		"exit_relative_head_hip_offset_max":
-			threshold_text = _fmt_float(weave_debug.get("exit_relative_head_hip_offset_max", 0.0))
-			current_text = _fmt_float(absf(relative_offset))
-			passed = absf(relative_offset) <= float(weave_debug.get("exit_relative_head_hip_offset_max", 0.0))
-		"head_lateral_offset":
-			current_text = _fmt_float(head_offset)
-			passed = state_name == "left" or state_name == "right"
-		"hip_lateral_offset":
-			current_text = _fmt_float(hip_offset)
-			passed = absf(hip_offset) > 0.0
-		"relative_head_hip_offset":
-			current_text = _fmt_float(relative_offset)
-			passed = state_name == "left" or state_name == "right"
-		"head_drop_ratio":
-			current_text = _fmt_float(head_drop_ratio)
-			passed = head_drop_ratio > 0.0
+			current_text = String(weave_debug.get("state", "inactive"))
+			passed = current_text != "inactive"
+		"current_cell":
+			current_text = _fmt_flow_cell(int(weave_debug.get("current_cell", -1)))
+			passed = int(weave_debug.get("current_cell", -1)) >= 0
+		"nose_tracked":
+			passed = bool(weave_debug.get("nose_tracked", false))
+			current_text = _fmt_bool(passed)
+		"left_occupied_columns":
+			current_text = _fmt_int_list(left_obstacle.get("occupied_columns", []))
+			passed = true
+		"left_occupied_cells":
+			current_text = _fmt_int_list(left_obstacle.get("occupied_cells", []))
+			passed = true
+		"left_avoidance_clear":
+			passed = bool(left_obstacle.get("avoidance_clear", false))
+			current_text = _fmt_bool(passed)
+		"right_occupied_columns":
+			current_text = _fmt_int_list(right_obstacle.get("occupied_columns", []))
+			passed = true
+		"right_occupied_cells":
+			current_text = _fmt_int_list(right_obstacle.get("occupied_cells", []))
+			passed = true
+		"right_avoidance_clear":
+			passed = bool(right_obstacle.get("avoidance_clear", false))
+			current_text = _fmt_bool(passed)
 		_:
 			current_text = "pending"
 			passed = false
 	row["label"] = label
 	row["passed"] = passed
-	row["threshold_text"] = threshold_text
+	row["threshold_text"] = ""
 	row["current_text"] = current_text
 	return row
+
+func _weave_obstacle_debug(weave_debug: Dictionary, key: String) -> Dictionary:
+	return weave_debug.get(key, {}) if weave_debug.get(key, {}) is Dictionary else {}
+
+func _fmt_int_list(values_variant: Variant) -> String:
+	if not values_variant is Array or (values_variant as Array).is_empty():
+		return "-"
+	var parts: Array[String] = []
+	for value_variant: Variant in (values_variant as Array):
+		parts.append(str(int(value_variant)))
+	return ", ".join(parts)
 
 func _fmt_matcher_class_scores(class_scores: Dictionary) -> String:
 	if class_scores.is_empty():
@@ -2440,47 +2402,39 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Wrist-to-nose distances: L=%s R=%s" % [_fmt_float(guard_debug.get("left_wrist_nose_distance", 0.0)), _fmt_float(guard_debug.get("right_wrist_nose_distance", 0.0))])
 
 	var squat_config: Dictionary = gesture_document.get("squat", {}) if gesture_document.get("squat", {}) is Dictionary else {}
-	var squat_thresholds: Dictionary = squat_config.get("thresholds", {}) if squat_config.get("thresholds", {}) is Dictionary else {}
+	var squat_avoidance: Dictionary = squat_config.get("grid_avoidance", {}) if squat_config.get("grid_avoidance", {}) is Dictionary else {}
+	var squat_obstacle: Dictionary = squat_avoidance.get("obstacle", {}) if squat_avoidance.get("obstacle", {}) is Dictionary else {}
 	var squat_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("squat", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("squat", {}) is Dictionary) else {}
 	lines.append("")
-	lines.append("Squat tuning")
-	lines.append("------------")
+	lines.append("Squat avoidance")
+	lines.append("---------------")
 	lines.append("Enabled: %s" % _fmt_bool(bool(squat_config.get("enabled", true))))
-	lines.append("Enter height ratio <= %s" % _fmt_float(squat_thresholds.get("enter_height_ratio_max", 0.0)))
-	lines.append("Exit height ratio >= %s" % _fmt_float(squat_thresholds.get("exit_height_ratio_min", 0.0)))
+	lines.append("Backend: %s" % String(squat_debug.get("backend", squat_config.get("backend", "grid_avoidance"))))
+	lines.append("Blocked rows: %s" % _fmt_int_list(squat_obstacle.get("occupied_rows", squat_debug.get("occupied_rows", []))))
+	lines.append("Blocked cells: %s" % _fmt_int_list(squat_obstacle.get("occupied_cells", squat_debug.get("occupied_cells", []))))
 	lines.append("Current state: %s" % ("active" if bool(squat_debug.get("state", false)) else "inactive"))
-	lines.append("Calibration ready / frames: %s / %d" % [_fmt_bool(bool(squat_debug.get("calibration_ready", false))), int(squat_debug.get("calibration_sample_frames", 0))])
-	lines.append("Live height ratio: %s (%s)" % [_fmt_float(squat_debug.get("height_ratio", 1.0)), String(squat_debug.get("height_state", "unknown"))])
-	lines.append("Squat depth: %s" % _fmt_float(squat_debug.get("squat_depth", 0.0)))
-	lines.append("Torso height live / baseline: %s / %s" % [_fmt_float(squat_debug.get("torso_height", 0.0)), _fmt_float(squat_debug.get("baseline_torso_height", 0.0))])
+	lines.append("Nose cell: %s" % _fmt_flow_cell(int(squat_debug.get("current_cell", -1))))
+	lines.append("Nose in blocked region: %s" % _fmt_bool(bool(squat_debug.get("nose_in_blocked_region", false))))
+	lines.append("Obstacle avoided: %s" % _fmt_bool(bool(squat_debug.get("avoidance_clear", false))))
 
 	var weave_config: Dictionary = gesture_document.get("weave", {}) if gesture_document.get("weave", {}) is Dictionary else {}
-	var weave_thresholds: Dictionary = weave_config.get("thresholds", {}) if weave_config.get("thresholds", {}) is Dictionary else {}
+	var weave_avoidance: Dictionary = weave_config.get("grid_avoidance", {}) if weave_config.get("grid_avoidance", {}) is Dictionary else {}
+	var left_weave_obstacle: Dictionary = weave_avoidance.get("left_obstacle", {}) if weave_avoidance.get("left_obstacle", {}) is Dictionary else {}
+	var right_weave_obstacle: Dictionary = weave_avoidance.get("right_obstacle", {}) if weave_avoidance.get("right_obstacle", {}) is Dictionary else {}
 	var weave_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("weave", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("weave", {}) is Dictionary) else {}
+	var left_live: Dictionary = _weave_obstacle_debug(weave_debug, "left_obstacle")
+	var right_live: Dictionary = _weave_obstacle_debug(weave_debug, "right_obstacle")
 	lines.append("")
-	lines.append("Weave tuning")
-	lines.append("------------")
+	lines.append("Weave avoidance")
+	lines.append("---------------")
 	lines.append("Enabled: %s" % _fmt_bool(bool(weave_config.get("enabled", true))))
-	lines.append("Enter head lateral offset >= %s" % _fmt_float(weave_thresholds.get("enter_head_lateral_offset_min", 0.0)))
-	lines.append("Enter head-vs-hip offset >= %s" % _fmt_float(weave_thresholds.get("enter_relative_head_hip_offset_min", 0.0)))
-	lines.append("Enter head drop ratio >= %s" % _fmt_float(weave_thresholds.get("enter_head_drop_ratio_min", 0.0)))
-	lines.append("Exit head lateral offset <= %s" % _fmt_float(weave_thresholds.get("exit_head_lateral_offset_max", 0.0)))
-	lines.append("Exit head-vs-hip offset <= %s" % _fmt_float(weave_thresholds.get("exit_relative_head_hip_offset_max", 0.0)))
+	lines.append("Backend: %s" % String(weave_debug.get("backend", weave_config.get("backend", "grid_avoidance"))))
 	lines.append("Current state: %s" % String(weave_debug.get("state", "inactive")))
-	lines.append("Candidates: left=%s right=%s neutral=%s" % [
-		_fmt_bool(bool(weave_debug.get("left_candidate", false))),
-		_fmt_bool(bool(weave_debug.get("right_candidate", false))),
-		_fmt_bool(bool(weave_debug.get("neutral_candidate", false))),
-	])
-	lines.append("Live offsets: head=%s hip=%s relative=%s" % [
-		_fmt_float(weave_debug.get("head_lateral_offset", 0.0)),
-		_fmt_float(weave_debug.get("hip_lateral_offset", 0.0)),
-		_fmt_float(weave_debug.get("relative_head_hip_offset", 0.0)),
-	])
-	lines.append("Head drop ratio: %s (ready=%s)" % [
-		_fmt_float(weave_debug.get("head_drop_ratio", 0.0)),
-		_fmt_bool(bool(weave_debug.get("head_drop_ready", false))),
-	])
+	lines.append("Nose cell: %s" % _fmt_flow_cell(int(weave_debug.get("current_cell", -1))))
+	lines.append("Left obstacle columns / cells: %s / %s" % [_fmt_int_list(left_weave_obstacle.get("occupied_columns", left_live.get("occupied_columns", []))), _fmt_int_list(left_weave_obstacle.get("occupied_cells", left_live.get("occupied_cells", [])))])
+	lines.append("Left obstacle avoided: %s" % _fmt_bool(bool(left_live.get("avoidance_clear", false))))
+	lines.append("Right obstacle columns / cells: %s / %s" % [_fmt_int_list(right_weave_obstacle.get("occupied_columns", right_live.get("occupied_columns", []))), _fmt_int_list(right_weave_obstacle.get("occupied_cells", right_live.get("occupied_cells", [])))])
+	lines.append("Right obstacle avoided: %s" % _fmt_bool(bool(right_live.get("avoidance_clear", false))))
 
 	lines.append("")
 	lines.append("Tracker hand truth")

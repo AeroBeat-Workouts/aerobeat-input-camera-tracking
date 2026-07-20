@@ -10,21 +10,24 @@ guard:
       max_wrist_nose_distance: 0.20
 
 squat:
-  backend: threshold
-  threshold:
-    thresholds:
-      enter_height_ratio_max: 0.82
-      exit_height_ratio_min: 0.92
+  backend: grid_avoidance
+  grid_avoidance:
+    obstacle:
+      label: top_row
+      occupied_rows: [0]
+      occupied_cells: [0, 1, 2, 3]
 
 weave:
-  backend: threshold
-  threshold:
-    thresholds:
-      enter_head_lateral_offset_min: 0.30
-      enter_relative_head_hip_offset_min: 0.12
-      enter_head_drop_ratio_min: 0.05
-      exit_head_lateral_offset_max: 0.12
-      exit_relative_head_hip_offset_max: 0.08
+  backend: grid_avoidance
+  grid_avoidance:
+    left_obstacle:
+      label: left_columns
+      occupied_columns: [0, 1]
+      occupied_cells: [0, 1, 4, 5, 8, 9]
+    right_obstacle:
+      label: right_columns
+      occupied_columns: [2, 3]
+      occupied_cells: [2, 3, 6, 7, 10, 11]
 
 straight_punch:
   backend: threshold

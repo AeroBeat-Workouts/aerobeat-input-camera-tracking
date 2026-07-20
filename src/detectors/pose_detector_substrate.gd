@@ -5,6 +5,7 @@ const DepthRuntimeManagerScript = preload("res://addons/aerobeat-input-camera-tr
 const DepthSharedRuntimePoolScript = preload("res://addons/aerobeat-input-camera-tracking/src/depth/depth_shared_runtime_pool.gd")
 const BACKEND_DISABLED := "disabled"
 const BACKEND_THRESHOLD := "threshold"
+const BACKEND_GRID_AVOIDANCE := "grid_avoidance"
 const PUNCH_FAMILIES := ["straight_punch", "hook", "uppercut"]
 const PUNCH_FAMILY_EVENT_NAMES := {
 	"straight_punch": ["punch_left", "punch_right"],
@@ -892,26 +893,17 @@ func _build_guard_debug_state() -> Dictionary:
 	guard_debug["max_wrist_nose_distance"] = float(guard_config.get("max_wrist_nose_distance", GUARD_DEFAULT_MAX_WRIST_NOSE_DISTANCE))
 	return guard_debug
 
-func _build_squat_debug_state(metrics: Dictionary = {}) -> Dictionary:
-	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+func _build_squat_debug_state(_metrics: Dictionary = {}) -> Dictionary:
+	var squat_debug: Dictionary = (_gesture_state.get("squat_debug", {}) as Dictionary).duplicate(true)
 	var squat_config := _get_squat_config()
-	return {
-		"backend": _get_non_punch_backend_for_family("squat"),
-		"state": bool(_get_state("squat")),
-		"enabled": bool(squat_config.get("enabled", true)),
-		"enter_height_ratio_max": float(squat_config.get("enter_height_ratio_max", SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX)),
-		"exit_height_ratio_min": float(squat_config.get("exit_height_ratio_min", SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN)),
-		"height_ratio": float(measurements.get("height_ratio", 1.0)),
-		"height_state": String(measurements.get("height_state", "unknown")),
-		"squat_depth": float(measurements.get("squat_depth", 0.0)),
-		"torso_height": float(measurements.get("torso_height", 0.0)),
-		"baseline_torso_height": float(_baseline.get("torso_height", 0.0)),
-		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
-		"calibration_sample_frames": int(_baseline.get("sample_frames", 0)),
-	}
+	squat_debug["backend"] = _get_non_punch_backend_for_family("squat")
+	squat_debug["state"] = bool(_get_state("squat"))
+	squat_debug["enabled"] = bool(squat_config.get("enabled", true))
+	squat_debug["calibration_ready"] = bool(_baseline.get("is_calibrated", false))
+	squat_debug["calibration_sample_frames"] = int(_baseline.get("sample_frames", 0))
+	return squat_debug
 
-func _build_weave_debug_state(metrics: Dictionary = {}) -> Dictionary:
-	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
+func _build_weave_debug_state(_metrics: Dictionary = {}) -> Dictionary:
 	var weave_debug: Dictionary = (_gesture_state.get("weave_debug", {}) as Dictionary).duplicate(true)
 	var weave_config := _get_weave_config()
 	var state_name := "inactive"
@@ -922,15 +914,8 @@ func _build_weave_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	weave_debug["backend"] = _get_non_punch_backend_for_family("weave")
 	weave_debug["state"] = state_name
 	weave_debug["enabled"] = bool(weave_config.get("enabled", true))
-	weave_debug["head_lateral_offset"] = float(measurements.get("head_lateral_offset", weave_debug.get("head_lateral_offset", 0.0)))
-	weave_debug["hip_lateral_offset"] = float(measurements.get("hip_lateral_offset", weave_debug.get("hip_lateral_offset", 0.0)))
-	weave_debug["relative_head_hip_offset"] = float(measurements.get("head_lateral_offset", 0.0)) - float(measurements.get("hip_lateral_offset", 0.0))
-	weave_debug["head_drop_ratio"] = float(measurements.get("head_drop_ratio", weave_debug.get("head_drop_ratio", 0.0)))
-	weave_debug["enter_head_lateral_offset_min"] = float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
-	weave_debug["enter_relative_head_hip_offset_min"] = float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
-	weave_debug["enter_head_drop_ratio_min"] = float(weave_config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN))
-	weave_debug["exit_head_lateral_offset_max"] = float(weave_config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX))
-	weave_debug["exit_relative_head_hip_offset_max"] = float(weave_config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX))
+	weave_debug["calibration_ready"] = bool(_baseline.get("is_calibrated", false))
+	weave_debug["calibration_sample_frames"] = int(_baseline.get("sample_frames", 0))
 	return weave_debug
 
 func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
@@ -1370,8 +1355,8 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 
 	_process_guard(events, nose, left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist, shoulder_width)
 	if _supports_squat_surface() and torso_confidence >= lower_body_confidence_gate:
-		_process_squat(events, float(measurements.get("height_ratio", 1.0)))
-	_process_weave(events, float(measurements.get("head_lateral_offset", 0.0)), float(measurements.get("hip_lateral_offset", 0.0)), float(measurements.get("head_drop_ratio", 0.0)))
+		_process_squat(events, nose)
+	_process_weave(events, nose)
 	if _get_punch_backend_for_family("straight_punch") == BACKEND_THRESHOLD:
 		_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 		_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
@@ -2057,30 +2042,23 @@ func _process_guard(events: Array, nose: Dictionary, left_shoulder: Dictionary, 
 	_gesture_state["guard_debug"] = guard_debug
 	_set_state_toggle(events, "guard", candidate)
 
-func _process_squat(events: Array, height_ratio: float) -> void:
+func _process_squat(events: Array, nose: Dictionary) -> void:
 	var squat_config := _get_squat_config()
+	var squat_debug := _build_grid_avoidance_debug_payload(nose, squat_config.get("obstacle", {}), "squat")
+	squat_debug["state"] = bool(squat_debug.get("avoidance_clear", false))
+	squat_debug["enabled"] = bool(squat_config.get("enabled", true))
+	_gesture_state["squat_debug"] = squat_debug
 	if not bool(squat_config.get("enabled", true)):
 		_set_state_toggle(events, "squat", false)
 		return
-	var active: bool = _get_state("squat")
-	var enter_height_ratio_max := float(squat_config.get("enter_height_ratio_max", SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX))
-	var exit_height_ratio_min := float(squat_config.get("exit_height_ratio_min", SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN))
-	if not active and height_ratio <= enter_height_ratio_max:
-		_set_state_toggle(events, "squat", true)
-	elif active and height_ratio >= exit_height_ratio_min:
-		_set_state_toggle(events, "squat", false)
+	_set_state_toggle(events, "squat", bool(squat_debug.get("avoidance_clear", false)))
 
-func _process_weave(events: Array, head_offset: float, hip_offset: float, head_drop_ratio: float) -> void:
+func _process_weave(events: Array, nose: Dictionary) -> void:
 	var weave_config := _get_weave_config()
-	var relative_offset := head_offset - hip_offset
-	var left_head_ready := head_offset >= float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
-	var right_head_ready := head_offset <= -float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))
-	var left_relative_ready := relative_offset >= float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
-	var right_relative_ready := relative_offset <= -float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))
-	var head_drop_ready := head_drop_ratio >= float(weave_config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN))
-	var weaving_left := left_head_ready and left_relative_ready and head_drop_ready
-	var weaving_right := right_head_ready and right_relative_ready and head_drop_ready
-	var neutral := absf(head_offset) <= float(weave_config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX)) and absf(relative_offset) <= float(weave_config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX))
+	var left_debug := _build_grid_avoidance_debug_payload(nose, weave_config.get("left_obstacle", {}), "left")
+	var right_debug := _build_grid_avoidance_debug_payload(nose, weave_config.get("right_obstacle", {}), "right")
+	var weaving_left := bool(left_debug.get("avoidance_clear", false))
+	var weaving_right := bool(right_debug.get("avoidance_clear", false))
 	var weave_state := "inactive"
 	if weaving_left:
 		weave_state = "left"
@@ -2089,23 +2067,19 @@ func _process_weave(events: Array, head_offset: float, hip_offset: float, head_d
 	_gesture_state["weave_debug"] = {
 		"state": weave_state,
 		"enabled": bool(weave_config.get("enabled", true)),
-		"head_lateral_offset": head_offset,
-		"hip_lateral_offset": hip_offset,
-		"relative_head_hip_offset": relative_offset,
-		"head_drop_ratio": head_drop_ratio,
-		"enter_head_lateral_offset_min": float(weave_config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN)),
-		"enter_relative_head_hip_offset_min": float(weave_config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN)),
-		"enter_head_drop_ratio_min": float(weave_config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN)),
-		"exit_head_lateral_offset_max": float(weave_config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX)),
-		"exit_relative_head_hip_offset_max": float(weave_config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX)),
+		"current_cell": int(left_debug.get("current_cell", -1)),
+		"current_direction": int(left_debug.get("current_direction", -1)),
+		"nose_position": left_debug.get("nose_position", Vector2.ZERO),
+		"nose_tracked": bool(left_debug.get("nose_tracked", false)),
+		"grid_ready": bool(left_debug.get("grid_ready", false)),
+		"calibration_ready": bool(left_debug.get("calibration_ready", false)),
+		"left_obstacle": left_debug,
+		"right_obstacle": right_debug,
 		"left_candidate": weaving_left,
 		"right_candidate": weaving_right,
-		"neutral_candidate": neutral,
-		"head_offset_left_ready": left_head_ready,
-		"head_offset_right_ready": right_head_ready,
-		"relative_offset_left_ready": left_relative_ready,
-		"relative_offset_right_ready": right_relative_ready,
-		"head_drop_ready": head_drop_ready,
+		"neutral_candidate": not weaving_left and not weaving_right,
+		"left_avoidance_clear": weaving_left,
+		"right_avoidance_clear": weaving_right,
 	}
 	if not bool(weave_config.get("enabled", true)):
 		_set_state_toggle(events, "weave_left", false)
@@ -2535,7 +2509,7 @@ func _get_non_punch_backend_for_family(family: String) -> String:
 	var backend := String(family_document.get("backend", "")).strip_edges()
 	if backend == "":
 		return BACKEND_THRESHOLD
-	return _normalize_punch_backend_name(backend)
+	return _normalize_non_punch_backend_name(backend)
 
 func _threshold_gates_enabled() -> bool:
 	return _any_punch_family_uses_backend(BACKEND_THRESHOLD)
@@ -2564,6 +2538,17 @@ func _normalize_punch_backend_name(backend_name: String) -> String:
 		_:
 			return BACKEND_THRESHOLD
 
+func _normalize_non_punch_backend_name(backend_name: String) -> String:
+	match backend_name.strip_edges().to_lower():
+		BACKEND_DISABLED:
+			return BACKEND_DISABLED
+		BACKEND_THRESHOLD:
+			return BACKEND_THRESHOLD
+		BACKEND_GRID_AVOIDANCE:
+			return BACKEND_GRID_AVOIDANCE
+		_:
+			return BACKEND_THRESHOLD
+
 func _get_guard_config() -> Dictionary:
 	var config := {
 		"enabled": true,
@@ -2584,40 +2569,118 @@ func _get_guard_config() -> Dictionary:
 func _get_squat_config() -> Dictionary:
 	var config := {
 		"enabled": true,
-		"enter_height_ratio_max": SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX,
-		"exit_height_ratio_min": SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN,
+		"obstacle": _normalize_grid_avoidance_obstacle({
+			"label": "top_row",
+			"occupied_rows": [0],
+			"occupied_cells": [0, 1, 2, 3],
+		}),
 	}
 	if _config == null:
 		return config
-	var squat: Dictionary = _get_family_backend_document("squat", BACKEND_THRESHOLD)
-	var thresholds: Dictionary = squat.get("thresholds", {}) if squat.get("thresholds", {}) is Dictionary else {}
-	config["enabled"] = _get_non_punch_backend_for_family("squat") == BACKEND_THRESHOLD and bool(squat.get("enabled", config.get("enabled", true)))
-	config["enter_height_ratio_max"] = clampf(float(thresholds.get("enter_height_ratio_max", config.get("enter_height_ratio_max", SQUAT_DEFAULT_ENTER_HEIGHT_RATIO_MAX))), 0.0, 1.0)
-	config["exit_height_ratio_min"] = clampf(float(thresholds.get("exit_height_ratio_min", config.get("exit_height_ratio_min", SQUAT_DEFAULT_EXIT_HEIGHT_RATIO_MIN))), 0.0, 1.0)
-	if float(config["exit_height_ratio_min"]) < float(config["enter_height_ratio_max"]):
-		config["exit_height_ratio_min"] = float(config["enter_height_ratio_max"])
+	var squat: Dictionary = _get_family_backend_document("squat", _get_non_punch_backend_for_family("squat"))
+	config["enabled"] = _get_non_punch_backend_for_family("squat") != BACKEND_DISABLED and bool(squat.get("enabled", config.get("enabled", true)))
+	var obstacle: Dictionary = squat.get("obstacle", {}) if squat.get("obstacle", {}) is Dictionary else {}
+	config["obstacle"] = _normalize_grid_avoidance_obstacle(obstacle, config.get("obstacle", {}))
 	return config
 
 func _get_weave_config() -> Dictionary:
 	var config := {
 		"enabled": true,
-		"enter_head_lateral_offset_min": WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN,
-		"enter_relative_head_hip_offset_min": WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN,
-		"enter_head_drop_ratio_min": WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN,
-		"exit_head_lateral_offset_max": WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX,
-		"exit_relative_head_hip_offset_max": WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX,
+		"left_obstacle": _normalize_grid_avoidance_obstacle({
+			"label": "left_columns",
+			"occupied_columns": [0, 1],
+			"occupied_cells": [0, 1, 4, 5, 8, 9],
+		}),
+		"right_obstacle": _normalize_grid_avoidance_obstacle({
+			"label": "right_columns",
+			"occupied_columns": [2, 3],
+			"occupied_cells": [2, 3, 6, 7, 10, 11],
+		}),
 	}
 	if _config == null:
 		return config
-	var weave: Dictionary = _get_family_backend_document("weave", BACKEND_THRESHOLD)
-	var thresholds: Dictionary = weave.get("thresholds", {}) if weave.get("thresholds", {}) is Dictionary else {}
-	config["enabled"] = _get_non_punch_backend_for_family("weave") == BACKEND_THRESHOLD and bool(weave.get("enabled", config.get("enabled", true)))
-	config["enter_head_lateral_offset_min"] = maxf(0.0, float(thresholds.get("enter_head_lateral_offset_min", config.get("enter_head_lateral_offset_min", WEAVE_DEFAULT_ENTER_HEAD_LATERAL_OFFSET_MIN))))
-	config["enter_relative_head_hip_offset_min"] = maxf(0.0, float(thresholds.get("enter_relative_head_hip_offset_min", config.get("enter_relative_head_hip_offset_min", WEAVE_DEFAULT_ENTER_RELATIVE_HEAD_HIP_OFFSET_MIN))))
-	config["enter_head_drop_ratio_min"] = maxf(0.0, float(thresholds.get("enter_head_drop_ratio_min", config.get("enter_head_drop_ratio_min", WEAVE_DEFAULT_ENTER_HEAD_DROP_RATIO_MIN))))
-	config["exit_head_lateral_offset_max"] = maxf(0.0, float(thresholds.get("exit_head_lateral_offset_max", config.get("exit_head_lateral_offset_max", WEAVE_DEFAULT_EXIT_HEAD_LATERAL_OFFSET_MAX))))
-	config["exit_relative_head_hip_offset_max"] = maxf(0.0, float(thresholds.get("exit_relative_head_hip_offset_max", config.get("exit_relative_head_hip_offset_max", WEAVE_DEFAULT_EXIT_RELATIVE_HEAD_HIP_OFFSET_MAX))))
+	var weave: Dictionary = _get_family_backend_document("weave", _get_non_punch_backend_for_family("weave"))
+	config["enabled"] = _get_non_punch_backend_for_family("weave") != BACKEND_DISABLED and bool(weave.get("enabled", config.get("enabled", true)))
+	var left_obstacle: Dictionary = weave.get("left_obstacle", {}) if weave.get("left_obstacle", {}) is Dictionary else {}
+	var right_obstacle: Dictionary = weave.get("right_obstacle", {}) if weave.get("right_obstacle", {}) is Dictionary else {}
+	config["left_obstacle"] = _normalize_grid_avoidance_obstacle(left_obstacle, config.get("left_obstacle", {}))
+	config["right_obstacle"] = _normalize_grid_avoidance_obstacle(right_obstacle, config.get("right_obstacle", {}))
 	return config
+
+func _normalize_grid_avoidance_obstacle(obstacle: Dictionary, fallback: Dictionary = {}) -> Dictionary:
+	var merged: Dictionary = fallback.duplicate(true)
+	for key_variant: Variant in obstacle.keys():
+		merged[key_variant] = obstacle[key_variant]
+	var columns := _unique_sorted_int_array(merged.get("occupied_columns", []))
+	var rows := _unique_sorted_int_array(merged.get("occupied_rows", []))
+	var cells := _unique_sorted_int_array(merged.get("occupied_cells", []))
+	if cells.is_empty():
+		for row: int in rows:
+			for column: int in range(FLOW_GRID_COLUMNS):
+				if row >= 0 and row < FLOW_GRID_ROWS:
+					cells.append(row * FLOW_GRID_COLUMNS + column)
+		for column: int in columns:
+			if column < 0 or column >= FLOW_GRID_COLUMNS:
+				continue
+			for row: int in range(FLOW_GRID_ROWS):
+				cells.append(row * FLOW_GRID_COLUMNS + column)
+		cells = _unique_sorted_int_array(cells)
+	merged["label"] = String(merged.get("label", "grid_obstacle"))
+	merged["occupied_columns"] = columns
+	merged["occupied_rows"] = rows
+	merged["occupied_cells"] = cells
+	return merged
+
+func _unique_sorted_int_array(values_variant: Variant) -> Array[int]:
+	var unique := {}
+	var ordered: Array[int] = []
+	if values_variant is Array:
+		for value_variant: Variant in values_variant:
+			var value := int(value_variant)
+			if unique.has(value):
+				continue
+			unique[value] = true
+			ordered.append(value)
+	ordered.sort()
+	return ordered
+
+func _build_grid_avoidance_debug_payload(nose: Dictionary, obstacle: Dictionary, state_label: String) -> Dictionary:
+	var grid: Dictionary = _build_flow_grid_debug()
+	var nose_position := Vector2(float(nose.get("x", 0.0)), float(nose.get("y", 0.0)))
+	var current_cell := _flow_cell_index_from_position(nose_position) if not nose.is_empty() else -1
+	var blocked_cells: Array[int] = _unique_sorted_int_array(obstacle.get("occupied_cells", []))
+	var blocked_columns: Array[int] = _unique_sorted_int_array(obstacle.get("occupied_columns", []))
+	var blocked_rows: Array[int] = _unique_sorted_int_array(obstacle.get("occupied_rows", []))
+	var nose_in_blocked_region := false
+	var cell_rects_variant: Variant = grid.get("cell_rects", [])
+	if cell_rects_variant is Array and not nose.is_empty():
+		for rect_variant: Variant in cell_rects_variant:
+			var rect: Dictionary = rect_variant as Dictionary
+			if not blocked_cells.has(int(rect.get("index", -1))):
+				continue
+			var left := float(rect.get("left", 0.0))
+			var right := float(rect.get("right", 0.0))
+			var top := float(rect.get("top", 0.0))
+			var bottom := float(rect.get("bottom", 0.0))
+			if nose_position.x >= left and nose_position.x < right and nose_position.y <= top and nose_position.y > bottom:
+				nose_in_blocked_region = true
+				break
+	return {
+		"backend": BACKEND_GRID_AVOIDANCE,
+		"state_label": state_label,
+		"label": String(obstacle.get("label", state_label)),
+		"occupied_columns": blocked_columns,
+		"occupied_rows": blocked_rows,
+		"occupied_cells": blocked_cells,
+		"nose_position": nose_position,
+		"nose_tracked": not nose.is_empty(),
+		"current_cell": current_cell,
+		"current_direction": int(_build_flow_nose_debug().get("current_direction", -1)),
+		"grid_ready": bool(grid.get("is_calibrated", false)),
+		"calibration_ready": bool(_baseline.get("is_calibrated", false)),
+		"nose_in_blocked_region": nose_in_blocked_region,
+		"avoidance_clear": not nose.is_empty() and bool(grid.get("is_calibrated", false)) and not nose_in_blocked_region,
+	}
 
 func _get_straight_punch_config() -> Dictionary:
 	var config := {

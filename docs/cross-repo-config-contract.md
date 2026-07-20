@@ -107,9 +107,23 @@ profile: boxing
 guard:
   backend: threshold
 squat:
-  backend: threshold
+  backend: grid_avoidance
+  grid_avoidance:
+    obstacle:
+      label: top_row
+      occupied_rows: [0]
+      occupied_cells: [0, 1, 2, 3]
 weave:
-  backend: threshold
+  backend: grid_avoidance
+  grid_avoidance:
+    left_obstacle:
+      label: left_columns
+      occupied_columns: [0, 1]
+      occupied_cells: [0, 1, 4, 5, 8, 9]
+    right_obstacle:
+      label: right_columns
+      occupied_columns: [2, 3]
+      occupied_cells: [2, 3, 6, 7, 10, 11]
 straight_punch:
   backend: threshold
   threshold:
@@ -185,5 +199,5 @@ refresh:
 ## Contract notes
 
 - `preview.overlays.pose_skeleton_visible` is the only committed overlay intent still carried in profile config.
-- Boxing remains a threshold-driven gameplay profile. Flow now exposes the calibrated 4x3 cell occupancy + direction contract under the `flow` family rather than a `squat` gesture surface.
+- Boxing guard + punch families remain threshold-driven, but Boxing squat/weave now use calibrated nose-grid obstacle avoidance (`grid_avoidance`) instead of body-mechanics threshold tuning. Flow still exposes the calibrated 4x3 cell occupancy + direction contract under the `flow` family rather than a `squat` gesture surface.
 - If depth proving or hand-tracking debug ever returns, it should land as a new explicitly approved contract slice rather than lingering as undocumented legacy fields.
