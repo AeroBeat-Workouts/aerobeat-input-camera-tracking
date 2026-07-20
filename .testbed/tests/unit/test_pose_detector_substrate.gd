@@ -1557,6 +1557,74 @@ func test_request_athlete_recalibration_clears_baseline_and_squat_truth_until_re
 	assert_eq(String(squat_debug.get("height_state", "")), "unknown")
 	assert_true(is_equal_approx(float(squat_debug.get("squat_depth", -1.0)), 0.0))
 
+func test_request_athlete_recalibration_starts_shared_countdown_session() -> void:
+	_calibrate_stance()
+	substrate.request_athlete_recalibration()
+	var state := substrate.get_latest_state()
+	var session: Dictionary = state.get("calibration_session", {})
+	assert_eq(String(session.get("state", "")), "countdown")
+	assert_true(bool(session.get("is_active", false)))
+	assert_eq(int(session.get("seconds_remaining", 0)), 5)
+	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
+	assert_true(state.get("metrics", {}).has("calibration_session"))
+
+func test_calibration_readiness_surfaces_centering_and_t_pose_truth() -> void:
+	_calibrate_stance()
+	substrate.request_athlete_recalibration()
+	var state := substrate.process_landmarks(_make_pose_frame({}, 0.70), 6100)
+	var session: Dictionary = state.get("calibration_session", {})
+	var readiness: Dictionary = session.get("readiness", {})
+	assert_eq(String(session.get("state", "")), "capture_pending")
+	assert_false(bool(readiness.get("centered_in_camera", true)))
+	assert_eq(String(readiness.get("instruction_key", "")), "stand_centered")
+	assert_true(String(session.get("instructions", {}).get("stand_centered", {}).get("text", "")).contains("centered"))
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"y": 0.50},
+		PoseLandmarkIds.RIGHT_WRIST: {"y": 0.50},
+	}, 0.50), 6200)
+	session = state.get("calibration_session", {})
+	readiness = session.get("readiness", {})
+	assert_true(bool(readiness.get("centered_in_camera", false)))
+	assert_false(bool(readiness.get("t_pose_ready", true)))
+	assert_eq(String(readiness.get("instruction_key", "")), "hold_t_pose")
+
+func test_calibration_session_commits_baseline_only_after_countdown_and_capture_window() -> void:
+	_calibrate_stance()
+	substrate.request_athlete_recalibration()
+	var state := substrate.process_landmarks(_make_pose_frame({}, 0.70), 6100)
+	assert_eq(String(state.get("calibration_session", {}).get("state", "")), "capture_pending")
+	for idx in range(5):
+		state = substrate.process_landmarks(_make_pose_frame(), 6120 + idx * 16)
+	var baseline: Dictionary = state.get("baseline", {})
+	var session: Dictionary = state.get("calibration_session", {})
+	assert_true(bool(baseline.get("is_calibrated", false)))
+	assert_eq(String(baseline.get("capture_source", "")), "calibration_session")
+	assert_eq(int(baseline.get("sample_frames", 0)), 5)
+	assert_eq(String(session.get("state", "")), "succeeded")
+	assert_eq(int(session.get("captured_sample_frames", 0)), 5)
+
+func test_calibration_session_fails_when_capture_window_expires_without_ready_pose() -> void:
+	_calibrate_stance()
+	substrate.request_athlete_recalibration()
+	var state := substrate.process_landmarks(_make_pose_frame({}, 0.70), 6100)
+	assert_eq(String(state.get("calibration_session", {}).get("state", "")), "capture_pending")
+	state = substrate.process_landmarks(_make_pose_frame({}, 0.70), 9201)
+	var session: Dictionary = state.get("calibration_session", {})
+	assert_eq(String(session.get("state", "")), "failed")
+	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
+	assert_eq(String(session.get("failure_reason", "")), "not_centered_in_camera")
+
+func test_cancel_athlete_recalibration_keeps_runtime_uncalibrated_until_retry() -> void:
+	_calibrate_stance()
+	substrate.request_athlete_recalibration()
+	substrate.cancel_athlete_recalibration()
+	var state := substrate.get_latest_state()
+	assert_eq(String(state.get("calibration_session", {}).get("state", "")), "cancelled")
+	for idx in range(5):
+		state = substrate.process_landmarks(_make_pose_frame(), 6100 + idx * 16)
+	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
+
 func test_weave_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
 	config.gesture_profile_document = {
 		"weave": {

@@ -110,11 +110,25 @@ func reset_runtime_state() -> void:
 	if _detector_substrate != null:
 		_detector_substrate.reset()
 
-func request_athlete_recalibration() -> bool:
+func start_athlete_calibration() -> bool:
 	if _detector_substrate == null:
 		return false
 	_detector_substrate.request_athlete_recalibration()
 	return true
+
+func request_athlete_recalibration() -> bool:
+	return start_athlete_calibration()
+
+func cancel_athlete_calibration() -> bool:
+	if _detector_substrate == null or not _detector_substrate.has_method("cancel_athlete_recalibration"):
+		return false
+	_detector_substrate.cancel_athlete_recalibration()
+	return true
+
+func get_calibration_session() -> Dictionary:
+	if _detector_substrate == null or not _detector_substrate.has_method("get_calibration_session"):
+		return {}
+	return _detector_substrate.get_calibration_session()
 
 func get_num_poses() -> int:
 	return _all_poses.size()

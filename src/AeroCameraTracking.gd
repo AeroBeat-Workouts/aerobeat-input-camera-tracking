@@ -219,11 +219,30 @@ func reset_runtime_state() -> void:
 	if provider != null and provider.has_method("reset_runtime_state"):
 		provider.reset_runtime_state()
 
-func request_athlete_recalibration() -> bool:
+func start_athlete_calibration() -> bool:
 	var provider := _ensure_provider()
-	if provider == null or not provider.has_method("request_athlete_recalibration"):
+	if provider == null:
 		return false
-	return bool(provider.request_athlete_recalibration())
+	if provider.has_method("start_athlete_calibration"):
+		return bool(provider.start_athlete_calibration())
+	if provider.has_method("request_athlete_recalibration"):
+		return bool(provider.request_athlete_recalibration())
+	return false
+
+func request_athlete_recalibration() -> bool:
+	return start_athlete_calibration()
+
+func cancel_athlete_calibration() -> bool:
+	var provider := _ensure_provider()
+	if provider == null or not provider.has_method("cancel_athlete_calibration"):
+		return false
+	return bool(provider.cancel_athlete_calibration())
+
+func get_calibration_session() -> Dictionary:
+	var provider := _ensure_provider()
+	if provider != null and provider.has_method("get_calibration_session"):
+		return provider.get_calibration_session()
+	return {}
 
 func ensure_replay_playback_loaded(source_path: String) -> bool:
 	var normalized_source := source_path.strip_edges()
