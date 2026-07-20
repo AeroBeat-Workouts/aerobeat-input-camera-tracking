@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-20  
 **Status:** In Progress  
-**Last Updated:** 2026-07-20 07:31 EDT  
+**Last Updated:** 2026-07-20 07:58 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -115,6 +115,7 @@ This work is explicitly connected to the broader BeatSaver-conversion architectu
 - Added repo-local tests covering countdown/session transitions, centering + T-pose readiness gates, successful capture commit, capture-window failure, cancel behavior preventing silent auto-recalibration, and wrapper exposure in provider/singleton layers (`REF-08`).
 - Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_aero_camera_tracking.gd -gunit_test_name=calibration -gexit` ✅ passed (8/8).
 - Broader spot-check: the same three files run without the calibration filter exposed two pre-existing provider depth-runtime fixture failures (`test_camera_tracking_provider_live_frame_merges_preview_descriptor_for_real_depth_runtime` and `...replay_polling_merges_preview_descriptor_for_real_depth_runtime` expecting `depth_runtime_status=ready` but seeing `failed/artifact_missing`). Those failures are outside this calibration slice and were not introduced by the new calibration-session assertions.
+- Commit recorded: `dc5d10b` — `Add shared calibration session runtime contract`.
 
 ---
 
@@ -133,16 +134,21 @@ This work is explicitly connected to the broader BeatSaver-conversion architectu
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
 
 **Files Created/Deleted/Modified:**
-- likely `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/proving_harness.gd`
-- likely `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scenes/boxing_proving.tscn`
-- likely `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scenes/flow_proving.tscn`
-- likely `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
-- additional proving-scene test files to be determined during execution
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scenes/boxing_proving.tscn`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scenes/flow_proving.tscn`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-shared-calibration-countdown-and-capture.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:**
+- Bead `aerobeat-input-camera-tracking-uk6m` was re-claimed from the in-progress state and completed against the already-landed Task 2 runtime contract.
+- Replaced the old fire-and-forget recalibration button path in `REF-03` with a shared proving-harness calibration panel that renders the runtime-owned session truth from `REF-04`: start/retry button state, optional cancel affordance while active, 5-second countdown text, capture-progress text, shared T-pose + centering instructions, and truthful success/failure/cancelled messaging.
+- Kept countdown/session ownership centralized in `proving_harness.gd`; Boxing and Flow scenes only gained placement/styling nodes for the shared athlete calibration surface (`REF-05`, `REF-06`). No scene duplicated countdown timing or pose-readiness logic.
+- Wired cancel support because the Task 2 runtime contract already exposes clean `cancel_athlete_calibration()` forwarding. Retry uses the same shared start path after a failed or cancelled session; no fake retry state was added.
+- Expanded proving-scene tests in `REF-07` with fake runtime-session coverage for both scenes: start/cancel/countdown/capture-progress routing plus failure and success messaging. Validation run: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=shared_calibration -gexit` ✅ passed (2/2, 64 asserts).
+- Extra compile smoke check: `godot --headless --path .testbed --script /tmp/check_boxing_harness.gd` successfully loaded `res://scripts/boxing_proving_harness.gd` after the proving-harness edits, confirming the shared base script still compiles cleanly.
 
 ---
 

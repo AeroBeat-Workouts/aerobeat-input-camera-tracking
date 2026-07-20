@@ -62,21 +62,61 @@ class FakeAthleteRecalibrateProvider:
 	extends Node
 
 	var request_count := 0
+	var cancel_count := 0
+	var calibration_session := _make_session("idle")
+	var baseline := {"is_calibrated": false, "sample_frames": 0}
+
+	func start_athlete_calibration() -> bool:
+		request_count += 1
+		baseline = {"is_calibrated": false, "sample_frames": 0}
+		calibration_session = _make_session("countdown", {"is_active": true, "seconds_remaining": 5})
+		return true
 
 	func request_athlete_recalibration() -> bool:
-		request_count += 1
+		return start_athlete_calibration()
+
+	func cancel_athlete_calibration() -> bool:
+		cancel_count += 1
+		calibration_session = _make_session("cancelled", {"result": "cancelled", "failure_reason": "cancelled"})
 		return true
+
+	func get_calibration_session() -> Dictionary:
+		return calibration_session.duplicate(true)
 
 	func get_detector_state() -> Dictionary:
 		return {
+			"baseline": baseline.duplicate(true),
+			"calibration_session": calibration_session.duplicate(true),
 			"gesture_debug": {
 				"squat": {
 					"state": false,
-					"calibration_ready": false,
-					"calibration_sample_frames": 0,
+					"calibration_ready": bool(baseline.get("is_calibrated", false)),
+					"calibration_sample_frames": int(baseline.get("sample_frames", 0)),
 				}
 			}
 		}
+
+	func _make_session(state_name: String, overrides: Dictionary = {}) -> Dictionary:
+		var session := {
+			"state": state_name,
+			"is_active": state_name == "countdown" or state_name == "capture_pending" or state_name == "capturing",
+			"result": state_name,
+			"seconds_remaining": 0,
+			"captured_sample_frames": 0,
+			"required_capture_frames": 5,
+			"failure_reason": "",
+			"readiness": {
+				"centered_in_camera": false,
+				"t_pose_ready": false,
+			},
+			"instructions": {
+				"stand_centered": {"text": "Stand centered in camera", "ready": false},
+				"hold_t_pose": {"text": "Hold a T-pose", "ready": false},
+			},
+		}
+		for key: Variant in overrides.keys():
+			session[key] = overrides[key]
+		return session
 
 class AllDepthDisabledHarness:
 	extends "res://scripts/boxing_proving_harness.gd"
@@ -1308,21 +1348,103 @@ func test_boxing_weave_hover_card_reports_yaml_thresholds_and_live_truth() -> vo
 	assert_string_contains(body, "Head lateral offset - 0.310")
 	assert_string_contains(body, "Head-vs-hip lateral offset - 0.270")
 
-func test_proving_scenes_surface_recalibrate_button_and_route_press_to_provider() -> void:
+func test_proving_scenes_surface_shared_calibration_flow_and_route_start_cancel() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
 		var packed_scene := packed_scene_variant as PackedScene
 		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
 		assert_not_null(scene_root)
-		var button := scene_root.find_child("AthleteRecalibrateButton", true, false) as Button
-		assert_not_null(button)
-		assert_eq(button.text, "Recalibrate Athlete")
 		var provider := FakeAthleteRecalibrateProvider.new()
 		harness_set_provider(scene_root, provider)
-		button.emit_signal("pressed")
+		scene_root.set("_latest_state", provider.get_detector_state())
+		scene_root.call("_refresh_calibration_flow_ui")
+
+		var start_button := scene_root.find_child("AthleteRecalibrateButton", true, false) as Button
+		var cancel_button := scene_root.find_child("AthleteCalibrationSecondaryButton", true, false) as Button
+		var countdown_label := scene_root.find_child("CalibrationCountdownLabel", true, false) as Label
+		var instruction_label := scene_root.find_child("CalibrationInstructionLabel", true, false) as Label
+		var status_label := scene_root.find_child("CalibrationStatusLabel", true, false) as Label
+		assert_not_null(start_button)
+		assert_not_null(cancel_button)
+		assert_not_null(countdown_label)
+		assert_not_null(instruction_label)
+		assert_not_null(status_label)
+		assert_eq(start_button.text, "Start Calibration")
+		assert_string_contains(String(countdown_label.text), "5-second countdown")
+		assert_string_contains(String(instruction_label.text), "Stand centered in camera")
+		assert_string_contains(String(instruction_label.text), "Hold a T-pose")
+
+		start_button.emit_signal("pressed")
 		assert_eq(provider.request_count, 1)
+		scene_root.call("_refresh_calibration_flow_ui")
+		assert_eq(start_button.disabled, true)
+		assert_eq(cancel_button.visible, true)
+		assert_string_contains(String(countdown_label.text), "Countdown: 5s")
+		assert_string_contains(String(status_label.text), "Stand centered in camera")
+
+		provider.calibration_session = provider._make_session("capturing", {
+			"is_active": true,
+			"captured_sample_frames": 2,
+			"readiness": {"centered_in_camera": true, "t_pose_ready": true},
+			"instructions": {
+				"stand_centered": {"text": "Stand centered in camera", "ready": true},
+				"hold_t_pose": {"text": "Hold a T-pose", "ready": true},
+			},
+		})
+		scene_root.set("_latest_state", provider.get_detector_state())
+		scene_root.call("_refresh_calibration_flow_ui")
+		assert_string_contains(String(countdown_label.text), "2/5 frames")
+		assert_string_contains(String(instruction_label.text), "✓ Stand centered in camera")
+		assert_string_contains(String(instruction_label.text), "✓ Hold a T-pose")
+		assert_string_contains(String(status_label.text), "Capturing the shared athlete baseline")
+
+		cancel_button.emit_signal("pressed")
+		assert_eq(provider.cancel_count, 1)
+		scene_root.call("_refresh_calibration_flow_ui")
+		assert_eq(start_button.text, "Retry Calibration")
+		assert_string_contains(String(status_label.text), "Calibration cancelled")
 
 func harness_set_provider(scene_root: Control, provider: Node) -> void:
 	scene_root.set("provider", provider)
+
+func test_proving_scenes_surface_shared_calibration_success_and_failure_truthfully() -> void:
+	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
+		var packed_scene := packed_scene_variant as PackedScene
+		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
+		assert_not_null(scene_root)
+		var provider := FakeAthleteRecalibrateProvider.new()
+		harness_set_provider(scene_root, provider)
+		var start_button := scene_root.find_child("AthleteRecalibrateButton", true, false) as Button
+		var countdown_label := scene_root.find_child("CalibrationCountdownLabel", true, false) as Label
+		var status_label := scene_root.find_child("CalibrationStatusLabel", true, false) as Label
+		assert_not_null(start_button)
+		assert_not_null(countdown_label)
+		assert_not_null(status_label)
+
+		provider.calibration_session = provider._make_session("failed", {
+			"result": "failed",
+			"failure_reason": "not_centered",
+		})
+		scene_root.set("_latest_state", provider.get_detector_state())
+		scene_root.call("_refresh_calibration_flow_ui")
+		assert_eq(start_button.text, "Retry Calibration")
+		assert_string_contains(String(countdown_label.text), "Capture failed")
+		assert_string_contains(String(status_label.text), "move back to the center of the camera")
+
+		provider.baseline = {"is_calibrated": true, "sample_frames": 5}
+		provider.calibration_session = provider._make_session("succeeded", {
+			"result": "succeeded",
+			"captured_sample_frames": 5,
+			"readiness": {"centered_in_camera": true, "t_pose_ready": true},
+			"instructions": {
+				"stand_centered": {"text": "Stand centered in camera", "ready": true},
+				"hold_t_pose": {"text": "Hold a T-pose", "ready": true},
+			},
+		})
+		scene_root.set("_latest_state", provider.get_detector_state())
+		scene_root.call("_refresh_calibration_flow_ui")
+		assert_eq(start_button.text, "Recalibrate Athlete")
+		assert_string_contains(String(countdown_label.text), "Captured baseline: 5/5 frames")
+		assert_string_contains(String(status_label.text), "Calibration complete")
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

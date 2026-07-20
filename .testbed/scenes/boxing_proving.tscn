@@ -106,6 +106,56 @@ text = "Live camera"
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="AthleteCalibrationPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=215770010]
+custom_minimum_size = Vector2(0, 146)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel" unique_id=215770011]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Column" type="VBoxContainer" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin" unique_id=215770012]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CalibrationTitleLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770013]
+layout_mode = 2
+text = "Athlete Calibration"
+
+[node name="CalibrationCountdownLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770014]
+layout_mode = 2
+text = "5-second countdown, then shared baseline capture"
+
+[node name="CalibrationInstructionLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770015]
+layout_mode = 2
+autowrap_mode = 3
+text = "○ Stand centered in camera
+○ Hold a T-pose"
+
+[node name="CalibrationStatusLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770016]
+layout_mode = 2
+autowrap_mode = 3
+text = "Start calibration, then stand centered in camera in a T-pose."
+
+[node name="Buttons" type="HBoxContainer" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770017]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AthleteRecalibrateButton" type="Button" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column/Buttons" unique_id=215770018]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Start Calibration"
+
+[node name="AthleteCalibrationSecondaryButton" type="Button" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column/Buttons" unique_id=215770019]
+visible = false
+layout_mode = 2
+text = "Cancel"
+
 [node name="CameraPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=609295185]
 layout_mode = 2
 size_flags_horizontal = 3

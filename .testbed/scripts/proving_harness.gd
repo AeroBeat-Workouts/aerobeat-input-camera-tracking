@@ -54,6 +54,8 @@ const INSPECTOR_FOOTER_TEXT := "Click away to close"
 const RECALIBRATE_BUTTON_TEXT := "Recalibrate Athlete"
 const RECALIBRATE_BUTTON_RIGHT_MARGIN := 24.0
 const RECALIBRATE_BUTTON_TOP_MARGIN := 20.0
+const CALIBRATION_PANEL_MIN_HEIGHT := 134.0
+const CALIBRATION_PANEL_FALLBACK_WIDTH := 312.0
 const LANDMARK_NAMES := [
 	"Nose",
 	"Left Eye Inner",
@@ -190,6 +192,11 @@ var show_trails := true
 @onready var right_placement_chart: Control = find_child("RightPlacementChart", true, false) as Control
 @onready var left_direction_chart: Control = find_child("LeftDirectionChart", true, false) as Control
 @onready var right_direction_chart: Control = find_child("RightDirectionChart", true, false) as Control
+@onready var athlete_calibration_panel: Control = find_child("AthleteCalibrationPanel", true, false) as Control
+@onready var athlete_calibration_title_label: Label = find_child("CalibrationTitleLabel", true, false) as Label
+@onready var athlete_calibration_countdown_label: Label = find_child("CalibrationCountdownLabel", true, false) as Label
+@onready var athlete_calibration_instruction_label: Label = find_child("CalibrationInstructionLabel", true, false) as Label
+@onready var athlete_calibration_status_label: Label = find_child("CalibrationStatusLabel", true, false) as Label
 
 var provider: Node = null
 var auto_start_manager: Node = null
@@ -259,6 +266,8 @@ var _playback_autoplay_pending := false
 var _playback_autoplay_base_url := ""
 var _playback_pause_hold := false
 var _athlete_recalibrate_button: Button = null
+var _athlete_calibration_secondary_button: Button = null
+var _last_reported_calibration_session_state := ""
 
 func _enter_tree() -> void:
 	if startup_mode != StartupMode.GODOT_ONLY_DEBUG:
@@ -280,7 +289,7 @@ func _ready() -> void:
 		live_status_label.scroll_active = false
 	_ensure_shared_inspector_ui()
 	_ensure_playback_controls()
-	_ensure_athlete_recalibrate_button()
+	_ensure_calibration_flow_ui()
 	_ensure_overlay_drawers_ready()
 	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
@@ -307,39 +316,284 @@ func _ready() -> void:
 		_setup_auto_start()
 	_refresh_debug_panels()
 
-func _ensure_athlete_recalibrate_button() -> void:
-	if _athlete_recalibrate_button != null:
-		return
-	_athlete_recalibrate_button = Button.new()
-	_athlete_recalibrate_button.name = "AthleteRecalibrateButton"
-	_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
-	_athlete_recalibrate_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	_athlete_recalibrate_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	_athlete_recalibrate_button.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_athlete_recalibrate_button.offset_left = -208.0
-	_athlete_recalibrate_button.offset_top = RECALIBRATE_BUTTON_TOP_MARGIN
-	_athlete_recalibrate_button.offset_right = -RECALIBRATE_BUTTON_RIGHT_MARGIN
-	_athlete_recalibrate_button.offset_bottom = RECALIBRATE_BUTTON_TOP_MARGIN + 34.0
-	_athlete_recalibrate_button.tooltip_text = "Clear the current athlete baseline and gather a fresh neutral-stance calibration without restarting the proving scene."
-	_athlete_recalibrate_button.pressed.connect(_on_athlete_recalibrate_pressed)
-	add_child(_athlete_recalibrate_button)
+func _ensure_calibration_flow_ui() -> void:
+	if athlete_calibration_panel == null:
+		athlete_calibration_panel = PanelContainer.new()
+		athlete_calibration_panel.name = "AthleteCalibrationPanel"
+		athlete_calibration_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		athlete_calibration_panel.custom_minimum_size = Vector2(CALIBRATION_PANEL_FALLBACK_WIDTH, CALIBRATION_PANEL_MIN_HEIGHT)
+		athlete_calibration_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		athlete_calibration_panel.offset_left = -CALIBRATION_PANEL_FALLBACK_WIDTH - RECALIBRATE_BUTTON_RIGHT_MARGIN
+		athlete_calibration_panel.offset_top = RECALIBRATE_BUTTON_TOP_MARGIN
+		athlete_calibration_panel.offset_right = -RECALIBRATE_BUTTON_RIGHT_MARGIN
+		athlete_calibration_panel.offset_bottom = RECALIBRATE_BUTTON_TOP_MARGIN + CALIBRATION_PANEL_MIN_HEIGHT
+		add_child(athlete_calibration_panel)
+		_apply_panel_style(athlete_calibration_panel as PanelContainer, Color(0.0, 0.0, 0.0, 0.76), Color(1.0, 1.0, 1.0, 0.12), 16, 1, 0)
+
+		var margin := MarginContainer.new()
+		margin.add_theme_constant_override("margin_left", 12)
+		margin.add_theme_constant_override("margin_top", 12)
+		margin.add_theme_constant_override("margin_right", 12)
+		margin.add_theme_constant_override("margin_bottom", 12)
+		athlete_calibration_panel.add_child(margin)
+
+		var column := VBoxContainer.new()
+		column.add_theme_constant_override("separation", 6)
+		margin.add_child(column)
+
+		athlete_calibration_title_label = Label.new()
+		athlete_calibration_title_label.name = "CalibrationTitleLabel"
+		athlete_calibration_title_label.text = "Athlete Calibration"
+		athlete_calibration_title_label.add_theme_font_size_override("font_size", 16)
+		column.add_child(athlete_calibration_title_label)
+
+		athlete_calibration_countdown_label = Label.new()
+		athlete_calibration_countdown_label.name = "CalibrationCountdownLabel"
+		column.add_child(athlete_calibration_countdown_label)
+
+		athlete_calibration_instruction_label = Label.new()
+		athlete_calibration_instruction_label.name = "CalibrationInstructionLabel"
+		athlete_calibration_instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		column.add_child(athlete_calibration_instruction_label)
+
+		athlete_calibration_status_label = Label.new()
+		athlete_calibration_status_label.name = "CalibrationStatusLabel"
+		athlete_calibration_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		column.add_child(athlete_calibration_status_label)
+
+		var button_row := HBoxContainer.new()
+		button_row.add_theme_constant_override("separation", 8)
+		column.add_child(button_row)
+
+		_athlete_recalibrate_button = Button.new()
+		_athlete_recalibrate_button.name = "AthleteRecalibrateButton"
+		_athlete_recalibrate_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button_row.add_child(_athlete_recalibrate_button)
+
+		_athlete_calibration_secondary_button = Button.new()
+		_athlete_calibration_secondary_button.name = "AthleteCalibrationSecondaryButton"
+		_athlete_calibration_secondary_button.visible = false
+		button_row.add_child(_athlete_calibration_secondary_button)
+	else:
+		_athlete_recalibrate_button = athlete_calibration_panel.find_child("AthleteRecalibrateButton", true, false) as Button
+		_athlete_calibration_secondary_button = athlete_calibration_panel.find_child("AthleteCalibrationSecondaryButton", true, false) as Button
+		athlete_calibration_title_label = athlete_calibration_panel.find_child("CalibrationTitleLabel", true, false) as Label
+		athlete_calibration_countdown_label = athlete_calibration_panel.find_child("CalibrationCountdownLabel", true, false) as Label
+		athlete_calibration_instruction_label = athlete_calibration_panel.find_child("CalibrationInstructionLabel", true, false) as Label
+		athlete_calibration_status_label = athlete_calibration_panel.find_child("CalibrationStatusLabel", true, false) as Label
+
+	if athlete_calibration_title_label != null and athlete_calibration_title_label.text.is_empty():
+		athlete_calibration_title_label.text = "Athlete Calibration"
+	if _athlete_recalibrate_button != null and not _athlete_recalibrate_button.pressed.is_connected(_on_athlete_recalibrate_pressed):
+		_athlete_recalibrate_button.pressed.connect(_on_athlete_recalibrate_pressed)
+	if _athlete_calibration_secondary_button != null and not _athlete_calibration_secondary_button.pressed.is_connected(_on_athlete_calibration_secondary_pressed):
+		_athlete_calibration_secondary_button.pressed.connect(_on_athlete_calibration_secondary_pressed)
+	_refresh_calibration_flow_ui()
 
 func _on_athlete_recalibrate_pressed() -> void:
-	var recalibrated := false
-	if provider != null and provider.has_method("request_athlete_recalibration"):
-		recalibrated = bool(provider.request_athlete_recalibration())
-	elif _resolve_camera_tracking_singleton() != null:
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		if tracking_singleton != null and tracking_singleton.has_method("request_athlete_recalibration"):
-			recalibrated = bool(tracking_singleton.request_athlete_recalibration())
-	if recalibrated and provider != null and provider.has_method("get_detector_state"):
-		_latest_state = provider.get_detector_state()
+	if _start_athlete_calibration_request():
+		_sync_latest_detector_state()
+		_refresh_calibration_flow_ui()
 		_refresh_debug_panels()
-		_update_status("Athlete baseline recalibration requested", Color(0.72, 0.94, 1.0, 1.0))
-		_record_event("athlete_recalibration_requested", {"mode": _mode_name()})
-		_record_fixture_state_snapshot("athlete_recalibration_requested")
+		_update_status("Athlete calibration started", Color(0.72, 0.94, 1.0, 1.0))
 		return
-	_update_status("Athlete baseline recalibration unavailable", Color(1.0, 0.75, 0.44, 1.0))
+	_refresh_calibration_flow_ui()
+	_update_status("Athlete calibration unavailable", Color(1.0, 0.75, 0.44, 1.0))
+
+func _on_athlete_calibration_secondary_pressed() -> void:
+	if _cancel_athlete_calibration_request():
+		_sync_latest_detector_state()
+		_refresh_calibration_flow_ui()
+		_refresh_debug_panels()
+		_update_status("Athlete calibration cancelled", Color(1.0, 0.75, 0.44, 1.0))
+		return
+	_refresh_calibration_flow_ui()
+	_update_status("Athlete calibration cancel unavailable", Color(1.0, 0.75, 0.44, 1.0))
+
+func _sync_latest_detector_state() -> void:
+	if provider != null and provider.has_method("get_detector_state"):
+		_latest_state = provider.get_detector_state()
+		return
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null and tracking_singleton.has_method("get_detector_state"):
+		_latest_state = tracking_singleton.get_detector_state()
+
+func _resolve_calibration_session() -> Dictionary:
+	var session: Dictionary = _latest_state.get("calibration_session", {}) if _latest_state.get("calibration_session", {}) is Dictionary else {}
+	if not session.is_empty():
+		return session.duplicate(true)
+	if provider != null and provider.has_method("get_calibration_session"):
+		return provider.get_calibration_session()
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null and tracking_singleton.has_method("get_calibration_session"):
+		return tracking_singleton.get_calibration_session()
+	return {}
+
+func _start_athlete_calibration_request() -> bool:
+	if provider != null:
+		if provider.has_method("start_athlete_calibration"):
+			return bool(provider.start_athlete_calibration())
+		if provider.has_method("request_athlete_recalibration"):
+			return bool(provider.request_athlete_recalibration())
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null:
+		if tracking_singleton.has_method("start_athlete_calibration"):
+			return bool(tracking_singleton.start_athlete_calibration())
+		if tracking_singleton.has_method("request_athlete_recalibration"):
+			return bool(tracking_singleton.request_athlete_recalibration())
+	return false
+
+func _cancel_athlete_calibration_request() -> bool:
+	if provider != null and provider.has_method("cancel_athlete_calibration"):
+		return bool(provider.cancel_athlete_calibration())
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton != null and tracking_singleton.has_method("cancel_athlete_calibration"):
+		return bool(tracking_singleton.cancel_athlete_calibration())
+	return false
+
+func _refresh_calibration_flow_ui() -> void:
+	if _athlete_recalibrate_button == null:
+		return
+	var session := _resolve_calibration_session()
+	var state_name := String(session.get("state", "idle"))
+	var is_active := bool(session.get("is_active", false))
+	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
+	var instructions: Dictionary = session.get("instructions", {}) if session.get("instructions", {}) is Dictionary else {}
+	var baseline: Dictionary = _latest_state.get("baseline", {}) if _latest_state.get("baseline", {}) is Dictionary else {}
+	var has_baseline := bool(baseline.get("is_calibrated", false))
+	var start_supported := provider_has_start_calibration()
+	var cancel_supported := provider_has_cancel_calibration()
+	_apply_calibration_session_transition(state_name, session)
+
+	if _athlete_recalibrate_button != null:
+		_athlete_recalibrate_button.disabled = is_active or not start_supported
+		_athlete_recalibrate_button.tooltip_text = "Start a shared athlete calibration countdown, then capture the centered T-pose baseline."
+		if state_name == "failed" or state_name == "cancelled":
+			_athlete_recalibrate_button.text = "Retry Calibration"
+		elif has_baseline:
+			_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
+		else:
+			_athlete_recalibrate_button.text = "Start Calibration"
+	if _athlete_calibration_secondary_button != null:
+		_athlete_calibration_secondary_button.visible = is_active and cancel_supported
+		_athlete_calibration_secondary_button.disabled = not (is_active and cancel_supported)
+		_athlete_calibration_secondary_button.text = "Cancel"
+	if athlete_calibration_countdown_label != null:
+		athlete_calibration_countdown_label.text = _calibration_countdown_text(state_name, session)
+	if athlete_calibration_instruction_label != null:
+		athlete_calibration_instruction_label.text = _build_calibration_instruction_lines(instructions, readiness)
+	if athlete_calibration_status_label != null:
+		athlete_calibration_status_label.text = _calibration_status_text(state_name, session, has_baseline)
+
+func _apply_calibration_session_transition(state_name: String, session: Dictionary) -> void:
+	if state_name.is_empty():
+		state_name = "idle"
+	if _last_reported_calibration_session_state.is_empty():
+		_last_reported_calibration_session_state = state_name
+		return
+	if state_name == _last_reported_calibration_session_state:
+		return
+	_last_reported_calibration_session_state = state_name
+	var event_name := ""
+	match state_name:
+		"countdown":
+			event_name = "athlete_calibration_started"
+		"capture_pending":
+			event_name = "athlete_calibration_countdown_complete"
+		"capturing":
+			event_name = "athlete_calibration_capturing"
+		"succeeded":
+			event_name = "athlete_calibration_succeeded"
+		"failed":
+			event_name = "athlete_calibration_failed"
+		"cancelled":
+			event_name = "athlete_calibration_cancelled"
+	if event_name.is_empty():
+		return
+	_record_event(event_name, {
+		"mode": _mode_name(),
+		"state": state_name,
+		"failure_reason": String(session.get("failure_reason", "")),
+		"captured_sample_frames": int(session.get("captured_sample_frames", 0)),
+		"seconds_remaining": int(session.get("seconds_remaining", 0)),
+	})
+	_record_fixture_state_snapshot(event_name)
+
+func _build_calibration_instruction_lines(instructions: Dictionary, readiness: Dictionary) -> String:
+	var centered_ready := bool(readiness.get("centered_in_camera", false))
+	var t_pose_ready := bool(readiness.get("t_pose_ready", false))
+	var centered_text := "Stand centered in camera"
+	var t_pose_text := "Hold a T-pose"
+	if instructions.get("stand_centered", {}) is Dictionary:
+		centered_text = String((instructions.get("stand_centered", {}) as Dictionary).get("text", centered_text))
+	if instructions.get("hold_t_pose", {}) is Dictionary:
+		t_pose_text = String((instructions.get("hold_t_pose", {}) as Dictionary).get("text", t_pose_text))
+	return "%s %s\n%s %s" % ["✓" if centered_ready else "○", centered_text, "✓" if t_pose_ready else "○", t_pose_text]
+
+func _calibration_countdown_text(state_name: String, session: Dictionary) -> String:
+	match state_name:
+		"countdown":
+			return "Countdown: %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
+		"capture_pending":
+			return "Countdown complete — waiting for centered T-pose"
+		"capturing":
+			return "Capturing baseline: %d/%d frames" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
+		"succeeded":
+			return "Captured baseline: %d/%d frames" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
+		"failed":
+			return "Capture failed"
+		"cancelled":
+			return "Calibration cancelled"
+		_:
+			return "5-second countdown, then shared baseline capture"
+
+func _calibration_status_text(state_name: String, session: Dictionary, has_baseline: bool) -> String:
+	match state_name:
+		"countdown":
+			return "Stand centered in camera and get into a T-pose before the countdown ends."
+		"capture_pending":
+			return "Countdown finished. Waiting until the athlete is centered and holding a T-pose."
+		"capturing":
+			return "Capturing the shared athlete baseline now — hold steady."
+		"succeeded":
+			return "Calibration complete. Boxing and Flow are now using the shared captured baseline."
+		"failed":
+			return "Calibration failed: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "waiting_for_pose")))
+		"cancelled":
+			return "Calibration cancelled. Start again when the athlete is ready."
+		_:
+			if has_baseline:
+				return "Calibration ready. Re-run anytime if the athlete changes position."
+			return "Start calibration, then stand centered in camera in a T-pose."
+
+func _humanize_calibration_failure_reason(reason: String) -> String:
+	match reason:
+		"not_centered":
+			return "move back to the center of the camera"
+		"t_pose_required":
+			return "hold a clear T-pose"
+		"required_landmarks_missing":
+			return "keep the nose, shoulders, hips, and wrists visible"
+		"tracking_unavailable":
+			return "tracking is unavailable"
+		"capture_window_expired":
+			return "the capture window expired before a stable pose was ready"
+		"cancelled":
+			return "the session was cancelled"
+		_:
+			return reason.replace("_", " ")
+
+func provider_has_start_calibration() -> bool:
+	if provider != null and (provider.has_method("start_athlete_calibration") or provider.has_method("request_athlete_recalibration")):
+		return true
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	return tracking_singleton != null and (tracking_singleton.has_method("start_athlete_calibration") or tracking_singleton.has_method("request_athlete_recalibration"))
+
+func provider_has_cancel_calibration() -> bool:
+	if provider != null and provider.has_method("cancel_athlete_calibration"):
+		return true
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	return tracking_singleton != null and tracking_singleton.has_method("cancel_athlete_calibration")
 
 func _ensure_shared_inspector_ui() -> void:
 	if _shared_inspector_panel != null:
@@ -932,8 +1186,8 @@ func _process(_delta: float) -> void:
 
 	var now_ms := Time.get_ticks_msec()
 	if _debug_panel_refresh_due_ms <= 0 or now_ms >= _debug_panel_refresh_due_ms:
-		if provider != null and provider.has_method("get_detector_state"):
-			_latest_state = provider.get_detector_state()
+		_sync_latest_detector_state()
+		_refresh_calibration_flow_ui()
 		_refresh_debug_panels()
 		_debug_panel_refresh_due_ms = now_ms + maxi(1, debug_panel_refresh_interval_ms)
 
