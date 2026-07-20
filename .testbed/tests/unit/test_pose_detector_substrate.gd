@@ -1508,6 +1508,30 @@ func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 	assert_eq(int(left_flow.get("cell_meta", {}).get("current_cell", -1)), 4)
 	assert_eq(int(left_flow.get("cell_meta", {}).get("direction", -1)), emitted_direction)
 
+func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.80},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.39, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.65, "y": 0.72},
+	}), 1200)
+	var flow_debug: Dictionary = state.get("gesture_debug", {}).get("flow", {})
+	var grid_debug: Dictionary = flow_debug.get("grid", {})
+	assert_true(bool(grid_debug.get("is_calibrated", false)))
+	assert_eq(int(grid_debug.get("columns", 0)), 4)
+	assert_eq(int(grid_debug.get("rows", 0)), 3)
+	assert_eq((grid_debug.get("cell_rects", []) as Array).size(), 12)
+	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
+	var nose_debug: Dictionary = tracked_landmarks.get("nose", {})
+	var left_wrist_debug: Dictionary = tracked_landmarks.get("left_wrist", {})
+	var right_wrist_debug: Dictionary = tracked_landmarks.get("right_wrist", {})
+	assert_eq(String(nose_debug.get("landmark_key", "")), "nose")
+	assert_eq(String(left_wrist_debug.get("landmark_key", "")), "left_wrist")
+	assert_eq(String(right_wrist_debug.get("landmark_key", "")), "right_wrist")
+	assert_true(int(nose_debug.get("current_cell", -1)) >= 0)
+	assert_true(int(left_wrist_debug.get("current_cell", -1)) >= 0)
+	assert_true(int(right_wrist_debug.get("current_cell", -1)) >= 0)
+
 func test_squat_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
 
 	config.gesture_profile_document = {

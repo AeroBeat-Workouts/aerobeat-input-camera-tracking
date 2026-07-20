@@ -1403,6 +1403,68 @@ func test_proving_scenes_surface_shared_calibration_flow_and_route_start_cancel(
 		assert_eq(start_button.text, "Retry Calibration")
 		assert_string_contains(String(status_label.text), "Calibration cancelled")
 
+func _shared_flow_grid_truth_state() -> Dictionary:
+	return {
+		"baseline": {
+			"is_calibrated": true,
+			"sample_frames": 5,
+		},
+		"gesture_debug": {
+			"flow": {
+				"grid": {
+					"is_calibrated": true,
+					"columns": 4,
+					"rows": 3,
+					"cell_size": 0.08,
+					"left_boundary": 0.34,
+					"top_boundary": 0.84,
+					"cell_rects": [
+						{"index": 0}, {"index": 1}, {"index": 2}, {"index": 3},
+						{"index": 4}, {"index": 5}, {"index": 6}, {"index": 7},
+						{"index": 8}, {"index": 9}, {"index": 10}, {"index": 11},
+					],
+				},
+				"tracked_landmarks": {
+					"nose": {"current_cell": 5, "current_direction": 2, "latest_confidence": 0.98},
+					"left_wrist": {"current_cell": 4, "current_direction": 0, "latest_confidence": 0.92},
+					"right_wrist": {"current_cell": 7, "current_direction": 3, "latest_confidence": 0.93},
+				},
+				"left": {"current_cell": 4, "current_direction": 0},
+				"right": {"current_cell": 7, "current_direction": 3},
+			},
+		},
+	}
+
+func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
+	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
+		var packed_scene := packed_scene_variant as PackedScene
+		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
+		assert_not_null(scene_root)
+		var presenter := add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+		scene_root.set("_preview_presenter", presenter)
+		scene_root.set("_latest_state", _shared_flow_grid_truth_state())
+		scene_root.call("_sync_overlay_drawers_to_preview_presenter")
+		scene_root.call("_refresh_debug_panels")
+
+		var refs: Dictionary = scene_root.call("get_shared_flow_grid_truth_refs")
+		var overlay := refs.get("flow_grid_overlay", null) as Object
+		var truth_label := refs.get("grid_truth_label", null) as RichTextLabel
+		assert_not_null(overlay)
+		assert_not_null(truth_label)
+		assert_same((overlay as Control).get_parent(), presenter.get_overlay_layer())
+		assert_true(bool((overlay as Control).visible))
+		var overlay_snapshot: Dictionary = overlay.call("get_overlay_snapshot")
+		assert_eq(int(overlay_snapshot.get("columns", 0)), 4)
+		assert_eq(int(overlay_snapshot.get("rows", 0)), 3)
+		assert_eq(int(overlay_snapshot.get("cell_count", 0)), 12)
+		var body := String(truth_label.text)
+		assert_string_contains(body, "Nose")
+		assert_string_contains(body, "Left Wrist")
+		assert_string_contains(body, "Right Wrist")
+		assert_string_contains(body, "cell 5")
+		assert_string_contains(body, "left")
+		assert_string_contains(body, "right")
+
 func harness_set_provider(scene_root: Control, provider: Node) -> void:
 	scene_root.set("provider", provider)
 

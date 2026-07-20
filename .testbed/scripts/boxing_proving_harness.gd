@@ -625,6 +625,7 @@ func _refresh_debug_panels() -> void:
 		if _boxing_event_feed_autoscroll_pending and quick_stats_label.has_method("scroll_to_line"):
 			quick_stats_label.scroll_to_line(0)
 		_boxing_event_feed_autoscroll_pending = false
+	_refresh_shared_flow_grid_truth_surfaces()
 	_update_tile_states()
 
 func _sync_playback_status_from_manager() -> void:
@@ -1241,6 +1242,14 @@ func _apply_boxing_visual_shell() -> void:
 	if quick_stats_label and quick_stats_label.get_parent() is PanelContainer:
 		quick_stats_label.get_parent().custom_minimum_size = Vector2(0, 210)
 		_apply_panel_style(quick_stats_label.get_parent(), Color(0.20, 0.21, 0.24, 0.90), Color(1.0, 1.0, 1.0, 0.08), 14, 1, 12)
+	if grid_truth_label:
+		grid_truth_label.add_theme_font_size_override("normal_font_size", 15)
+		grid_truth_label.add_theme_color_override("default_color", Color(0.97, 0.98, 1.0, 1.0))
+		grid_truth_label.scroll_active = false
+		grid_truth_label.fit_content = true
+	if grid_truth_label and grid_truth_label.get_parent() is PanelContainer:
+		grid_truth_label.get_parent().custom_minimum_size = Vector2(0, 224)
+		_apply_panel_style(grid_truth_label.get_parent(), Color(0.20, 0.21, 0.24, 0.90), Color(1.0, 1.0, 1.0, 0.08), 14, 1, 12)
 	if _board_panel:
 		_apply_panel_style(_board_panel, Color(0.25, 0.38, 0.53, 0.56), Color(1.0, 1.0, 1.0, 0.26), 28, 1, 18)
 	if _board_grid:

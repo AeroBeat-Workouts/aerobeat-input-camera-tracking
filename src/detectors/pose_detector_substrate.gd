@@ -1121,16 +1121,35 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 
 func _build_flow_debug_state(_metrics: Dictionary = {}) -> Dictionary:
 	return {
+		"grid": _build_flow_grid_debug(),
+		"tracked_landmarks": {
+			"nose": _build_flow_nose_debug(),
+			"left_wrist": _build_flow_side_debug("left"),
+			"right_wrist": _build_flow_side_debug("right"),
+		},
 		"left": _build_flow_side_debug("left"),
 		"right": _build_flow_side_debug("right"),
 	}
 
 func _build_flow_side_debug(side: String) -> Dictionary:
-	var history: Array = _get_flow_history("%s_hand" % side)
+	var history_name := "%s_hand" % side
+	var history: Array = _get_flow_history(history_name)
 	var analysis := _analyze_flow_motion(side, FLOW_DIRECTION_WINDOW_MAX_MS)
 	var latest_sample: Dictionary = history[history.size() - 1] if history.size() > 0 else {}
 	var cell_meta: Dictionary = _get_flow_meta("flow_%s_cell" % side)
+	var landmark_id := PoseLandmarkIds.LEFT_WRIST if side == "left" else PoseLandmarkIds.RIGHT_WRIST
+	return _build_flow_landmark_debug(StringName("%s_wrist" % side), landmark_id, history, analysis, cell_meta, latest_sample)
+
+func _build_flow_nose_debug() -> Dictionary:
+	var history: Array = _get_flow_history("nose")
+	var analysis := _analyze_flow_landmark_motion("nose", FLOW_DIRECTION_WINDOW_MAX_MS)
+	var latest_sample: Dictionary = history[history.size() - 1] if history.size() > 0 else {}
+	return _build_flow_landmark_debug(&"nose", PoseLandmarkIds.NOSE, history, analysis, {}, latest_sample)
+
+func _build_flow_landmark_debug(landmark_key: StringName, landmark_id: int, history: Array, analysis: Dictionary, cell_meta: Dictionary = {}, latest_sample: Dictionary = {}) -> Dictionary:
 	return {
+		"landmark_key": String(landmark_key),
+		"landmark_id": landmark_id,
 		"history_points": history.size(),
 		"history_duration_ms": _flow_history_duration_ms(history),
 		"latest_position": latest_sample.get("position", Vector2.ZERO),
@@ -1140,8 +1159,44 @@ func _build_flow_side_debug(side: String) -> Dictionary:
 		"current_direction": int(analysis.get("direction", -1)),
 		"grid_anchor": Vector2(float(_baseline.get("nose_x", 0.0)), float(_baseline.get("shoulder_center_y", 0.0))),
 		"grid_cell_size": _get_flow_cell_size(),
+		"grid": _build_flow_grid_debug(),
 		"direction_analysis": analysis.duplicate(true),
 		"cell_meta": cell_meta.duplicate(true),
+	}
+
+func _build_flow_grid_debug() -> Dictionary:
+	var cell_size := _get_flow_cell_size()
+	var is_calibrated := bool(_baseline.get("is_calibrated", false)) and cell_size > 0.000001
+	var columns := FLOW_GRID_COLUMNS
+	var rows := FLOW_GRID_ROWS
+	var anchor_x := float(_baseline.get("nose_x", 0.0))
+	var anchor_y := float(_baseline.get("shoulder_center_y", 0.0))
+	var left_boundary := anchor_x - cell_size * float(columns) * 0.5
+	var top_boundary := anchor_y + cell_size * 1.5
+	var cell_rects: Array = []
+	if is_calibrated:
+		for row: int in range(rows):
+			for column: int in range(columns):
+				cell_rects.append({
+					"index": row * columns + column,
+					"column": column,
+					"row": row,
+					"left": left_boundary + cell_size * float(column),
+					"right": left_boundary + cell_size * float(column + 1),
+					"top": top_boundary - cell_size * float(row),
+					"bottom": top_boundary - cell_size * float(row + 1),
+				})
+	return {
+		"is_calibrated": is_calibrated,
+		"columns": columns,
+		"rows": rows,
+		"anchor": Vector2(anchor_x, anchor_y),
+		"cell_size": cell_size,
+		"left_boundary": left_boundary,
+		"top_boundary": top_boundary,
+		"right_boundary": left_boundary + cell_size * float(columns),
+		"bottom_boundary": top_boundary - cell_size * float(rows),
+		"cell_rects": cell_rects,
 	}
 
 func _flow_history_duration_ms(history: Array) -> int:
@@ -1252,6 +1307,7 @@ func _reset_gesture_state() -> void:
 			"head_drop_ready": false,
 		},
 		"flow": {
+			"nose": [],
 			"left_hand": [],
 			"right_hand": [],
 			"flow_left_cell": {"current_cell": -1, "last_emit_ms": 0, "direction": -1},
@@ -1301,10 +1357,12 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	var confidences: Dictionary = metrics.get("confidences", {})
 	var left_hand_velocity: Vector3 = velocities.get("left_hand", Vector3.ZERO)
 	var right_hand_velocity: Vector3 = velocities.get("right_hand", Vector3.ZERO)
+	var head_confidence := float(confidences.get("head", 0.0))
 	var left_hand_confidence := float(confidences.get("left_hand", 0.0))
 	var right_hand_confidence := float(confidences.get("right_hand", 0.0))
 	var torso_confidence := float(confidences.get("torso", 0.0))
 	var lower_body_confidence_gate := maxf(_get_min_visibility(), 0.5)
+	_update_flow_nose_history(nose, shoulder_center, head_confidence, timestamp_ms)
 	_update_flow_hand_history("left", left_wrist, left_shoulder, left_hand_confidence, timestamp_ms)
 	_update_flow_hand_history("right", right_wrist, right_shoulder, right_hand_confidence, timestamp_ms)
 
@@ -1797,15 +1855,20 @@ func _process_flow_cell_entry(events: Array, side: String, timestamp_ms: int) ->
 	_set_flow_meta(meta_name, flow_meta)
 	_emit_flow_cell_event(events, side, current_cell, direction)
 
+func _update_flow_nose_history(nose: Dictionary, shoulder_center: Vector2, confidence: float, timestamp_ms: int) -> void:
+	_update_flow_landmark_history("nose", nose, shoulder_center, confidence, timestamp_ms)
+
 func _update_flow_hand_history(side: String, wrist: Dictionary, shoulder: Dictionary, confidence: float, timestamp_ms: int) -> void:
-	var history_name := "%s_hand" % side
+	_update_flow_landmark_history("%s_hand" % side, wrist, PoseMetrics.to_vector2(shoulder), confidence, timestamp_ms)
+
+func _update_flow_landmark_history(history_name: String, landmark: Dictionary, reference_position: Vector2, confidence: float, timestamp_ms: int) -> void:
 	var history: Array = _get_flow_history(history_name)
-	if wrist.is_empty() or shoulder.is_empty() or confidence < 0.35:
+	if landmark.is_empty() or confidence < 0.35:
 		history.clear()
 		_set_flow_history(history_name, history)
 		return
-	var position := PoseMetrics.to_vector2(wrist)
-	var relative_position := position - PoseMetrics.to_vector2(shoulder)
+	var position := PoseMetrics.to_vector2(landmark)
+	var relative_position := position - reference_position
 	history.append({
 		"timestamp_ms": timestamp_ms,
 		"position": position,
@@ -1818,7 +1881,10 @@ func _update_flow_hand_history(side: String, wrist: Dictionary, shoulder: Dictio
 	_set_flow_history(history_name, history)
 
 func _analyze_flow_motion(side: String, max_window_ms: int) -> Dictionary:
-	var history: Array = _get_flow_history("%s_hand" % side)
+	return _analyze_flow_landmark_motion("%s_hand" % side, max_window_ms)
+
+func _analyze_flow_landmark_motion(history_name: String, max_window_ms: int) -> Dictionary:
+	var history: Array = _get_flow_history(history_name)
 	if history.size() < 2:
 		return {}
 	var latest_timestamp := int(history[history.size() - 1].get("timestamp_ms", 0))

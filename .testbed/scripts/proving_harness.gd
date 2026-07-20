@@ -2,6 +2,7 @@ extends Control
 ## Shared proving harness for live Boxing / Flow detector tuning.
 
 const CameraTrackingConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd")
+const FlowGridOverlayScript = preload("res://scripts/flow_grid_overlay.gd")
 const PROFILE_BOXING := "boxing"
 const PROFILE_FLOW := "flow"
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
@@ -41,6 +42,7 @@ const PLAYBACK_TRANSPORT_MODE_APPROX_TIME_SEEK := "approx_time_seek"
 const DEFAULT_PLAYBACK_FRAME_STEP_SEC := 1.0 / 30.0
 const LANDMARK_DRAWER_Z_INDEX := 20
 const TRAIL_DRAWER_Z_INDEX := 19
+const FLOW_GRID_OVERLAY_Z_INDEX := 18
 const DEFAULT_INSPECTOR_LIVE_REFRESH_INTERVAL_MS := 120
 const DEFAULT_DEBUG_PANEL_REFRESH_INTERVAL_MS := 160
 const DEFAULT_FIXTURE_POSE_STATE_TIMELINE_LIMIT := 240
@@ -183,6 +185,7 @@ var show_trails := true
 @onready var camera_display: Control = get_node_or_null("Margin/VSplit/Content/LeftColumn/CameraPanel/CameraDisplay") as Control
 @onready var landmark_drawer: Control = find_child("LandmarkDrawer", true, false) as Control
 @onready var trail_drawer: Control = find_child("TrailDrawer", true, false) as Control
+@onready var flow_grid_overlay: Control = find_child("FlowGridOverlay", true, false) as Control
 @onready var quick_stats_label: RichTextLabel = find_child("QuickStats", true, false) as RichTextLabel
 @onready var summary_label: RichTextLabel = find_child("Summary", true, false) as RichTextLabel
 @onready var signal_status_label: RichTextLabel = find_child("SignalStatus", true, false) as RichTextLabel
@@ -197,6 +200,7 @@ var show_trails := true
 @onready var athlete_calibration_countdown_label: Label = find_child("CalibrationCountdownLabel", true, false) as Label
 @onready var athlete_calibration_instruction_label: Label = find_child("CalibrationInstructionLabel", true, false) as Label
 @onready var athlete_calibration_status_label: Label = find_child("CalibrationStatusLabel", true, false) as Label
+@onready var grid_truth_label: RichTextLabel = find_child("GridTruthLabel", true, false) as RichTextLabel
 
 var provider: Node = null
 var auto_start_manager: Node = null
@@ -291,6 +295,7 @@ func _ready() -> void:
 	_ensure_playback_controls()
 	_ensure_calibration_flow_ui()
 	_ensure_overlay_drawers_ready()
+	_ensure_shared_grid_truth_ui()
 	_ensure_landmark_interactions()
 	_configure_camera_source_controls()
 	_apply_current_testbed_debug_profile()
@@ -885,6 +890,12 @@ func _playback_controller_step_frames(delta_frames: int) -> Dictionary:
 	}
 
 func _ensure_overlay_drawers_ready() -> void:
+	if flow_grid_overlay == null:
+		flow_grid_overlay = FlowGridOverlayScript.new()
+		flow_grid_overlay.name = "FlowGridOverlay"
+		if camera_display != null:
+			camera_display.add_child(flow_grid_overlay)
+	_configure_overlay_drawer(flow_grid_overlay, FLOW_GRID_OVERLAY_Z_INDEX)
 	_configure_overlay_drawer(landmark_drawer, LANDMARK_DRAWER_Z_INDEX)
 	_configure_overlay_drawer(trail_drawer, TRAIL_DRAWER_Z_INDEX)
 
@@ -1870,14 +1881,22 @@ func _ensure_contract_preview_surface() -> void:
 func _sync_overlay_drawers_to_preview_presenter() -> void:
 	if _preview_presenter == null or not is_instance_valid(_preview_presenter):
 		return
-	for drawer_variant: Variant in [landmark_drawer, trail_drawer]:
+	var overlay_parent := _resolve_preview_overlay_parent()
+	for drawer_variant: Variant in [flow_grid_overlay, landmark_drawer, trail_drawer]:
 		if not drawer_variant is Control:
 			continue
 		var drawer := drawer_variant as Control
-		if drawer.get_parent() != _preview_presenter:
-			drawer.reparent(_preview_presenter)
+		if drawer.get_parent() != overlay_parent:
+			drawer.reparent(overlay_parent)
 		if drawer.has_method("set_preview_presenter"):
 			drawer.set_preview_presenter(_preview_presenter)
+
+func _resolve_preview_overlay_parent() -> Node:
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("get_overlay_layer"):
+		var overlay_layer: Variant = _preview_presenter.get_overlay_layer()
+		if overlay_layer is Node and is_instance_valid(overlay_layer):
+			return overlay_layer
+	return _preview_presenter
 
 func _start_camera_feed() -> void:
 	_ensure_contract_preview_surface()
@@ -2330,8 +2349,78 @@ func _refresh_debug_panels() -> void:
 		metrics_label.text = _build_metrics_text()
 	if events_label:
 		events_label.text = _build_events_text()
+	_refresh_shared_flow_grid_truth_surfaces()
 	_refresh_flow_ring_board()
 	_refresh_playback_controls_state()
+
+func _ensure_shared_grid_truth_ui() -> void:
+	if grid_truth_label != null:
+		grid_truth_label.bbcode_enabled = false
+		grid_truth_label.scroll_active = false
+		grid_truth_label.fit_content = true
+		grid_truth_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		grid_truth_label.clip_contents = false
+
+func _refresh_shared_flow_grid_truth_surfaces() -> void:
+	_refresh_flow_grid_overlay()
+	_refresh_grid_truth_panel()
+
+func _refresh_flow_grid_overlay() -> void:
+	if flow_grid_overlay == null:
+		return
+	var flow_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("flow", {})
+	var grid_debug: Dictionary = flow_debug.get("grid", {}) if flow_debug.get("grid", {}) is Dictionary else {}
+	if grid_debug.is_empty() or not bool(grid_debug.get("is_calibrated", false)):
+		if flow_grid_overlay.has_method("clear_grid_debug"):
+			flow_grid_overlay.clear_grid_debug()
+		flow_grid_overlay.visible = false
+		return
+	flow_grid_overlay.visible = true
+	if flow_grid_overlay.has_method("update_grid_debug"):
+		flow_grid_overlay.update_grid_debug(grid_debug)
+
+func _refresh_grid_truth_panel() -> void:
+	if grid_truth_label == null:
+		return
+	grid_truth_label.text = _build_grid_truth_text()
+
+func _build_grid_truth_text() -> String:
+	var flow_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("flow", {})
+	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {}) if flow_debug.get("tracked_landmarks", {}) is Dictionary else {}
+	var nose_debug: Dictionary = tracked_landmarks.get("nose", {}) if tracked_landmarks.get("nose", {}) is Dictionary else {}
+	var left_debug: Dictionary = tracked_landmarks.get("left_wrist", flow_debug.get("left", {})) if tracked_landmarks.get("left_wrist", flow_debug.get("left", {})) is Dictionary else {}
+	var right_debug: Dictionary = tracked_landmarks.get("right_wrist", flow_debug.get("right", {})) if tracked_landmarks.get("right_wrist", flow_debug.get("right", {})) is Dictionary else {}
+	var lines := [
+		"Grid truth",
+		"=========",
+		"Shared calibrated 4x3 occupancy + 8-way direction.",
+		"",
+		_build_grid_truth_section("Nose", nose_debug),
+		"",
+		_build_grid_truth_section("Left Wrist", left_debug),
+		"",
+		_build_grid_truth_section("Right Wrist", right_debug),
+	]
+	return "
+".join(lines)
+
+func _build_grid_truth_section(label: String, landmark_debug: Dictionary) -> String:
+	var lines := [
+		label,
+		"- occupied cell: %s" % _fmt_flow_candidate(landmark_debug),
+		"- direction: %s" % _fmt_flow_direction_candidate(landmark_debug),
+	]
+	var confidence := float(landmark_debug.get("latest_confidence", 0.0))
+	if confidence > 0.0:
+		lines.append("- confidence: %s" % _fmt_float(confidence))
+	return "
+".join(lines)
+
+func get_shared_flow_grid_truth_refs() -> Dictionary:
+	return {
+		"flow_grid_overlay": flow_grid_overlay,
+		"grid_truth_label": grid_truth_label,
+	}
 
 func _build_live_status_text() -> String:
 	var state: Dictionary = _latest_state

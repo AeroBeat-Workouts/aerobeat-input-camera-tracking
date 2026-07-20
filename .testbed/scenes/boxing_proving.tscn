@@ -209,6 +209,18 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 
+[node name="GridTruthPanel" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn" unique_id=215770040]
+custom_minimum_size = Vector2(0, 224)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="GridTruthLabel" type="RichTextLabel" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel" unique_id=215770041]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+text = "Grid truth\n\nWaiting for shared calibration..."
+
 [node name="BoardPanel" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn" unique_id=5295170]
 layout_mode = 2
 size_flags_horizontal = 3

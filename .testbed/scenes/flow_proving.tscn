@@ -266,7 +266,29 @@ theme_override_constants/margin_top = 14
 theme_override_constants/margin_right = 14
 theme_override_constants/margin_bottom = 14
 
-[node name="BoardGrid" type="GridContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin" unique_id=785076256]
+[node name="BoardColumn" type="VBoxContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin" unique_id=194100776]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="GridTruthCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn" unique_id=194100777]
+custom_minimum_size = Vector2(0, 210)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("2_cell_style")
+
+[node name="GridTruthLabel" type="RichTextLabel" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/GridTruthCard" unique_id=194100778]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(0.97, 0.98, 1, 1)
+theme_override_font_sizes/normal_font_size = 15
+text = "Grid truth
+
+Waiting for shared calibration..."
+
+[node name="BoardGrid" type="GridContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn" unique_id=785076256]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -274,13 +296,13 @@ theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 2
 
-[node name="LeftPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid" unique_id=139140040]
+[node name="LeftPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=139140040]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("2_cell_style")
 
-[node name="LeftPlacementChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid/LeftPlacementCard" unique_id=725145511]
+[node name="LeftPlacementChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid/LeftPlacementCard" unique_id=725145511]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -288,13 +310,13 @@ script = ExtResource("5_flow_ring_chart")
 chart_title = "Left Wrist Cell"
 chart_subtitle = "Calibrated 4x3 athlete-relative grid"
 
-[node name="RightPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid" unique_id=1888742916]
+[node name="RightPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=1888742916]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("2_cell_style")
 
-[node name="RightPlacementChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid/RightPlacementCard" unique_id=244939236]
+[node name="RightPlacementChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid/RightPlacementCard" unique_id=244939236]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -302,13 +324,13 @@ script = ExtResource("5_flow_ring_chart")
 chart_title = "Right Wrist Cell"
 chart_subtitle = "Calibrated 4x3 athlete-relative grid"
 
-[node name="LeftDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid" unique_id=442721612]
+[node name="LeftDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=442721612]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("2_cell_style")
 
-[node name="LeftDirectionChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid/LeftDirectionCard" unique_id=1064673789]
+[node name="LeftDirectionChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid/LeftDirectionCard" unique_id=1064673789]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -317,13 +339,13 @@ chart_title = "Left Wrist Direction"
 chart_subtitle = "8-way shoulder-relative recent motion"
 chart_mode = 1
 
-[node name="RightDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid" unique_id=776296951]
+[node name="RightDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=776296951]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("2_cell_style")
 
-[node name="RightDirectionChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid/RightDirectionCard" unique_id=2144418546]
+[node name="RightDirectionChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid/RightDirectionCard" unique_id=2144418546]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
