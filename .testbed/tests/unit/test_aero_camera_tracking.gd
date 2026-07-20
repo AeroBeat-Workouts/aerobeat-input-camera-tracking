@@ -175,15 +175,15 @@ func test_aero_camera_tracking_starts_live_camera_and_reemits_tracking_and_flow_
 
 	var tracking_frames: Array = []
 	var pose_frames: Array = []
-	var swing_events: Array = []
+	var flow_events: Array = []
 	singleton.tracking_updated.connect(func(frame: Dictionary) -> void:
 		tracking_frames.append(frame)
 	)
 	singleton.pose_updated.connect(func(landmarks: Array) -> void:
 		pose_frames.append(landmarks)
 	)
-	singleton.swing_left.connect(func(placement: int, direction: int) -> void:
-		swing_events.append([placement, direction])
+	singleton.flow_left_cell_entered.connect(func(cell: int, direction: int) -> void:
+		flow_events.append([cell, direction])
 	)
 
 	assert_true(singleton.start_live_camera("/dev/video7", {
@@ -219,8 +219,8 @@ func test_aero_camera_tracking_starts_live_camera_and_reemits_tracking_and_flow_
 	assert_eq(singleton.get_num_poses(), 1)
 	assert_eq(singleton.get_all_poses().size(), 1)
 
-	singleton.get_provider().swing_left.emit(9, 3)
-	assert_eq(swing_events, [[9, 3]])
+	singleton.get_provider().flow_left_cell_entered.emit(9, 3)
+	assert_eq(flow_events, [[9, 3]])
 
 func test_aero_camera_tracking_loads_selected_flow_profile_bundle_during_start() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
@@ -256,26 +256,27 @@ func test_aero_camera_tracking_starts_replay_sources_through_camera_tracking_con
 	assert_eq(String(source.get("path", "")), "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
 	assert_true(bool(vendor_source.get("loop", false)))
 
-func test_aero_camera_tracking_coerce_runtime_config_preserves_preloaded_profile_overrides() -> void:
+func test_aero_camera_tracking_coerce_runtime_config_sanitizes_removed_backends_and_families() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
 	var config := CameraTrackingConfigScript.new()
-	assert_true(bool(config.set_profile_id("boxing").get("ok", false)))
-	var gesture_profile: Dictionary = config.gesture_profile_document.duplicate(true)
-	gesture_profile["straight_punch"] = {
-		"backend": "prototype",
-		"threshold": gesture_profile.get("straight_punch", {}).get("threshold", {}),
-		"prototype": gesture_profile.get("straight_punch", {}).get("prototype", {}),
-		"classifier": gesture_profile.get("straight_punch", {}).get("classifier", {}),
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"backend": "classifier",
+			"threshold": {"evaluation": {"window_ms": 250}},
+			"classifier": {"model": {"artifact_path": "user://removed.json"}},
+		},
+		"knee_strike": {"backend": "threshold"},
 	}
-	config.gesture_profile_document = gesture_profile
 
 	var coerced: Variant = singleton._coerce_runtime_config(config)
 	assert_not_null(coerced)
 	var bundle: Dictionary = coerced.get_selected_profile_bundle()
-	assert_eq(String(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("backend", "")), "prototype")
-	assert_eq(String(bundle.get("gesture_detection", {}).get("hook", {}).get("backend", "")), "threshold")
+	assert_eq(String(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("backend", "")), "threshold")
+	assert_false(bool(bundle.get("gesture_detection", {}).get("straight_punch", {}).has("classifier")))
+	assert_false(bool(bundle.get("gesture_detection", {}).has("knee_strike")))
 
 func test_aero_camera_tracking_replay_loop_override_is_respected() -> void:
+
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
 	var tracker = CameraTrackingScript.new()
 	tracker.set_backend(CameraTrackingFakeBackendScript.new())

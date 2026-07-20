@@ -65,12 +65,6 @@ Copy this into a session note and fill it while testing on Cookie.
 | squat | both | 3 cycles |  | active=true while lowered, start/end balanced |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
 | weave | left | 3 cycles |  | weave_left active, clears at neutral |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
 | weave | right | 3 cycles |  | weave_right active, clears at neutral |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
-| sidestep | left | 3 cycles |  | sidestep_left active, clears at neutral |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
-| sidestep | right | 3 cycles |  | sidestep_right active, clears at neutral |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
-| knee | left | 5 reps |  | Count increments once per rep, power visible, re-arms after lowering |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
-| knee | right | 5 reps |  | Count increments once per rep, power visible, re-arms after lowering |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
-| leg_lift | left | 3 cycles |  | active=true while held, start/end balanced |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
-| leg_lift | right | 3 cycles |  | active=true while held, start/end balanced |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
 
 ### Boxing combined-state notes
 

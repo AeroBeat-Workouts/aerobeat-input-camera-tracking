@@ -29,10 +29,10 @@ func test_input_provider_adapter_reports_boxing_velocity_and_lower_body_capabili
 func test_input_provider_adapter_reemits_flow_signals_from_provider() -> void:
 	var adapter = _make_started_tracking_adapter()["adapter"] as Node
 	var flow_calls: Array = []
-	adapter.swing_left.connect(func(placement: int, direction: int) -> void:
-		flow_calls.append([placement, direction])
+	adapter.flow_left_cell_entered.connect(func(cell: int, direction: int) -> void:
+		flow_calls.append([cell, direction])
 	)
-	adapter._provider.swing_left.emit(12, 5)
+	adapter._provider.flow_left_cell_entered.emit(12, 5)
 	assert_eq(flow_calls, [[12, 5]])
 
 func test_input_provider_adapter_reemits_boxing_signals_from_provider() -> void:

@@ -26,10 +26,8 @@ signal uppercut_left(power: float)
 signal uppercut_right(power: float)
 signal hook_left(power: float)
 signal hook_right(power: float)
-signal swing_left(placement: int, direction: int)
-signal swing_right(placement: int, direction: int)
-signal trail_left(placement: int, direction: int)
-signal trail_right(placement: int, direction: int)
+signal flow_left_cell_entered(cell: int, direction: int)
+signal flow_right_cell_entered(cell: int, direction: int)
 signal guard_start()
 signal guard_end()
 signal squat_start()
@@ -38,16 +36,6 @@ signal weave_left_start()
 signal weave_left_end()
 signal weave_right_start()
 signal weave_right_end()
-signal sidestep_left_start()
-signal sidestep_left_end()
-signal sidestep_right_start()
-signal sidestep_right_end()
-signal knee_left(power: float)
-signal knee_right(power: float)
-signal leg_lift_left_start()
-signal leg_lift_left_end()
-signal leg_lift_right_start()
-signal leg_lift_right_end()
 
 @export var config = null
 @export var manage_tracking_session_lifecycle := false
@@ -536,14 +524,10 @@ func _emit_detector_events(events: Array) -> void:
 				hook_left.emit(float(event_data.get("power", 0.0)))
 			"hook_right":
 				hook_right.emit(float(event_data.get("power", 0.0)))
-			"swing_left":
-				swing_left.emit(int(event_data.get("placement", -1)), int(event_data.get("direction", -1)))
-			"swing_right":
-				swing_right.emit(int(event_data.get("placement", -1)), int(event_data.get("direction", -1)))
-			"trail_left":
-				trail_left.emit(int(event_data.get("placement", -1)), int(event_data.get("direction", -1)))
-			"trail_right":
-				trail_right.emit(int(event_data.get("placement", -1)), int(event_data.get("direction", -1)))
+			"flow_left_cell_entered":
+				flow_left_cell_entered.emit(int(event_data.get("cell", -1)), int(event_data.get("direction", -1)))
+			"flow_right_cell_entered":
+				flow_right_cell_entered.emit(int(event_data.get("cell", -1)), int(event_data.get("direction", -1)))
 			"guard_start":
 				guard_start.emit()
 			"guard_end":
@@ -560,26 +544,6 @@ func _emit_detector_events(events: Array) -> void:
 				weave_right_start.emit()
 			"weave_right_end":
 				weave_right_end.emit()
-			"sidestep_left_start":
-				sidestep_left_start.emit()
-			"sidestep_left_end":
-				sidestep_left_end.emit()
-			"sidestep_right_start":
-				sidestep_right_start.emit()
-			"sidestep_right_end":
-				sidestep_right_end.emit()
-			"knee_left":
-				knee_left.emit(float(event_data.get("power", 0.0)))
-			"knee_right":
-				knee_right.emit(float(event_data.get("power", 0.0)))
-			"leg_lift_left_start":
-				leg_lift_left_start.emit()
-			"leg_lift_left_end":
-				leg_lift_left_end.emit()
-			"leg_lift_right_start":
-				leg_lift_right_start.emit()
-			"leg_lift_right_end":
-				leg_lift_right_end.emit()
 
 func _augment_tracking_frame_runtime_context(frame: Dictionary) -> Dictionary:
 	var enriched := frame.duplicate(true)

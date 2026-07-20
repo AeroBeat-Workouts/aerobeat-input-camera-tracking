@@ -109,11 +109,30 @@ func validate_profile_document(document: Dictionary, expected_schema: String, ex
 			"Profile config profile mismatch for %s: expected %s, got %s" % [source_path, _normalize_profile_name(expected_profile), profile],
 			source_path
 		)
+	var sanitized_document := document.duplicate(true)
+	if expected_schema == GESTURE_DETECTION_SCHEMA:
+		sanitized_document = _sanitize_gesture_detection_document(sanitized_document)
 	return {
 		"ok": true,
 		"path": source_path,
-		"document": document.duplicate(true),
+		"document": sanitized_document,
 	}
+
+func _sanitize_gesture_detection_document(document: Dictionary) -> Dictionary:
+	var sanitized := document.duplicate(true)
+	for family_name in ["guard", "squat", "weave", "straight_punch", "hook", "uppercut"]:
+		var family: Dictionary = sanitized.get(family_name, {}) if sanitized.get(family_name, {}) is Dictionary else {}
+		if family.is_empty():
+			continue
+			
+		family.erase("prototype")
+		family.erase("classifier")
+		var backend := String(family.get("backend", "threshold")).strip_edges().to_lower()
+		family["backend"] = "disabled" if backend == "disabled" else "threshold"
+		sanitized[family_name] = family
+	for stale_family in ["knee_strike", "leg_lift", "side_step"]:
+		sanitized.erase(stale_family)
+	return sanitized
 
 func _normalize_profile_name(profile_name: String) -> String:
 	var normalized := profile_name.strip_edges().to_lower()

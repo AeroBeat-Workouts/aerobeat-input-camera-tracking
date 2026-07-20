@@ -74,7 +74,7 @@ For every feature family below, try to capture:
 - Confirm Cookie has the intended camera selected and positioned for a full-body standing view.
 - Confirm the room has even front lighting if possible.
 - Wear clothing that keeps wrists, elbows, knees, and ankles reasonably legible.
-- Leave enough space to lean, sidestep, squat, and lift knees without leaving frame.
+- Leave enough space to lean, weave, and squat without leaving frame.
 - Avoid background movement for the first pass.
 
 ### Launch checklist
@@ -161,8 +161,7 @@ While testing, keep an eye on these visible surfaces:
 - boxing signal board:
   - punch/hook/uppercut rows with `status`, `count`, `last`, `power`
   - guard suppression line
-  - guard / squat / weave / sidestep / leg_lift rows with `active`, `start/end`, `last`
-  - knee rows with `status`, `count`, `last`, `power`
+  - guard / squat / weave rows with `active`, `start/end`, `last`
 - live event feed
 
 ## Boxing test method
@@ -280,7 +279,7 @@ Same expectations as left, but for `uppercut_right`.
   - lateral offset lines in the summary move in the expected direction
   - state clears near neutral
 - Watch for:
-  - weave confused with sidestep
+  - weave direction confused left vs right
   - state staying on after recentring
 - Capture:
   - intended/detected enter/exit counts
@@ -289,64 +288,6 @@ Same expectations as left, but for `uppercut_right`.
 ### 10. Weave right state
 
 Same expectations as left, but for `weave_right`.
-
-### 11. Sidestep left state
-
-- Exercise:
-  - shift body laterally to Derrick's left while staying relatively aligned
-- Expected visible result:
-  - `sidestep_left` activates
-  - `sidestep_right` stays off
-  - body/head/hip offsets support the movement direction
-- Watch for:
-  - weave being mistaken for sidestep
-  - state only firing after leaving safe frame center
-- Capture:
-  - clip showing clean enter and return
-  - note how much travel is required
-
-### 12. Sidestep right state
-
-Same expectations as left, but for `sidestep_right`.
-
-### 13. Knee left
-
-- Exercise:
-  - lift left knee sharply, lower fully, repeat
-- Expected visible result:
-  - `knee_left` row count increments once per rep
-  - row returns to `READY` only after lowering enough
-  - `power` should change with stronger vs weaker lifts
-- Watch for:
-  - repeated firing while the knee remains up
-  - left/right confusion
-  - false fires when only shifting weight
-- Capture:
-  - intended vs detected count
-  - one clip showing re-arm after lowering
-
-### 14. Knee right
-
-Same expectations as left, but for `knee_right`.
-
-### 15. Leg lift left state
-
-- Exercise:
-  - raise left leg into a held lift, hold briefly, lower
-- Expected visible result:
-  - `leg_lift_left` row becomes `active=true`
-  - `leg_lift_left_start` and `_end` counts stay balanced
-  - current detector inputs show left leg angle / foot rise moving in the expected direction
-- Watch for:
-  - state activating from a knee motion that should only be one-shot
-  - state never clearing when lowered
-- Capture:
-  - screenshot while held active
-  - note difference between knee and leg-lift behavior
-
-### 16. Leg lift right state
-
-Same expectations as left, but for `leg_lift_right`.
 
 ## Boxing combined-state checks
 
@@ -377,7 +318,7 @@ These are important because a feature may work alone but fail in context.
   - no sustained state remains incorrectly active
   - attack rows eventually show ready again
 - Capture:
-  - note any stale guard/squat/weave/sidestep/leg-lift state
+  - note any stale guard/squat/weave state
 
 ---
 

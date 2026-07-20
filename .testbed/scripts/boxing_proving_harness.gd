@@ -19,10 +19,7 @@ const BOARD_ICON_PATHS := {
 	"punch": "res://assets/icons/boxing-punch-1.svg",
 	"hook": "res://assets/icons/boxing-hook-1.svg",
 	"uppercut": "res://assets/icons/boxing-uppercut-1.svg",
-	"knee": "res://assets/icons/boxing-knee-strike-1.svg",
 	"guard": "res://assets/icons/boxing-guard-1.svg",
-	"leg_lift": "res://assets/icons/boxing-leg-lift-1.svg",
-	"sidestep": "res://assets/icons/boxing-sidestep-1.svg",
 	"squat": "res://assets/icons/boxing-squat-1.svg",
 	"weave": "res://assets/icons/boxing-weave-1.svg",
 }
@@ -33,8 +30,6 @@ const UI_EVENT_LABELS := {
 	"hook_right": "Right Hook",
 	"uppercut_left": "Left Uppercut",
 	"uppercut_right": "Right Uppercut",
-	"knee_left": "Left Knee Strike",
-	"knee_right": "Right Knee Strike",
 	"guard_start": "Guard Activated",
 	"guard_end": "Guard Deactivated",
 	"squat_start": "Squat Activated",
@@ -43,14 +38,6 @@ const UI_EVENT_LABELS := {
 	"weave_left_end": "Weave Left Ended",
 	"weave_right_start": "Weave Right",
 	"weave_right_end": "Weave Right Ended",
-	"sidestep_left_start": "Side Step Left",
-	"sidestep_left_end": "Side Step Left Ended",
-	"sidestep_right_start": "Side Step Right",
-	"sidestep_right_end": "Side Step Right Ended",
-	"leg_lift_left_start": "Left Leg Lift",
-	"leg_lift_left_end": "Left Leg Lift Ended",
-	"leg_lift_right_start": "Right Leg Lift",
-	"leg_lift_right_end": "Right Leg Lift Ended",
 }
 const TILE_CONFIGS := [
 	{
@@ -78,35 +65,11 @@ const TILE_CONFIGS := [
 		"right_events": ["uppercut_right"],
 	},
 	{
-		"id": "knee",
-		"label": "Knee Strike",
-		"icon": BOARD_ICON_PATHS["knee"],
-		"mode": "pulse_lr",
-		"left_events": ["knee_left"],
-		"right_events": ["knee_right"],
-	},
-	{
 		"id": "guard",
 		"label": "Guard",
 		"icon": BOARD_ICON_PATHS["guard"],
 		"mode": "state_center",
 		"states": ["guard"],
-	},
-	{
-		"id": "leg_lift",
-		"label": "Leg Lift",
-		"icon": BOARD_ICON_PATHS["leg_lift"],
-		"mode": "pulse_lr",
-		"left_events": ["leg_lift_left_start"],
-		"right_events": ["leg_lift_right_start"],
-	},
-	{
-		"id": "sidestep",
-		"label": "Side Step",
-		"icon": BOARD_ICON_PATHS["sidestep"],
-		"mode": "pulse_lr",
-		"left_events": ["sidestep_left_start"],
-		"right_events": ["sidestep_right_start"],
 	},
 	{
 		"id": "squat",
@@ -228,103 +191,6 @@ const PUNCH_REQUIREMENT_ROWS := [
 	{
 		"id": "depth_family_peak_threshold",
 		"label": "Depth peak threshold",
-		"row_kind": "info",
-	},
-]
-const PROTOTYPE_MATCHER_REQUIREMENT_ROWS := [
-	{
-		"id": "backend_section",
-		"label": "Active backend",
-		"row_kind": "section",
-	},
-	{
-		"id": "active_backend",
-		"label": "Active backend",
-		"row_kind": "info",
-	},
-	{
-		"id": "selected_backend",
-		"label": "Selected backend",
-		"row_kind": "info",
-	},
-	{
-		"id": "library_id",
-		"label": "Active prototype library ID",
-		"row_kind": "info",
-	},
-	{
-		"id": "library_loaded",
-		"label": "Prototype library loaded",
-		"row_kind": "info",
-	},
-	{
-		"id": "score_section",
-		"label": "Matcher result",
-		"row_kind": "section",
-	},
-	{
-		"id": "best_class",
-		"label": "Best class",
-		"row_kind": "info",
-	},
-	{
-		"id": "best_score",
-		"label": "Best score",
-		"row_kind": "info",
-	},
-	{
-		"id": "required_score",
-		"label": "Threshold required",
-		"row_kind": "info",
-	},
-	{
-		"id": "result_class",
-		"label": "Final emitted / result class",
-		"row_kind": "info",
-	},
-	{
-		"id": "emitted_event_name",
-		"label": "Emitted event name",
-		"row_kind": "info",
-	},
-	{
-		"id": "show_scores",
-		"label": "show_scores flag",
-		"row_kind": "info",
-	},
-	{
-		"id": "class_scores",
-		"label": "Per-class scores",
-		"row_kind": "info",
-	},
-	{
-		"id": "gate_section",
-		"label": "Hold / cooldown gate",
-		"row_kind": "section",
-	},
-	{
-		"id": "show_event_gate_state",
-		"label": "show_event_gate_state flag",
-		"row_kind": "info",
-	},
-	{
-		"id": "gate_reason",
-		"label": "Gate / rejection reason",
-		"row_kind": "info",
-	},
-	{
-		"id": "hold_ms_remaining",
-		"label": "Hold remaining",
-		"row_kind": "info",
-	},
-	{
-		"id": "cooldown_ms_remaining",
-		"label": "Cooldown remaining",
-		"row_kind": "info",
-	},
-	{
-		"id": "active_event_class",
-		"label": "Active held event class",
 		"row_kind": "info",
 	},
 ]
@@ -634,8 +500,6 @@ const HOVER_REQUIREMENT_SPECS := {
 	},
 }
 
-@onready var tracker_config_path_field: LineEdit = find_child("TrackerConfigPath", true, false) as LineEdit
-@onready var gesture_config_path_field: LineEdit = find_child("GestureConfigPath", true, false) as LineEdit
 @onready var hand_bbox_drawer: Control = find_child("HandBBoxDrawer", true, false) as Control
 
 var _background_rect: TextureRect
@@ -986,12 +850,6 @@ func _default_profile_id() -> String:
 
 func _refresh_profile_controls() -> void:
 	var bundle := _current_profile_bundle()
-	if tracker_config_path_field != null:
-		tracker_config_path_field.text = _pretty_resource_path(String(bundle.get("camera_tracking_path", "")))
-		tracker_config_path_field.tooltip_text = String(bundle.get("camera_tracking_path", ""))
-	if gesture_config_path_field != null:
-		gesture_config_path_field.text = _pretty_resource_path(String(bundle.get("gesture_detection_path", "")))
-		gesture_config_path_field.tooltip_text = String(bundle.get("gesture_detection_path", ""))
 	_sync_profile_visual_config(bundle)
 
 func _sync_depth_debug_visual_config(visuals: Dictionary) -> void:
@@ -1606,46 +1464,16 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 		}
 	match card_key:
 		"punch_left":
-			var punch_left_backend := _punch_backend_for_event("punch_left")
-			if punch_left_backend == "prototype":
-				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if punch_left_backend == "classifier":
-				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_punch_hover_card_model(spec, "left")
 		"punch_right":
-			var punch_right_backend := _punch_backend_for_event("punch_right")
-			if punch_right_backend == "prototype":
-				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if punch_right_backend == "classifier":
-				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_punch_hover_card_model(spec, "right")
 		"hook_left":
-			var hook_left_backend := _punch_backend_for_event("hook_left")
-			if hook_left_backend == "prototype":
-				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if hook_left_backend == "classifier":
-				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_pose_strike_hover_card_model(spec, "hook", "left")
 		"hook_right":
-			var hook_right_backend := _punch_backend_for_event("hook_right")
-			if hook_right_backend == "prototype":
-				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if hook_right_backend == "classifier":
-				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_pose_strike_hover_card_model(spec, "hook", "right")
 		"uppercut_left":
-			var uppercut_left_backend := _punch_backend_for_event("uppercut_left")
-			if uppercut_left_backend == "prototype":
-				return _build_prototype_matcher_hover_card_model(spec, "left")
-			if uppercut_left_backend == "classifier":
-				return _build_learned_classifier_hover_card_model(spec, "left")
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "left")
 		"uppercut_right":
-			var uppercut_right_backend := _punch_backend_for_event("uppercut_right")
-			if uppercut_right_backend == "prototype":
-				return _build_prototype_matcher_hover_card_model(spec, "right")
-			if uppercut_right_backend == "classifier":
-				return _build_learned_classifier_hover_card_model(spec, "right")
 			return _build_pose_strike_hover_card_model(spec, "uppercut", "right")
 		"guard":
 			return _build_guard_hover_card_model(spec)
@@ -1659,46 +1487,16 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 func _boxing_latest_state_snapshot() -> Dictionary:
 	return _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
 
-func _active_punch_detection_backend() -> String:
-	var latest_state := _boxing_latest_state_snapshot()
-	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
-	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
-	return String(punch_detection.get("active_backend", punch_detection.get("backend", "threshold")))
-
-func _punch_backend_for_event(event_name: String) -> String:
-	var latest_state := _boxing_latest_state_snapshot()
-	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
-	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
-	if event_name.begins_with("punch_"):
-		return String(punch_detection.get("straight_backend", _active_punch_detection_backend()))
-	if event_name.begins_with("hook_"):
-		return String(punch_detection.get("hook_backend", _active_punch_detection_backend()))
-	if event_name.begins_with("uppercut_"):
-		return String(punch_detection.get("uppercut_backend", _active_punch_detection_backend()))
-	return _active_punch_detection_backend()
-
-func _prototype_matcher_debug_state() -> Dictionary:
-	var latest_state := _boxing_latest_state_snapshot()
-	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
-	return ((gesture_debug.get("prototype", gesture_debug.get("prototype_matcher", {})) as Dictionary)).duplicate(true)
-
-func _learned_classifier_debug_state() -> Dictionary:
-	var latest_state := _boxing_latest_state_snapshot()
-	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
-	return ((gesture_debug.get("classifier", gesture_debug.get("learned_classifier", {})) as Dictionary)).duplicate(true)
-
 func _merged_punch_debug_state(side: String) -> Dictionary:
 	var latest_state := _boxing_latest_state_snapshot()
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
 	var straight_side: Dictionary = ((straight_punch_debug.get(side, {}) as Dictionary)).duplicate(true)
 	var transition_debug_source := _paused_straight_punch_transition_debug if _paused_boxing_state_active else _straight_punch_transition_debug
-	var transition_debug: Dictionary = (transition_debug_source.get(side, {}) as Dictionary)
+	var transition_debug: Dictionary = ((transition_debug_source.get(side, {}) as Dictionary)).duplicate(true)
 	if straight_side.is_empty():
-		return transition_debug.duplicate(true)
+		return transition_debug
 	for key_variant: Variant in transition_debug.keys():
-		if straight_side.has(key_variant):
-			continue
 		straight_side[key_variant] = transition_debug[key_variant]
 	return straight_side
 
@@ -1712,25 +1510,6 @@ func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary
 		"title": spec.get("title", _display_name_for_card_key("punch_%s" % side)),
 		"rows": rows,
 		"footer": spec.get("footer", "Live values come from the straight-punch state machine."),
-	}
-
-func _build_prototype_matcher_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
-	return _build_classifier_hover_card_model(spec, side, "prototype", _prototype_matcher_debug_state())
-
-func _build_learned_classifier_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
-	return _build_classifier_hover_card_model(spec, side, "classifier", _learned_classifier_debug_state())
-
-func _build_classifier_hover_card_model(spec: Dictionary, side: String, backend: String, classifier_debug: Dictionary) -> Dictionary:
-	var rows: Array[Dictionary] = []
-	for row_spec_variant: Variant in _classifier_requirement_rows_for_backend(backend):
-		var row_spec: Dictionary = row_spec_variant
-		rows.append(_build_classifier_requirement_row(row_spec, classifier_debug, backend, side))
-	var title_suffix := "Prototype" if backend == "prototype" else "Classifier"
-	var footer_source := "gesture_debug.prototype" if backend == "prototype" else "gesture_debug.classifier"
-	return {
-		"title": "%s (%s)" % [String(spec.get("title", _display_name_for_card_key("punch_%s" % side))), title_suffix],
-		"rows": rows,
-		"footer": "Live values come from %s for the active punch backend." % footer_source,
 	}
 
 func _build_pose_strike_hover_card_model(spec: Dictionary, family: String, side: String) -> Dictionary:
@@ -1972,103 +1751,6 @@ func _fmt_matcher_class_scores(class_scores: Dictionary) -> String:
 		pairs.append("%s=%s" % [key, _fmt_float(class_scores.get(key, 0.0))])
 	return "{" + ", ".join(pairs) + "}"
 
-func _classifier_requirement_rows_for_backend(backend: String) -> Array:
-	var rows: Array = PROTOTYPE_MATCHER_REQUIREMENT_ROWS.duplicate(true)
-	if backend == "prototype":
-		return rows
-	for row_variant: Variant in rows:
-		if not row_variant is Dictionary:
-			continue
-		var row: Dictionary = row_variant
-		match String(row.get("id", "")):
-			"library_id":
-				row["label"] = "Active classifier model path"
-			"library_loaded":
-				row["label"] = "Classifier model loaded"
-	return rows
-
-func _build_classifier_requirement_row(row_spec: Dictionary, classifier_debug: Dictionary, backend: String, _side: String) -> Dictionary:
-	var row := row_spec.duplicate(true)
-	var row_id := String(row_spec.get("id", ""))
-	var passed := false
-	var current_text := ""
-	match row_id:
-		"backend_section", "score_section", "gate_section":
-			current_text = ""
-		"active_backend":
-			current_text = String(classifier_debug.get("active_backend", "inactive"))
-			passed = current_text == backend
-		"selected_backend":
-			current_text = String(classifier_debug.get("selected_backend", ""))
-			passed = current_text == backend
-		"library_id":
-			current_text = String(classifier_debug.get("library_id", classifier_debug.get("model_path", "")))
-			passed = not current_text.is_empty()
-		"library_loaded":
-			current_text = _fmt_bool(bool(classifier_debug.get("library_loaded", classifier_debug.get("model_loaded", false))))
-			passed = bool(classifier_debug.get("library_loaded", classifier_debug.get("model_loaded", false)))
-		"best_class":
-			current_text = String(classifier_debug.get("best_class", "no_punch"))
-			passed = not current_text.is_empty()
-		"best_score":
-			current_text = _fmt_float(classifier_debug.get("best_score", 0.0))
-			passed = true
-		"required_score":
-			current_text = _fmt_float(classifier_debug.get("required_score", classifier_debug.get("match_score_min", 0.0)))
-			passed = true
-		"result_class":
-			current_text = String(classifier_debug.get("result_class", "no_punch"))
-			passed = not current_text.is_empty()
-		"emitted_event_name":
-			current_text = String(classifier_debug.get("emitted_event_name", ""))
-			if current_text.is_empty():
-				current_text = "none"
-			passed = true
-		"show_scores":
-			current_text = _fmt_bool(bool(classifier_debug.get("show_scores", false)))
-			passed = true
-		"class_scores":
-			if bool(classifier_debug.get("show_scores", false)):
-				current_text = _fmt_matcher_class_scores(classifier_debug.get("class_scores", {}) as Dictionary)
-			else:
-				current_text = "hidden (show_scores=false)"
-			passed = true
-		"show_event_gate_state":
-			current_text = _fmt_bool(bool(classifier_debug.get("show_event_gate_state", false)))
-			passed = true
-		"gate_reason":
-			if bool(classifier_debug.get("show_event_gate_state", false)):
-				current_text = String(classifier_debug.get("reason", "idle"))
-				var model_error := String(classifier_debug.get("model_error", ""))
-				if backend == "classifier" and not model_error.is_empty():
-					current_text += " (%s)" % model_error
-			else:
-				current_text = "hidden (show_event_gate_state=false)"
-			passed = true
-		"hold_ms_remaining":
-			if bool(classifier_debug.get("show_event_gate_state", false)):
-				current_text = "%dms" % int(classifier_debug.get("hold_ms_remaining", 0))
-			else:
-				current_text = "hidden (show_event_gate_state=false)"
-			passed = true
-		"cooldown_ms_remaining":
-			if bool(classifier_debug.get("show_event_gate_state", false)):
-				current_text = "%dms" % int(classifier_debug.get("cooldown_ms_remaining", 0))
-			else:
-				current_text = "hidden (show_event_gate_state=false)"
-			passed = true
-		"active_event_class":
-			if bool(classifier_debug.get("show_event_gate_state", false)):
-				current_text = String(classifier_debug.get("active_event_class", "no_punch"))
-			else:
-				current_text = "hidden (show_event_gate_state=false)"
-			passed = true
-		_:
-			current_text = "pending"
-	row["current_text"] = current_text
-	row["passed"] = passed
-	return row
-
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
 	var row_id := String(row_spec.get("id", ""))
 	if row_id.begins_with("depth_"):
@@ -2084,8 +1766,6 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var wrist_velocity := float(straight_side.get("wrist_velocity", 0.0))
 	var recent_peak_wrist_velocity := float(straight_side.get("recent_peak_wrist_velocity", wrist_velocity))
 	var min_velocity := float(straight_side.get("min_velocity", 0.0))
-	var forward_depth_spike := float(straight_side.get("forward_depth_spike", 0.0))
-	var recent_peak_forward_depth_spike := float(straight_side.get("recent_peak_forward_depth_spike", forward_depth_spike))
 	var bbox_area := float(straight_side.get("bbox_area", 0.0))
 	var elbow_shoulder_xy_distance := float(straight_side.get("elbow_shoulder_xy_distance", 0.0))
 	var max_elbow_shoulder_xy_distance := float(straight_side.get("max_elbow_shoulder_xy_distance", 0.0))
@@ -2153,10 +1833,9 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					current_text += " (%s ago)" % _fmt_age_ms(_boxing_reference_time_ms() - transition_timestamp_ms)
 				passed = true
 		"state_change_payload":
-			current_text = "state=%s wrist=%s depth=%s xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
+			current_text = "state=%s wrist=%s xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
 				state_name,
 				_fmt_float(wrist_velocity),
-				_fmt_float(recent_peak_forward_depth_spike),
 				_fmt_float(elbow_shoulder_xy_distance),
 				_fmt_float(max_elbow_shoulder_xy_distance),
 				_fmt_bool(elbow_shoulder_xy_gate_passed),
@@ -2736,94 +2415,6 @@ func _build_boxing_event_feed_text() -> String:
 	])
 	_append_depth_config_summary_lines(lines, "uppercut", uppercut_depth)
 
-	var punch_detection_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("punch_detection", {}) is Dictionary) else {}
-	var prototype_matcher_source: Variant = (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype", (_latest_state.get("gesture_debug", {}) as Dictionary).get("prototype_matcher", {}))
-	var prototype_matcher_debug: Dictionary = prototype_matcher_source if prototype_matcher_source is Dictionary else {}
-	var learned_classifier_source: Variant = (_latest_state.get("gesture_debug", {}) as Dictionary).get("classifier", (_latest_state.get("gesture_debug", {}) as Dictionary).get("learned_classifier", {}))
-	var learned_classifier_debug: Dictionary = learned_classifier_source if learned_classifier_source is Dictionary else {}
-	var active_backend := String(punch_detection_debug.get("active_backend", punch_detection_debug.get("backend", "threshold")))
-	var selected_backend := String(punch_detection_debug.get("selected_backend", active_backend))
-	var classifier_backend := active_backend if active_backend != "none" else selected_backend
-	var classifier_debug := prototype_matcher_debug
-	var classifier_title := "Prototype truth"
-	var classifier_loaded_label := "Prototype library ID"
-	if classifier_backend == "classifier":
-		classifier_debug = learned_classifier_debug
-		classifier_title = "Classifier truth"
-		classifier_loaded_label = "Classifier model path"
-	elif classifier_backend == "per_family":
-		classifier_debug = learned_classifier_debug
-		classifier_title = "Per-family classifier truth"
-		classifier_loaded_label = "Family classifier model path"
-	elif classifier_backend == "threshold":
-		classifier_debug = {}
-		classifier_title = "Threshold truth"
-		classifier_loaded_label = "Threshold"
-	lines.append("")
-	lines.append(classifier_title)
-	lines.append("-----------------------")
-	lines.append("Active backend: %s" % active_backend)
-	lines.append("Routing mode: %s" % String(punch_detection_debug.get("routing_mode", "single_backend")))
-	lines.append("Per-family backends: straight=%s hook=%s uppercut=%s" % [
-		String(punch_detection_debug.get("straight_backend", active_backend)),
-		String(punch_detection_debug.get("hook_backend", active_backend)),
-		String(punch_detection_debug.get("uppercut_backend", active_backend)),
-	])
-	lines.append("Selected backend: %s" % selected_backend)
-	lines.append("Selected backend enabled: %s" % _fmt_bool(bool(punch_detection_debug.get("selected_backend_enabled", active_backend != "none"))))
-	lines.append("Backend resolution: %s" % String(punch_detection_debug.get("active_backend_resolution", "selected_backend_active")))
-	if not String(punch_detection_debug.get("hook_uppercut_backend_note", "")).is_empty():
-		lines.append("Hook/uppercut routing note: %s" % String(punch_detection_debug.get("hook_uppercut_backend_note", "")))
-	if classifier_backend != "threshold":
-		lines.append("%s: %s (loaded=%s)" % [
-			classifier_loaded_label,
-			String(classifier_debug.get("library_id", classifier_debug.get("model_path", ""))),
-			_fmt_bool(bool(classifier_debug.get("library_loaded", classifier_debug.get("model_loaded", false)))),
-		])
-	else:
-		lines.append("%s: enabled=%s" % [
-			classifier_loaded_label,
-			_fmt_bool(bool(punch_detection_debug.get("threshold_enabled", true))),
-		])
-	lines.append("Best class / score / threshold: %s / %s / %s" % [
-		String(classifier_debug.get("best_class", "no_punch")),
-		_fmt_float(classifier_debug.get("best_score", 0.0)),
-		_fmt_float(classifier_debug.get("required_score", classifier_debug.get("match_score_min", 0.0))),
-	])
-	lines.append("Result class / emitted event: %s / %s" % [
-		String(classifier_debug.get("result_class", "no_punch")),
-		String(classifier_debug.get("emitted_event_name", "none")) if not String(classifier_debug.get("emitted_event_name", "")).is_empty() else "none",
-	])
-	lines.append("Event/backend truth: punch_left=%s punch_right=%s hook_left=%s hook_right=%s uppercut_left=%s uppercut_right=%s" % [
-		_punch_backend_for_event("punch_left"),
-		_punch_backend_for_event("punch_right"),
-		_punch_backend_for_event("hook_left"),
-		_punch_backend_for_event("hook_right"),
-		_punch_backend_for_event("uppercut_left"),
-		_punch_backend_for_event("uppercut_right"),
-	])
-	lines.append("Debug flags: show_scores=%s show_event_gate_state=%s" % [
-		_fmt_bool(bool(classifier_debug.get("show_scores", false))),
-		_fmt_bool(bool(classifier_debug.get("show_event_gate_state", false))),
-	])
-	if bool(classifier_debug.get("show_scores", false)):
-		lines.append("Class scores: %s" % _fmt_matcher_class_scores(classifier_debug.get("class_scores", {}) as Dictionary))
-	else:
-		lines.append("Class scores: hidden (show_scores=false)")
-	if bool(classifier_debug.get("show_event_gate_state", false)):
-		var gate_reason := String(classifier_debug.get("reason", "idle"))
-		var model_error := String(classifier_debug.get("model_error", ""))
-		if (classifier_backend == "classifier" or classifier_backend == "per_family") and not model_error.is_empty():
-			gate_reason += " (%s)" % model_error
-		lines.append("Gate reason / hold / cooldown / active event: %s / %dms / %dms / %s" % [
-			gate_reason,
-			int(classifier_debug.get("hold_ms_remaining", 0)),
-			int(classifier_debug.get("cooldown_ms_remaining", 0)),
-			String(classifier_debug.get("active_event_class", "no_punch")),
-		])
-	else:
-		lines.append("Gate reason / hold / cooldown / active event: hidden (show_event_gate_state=false)")
-
 	var guard_config: Dictionary = gesture_document.get("guard", {}) if gesture_document.get("guard", {}) is Dictionary else {}
 	var guard_thresholds: Dictionary = guard_config.get("thresholds", {}) if guard_config.get("thresholds", {}) is Dictionary else {}
 	var guard_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("guard", {}) if ((_latest_state.get("gesture_debug", {}) as Dictionary).get("guard", {}) is Dictionary) else {}
@@ -2915,7 +2506,6 @@ func _build_runtime_config() -> Variant:
 		var result: Variant = config.set_profile_id(_selected_profile_id)
 		if result is Dictionary and not bool(result.get("ok", false)):
 			push_warning("[BoxingProvingHarness] Failed to load selected profile bundle for %s" % _selected_profile_id)
-	_apply_runtime_gesture_backend_override(config)
 	return config
 
 func _tracker_hand_debug_snapshot() -> Dictionary:

@@ -13,8 +13,6 @@ const VENDOR_MODEL_LITE := "models/pose_landmarker_lite.task"
 const VENDOR_MODEL_FULL := "models/pose_landmarker_full.task"
 const VENDOR_MODEL_HEAVY := "models/pose_landmarker_heavy.task"
 const DEFAULT_TRACKING_OVERLAY_MODE := "optimized"
-const PROVING_DEFAULT_STRAIGHT_CLASSIFIER_MODEL_PATH := "docs/baselines/boxing-punch-classifier-family-masked-topology-benchmark-2026-06-18/straight_family_mask_v1/mlp/mlp-result.json"
-const PROVING_GESTURE_FAMILY_NAMES: Array[String] = ["straight_punch", "hook", "uppercut"]
 
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
@@ -120,23 +118,11 @@ const BOXING_EVENT_ORDER := [
 	"weave_left_end",
 	"weave_right_start",
 	"weave_right_end",
-	"sidestep_left_start",
-	"sidestep_left_end",
-	"sidestep_right_start",
-	"sidestep_right_end",
-	"knee_left",
-	"knee_right",
-	"leg_lift_left_start",
-	"leg_lift_left_end",
-	"leg_lift_right_start",
-	"leg_lift_right_end",
 ]
 
 const FLOW_EVENT_ORDER := [
-	"swing_left",
-	"swing_right",
-	"trail_left",
-	"trail_right",
+	"flow_left_cell_entered",
+	"flow_right_cell_entered",
 ]
 
 const BOXING_ATTACK_EVENTS := [
@@ -148,18 +134,11 @@ const BOXING_ATTACK_EVENTS := [
 	"uppercut_right",
 ]
 
-const BOXING_KNEE_EVENTS := [
-	"knee_left",
-	"knee_right",
-]
-
 const BOXING_STATE_ROWS := [
 	{"label": "guard", "state": "guard", "start": "guard_start", "end": "guard_end"},
 	{"label": "squat", "state": "squat", "start": "squat_start", "end": "squat_end"},
 	{"label": "weave_left", "state": "weave_left", "start": "weave_left_start", "end": "weave_left_end"},
 	{"label": "weave_right", "state": "weave_right", "start": "weave_right_start", "end": "weave_right_end"},
-	{"label": "sidestep_left", "state": "sidestep_left", "start": "sidestep_left_start", "end": "sidestep_left_end"},
-	{"label": "sidestep_right", "state": "sidestep_right", "start": "sidestep_right_start", "end": "sidestep_right_end"},
 ]
 
 enum HarnessMode {
@@ -1157,8 +1136,6 @@ func _build_runtime_config() -> Variant:
 	var selected_bundle := config.get_selected_profile_bundle()
 	_apply_testbed_debug_profile_bundle(selected_bundle)
 	config.min_visibility = overlay_visibility_threshold
-	config.track_left_foot = true
-	config.track_right_foot = true
 	config.flip_horizontal = _should_flip_horizontal_preview()
 	var live_camera_source := _get_configured_live_camera_source()
 	if not live_camera_source.is_empty() and live_camera_source != "0":
@@ -1170,7 +1147,6 @@ func _build_runtime_config() -> Variant:
 	var filter_enabled := not bool(tracking_style.get("no_filter", false))
 	config.runtime = _build_vendor_runtime_config(config.model_complexity, filter_enabled)
 	_apply_runtime_depth_debug_config(config, selected_bundle)
-	_apply_runtime_gesture_backend_override(config)
 	return config
 
 func _apply_runtime_depth_debug_config(config: CameraTrackingConfigScript, bundle: Dictionary) -> void:
@@ -1184,39 +1160,6 @@ func _apply_runtime_depth_debug_config(config: CameraTrackingConfigScript, bundl
 		"request_runtime_texture": bool(depth_debug.get("request_runtime_texture", false)),
 	}
 	config.runtime = runtime
-
-func _apply_runtime_gesture_backend_override(config: CameraTrackingConfigScript) -> void:
-	if config == null:
-		return
-	var gesture_profile: Dictionary = config.gesture_profile_document.duplicate(true) if config.get("gesture_profile_document") is Dictionary else {}
-	var backend_override := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE").strip_edges().to_lower()
-	if not backend_override.is_empty() and ["disabled", "threshold", "prototype", "classifier"].has(backend_override):
-		for family_name in PROVING_GESTURE_FAMILY_NAMES:
-			var family_config: Dictionary = gesture_profile.get(family_name, {}) if gesture_profile.get(family_name, {}) is Dictionary else {}
-			family_config["backend"] = backend_override
-			gesture_profile[family_name] = family_config
-	var model_path_override := OS.get_environment("AEROBEAT_LEARNED_CLASSIFIER_MODEL_PATH_OVERRIDE").strip_edges()
-	if model_path_override.is_empty():
-		model_path_override = PROVING_DEFAULT_STRAIGHT_CLASSIFIER_MODEL_PATH
-	if not model_path_override.is_empty():
-		var straight_config: Dictionary = gesture_profile.get("straight_punch", {}) if gesture_profile.get("straight_punch", {}) is Dictionary else {}
-		var classifier_config: Dictionary = straight_config.get("classifier", {}) if straight_config.get("classifier", {}) is Dictionary else {}
-		var model_config: Dictionary = classifier_config.get("model", {}) if classifier_config.get("model", {}) is Dictionary else {}
-		model_config["artifact_path"] = model_path_override
-		classifier_config["model"] = model_config
-		straight_config["classifier"] = classifier_config
-		gesture_profile["straight_punch"] = straight_config
-	var library_id_override := OS.get_environment("AEROBEAT_PROTOTYPE_LIBRARY_ID_OVERRIDE").strip_edges()
-	if not library_id_override.is_empty():
-		for family_name in PROVING_GESTURE_FAMILY_NAMES:
-			var family_config: Dictionary = gesture_profile.get(family_name, {}) if gesture_profile.get(family_name, {}) is Dictionary else {}
-			var prototype_config: Dictionary = family_config.get("prototype", {}) if family_config.get("prototype", {}) is Dictionary else {}
-			var prototype_library: Dictionary = prototype_config.get("prototype_library", {}) if prototype_config.get("prototype_library", {}) is Dictionary else {}
-			prototype_library["library_id"] = library_id_override
-			prototype_config["prototype_library"] = prototype_library
-			family_config["prototype"] = prototype_config
-			gesture_profile[family_name] = family_config
-	config.gesture_profile_document = gesture_profile
 
 func _build_vendor_runtime_config(model_complexity: int, filter_enabled: bool = true) -> Dictionary:
 	var vendor_root := ProjectSettings.globalize_path(VENDOR_REPO_ROOT)
@@ -1258,12 +1201,12 @@ func _uses_camera_tracking_contract_path() -> bool:
 
 func _connect_mode_signals() -> void:
 	if harness_mode == HarnessMode.BOXING:
-		for signal_name: String in ["punch_left", "punch_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right", "knee_left", "knee_right"]:
+		for signal_name: String in ["punch_left", "punch_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right"]:
 			_connect_power_signal(signal_name)
-		for signal_name: String in ["guard_start", "guard_end", "squat_start", "squat_end", "weave_left_start", "weave_left_end", "weave_right_start", "weave_right_end", "sidestep_left_start", "sidestep_left_end", "sidestep_right_start", "sidestep_right_end", "leg_lift_left_start", "leg_lift_left_end", "leg_lift_right_start", "leg_lift_right_end"]:
+		for signal_name: String in ["guard_start", "guard_end", "squat_start", "squat_end", "weave_left_start", "weave_left_end", "weave_right_start", "weave_right_end"]:
 			_connect_simple_signal(signal_name)
 	else:
-		for signal_name: String in ["swing_left", "swing_right", "trail_left", "trail_right"]:
+		for signal_name: String in FLOW_EVENT_ORDER:
 			_connect_flow_signal(signal_name)
 
 func _connect_simple_signal(signal_name: String) -> void:
@@ -1283,16 +1226,7 @@ func _connect_power_signal(signal_name: String) -> void:
 	var relay := func(power: float) -> void:
 		if provider != null and provider.has_method("get_detector_state"):
 			_latest_state = provider.get_detector_state()
-		var payload := {"power": power}
-		var classifier_match := _classifier_match_payload_for_signal(signal_name)
-		if not classifier_match.is_empty():
-			var classifier_backend := String(classifier_match.get("backend", ""))
-			payload["backend"] = classifier_backend
-			if classifier_backend == "prototype":
-				payload["prototype"] = classifier_match.get("payload", {})
-			elif classifier_backend == "classifier":
-				payload["classifier"] = classifier_match.get("payload", {})
-		_record_event(signal_name, payload)
+		_record_event(signal_name, {"power": power})
 	_remember_mode_signal_relay(signal_name, relay)
 
 func _connect_flow_signal(signal_name: String) -> void:
@@ -1300,71 +1234,15 @@ func _connect_flow_signal(signal_name: String) -> void:
 		return
 	if _provider_mode_signal_relays.has(signal_name):
 		return
-	var relay := func(placement: int, direction: int) -> void:
+	var relay := func(cell: int, direction: int) -> void:
 		_last_flow_events[signal_name] = {
-			"placement": placement,
+			"cell": cell,
 			"direction": direction,
 			"timestamp_ms": Time.get_ticks_msec(),
+			"side": _flow_side_from_event_name(signal_name),
 		}
-		_record_event(signal_name, {"placement": placement, "direction": direction})
+		_record_event(signal_name, {"cell": cell, "direction": direction})
 	_remember_mode_signal_relay(signal_name, relay)
-
-func _classifier_match_payload_for_signal(signal_name: String) -> Dictionary:
-	var gesture_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary)
-	var punch_detection: Dictionary = (gesture_debug.get("punch_detection", {}) as Dictionary)
-	var backend := _punch_backend_for_signal(signal_name, punch_detection)
-	if backend == "prototype":
-		var matcher_debug: Dictionary = (gesture_debug.get("prototype", gesture_debug.get("prototype_matcher", {})) as Dictionary)
-		if String(matcher_debug.get("emitted_event_name", "")) != signal_name:
-			return {}
-		return {
-			"backend": "prototype",
-			"payload": {
-				"class_name": String(matcher_debug.get("result_class", "")),
-				"score": float(matcher_debug.get("best_score", 0.0)),
-				"prototype_id": String(matcher_debug.get("best_prototype_id", "")),
-				"prototype_side": String(matcher_debug.get("best_prototype_side", "")),
-				"runner_up_class": String(matcher_debug.get("runner_up_class", "")),
-				"runner_up_score": float(matcher_debug.get("runner_up_score", 0.0)),
-				"runner_up_prototype_id": String(matcher_debug.get("runner_up_prototype_id", "")),
-				"class_margin": float(matcher_debug.get("best_class_margin", 0.0)),
-				"threshold": float(matcher_debug.get("required_score", matcher_debug.get("match_score_min", 0.0))),
-				"library_id": String(matcher_debug.get("library_id", "")),
-				"reason": String(matcher_debug.get("reason", "")),
-			},
-		}
-	if backend == "classifier":
-		var learned_debug: Dictionary = (gesture_debug.get("classifier", gesture_debug.get("learned_classifier", {})) as Dictionary)
-		if String(learned_debug.get("emitted_event_name", "")) != signal_name:
-			return {}
-		return {
-			"backend": "classifier",
-			"payload": {
-				"class_name": String(learned_debug.get("result_class", "")),
-				"score": float(learned_debug.get("best_score", 0.0)),
-				"runner_up_class": String(learned_debug.get("runner_up_class", "")),
-				"runner_up_score": float(learned_debug.get("runner_up_score", 0.0)),
-				"threshold": float(learned_debug.get("required_score", learned_debug.get("match_score_min", 0.0))),
-				"model_path": String(learned_debug.get("model_path", "")),
-				"reason": String(learned_debug.get("reason", "")),
-			},
-		}
-	if backend == "threshold":
-		return {
-			"backend": "threshold",
-			"payload": {},
-		}
-	return {}
-
-func _punch_backend_for_signal(signal_name: String, punch_detection: Dictionary) -> String:
-	var active_backend := String(punch_detection.get("active_backend", punch_detection.get("backend", ""))).strip_edges().to_lower()
-	if signal_name.begins_with("punch_"):
-		return String(punch_detection.get("straight_backend", active_backend)).strip_edges().to_lower()
-	if signal_name.begins_with("hook_"):
-		return String(punch_detection.get("hook_backend", active_backend)).strip_edges().to_lower()
-	if signal_name.begins_with("uppercut_"):
-		return String(punch_detection.get("uppercut_backend", active_backend)).strip_edges().to_lower()
-	return active_backend
 
 func _on_pose_updated(landmarks: Array) -> void:
 	if _is_preview_only_mode():
@@ -2002,6 +1880,7 @@ func _sync_playback_status_from_manager() -> void:
 		normalized = clampf(playback_position / duration, 0.0, 1.0)
 	_playback_status = {
 		"paused": String(state.get("state", "idle")) != "playing",
+		"media_loaded": bool(state.get("media_loaded", false)),
 		"current_time_sec": playback_position,
 		"duration_sec": duration,
 		"progress": normalized,
@@ -2034,7 +1913,8 @@ func _refresh_playback_controls_state() -> void:
 		return
 	var paused := bool(_playback_status.get("paused", true))
 	_playback_toggle_button.text = PLAYBACK_ICON_PLAY if paused else PLAYBACK_ICON_PAUSE
-	var controls_enabled := _is_prerecorded_source_active() and _playback_controller_has_loaded_media()
+	var media_loaded := bool(_playback_status.get("media_loaded", false))
+	var controls_enabled := _is_prerecorded_source_active() and media_loaded
 	_playback_toggle_button.disabled = not controls_enabled
 	_playback_seek_slider.editable = controls_enabled
 	var can_step_backward := controls_enabled and paused and _playback_transport_step_supported(-1)
@@ -2249,19 +2129,21 @@ func _build_quick_stats_text() -> String:
 	]
 	if harness_mode == HarnessMode.BOXING:
 		var armed_count := 0
-		for event_name: String in BOXING_ATTACK_EVENTS + BOXING_KNEE_EVENTS:
+		for event_name: String in BOXING_ATTACK_EVENTS:
 			if bool(ready_map.get(event_name, true)):
 				armed_count += 1
 		lines.append("Height state: %s" % String(measurements.get("height_state", &"unknown")))
 		lines.append("Guard active: %s" % str(bool(gesture_states.get("guard", false))))
-		lines.append("Attack gates armed: %d / %d" % [armed_count, BOXING_ATTACK_EVENTS.size() + BOXING_KNEE_EVENTS.size()])
+		lines.append("Attack gates armed: %d / %d" % [armed_count, BOXING_ATTACK_EVENTS.size()])
 	else:
-		var swing_ready := int(bool(ready_map.get("swing_left", true))) + int(bool(ready_map.get("swing_right", true)))
-		var active_trails := int(bool(gesture_states.get("trail_left", false))) + int(bool(gesture_states.get("trail_right", false)))
-		lines.append("Swing gates armed: %d / 2" % swing_ready)
-		lines.append("Active trails: %d / 2" % active_trails)
-		lines.append("Flow candidate L: %s / %s" % [_fmt_flow_candidate(left_flow), _fmt_flow_direction_candidate(left_flow)])
-		lines.append("Flow candidate R: %s / %s" % [_fmt_flow_candidate(right_flow), _fmt_flow_direction_candidate(right_flow)])
+		var baseline: Dictionary = state.get("baseline", {})
+		lines.append("Grid calibrated: %s" % str(bool(baseline.get("is_calibrated", false))))
+		lines.append("Grid cell size: %s" % _fmt_float(left_flow.get("grid_cell_size", right_flow.get("grid_cell_size", 0.0))))
+		lines.append("Cell entries: L=%d R=%d" % [_event_count("flow_left_cell_entered"), _event_count("flow_right_cell_entered")])
+		lines.append("Live cell/direction L: %s / %s" % [_fmt_flow_candidate(left_flow), _fmt_flow_direction_candidate(left_flow)])
+		lines.append("Live cell/direction R: %s / %s" % [_fmt_flow_candidate(right_flow), _fmt_flow_direction_candidate(right_flow)])
+		lines.append("Last entry L: %s" % _describe_last_flow_event("flow_left_cell_entered"))
+		lines.append("Last entry R: %s" % _describe_last_flow_event("flow_right_cell_entered"))
 		lines.append("Trail L points/duration: %d / %dms" % [_left_trail.size(), _trail_duration_ms(_left_trail)])
 		lines.append("Trail R points/duration: %d / %dms" % [_right_trail.size(), _trail_duration_ms(_right_trail)])
 	return "\n".join(lines)
@@ -2292,30 +2174,25 @@ func _build_summary_text() -> String:
 		lines.append("-----------")
 		lines.append("guard=%s squat=%s" % [str(bool(gesture_states.get("guard", false))), str(bool(gesture_states.get("squat", false)))])
 		lines.append("weave_left=%s weave_right=%s" % [str(bool(gesture_states.get("weave_left", false))), str(bool(gesture_states.get("weave_right", false)))])
-		lines.append("sidestep_left=%s sidestep_right=%s" % [str(bool(gesture_states.get("sidestep_left", false))), str(bool(gesture_states.get("sidestep_right", false)))])
-		lines.append("leg_lift_left=%s leg_lift_right=%s" % [str(bool(gesture_states.get("leg_lift_left", false))), str(bool(gesture_states.get("leg_lift_right", false)))])
 		lines.append("height=%s ratio=%s squat_depth=%s" % [String(measurements.get("height_state", &"unknown")), _fmt_float(measurements.get("height_ratio", 0.0)), _fmt_float(measurements.get("squat_depth", 0.0))])
 		lines.append("head/hip lateral=%s / %s" % [_fmt_float(measurements.get("head_lateral_offset", 0.0)), _fmt_float(measurements.get("hip_lateral_offset", 0.0))])
 	else:
 		var gesture_debug: Dictionary = state.get("gesture_debug", {})
-		var ready_map: Dictionary = gesture_debug.get("ready", {})
 		var flow_debug: Dictionary = gesture_debug.get("flow", {})
 		var left_flow: Dictionary = flow_debug.get("left", {})
 		var right_flow: Dictionary = flow_debug.get("right", {})
 		lines.append("")
-		lines.append("Flow event summary")
-		lines.append("------------------")
-		for key: String in ["swing_left", "swing_right", "trail_left", "trail_right"]:
-			lines.append("%s: %s" % [key, _describe_last_flow_event(key)])
-		lines.append("swing_ready L/R=%s / %s" % [str(bool(ready_map.get("swing_left", true))), str(bool(ready_map.get("swing_right", true)))])
-		lines.append("trail_active L/R=%s / %s" % [str(bool(gesture_states.get("trail_left", false))), str(bool(gesture_states.get("trail_right", false)))])
-		lines.append("placement vs direction L=%s / %s" % [_fmt_flow_candidate(left_flow), _fmt_flow_direction_candidate(left_flow)])
-		lines.append("placement vs direction R=%s / %s" % [_fmt_flow_candidate(right_flow), _fmt_flow_direction_candidate(right_flow)])
-		lines.append("Mirrored-hand sanity")
+		lines.append("Direct 4x3 Flow summary")
+		lines.append("-----------------------")
+		lines.append("left entry: %s" % _describe_last_flow_event("flow_left_cell_entered"))
+		lines.append("right entry: %s" % _describe_last_flow_event("flow_right_cell_entered"))
+		lines.append("grid anchor: %s" % _fmt_vec2(left_flow.get("grid_anchor", right_flow.get("grid_anchor", Vector2.ZERO))))
+		lines.append("grid cell size: %s" % _fmt_float(left_flow.get("grid_cell_size", right_flow.get("grid_cell_size", 0.0))))
+		lines.append("Current wrist states")
 		lines.append("-------------------")
 		lines.append(_format_flow_sanity_line("left", left_flow))
 		lines.append(_format_flow_sanity_line("right", right_flow))
-		lines.append("Local continuity: L=%d pts (%dms), R=%d pts (%dms)" % [_left_trail.size(), _trail_duration_ms(_left_trail), _right_trail.size(), _trail_duration_ms(_right_trail)])
+		lines.append("Local continuity only: L=%d pts (%dms), R=%d pts (%dms)" % [_left_trail.size(), _trail_duration_ms(_left_trail), _right_trail.size(), _trail_duration_ms(_right_trail)])
 	return "\n".join(lines)
 
 func _build_signal_text() -> String:
@@ -2349,46 +2226,32 @@ func _build_boxing_signal_text() -> String:
 		var row: Dictionary = row_variant
 		lines.append(_format_state_signal_row(String(row.get("label", "")), String(row.get("state", "")), String(row.get("start", "")), String(row.get("end", "")), gesture_states))
 	lines.append("")
-	lines.append("Knees / leg lifts")
-	lines.append("-----------------")
-	for event_name: String in BOXING_KNEE_EVENTS:
-		lines.append(_format_attack_signal_row(event_name, ready_map, false))
-	lines.append(_format_state_signal_row("leg_lift_left", "leg_lift_left", "leg_lift_left_start", "leg_lift_left_end", gesture_states))
-	lines.append(_format_state_signal_row("leg_lift_right", "leg_lift_right", "leg_lift_right_start", "leg_lift_right_end", gesture_states))
-	lines.append("")
 	lines.append("Current detector inputs")
 	lines.append("----------------------")
 	lines.append("L extension=%s  elbow=%s°  3D=%s / %s°  fwd=%s / %s" % [_fmt_float(measurements.get("left_arm_extension", 0.0)), _fmt_float(measurements.get("left_elbow_bend_deg", 0.0)), _fmt_float(measurements.get("left_arm_extension_3d", 0.0)), _fmt_float(measurements.get("left_elbow_bend_deg_3d", 0.0)), _fmt_float(measurements.get("left_forward_distance", 0.0)), _fmt_float(measurements.get("left_forward_velocity", 0.0))])
 	lines.append("R extension=%s  elbow=%s°  3D=%s / %s°  fwd=%s / %s" % [_fmt_float(measurements.get("right_arm_extension", 0.0)), _fmt_float(measurements.get("right_elbow_bend_deg", 0.0)), _fmt_float(measurements.get("right_arm_extension_3d", 0.0)), _fmt_float(measurements.get("right_elbow_bend_deg_3d", 0.0)), _fmt_float(measurements.get("right_forward_distance", 0.0)), _fmt_float(measurements.get("right_forward_velocity", 0.0))])
 	lines.append("squat depth=%s  head drop=%s" % [_fmt_float(measurements.get("squat_depth", 0.0)), _fmt_float(measurements.get("head_drop_ratio", 0.0))])
 	lines.append("lateral body/head/hip=%s / %s / %s" % [_fmt_float(measurements.get("lateral_offset", 0.0)), _fmt_float(measurements.get("head_lateral_offset", 0.0)), _fmt_float(measurements.get("hip_lateral_offset", 0.0))])
-	lines.append("L knee/foot rise=%s / %s" % [_fmt_float(measurements.get("left_knee_rise", 0.0)), _fmt_float(measurements.get("left_foot_rise", 0.0))])
-	lines.append("R knee/foot rise=%s / %s" % [_fmt_float(measurements.get("right_knee_rise", 0.0)), _fmt_float(measurements.get("right_foot_rise", 0.0))])
 	return "\n".join(lines)
 
 func _build_flow_signal_text() -> String:
-	var state: Dictionary = _latest_state
-	var gesture_states: Dictionary = state.get("gesture_states", {})
-	var gesture_debug: Dictionary = state.get("gesture_debug", {})
-	var ready_map: Dictionary = gesture_debug.get("ready", {})
+	var gesture_debug: Dictionary = _latest_state.get("gesture_debug", {})
 	var flow_debug: Dictionary = gesture_debug.get("flow", {})
 	var left_flow: Dictionary = flow_debug.get("left", {})
 	var right_flow: Dictionary = flow_debug.get("right", {})
 	var lines := [
-		"Flow signal board",
-		"=================",
-		"Persistent status/counters for swings, trails, readiness, and candidate truth.",
+		"Flow direct-grid board",
+		"======================",
+		"Live detector truth for direct calibrated 4x3 wrist entry plus 8-way shoulder-relative motion.",
 		"",
-		"Left hand surface",
-		"-----------------",
-		_format_flow_event_row("swing_left", left_flow, ready_map, false),
-		_format_flow_event_row("trail_left", left_flow, ready_map, bool(gesture_states.get("trail_left", false))),
+		"Left wrist",
+		"----------",
+		_format_flow_event_row("flow_left_cell_entered", left_flow),
 		_format_flow_candidate_row("left", left_flow),
 		"",
-		"Right hand surface",
-		"------------------",
-		_format_flow_event_row("swing_right", right_flow, ready_map, false),
-		_format_flow_event_row("trail_right", right_flow, ready_map, bool(gesture_states.get("trail_right", false))),
+		"Right wrist",
+		"-----------",
+		_format_flow_event_row("flow_right_cell_entered", right_flow),
 		_format_flow_candidate_row("right", right_flow),
 	]
 	return "\n".join(lines)
@@ -2431,55 +2294,38 @@ func _build_metrics_text() -> String:
 		var left_flow: Dictionary = flow_debug.get("left", {})
 		var right_flow: Dictionary = flow_debug.get("right", {})
 		lines.append("")
-		lines.append("Flow / continuity readouts")
-		lines.append("-------------------------")
-		lines.append("Left hand")
-		lines.append(_format_flow_analysis_line("swing window", left_flow.get("swing_analysis", {})))
-		lines.append(_format_flow_analysis_line("trail window", left_flow.get("trail_analysis", {})))
-		lines.append("latest pos=%s conf=%s avg_x=%s offset=%s" % [_fmt_vec2(left_flow.get("latest_position", Vector2.ZERO)), _fmt_float(left_flow.get("latest_confidence", 0.0)), _fmt_float(left_flow.get("avg_x", 0.0)), _fmt_float(left_flow.get("center_offset_ratio", 0.0))])
+		lines.append("Flow direct-grid readouts")
+		lines.append("------------------------")
+		lines.append("Left wrist")
+		lines.append(_format_flow_analysis_line("recent motion", left_flow.get("direction_analysis", {})))
+		lines.append("current cell=%s latest=%s rel=%s conf=%s" % [_fmt_flow_candidate(left_flow), _fmt_vec2(left_flow.get("latest_position", Vector2.ZERO)), _fmt_vec2(left_flow.get("latest_relative_position", Vector2.ZERO)), _fmt_float(left_flow.get("latest_confidence", 0.0))])
 		lines.append("vel=%s dir=%s" % [_fmt_vec3(velocities.get("left_hand", Vector3.ZERO)), _fmt_vec2(directions.get("left_hand", Vector2.ZERO))])
 		lines.append("")
-		lines.append("Right hand")
-		lines.append(_format_flow_analysis_line("swing window", right_flow.get("swing_analysis", {})))
-		lines.append(_format_flow_analysis_line("trail window", right_flow.get("trail_analysis", {})))
-		lines.append("latest pos=%s conf=%s avg_x=%s offset=%s" % [_fmt_vec2(right_flow.get("latest_position", Vector2.ZERO)), _fmt_float(right_flow.get("latest_confidence", 0.0)), _fmt_float(right_flow.get("avg_x", 0.0)), _fmt_float(right_flow.get("center_offset_ratio", 0.0))])
+		lines.append("Right wrist")
+		lines.append(_format_flow_analysis_line("recent motion", right_flow.get("direction_analysis", {})))
+		lines.append("current cell=%s latest=%s rel=%s conf=%s" % [_fmt_flow_candidate(right_flow), _fmt_vec2(right_flow.get("latest_position", Vector2.ZERO)), _fmt_vec2(right_flow.get("latest_relative_position", Vector2.ZERO)), _fmt_float(right_flow.get("latest_confidence", 0.0))])
 		lines.append("vel=%s dir=%s" % [_fmt_vec3(velocities.get("right_hand", Vector3.ZERO)), _fmt_vec2(directions.get("right_hand", Vector2.ZERO))])
 		lines.append("")
-		lines.append("Placement is detector-emitted; local trail durations remain on-screen for continuity sanity only.")
+		lines.append("Local wrist trails are continuity debug only; hit truth is detector-owned cell entry plus direction.")
 	return "\n".join(lines)
 
-func _format_flow_event_row(event_name: String, hand_debug: Dictionary, ready_map: Dictionary, active: bool) -> String:
-	var event_kind := "swing" if event_name.begins_with("swing_") else "trail"
-	var analysis: Dictionary = hand_debug.get("swing_analysis", {}) if event_kind == "swing" else hand_debug.get("trail_analysis", {})
-	var meta: Dictionary = hand_debug.get("swing_meta", {}) if event_kind == "swing" else hand_debug.get("trail_meta", {})
-	var status := "ACTIVE" if event_kind == "trail" and active else ("READY" if bool(ready_map.get(event_name, true)) else "RESET")
-	if event_kind == "trail" and not active:
-		status = "IDLE"
-	return "%s  status=%s  count=%d  last=%s  emitted=%s/%s  cand=%s/%s  dur=%dms  arc=%s  net=%s  cons=%s  lane=%s  conf=%s" % [
-		event_name,
-		status,
+func _format_flow_event_row(event_name: String, hand_debug: Dictionary) -> String:
+	return "%s  entries=%d  last=%s  live_cell=%s  live_dir=%s  history=%d pts / %dms" % [
+		_flow_label_from_event_name(event_name),
 		_event_count(event_name),
-		_last_seen_text(event_name),
-		_fmt_flow_index(meta.get("placement", -1), meta.get("placement_ui_label", 0), true),
-		_fmt_flow_index(meta.get("direction", -1), meta.get("direction_ui_label", 0), false),
+		_describe_last_flow_event(event_name),
 		_fmt_flow_candidate(hand_debug),
 		_fmt_flow_direction_candidate(hand_debug),
-		int(analysis.get("duration_ms", 0)),
-		_fmt_float(analysis.get("arc_length", 0.0)),
-		_fmt_float(analysis.get("net_distance", 0.0)),
-		_fmt_float(analysis.get("directional_consistency", 0.0)),
-		_fmt_float(analysis.get("lane_spread", 0.0)),
-		_fmt_float(analysis.get("avg_confidence", 0.0)),
+		int(hand_debug.get("history_points", 0)),
+		int(hand_debug.get("history_duration_ms", 0)),
 	]
 
 func _format_flow_candidate_row(side: String, hand_debug: Dictionary) -> String:
-	return "%s hand  history=%d pts / %dms  latest=%s  avg_x=%s  center_offset=%s  placement=%s  direction=%s" % [
+	return "%s wrist  latest=%s  rel=%s  conf=%s  cell=%s  motion=%s" % [
 		side,
-		int(hand_debug.get("history_points", 0)),
-		int(hand_debug.get("history_duration_ms", 0)),
 		_fmt_vec2(hand_debug.get("latest_position", Vector2.ZERO)),
-		_fmt_float(hand_debug.get("avg_x", 0.0)),
-		_fmt_float(hand_debug.get("center_offset_ratio", 0.0)),
+		_fmt_vec2(hand_debug.get("latest_relative_position", Vector2.ZERO)),
+		_fmt_float(hand_debug.get("latest_confidence", 0.0)),
 		_fmt_flow_candidate(hand_debug),
 		_fmt_flow_direction_candidate(hand_debug),
 	]
@@ -2487,50 +2333,42 @@ func _format_flow_candidate_row(side: String, hand_debug: Dictionary) -> String:
 func _format_flow_analysis_line(label: String, analysis_variant: Variant) -> String:
 	var analysis: Dictionary = analysis_variant if analysis_variant is Dictionary else {}
 	if analysis.is_empty():
-		return "%s: no candidate yet" % label
-	return "%s: samples=%d dur=%dms arc=%s net=%s cons=%s lane=%s conf=%s placement=%s direction=%s" % [
+		return "%s: no motion window yet" % label
+	return "%s: samples=%d dur=%dms net=%s avg_conf=%s dir=%s rel_delta=%s" % [
 		label,
 		int(analysis.get("sample_count", 0)),
 		int(analysis.get("duration_ms", 0)),
-		_fmt_float(analysis.get("arc_length", 0.0)),
 		_fmt_float(analysis.get("net_distance", 0.0)),
-		_fmt_float(analysis.get("directional_consistency", 0.0)),
-		_fmt_float(analysis.get("lane_spread", 0.0)),
 		_fmt_float(analysis.get("avg_confidence", 0.0)),
-		_fmt_flow_index(analysis.get("placement", -1), analysis.get("placement_ui_label", 0), true),
-		_fmt_flow_index(analysis.get("direction", -1), analysis.get("direction_ui_label", 0), false),
+		_fmt_flow_direction(int(analysis.get("direction", -1))),
+		_fmt_vec2(analysis.get("net_delta", Vector2.ZERO)),
 	]
 
 func _format_flow_sanity_line(side: String, hand_debug: Dictionary) -> String:
-	return "%s hand: latest=%s avg_x=%s offset=%s placement=%s direction=%s" % [
+	return "%s wrist: latest=%s rel=%s cell=%s motion=%s" % [
 		side,
 		_fmt_vec2(hand_debug.get("latest_position", Vector2.ZERO)),
-		_fmt_float(hand_debug.get("avg_x", 0.0)),
-		_fmt_float(hand_debug.get("center_offset_ratio", 0.0)),
+		_fmt_vec2(hand_debug.get("latest_relative_position", Vector2.ZERO)),
 		_fmt_flow_candidate(hand_debug),
 		_fmt_flow_direction_candidate(hand_debug),
 	]
 
 func _fmt_flow_candidate(hand_debug: Dictionary) -> String:
-	return _fmt_flow_index(hand_debug.get("placement_candidate", -1), hand_debug.get("placement_candidate_ui_label", 0), true)
+	return _fmt_flow_cell(int(hand_debug.get("current_cell", hand_debug.get("cell", -1))))
 
 func _fmt_flow_direction_candidate(hand_debug: Dictionary) -> String:
-	return _fmt_flow_index(hand_debug.get("direction_candidate", -1), hand_debug.get("direction_candidate_ui_label", 0), false)
+	return _fmt_flow_direction(int(hand_debug.get("current_direction", hand_debug.get("direction", -1))))
 
-func _fmt_flow_index(value_variant: Variant, ui_label_variant: Variant, is_placement: bool) -> String:
+func _fmt_flow_index(value_variant: Variant, _ui_label_variant: Variant, is_placement: bool) -> String:
 	var value := int(value_variant)
-	if value < 0:
-		return "-"
-	var ui_label := int(ui_label_variant)
-	var suffix := ""
-	if is_placement and value == 12:
-		suffix = " center"
-	return "%d[u%d]%s" % [value, ui_label, suffix]
+	if is_placement:
+		return _fmt_flow_cell(value)
+	return _fmt_flow_direction(value)
 
 func _build_events_text() -> String:
 	if harness_mode == HarnessMode.FLOW:
 		if _event_lines.is_empty():
-			return "Waiting for events..."
+			return "Waiting for direct grid entries..."
 		return "\n".join(_event_lines)
 	var lines := ["Live events", "==========="]
 	if _event_lines.is_empty():
@@ -2545,20 +2383,10 @@ func _refresh_flow_ring_board() -> void:
 	var flow_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("flow", {})
 	var left_flow: Dictionary = flow_debug.get("left", {})
 	var right_flow: Dictionary = flow_debug.get("right", {})
-	_set_flow_chart_active_index(left_placement_chart, _resolve_flow_board_index(left_flow, true, false))
-	_set_flow_chart_active_index(right_placement_chart, _resolve_flow_board_index(right_flow, true, false))
-	_set_flow_chart_active_index(left_direction_chart, _resolve_flow_board_index(left_flow, false, false))
-	_set_flow_chart_active_index(right_direction_chart, _resolve_flow_board_index(right_flow, false, false))
-
-func _resolve_flow_board_index(hand_debug: Dictionary, is_placement: bool, prefer_last_emitted: bool) -> int:
-	var candidate_key := "placement_candidate" if is_placement else "direction_candidate"
-	var emitted_meta_key := "trail_meta"
-	if prefer_last_emitted and hand_debug.has(emitted_meta_key):
-		var emitted_meta: Dictionary = hand_debug.get(emitted_meta_key, {})
-		var emitted_index := int(emitted_meta.get("placement" if is_placement else "direction", -1))
-		if emitted_index >= 0:
-			return emitted_index
-	return int(hand_debug.get(candidate_key, -1))
+	_set_flow_chart_active_index(left_placement_chart, int(left_flow.get("current_cell", -1)))
+	_set_flow_chart_active_index(right_placement_chart, int(right_flow.get("current_cell", -1)))
+	_set_flow_chart_active_index(left_direction_chart, int(left_flow.get("current_direction", -1)))
+	_set_flow_chart_active_index(right_direction_chart, int(right_flow.get("current_direction", -1)))
 
 func _set_flow_chart_active_index(chart: Control, active_index: int) -> void:
 	if chart == null or not is_instance_valid(chart):
@@ -2590,20 +2418,13 @@ func _append_event_feed_lines(event_name: String, payload: Dictionary) -> void:
 		_event_lines.remove_at(0)
 
 func _build_event_feed_lines(event_name: String, payload: Dictionary) -> Array[String]:
-	if harness_mode == HarnessMode.FLOW and payload.has("placement") and payload.has("direction"):
-		var side_label := "Left Bat" if event_name.ends_with("_left") else "Right Bat"
-		return [
-			"%s Placement - %d" % [side_label, _flow_ui_label_from_value(int(payload.get("placement", -1)), true)],
-			"%s Direction - %d" % [side_label, _flow_ui_label_from_value(int(payload.get("direction", -1)), false)],
-		]
+	if harness_mode == HarnessMode.FLOW and payload.has("cell") and payload.has("direction"):
+		return ["%s entered %s moving %s" % [
+			_flow_label_from_event_name(event_name),
+			_fmt_flow_cell(int(payload.get("cell", -1))),
+			_fmt_flow_direction(int(payload.get("direction", -1))),
+		]]
 	return [event_name + _format_event_payload(payload)]
-
-func _flow_ui_label_from_value(value: int, is_placement: bool) -> int:
-	if value < 0:
-		return 0
-	if is_placement and value == 12:
-		return 13
-	return value + 1
 
 func _format_event_payload(payload: Dictionary) -> String:
 	if payload.is_empty():
@@ -2623,7 +2444,11 @@ func _describe_last_flow_event(event_name: String) -> String:
 	if event_data.is_empty():
 		return "none"
 	var age_ms := Time.get_ticks_msec() - int(event_data.get("timestamp_ms", 0))
-	return "%s / %s (%dms ago)" % [_fmt_flow_index(event_data.get("placement", -1), int(event_data.get("placement", -1)) + 1, true), _fmt_flow_index(event_data.get("direction", -1), int(event_data.get("direction", -1)) + 1, false), age_ms]
+	return "%s / %s (%dms ago)" % [
+		_fmt_flow_cell(int(event_data.get("cell", -1))),
+		_fmt_flow_direction(int(event_data.get("direction", -1))),
+		age_ms,
+	]
 
 func _trail_duration_ms(trail: Array) -> int:
 	if trail.size() < 2:
@@ -2632,11 +2457,43 @@ func _trail_duration_ms(trail: Array) -> int:
 
 func _reset_last_flow_events() -> void:
 	_last_flow_events = {
-		"swing_left": {},
-		"swing_right": {},
-		"trail_left": {},
-		"trail_right": {},
+		"flow_left_cell_entered": {},
+		"flow_right_cell_entered": {},
 	}
+
+func _flow_side_from_event_name(event_name: String) -> String:
+	return "left" if event_name.contains("left") else "right"
+
+func _flow_label_from_event_name(event_name: String) -> String:
+	return "Left wrist" if _flow_side_from_event_name(event_name) == "left" else "Right wrist"
+
+func _fmt_flow_cell(value: int) -> String:
+	if value < 0:
+		return "-"
+	var row := int(floor(float(value) / 4.0))
+	var column := value % 4
+	return "cell %d [r%d c%d]" % [value, row, column]
+
+func _fmt_flow_direction(value: int) -> String:
+	match value:
+		0:
+			return "up"
+		1:
+			return "down"
+		2:
+			return "left"
+		3:
+			return "right"
+		4:
+			return "up-left"
+		5:
+			return "up-right"
+		6:
+			return "down-left"
+		7:
+			return "down-right"
+		_:
+			return "-"
 
 func _reset_event_tracking() -> void:
 	_event_lines = []
@@ -2797,9 +2654,6 @@ func _record_fixture_state_snapshot(reason: String) -> void:
 		"ready": (gesture_debug.get("ready", {}) as Dictionary).duplicate(true),
 		"flow": (gesture_debug.get("flow", {}) as Dictionary).duplicate(true),
 		"punch_detection": (gesture_debug.get("punch_detection", {}) as Dictionary).duplicate(true),
-		"prototype": (gesture_debug.get("prototype", gesture_debug.get("prototype_matcher", {})) as Dictionary).duplicate(true),
-		"prototype_matcher": (gesture_debug.get("prototype_matcher", gesture_debug.get("prototype", {})) as Dictionary).duplicate(true),
-		"classifier": (gesture_debug.get("classifier", gesture_debug.get("learned_classifier", {})) as Dictionary).duplicate(true),
 		"boxing_debug": _build_fixture_boxing_debug_snapshot(),
 		"latest_event": _latest_event_name(),
 	}
@@ -2904,14 +2758,14 @@ func _build_console_snapshot() -> String:
 	var flow_debug: Dictionary = (state.get("gesture_debug", {}) as Dictionary).get("flow", {})
 	var left_flow: Dictionary = flow_debug.get("left", {})
 	var right_flow: Dictionary = flow_debug.get("right", {})
-	return "%s trail_left=%s trail_right=%s cand_left=%s/%s cand_right=%s/%s latest=%s" % [
+	return "%s left=%s/%s right=%s/%s entries=%d/%d latest=%s" % [
 		base,
-		str(bool(gesture_states.get("trail_left", false))),
-		str(bool(gesture_states.get("trail_right", false))),
 		_fmt_flow_candidate(left_flow),
 		_fmt_flow_direction_candidate(left_flow),
 		_fmt_flow_candidate(right_flow),
 		_fmt_flow_direction_candidate(right_flow),
+		_event_count("flow_left_cell_entered"),
+		_event_count("flow_right_cell_entered"),
 		(_latest_event_name() if _latest_event_name() != "" else "none"),
 	]
 

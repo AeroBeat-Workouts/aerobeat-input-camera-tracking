@@ -72,55 +72,6 @@
       "scene_path": "res://scenes/boxing_proving.tscn",
       "fixture_path": ".testbed/assets/fixtures/boxing/squat/boxing_guard->squat_repeat_04_take_01.yaml",
       "source_path": ".testbed/assets/fixtures/boxing/squat/boxing_guard->squat_repeat_04_take_01.mp4"
-    },
-    {
-      "id": "sidestep_left_fixture",
-      "label": "Sidestep left fixture",
-      "scene_path": "res://scenes/boxing_proving.tscn",
-      "fixture_path": ".testbed/assets/fixtures/boxing/sidestep_left/boxing_guard->sidestep_left_repeat_04_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/sidestep_left/boxing_guard->sidestep_left_repeat_04_take_01.mp4"
-    },
-    {
-      "id": "sidestep_right_fixture",
-      "label": "Sidestep right fixture",
-      "scene_path": "res://scenes/boxing_proving.tscn",
-      "fixture_path": ".testbed/assets/fixtures/boxing/sidestep_right/boxing_guard->sidestep_right_repeat_03_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/sidestep_right/boxing_guard->sidestep_right_repeat_03_take_01.mp4"
-    },
-    {
-      "id": "leg_lift_left_fixture",
-      "label": "Leg lift left fixture",
-      "scene_path": "res://scenes/boxing_proving.tscn",
-      "fixture_path": ".testbed/assets/fixtures/boxing/leg_lift_left/boxing_guard->leg_lift_left_repeat_04_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/leg_lift_left/boxing_guard->leg_lift_left_repeat_04_take_01.mp4"
-    },
-    {
-      "id": "leg_lift_right_fixture",
-      "label": "Leg lift right fixture",
-      "scene_path": "res://scenes/boxing_proving.tscn",
-      "fixture_path": ".testbed/assets/fixtures/boxing/leg_lift_right/boxing_guard->leg_lift_right_repeat_04_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/leg_lift_right/boxing_guard->leg_lift_right_repeat_04_take_01.mp4"
-    },
-    {
-      "id": "knee_left_fixture",
-      "label": "Knee left fixture",
-      "scene_path": "res://scenes/boxing_proving.tscn",
-      "fixture_path": ".testbed/assets/fixtures/boxing/knee_left/boxing_guard->knee_left_repeat_04_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/knee_left/boxing_guard->knee_left_repeat_04_take_01.mp4"
-    },
-    {
-      "id": "knee_right_fixture",
-      "label": "Knee right fixture",
-      "scene_path": "res://scenes/boxing_proving.tscn",
-      "fixture_path": ".testbed/assets/fixtures/boxing/knee_right/boxing_guard->knee_right_repeat_04_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/knee_right/boxing_guard->knee_right_repeat_04_take_01.mp4"
-    },
-    {
-      "id": "stance_transition_fixture",
-      "label": "Stance transition fixture",
-      "scene_path": "res://scenes/boxing_proving.tscn",
-      "fixture_path": ".testbed/assets/fixtures/boxing/stance_transition/boxing_guard->orthodox->center->southpaw_repeat_04_take_01.yaml",
-      "source_path": ".testbed/assets/fixtures/boxing/stance_transition/boxing_guard->orthodox->center->southpaw_repeat_04_take_01.mp4"
     }
   ]
 }

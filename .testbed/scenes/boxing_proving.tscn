@@ -108,16 +108,6 @@ text = "Live camera"
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="TrackerConfigPath" type="LineEdit" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770006]
-layout_mode = 2
-placeholder_text = "Tracker YAML path"
-editable = false
-
-[node name="GestureConfigPath" type="LineEdit" parent="Margin/VSplit/Content/LeftColumn/CameraSourceControls" unique_id=215770007]
-layout_mode = 2
-placeholder_text = "Gesture YAML path"
-editable = false
-
 [node name="CameraPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=609295185]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -209,30 +199,3 @@ theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 3
 
-[node name="SummaryPanel" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn" unique_id=1222469681]
-visible = false
-layout_mode = 2
-
-[node name="Summary" type="RichTextLabel" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/SummaryPanel" unique_id=966127623]
-layout_mode = 2
-
-[node name="SignalPanel" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn" unique_id=1806819682]
-visible = false
-layout_mode = 2
-
-[node name="SignalStatus" type="RichTextLabel" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/SignalPanel" unique_id=1613771378]
-layout_mode = 2
-
-[node name="MetricsPanel" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn" unique_id=1231085906]
-visible = false
-layout_mode = 2
-
-[node name="Metrics" type="RichTextLabel" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/MetricsPanel" unique_id=818061117]
-layout_mode = 2
-
-[node name="EventsPanel" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn" unique_id=656382824]
-visible = false
-layout_mode = 2
-
-[node name="Events" type="RichTextLabel" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/EventsPanel" unique_id=2097888607]
-layout_mode = 2

@@ -393,8 +393,8 @@ func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() 
 	assert_not_null(scene_root)
 	assert_null(scene_root.find_child("ProfileLabel", true, false))
 	assert_null(scene_root.find_child("ProfilePicker", true, false))
-	assert_not_null(scene_root.find_child("TrackerConfigPath", true, false))
-	assert_not_null(scene_root.find_child("GestureConfigPath", true, false))
+	assert_null(scene_root.find_child("TrackerConfigPath", true, false))
+	assert_null(scene_root.find_child("GestureConfigPath", true, false))
 
 func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
@@ -719,45 +719,6 @@ func test_flow_proving_runtime_config_defaults_to_flow_profile_bundle() -> void:
 	assert_true(bool(bundle.get("ok", false)))
 	assert_eq(String(bundle.get("profile", "")), "flow")
 
-func test_proving_runtime_config_can_force_prototype_backend_for_fixture_benchmarks() -> void:
-	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "prototype")
-	var harness: Variant = _new_base_harness()
-	var config: Variant = harness._build_runtime_config()
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
-
-	assert_not_null(config)
-	var gesture_profile: Dictionary = config.gesture_profile_document
-	assert_eq(String(gesture_profile.get("straight_punch", {}).get("backend", "")), "prototype")
-	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "prototype")
-	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "prototype")
-
-func test_proving_runtime_config_can_force_disabled_backend_for_fixture_benchmarks() -> void:
-	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "disabled")
-	var harness: Variant = _new_base_harness()
-	var config: Variant = harness._build_runtime_config()
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
-
-	assert_not_null(config)
-	var gesture_profile: Dictionary = config.gesture_profile_document
-	assert_eq(String(gesture_profile.get("straight_punch", {}).get("backend", "")), "disabled")
-	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "disabled")
-	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "disabled")
-
-func test_proving_runtime_config_can_force_classifier_backend_for_fixture_benchmarks() -> void:
-	var previous := OS.get_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE")
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", "classifier")
-	var harness: Variant = _new_base_harness()
-	var config: Variant = harness._build_runtime_config()
-	OS.set_environment("AEROBEAT_PUNCH_BACKEND_OVERRIDE", previous)
-
-	assert_not_null(config)
-	var gesture_profile: Dictionary = config.gesture_profile_document
-	assert_eq(String(gesture_profile.get("straight_punch", {}).get("backend", "")), "classifier")
-	assert_eq(String(gesture_profile.get("hook", {}).get("backend", "")), "classifier")
-	assert_eq(String(gesture_profile.get("uppercut", {}).get("backend", "")), "classifier")
-
 func test_boxing_proving_profile_visual_config_drives_overlay_toggles() -> void:
 	var harness: Variant = _new_harness()
 	var landmark_drawer: Control = add_child_autoqfree(LandmarkDrawerScript.new())
@@ -942,7 +903,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, source=fresh_inference, stale=40ms (1 frames), grace=40ms (1 frames), stable=120ms")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[4].get("current_text", "")), "waiting for first straight-punch state change")
-	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 depth=0.120 xy=0.082<=0.090 (true) bbox=0.052 growth=0.015 fresh=true source=fresh_inference grace=0ms valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 xy=0.082<=0.090 (true) bbox=0.052 growth=0.015 fresh=true source=fresh_inference grace=0ms valid=true")
 	assert_eq(String(rows[7].get("threshold_text", "")), "0.180")
 	assert_eq(String(rows[7].get("current_text", "")), "0.420")
 	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
@@ -1004,385 +965,6 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Grace timer - 160/240ms remaining (active)")
 	assert_string_contains(body, "Stored trigger bbox area - 0.071")
 	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
-
-func test_boxing_prototype_hover_card_surfaces_backend_score_threshold_and_gate_truth() -> void:
-	var harness = _new_harness()
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"punch_detection": {
-				"backend": "prototype",
-			},
-			"prototype": {
-				"selected_backend": "prototype",
-				"active_backend": "prototype",
-				"library_id": "boxing_side_aware_v1",
-				"library_loaded": true,
-				"best_class": "straight_left",
-				"best_score": 0.842,
-				"required_score": 0.700,
-				"result_class": "straight_left",
-				"emitted_event_name": "punch_left",
-				"show_scores": true,
-				"show_event_gate_state": true,
-				"class_scores": {
-					"hook_left": 0.120,
-					"straight_left": 0.842,
-					"uppercut_left": 0.410,
-				},
-				"reason": "emit_cooldown_active",
-				"hold_ms_remaining": 80,
-				"cooldown_ms_remaining": 190,
-				"active_event_class": "straight_left",
-			}
-		}
-	})
-
-	var model: Dictionary = harness._build_hover_card_model("punch_left")
-	var rows: Array = model.get("rows", [])
-	assert_eq(String(model.get("title", "")), "Straight Punch L (Prototype)")
-	assert_eq(String(rows[1].get("current_text", "")), "prototype")
-	assert_eq(String(rows[3].get("current_text", "")), "boxing_side_aware_v1")
-	assert_eq(String(rows[6].get("current_text", "")), "straight_left")
-	assert_eq(String(rows[7].get("current_text", "")), "0.842")
-	assert_eq(String(rows[8].get("current_text", "")), "0.700")
-	assert_eq(String(rows[9].get("current_text", "")), "straight_left")
-	assert_eq(String(rows[10].get("current_text", "")), "punch_left")
-	assert_eq(String(rows[11].get("current_text", "")), "true")
-	assert_eq(String(rows[12].get("current_text", "")), "{hook_left=0.120, straight_left=0.842, uppercut_left=0.410}")
-	assert_eq(String(rows[14].get("current_text", "")), "true")
-	assert_eq(String(rows[15].get("current_text", "")), "emit_cooldown_active")
-	assert_eq(String(rows[16].get("current_text", "")), "80ms")
-	assert_eq(String(rows[17].get("current_text", "")), "190ms")
-	assert_eq(String(rows[18].get("current_text", "")), "straight_left")
-
-	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
-	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Active backend - prototype")
-	assert_string_contains(body, "Active prototype library ID - boxing_side_aware_v1")
-	assert_string_contains(body, "Best class - straight_left")
-	assert_string_contains(body, "Best score - 0.842")
-	assert_string_contains(body, "Threshold required - 0.700")
-	assert_string_contains(body, "Final emitted / result class - straight_left")
-	assert_string_contains(body, "Emitted event name - punch_left")
-	assert_string_contains(body, "Per-class scores - {hook_left=0.120, straight_left=0.842, uppercut_left=0.410}")
-	assert_string_contains(body, "Gate / rejection reason - emit_cooldown_active")
-	assert_string_contains(body, "Hold remaining - 80ms")
-	assert_string_contains(body, "Cooldown remaining - 190ms")
-
-func test_boxing_prototype_debug_visibility_flags_hide_scores_and_gate_state() -> void:
-	var harness = _new_harness()
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"punch_detection": {
-				"backend": "prototype",
-			},
-			"prototype": {
-				"selected_backend": "prototype",
-				"active_backend": "prototype",
-				"library_id": "boxing_side_aware_v1",
-				"library_loaded": true,
-				"best_class": "hook_right",
-				"best_score": 0.610,
-				"required_score": 0.700,
-				"result_class": "no_punch",
-				"emitted_event_name": "",
-				"show_scores": false,
-				"show_event_gate_state": false,
-				"class_scores": {
-					"hook_right": 0.610,
-				},
-				"reason": "below_threshold",
-				"hold_ms_remaining": 55,
-				"cooldown_ms_remaining": 144,
-				"active_event_class": "hook_right",
-			}
-		}
-	})
-
-	var model: Dictionary = harness._build_hover_card_model("punch_right")
-	var rows: Array = model.get("rows", [])
-	assert_eq(String(model.get("title", "")), "Straight Punch R (Prototype)")
-	assert_eq(String(rows[11].get("current_text", "")), "false")
-	assert_eq(String(rows[12].get("current_text", "")), "hidden (show_scores=false)")
-	assert_eq(String(rows[14].get("current_text", "")), "false")
-	assert_eq(String(rows[15].get("current_text", "")), "hidden (show_event_gate_state=false)")
-	assert_eq(String(rows[16].get("current_text", "")), "hidden (show_event_gate_state=false)")
-	assert_eq(String(rows[17].get("current_text", "")), "hidden (show_event_gate_state=false)")
-	assert_eq(String(rows[18].get("current_text", "")), "hidden (show_event_gate_state=false)")
-
-	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Prototype truth")
-	assert_string_contains(text_body, "Active backend: prototype")
-	assert_string_contains(text_body, "Prototype library ID: boxing_side_aware_v1 (loaded=true)")
-	assert_string_contains(text_body, "Best class / score / threshold: hook_right / 0.610 / 0.700")
-	assert_string_contains(text_body, "Result class / emitted event: no_punch / none")
-	assert_string_contains(text_body, "Debug flags: show_scores=false show_event_gate_state=false")
-	assert_string_contains(text_body, "Class scores: hidden (show_scores=false)")
-	assert_string_contains(text_body, "Gate reason / hold / cooldown / active event: hidden (show_event_gate_state=false)")
-
-func test_boxing_classifier_hover_card_and_event_feed_surface_truthful_backend_specific_fields() -> void:
-	var harness = _new_harness()
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"punch_detection": {
-				"backend": "classifier",
-			},
-			"classifier": {
-				"selected_backend": "classifier",
-				"active_backend": "classifier",
-				"model_path": "res://docs/models/test-mlp-result.json",
-				"model_loaded": true,
-				"best_class": "straight_left",
-				"best_score": 0.932,
-				"required_score": 0.700,
-				"result_class": "straight_left",
-				"emitted_event_name": "punch_left",
-				"show_scores": true,
-				"show_event_gate_state": true,
-				"class_scores": {
-					"straight_left": 0.932,
-					"hook_left": 0.041,
-					"no_punch": 0.015,
-				},
-				"reason": "emitted",
-				"hold_ms_remaining": 100,
-				"cooldown_ms_remaining": 250,
-				"active_event_class": "straight_left",
-			}
-		}
-	})
-
-	var model: Dictionary = harness._build_hover_card_model("punch_left")
-	var rows: Array = model.get("rows", [])
-	assert_eq(String(model.get("title", "")), "Straight Punch L (Classifier)")
-	assert_eq(String(rows[3].get("label", "")), "Active classifier model path")
-	assert_eq(String(rows[3].get("current_text", "")), "res://docs/models/test-mlp-result.json")
-	assert_eq(String(rows[4].get("label", "")), "Classifier model loaded")
-	assert_eq(String(rows[4].get("current_text", "")), "true")
-	assert_eq(String(rows[6].get("current_text", "")), "straight_left")
-	assert_eq(String(rows[7].get("current_text", "")), "0.932")
-	assert_eq(String(rows[10].get("current_text", "")), "punch_left")
-
-	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
-	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Active classifier model path - res://docs/models/test-mlp-result.json")
-	assert_string_contains(body, "Best class - straight_left")
-	assert_string_contains(body, "Per-class scores - {hook_left=0.041, no_punch=0.015, straight_left=0.932}")
-
-	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Classifier truth")
-	assert_string_contains(text_body, "Active backend: classifier")
-	assert_string_contains(text_body, "Classifier model path: res://docs/models/test-mlp-result.json (loaded=true)")
-	assert_string_contains(text_body, "Best class / score / threshold: straight_left / 0.932 / 0.700")
-
-func test_boxing_event_feed_reports_per_family_routing_truth() -> void:
-	var harness: Variant = _new_harness()
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"punch_detection": {
-				"active_backend": "per_family",
-				"selected_backend": "per_family",
-				"selected_backend_enabled": true,
-				"active_backend_resolution": "per_family_active",
-				"routing_mode": "per_family",
-				"straight_backend": "classifier",
-				"hook_backend": "threshold",
-				"uppercut_backend": "threshold",
-				"hook_uppercut_backend_note": "",
-			},
-			"classifier": {
-				"model_path": "res://docs/models/straight-family-test.json",
-				"model_loaded": true,
-				"best_class": "straight_left",
-				"best_score": 0.91,
-				"required_score": 0.70,
-				"result_class": "straight_left",
-				"emitted_event_name": "punch_left",
-				"show_scores": false,
-				"show_event_gate_state": false,
-			},
-		},
-	})
-	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Per-family classifier truth")
-	assert_string_contains(text_body, "Routing mode: per_family")
-	assert_string_contains(text_body, "Per-family backends: straight=classifier hook=threshold uppercut=threshold")
-	assert_string_contains(text_body, "Family classifier model path: res://docs/models/straight-family-test.json (loaded=true)")
-	assert_string_contains(text_body, "Event/backend truth: punch_left=classifier punch_right=classifier hook_left=threshold")
-
-func test_per_family_classifier_match_payload_uses_per_family_backend_truth() -> void:
-	var harness: Variant = _new_harness()
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"punch_detection": {
-				"active_backend": "per_family",
-				"backend": "per_family",
-				"straight_backend": "classifier",
-				"hook_backend": "threshold",
-				"uppercut_backend": "threshold",
-			},
-			"classifier": {
-				"emitted_event_name": "punch_left",
-				"result_class": "straight_left",
-				"best_score": 0.91,
-				"runner_up_class": "no_punch",
-				"runner_up_score": 0.05,
-				"required_score": 0.70,
-				"model_path": "res://docs/models/straight-family-test.json",
-				"reason": "emitted",
-			},
-		},
-	})
-	var straight_payload: Dictionary = harness._classifier_match_payload_for_signal("punch_left")
-	assert_eq(String(straight_payload.get("backend", "")), "classifier")
-	assert_eq(String((straight_payload.get("payload", {}) as Dictionary).get("class_name", "")), "straight_left")
-	var hook_payload: Dictionary = harness._classifier_match_payload_for_signal("hook_left")
-	assert_eq(String(hook_payload.get("backend", "")), "threshold")
-	assert_true(((hook_payload.get("payload", {}) as Dictionary)).is_empty())
-	var uppercut_payload: Dictionary = harness._classifier_match_payload_for_signal("uppercut_right")
-	assert_eq(String(uppercut_payload.get("backend", "")), "threshold")
-	assert_true(((uppercut_payload.get("payload", {}) as Dictionary)).is_empty())
-
-func test_boxing_classifier_hook_and_uppercut_cards_use_backend_truth_instead_of_pose_only_panels() -> void:
-	var harness = _new_harness()
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"punch_detection": {
-				"backend": "classifier",
-			},
-			"classifier": {
-				"selected_backend": "classifier",
-				"active_backend": "classifier",
-				"model_path": "res://docs/models/test-mlp-result.json",
-				"model_loaded": true,
-				"best_class": "hook_left",
-				"best_score": 0.811,
-				"required_score": 0.700,
-				"result_class": "hook_left",
-				"emitted_event_name": "hook_left",
-				"show_scores": true,
-				"show_event_gate_state": true,
-				"class_scores": {
-					"hook_left": 0.811,
-					"uppercut_left": 0.102,
-					"no_punch": 0.033,
-				},
-				"reason": "emitted",
-				"hold_ms_remaining": 88,
-				"cooldown_ms_remaining": 210,
-				"active_event_class": "hook_left",
-			},
-			"hook": {
-				"left": {
-					"state": "not_ready",
-					"wrist_velocity": 0.010,
-					"directionality_ratio": 0.200,
-				}
-			},
-			"uppercut": {
-				"left": {
-					"state": "tracking_lost",
-					"wrist_velocity": 0.000,
-					"directionality_ratio": 0.000,
-				}
-			},
-		}
-	})
-
-	var hook_model: Dictionary = harness._build_hover_card_model("hook_left")
-	var hook_rows: Array = hook_model.get("rows", [])
-	assert_eq(String(hook_model.get("title", "")), "Hook L (Classifier)")
-	assert_eq(String(hook_rows[1].get("current_text", "")), "classifier")
-	assert_eq(String(hook_rows[6].get("current_text", "")), "hook_left")
-	assert_eq(String(hook_rows[7].get("current_text", "")), "0.811")
-	assert_eq(String(hook_rows[10].get("current_text", "")), "hook_left")
-	assert_eq(String(hook_rows[12].get("current_text", "")), "{hook_left=0.811, no_punch=0.033, uppercut_left=0.102}")
-
-	var uppercut_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "uppercut_left")
-	var uppercut_body := String(uppercut_inspector.get("body", ""))
-	assert_string_contains(uppercut_body, "Active backend - classifier")
-	assert_string_contains(uppercut_body, "Best class - hook_left")
-	assert_string_contains(uppercut_body, "Per-class scores - {hook_left=0.811, no_punch=0.033, uppercut_left=0.102}")
-	assert_false(uppercut_body.contains("Motion window - "))
-
-func test_boxing_event_feed_makes_disabled_selected_backend_resolve_to_none_obvious() -> void:
-	var harness = _new_harness()
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"punch_detection": {
-				"backend": "per_family",
-				"active_backend": "none",
-				"selected_backend": "per_family",
-				"selected_backend_enabled": false,
-				"active_backend_resolution": "no_active_family_backend",
-				"straight_backend": "disabled",
-				"hook_backend": "disabled",
-				"uppercut_backend": "disabled",
-				"threshold_enabled": false,
-			},
-			"classifier": {
-				"selected_backend": "per_family",
-				"selected_backend_enabled": false,
-				"active_backend": "none",
-				"activation_reason": "no_active_family_backend",
-				"model_path": "res://docs/models/test-mlp-result.json",
-				"model_loaded": false,
-				"result_class": "no_punch",
-				"best_class": "no_punch",
-				"best_score": 0.0,
-				"required_score": 0.700,
-			},
-		}
-	})
-
-	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Per-family classifier truth")
-	assert_string_contains(text_body, "Active backend: none")
-	assert_string_contains(text_body, "Selected backend: per_family")
-	assert_string_contains(text_body, "Per-family backends: straight=disabled hook=disabled uppercut=disabled")
-	assert_string_contains(text_body, "Selected backend enabled: false")
-	assert_string_contains(text_body, "Backend resolution: no_active_family_backend")
-	assert_string_contains(text_body, "Family classifier model path: res://docs/models/test-mlp-result.json (loaded=false)")
-
-func test_boxing_classifier_ui_surfaces_model_open_error_alongside_model_unavailable() -> void:
-	var harness = _new_harness()
-	harness.set("_latest_state", {
-		"gesture_debug": {
-			"punch_detection": {
-				"backend": "classifier",
-			},
-			"classifier": {
-				"selected_backend": "classifier",
-				"active_backend": "classifier",
-				"model_path": "res://docs/models/missing-mlp-result.json",
-				"model_loaded": false,
-				"model_error": "model_open_failed",
-				"best_class": "no_punch",
-				"best_score": 0.0,
-				"required_score": 0.700,
-				"result_class": "no_punch",
-				"emitted_event_name": "",
-				"show_scores": true,
-				"show_event_gate_state": true,
-				"class_scores": {},
-				"reason": "model_unavailable",
-				"hold_ms_remaining": 0,
-				"cooldown_ms_remaining": 0,
-				"active_event_class": "no_punch",
-			}
-		}
-	})
-
-	var model: Dictionary = harness._build_hover_card_model("punch_left")
-	var rows: Array = model.get("rows", [])
-	assert_eq(String(rows[15].get("current_text", "")), "model_unavailable (model_open_failed)")
-
-	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
-	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Gate / rejection reason - model_unavailable (model_open_failed)")
-
-	var text_body := String(harness._build_boxing_event_feed_text())
-	assert_string_contains(text_body, "Gate reason / hold / cooldown / active event: model_unavailable (model_open_failed) / 0ms / 0ms / no_punch")
 
 func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake_threshold_equality() -> void:
 	var harness = _new_harness()
@@ -2064,14 +1646,14 @@ func test_playback_replay_step_buttons_are_hidden_in_timeline() -> void:
 		"can_step_backward": true,
 		"paused": true,
 	})
-	harness.set("_playback_status", {"paused": true, "current_time_sec": 1.0, "duration_sec": 2.0, "progress": 0.5})
+	harness.set("_playback_status", {"paused": true, "media_loaded": true, "current_time_sec": 1.0, "duration_sec": 2.0, "progress": 0.5})
 	harness._refresh_playback_controls_state()
 	assert_false(step_back.disabled)
 	assert_false(step_forward.disabled)
 	assert_false(step_back.visible)
 	assert_false(step_forward.visible)
 
-	harness.set("_playback_status", {"paused": false, "current_time_sec": 1.0, "duration_sec": 2.0, "progress": 0.5})
+	harness.set("_playback_status", {"paused": false, "media_loaded": true, "current_time_sec": 1.0, "duration_sec": 2.0, "progress": 0.5})
 	harness._refresh_playback_controls_state()
 	assert_true(step_back.disabled)
 	assert_true(step_forward.disabled)
@@ -2111,4 +1693,4 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 	var rows: Array = model.get("rows", [])
 	assert_string_contains(String(rows[1].get("current_text", "")), "triggered")
 	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> triggered")
-	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 depth=0.120 xy=0.082<=0.090 (true) bbox=0.064 growth=0.011 fresh=true source=fresh_inference grace=240ms valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 xy=0.082<=0.090 (true) bbox=0.064 growth=0.011 fresh=true source=fresh_inference grace=240ms valid=true")

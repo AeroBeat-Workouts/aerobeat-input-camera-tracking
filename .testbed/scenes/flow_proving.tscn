@@ -77,7 +77,7 @@ grow_vertical = 2
 script = ExtResource("1_harness")
 harness_mode = 1
 prerecorded_video_source = "res://assets/fixtures/flow/swings/left-and-right-hands/same-direction/lr12->lr6/flow_swing_lr12->lr6_repeat_04_take_01.mp4"
-scene_title = "FLOW GESTURE DETECTION"
+scene_title = "FLOW DIRECT 4x3 PROVING"
 
 [node name="Background" type="TextureRect" parent="." unique_id=1697466739]
 layout_mode = 1
@@ -131,7 +131,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.97, 0.98, 1, 1)
 theme_override_font_sizes/font_size = 24
-text = "FLOW GESTURE DETECTION"
+text = "FLOW DIRECT 4x3 PROVING"
 vertical_alignment = 1
 
 [node name="Content" type="HBoxContainer" parent="Margin/VSplit" unique_id=585282007]
@@ -240,8 +240,8 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
-chart_title = "Left Bat Placement"
-has_center_slot = true
+chart_title = "Left Wrist Cell"
+chart_subtitle = "Calibrated 4x3 athlete-relative grid"
 
 [node name="RightPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid" unique_id=1888742916]
 layout_mode = 2
@@ -254,8 +254,8 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
-chart_title = "Right Bat Placement"
-has_center_slot = true
+chart_title = "Right Wrist Cell"
+chart_subtitle = "Calibrated 4x3 athlete-relative grid"
 
 [node name="LeftDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid" unique_id=442721612]
 layout_mode = 2
@@ -268,7 +268,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
-chart_title = "Left Bat Direction"
+chart_title = "Left Wrist Direction"
+chart_subtitle = "8-way shoulder-relative recent motion"
+chart_mode = 1
 
 [node name="RightDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardGrid" unique_id=776296951]
 layout_mode = 2
@@ -281,4 +283,6 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
-chart_title = "Right Bat Direction"
+chart_title = "Right Wrist Direction"
+chart_subtitle = "8-way shoulder-relative recent motion"
+chart_mode = 1

@@ -22,6 +22,19 @@ func test_builds_session_baseline_after_stable_frames() -> void:
 	assert_true(is_equal_approx(float(baseline.get("shoulder_width", 0.0)), 0.20))
 	assert_true(is_equal_approx(float(baseline.get("torso_height", 0.0)), 0.30))
 
+func test_boxing_profile_bundle_keeps_guard_squat_and_weave_threshold_surfaces_active() -> void:
+	var bundle: Dictionary = config.get_selected_profile_bundle()
+	assert_true(bool(bundle.get("ok", false)))
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
+	var gesture_debug: Dictionary = state.get("gesture_debug", {})
+	assert_eq(String(gesture_debug.get("guard", {}).get("backend", "")), "threshold")
+	assert_true(bool(gesture_debug.get("guard", {}).get("enabled", false)))
+	assert_eq(String(gesture_debug.get("squat", {}).get("backend", "")), "threshold")
+	assert_true(bool(gesture_debug.get("squat", {}).get("enabled", false)))
+	assert_eq(String(gesture_debug.get("weave", {}).get("backend", "")), "threshold")
+	assert_true(bool(gesture_debug.get("weave", {}).get("enabled", false)))
+
 func test_profile_pose_smoothing_style_can_select_lite_filtered() -> void:
 	config.smoothing_factor = 0.75
 	config.tracker_profile_document = {
@@ -1456,89 +1469,47 @@ func test_pose_strike_window_ms_no_longer_falls_back_to_legacy_wrist_velocity_wi
 	assert_eq(int(hook_config.get("window_ms", 0)), 160)
 	assert_eq(int(uppercut_config.get("window_ms", 0)), 160)
 
-func test_quantizes_flow_direction_to_twelve_chart_slots() -> void:
-	assert_eq(substrate._flow_ring_index_from_vector(Vector2(1.0, 0.0)), 2)
-	assert_eq(substrate._flow_ring_index_from_vector(Vector2(0.0, 1.0)), 11)
-	assert_eq(substrate._flow_ring_index_from_vector(Vector2(-1.0, 0.0)), 8)
-	assert_eq(substrate._flow_ring_index_from_vector(Vector2(0.0, -1.0)), 5)
+func test_quantizes_flow_direction_to_eight_direction_slots() -> void:
+	assert_eq(substrate._flow_direction_index_from_vector(Vector2(0.0, 1.0)), 0)
+	assert_eq(substrate._flow_direction_index_from_vector(Vector2(0.0, -1.0)), 1)
+	assert_eq(substrate._flow_direction_index_from_vector(Vector2(-1.0, 0.0)), 2)
+	assert_eq(substrate._flow_direction_index_from_vector(Vector2(1.0, 0.0)), 3)
 
-func test_quantizes_flow_placement_to_twelve_perimeter_slots_plus_center() -> void:
-	assert_eq(substrate._flow_placement_index(Vector2(0.52, 0.69), Vector2(0.50, 0.70), 0.20), 12)
-	assert_eq(substrate._flow_placement_index(Vector2(0.72, 0.70), Vector2(0.50, 0.70), 0.20), 2)
-	assert_eq(substrate._flow_placement_index(Vector2(0.50, 0.92), Vector2(0.50, 0.70), 0.20), 11)
-
-func test_detects_flow_swing_events_with_distinct_placement_and_direction() -> void:
+func test_quantizes_flow_cells_from_nose_anchored_grid() -> void:
 	_calibrate_stance()
-	substrate.process_landmarks(_make_pose_frame(), 1100)
+	var first_cell := substrate._flow_cell_index_from_position(Vector2(0.40, 0.72))
+	var second_cell := substrate._flow_cell_index_from_position(Vector2(0.48, 0.72))
+	var third_cell := substrate._flow_cell_index_from_position(Vector2(0.56, 0.72))
+	var fourth_cell := substrate._flow_cell_index_from_position(Vector2(0.64, 0.72))
+	assert_true(first_cell >= 0)
+	assert_true(second_cell >= first_cell)
+	assert_true(third_cell >= second_cell)
+	assert_true(fourth_cell >= third_cell)
+	assert_true(first_cell != fourth_cell)
+
+func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
+	_calibrate_stance()
 	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.28, "y": 0.66},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.18, "y": 0.62},
-	}), 1180)
-	var swing_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.21, "y": 0.70},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.08, "y": 0.70},
-	}), 1260)
-	var flow_events := _flow_events(swing_state.get("events", []))
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.48, "y": 0.72},
+	}), 1100)
+	var flow_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.39, "y": 0.72},
+	}), 1200)
+	var flow_events := _flow_events(flow_state.get("events", []))
 	assert_eq(flow_events.size(), 1)
-	assert_eq(flow_events[0]["name"], "swing_left")
-	assert_eq(flow_events[0]["placement"], 8)
-	assert_eq(flow_events[0]["direction"], 9)
-
-func test_exposes_flow_debug_candidates_and_last_emit_metadata() -> void:
-	_calibrate_stance()
-	substrate.process_landmarks(_make_pose_frame(), 1100)
-	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.28, "y": 0.66},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.18, "y": 0.62},
-	}), 1180)
-	var swing_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.21, "y": 0.70},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.08, "y": 0.70},
-	}), 1260)
-	var gesture_debug: Dictionary = swing_state.get("gesture_debug", {})
-	var flow_debug: Dictionary = gesture_debug.get("flow", {})
-	var left_flow: Dictionary = flow_debug.get("left", {})
-	var swing_meta: Dictionary = left_flow.get("swing_meta", {})
-	var swing_analysis: Dictionary = left_flow.get("swing_analysis", {})
-	assert_false(bool(gesture_debug.get("ready", {}).get("swing_left", true)))
-	assert_eq(int(left_flow.get("placement_candidate", -1)), 8)
-	assert_eq(int(left_flow.get("placement_candidate_ui_label", 0)), 9)
-	assert_eq(int(left_flow.get("direction_candidate", -1)), 9)
-	assert_eq(int(left_flow.get("direction_candidate_ui_label", 0)), 10)
-	assert_true(int(left_flow.get("history_points", 0)) >= 3)
-	assert_eq(int(swing_meta.get("placement", -1)), 8)
-	assert_eq(int(swing_meta.get("placement_ui_label", 0)), 9)
-	assert_eq(int(swing_meta.get("direction", -1)), 9)
-	assert_eq(int(swing_meta.get("direction_ui_label", 0)), 10)
-	assert_true(int(swing_meta.get("duration_ms", 0)) >= 120)
-	assert_true(float(swing_analysis.get("arc_length", 0.0)) > 0.0)
-	assert_true(float(swing_analysis.get("avg_confidence", 0.0)) >= 0.62)
-
-func test_detects_flow_trail_as_continuation_motion() -> void:
-	_calibrate_stance()
-	substrate.process_landmarks(_make_pose_frame(), 2000)
-	var timestamps := [2100, 2200, 2300, 2400]
-	var wrist_positions := [
-		{"x": 0.72, "y": 0.60},
-		{"x": 0.72, "y": 0.70},
-		{"x": 0.72, "y": 0.80},
-		{"x": 0.72, "y": 0.90},
-	]
-	var emitted_events: Array = []
-	for idx in range(timestamps.size()):
-		var state := substrate.process_landmarks(_make_pose_frame({
-			PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.66, "y": wrist_positions[idx]["y"] - 0.04},
-			PoseLandmarkIds.RIGHT_WRIST: wrist_positions[idx],
-		}), timestamps[idx])
-		emitted_events.append_array(_flow_events(state.get("events", [])))
-	assert_true(bool(substrate.get_latest_state().get("gesture_states", {}).get("trail_right", false)))
-	assert_true(emitted_events.size() >= 2)
-	assert_eq(emitted_events[0]["name"], "trail_right")
-	assert_eq(emitted_events[0]["placement"], 2)
-	assert_eq(emitted_events[0]["direction"], 11)
-	assert_eq(emitted_events[emitted_events.size() - 1]["name"], "trail_right")
+	assert_eq(flow_events[0]["name"], "flow_left_cell_entered")
+	assert_eq(int(flow_events[0]["cell"]), 4)
+	var emitted_direction := int(flow_events[0]["direction"])
+	assert_true(emitted_direction >= 0)
+	var left_flow: Dictionary = flow_state.get("gesture_debug", {}).get("flow", {}).get("left", {})
+	assert_eq(int(left_flow.get("current_cell", -1)), 4)
+	assert_true(int(left_flow.get("history_points", 0)) >= 2)
+	assert_eq(int(left_flow.get("cell_meta", {}).get("previous_cell", -1)), 5)
+	assert_eq(int(left_flow.get("cell_meta", {}).get("current_cell", -1)), 4)
+	assert_eq(int(left_flow.get("cell_meta", {}).get("direction", -1)), emitted_direction)
 
 func test_squat_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
+
 	config.gesture_profile_document = {
 		"squat": {
 			"enabled": true,
@@ -1634,48 +1605,6 @@ func test_weave_uses_yaml_thresholds_and_surfaces_debug_truth() -> void:
 	assert_eq(String(weave_debug.get("state", "")), "inactive")
 	assert_true(bool(weave_debug.get("neutral_candidate", false)))
 
-func test_detects_guard_squat_weave_and_sidestep_state_events() -> void:
-	_calibrate_stance()
-	var guard_start_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.42, "y": 0.69},
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.58, "y": 0.69},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.41, "y": 0.80},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.59, "y": 0.80},
-	}), 1200)
-	assert_true(_event_names(guard_start_state.get("events", [])).has("guard_start"))
-	var guard_debug: Dictionary = guard_start_state.get("gesture_debug", {}).get("guard", {})
-	assert_true(bool(guard_debug.get("candidate", false)))
-	assert_true(bool(guard_debug.get("wrists_close_x", false)))
-	assert_true(bool(guard_debug.get("wrists_close_y", false)))
-	assert_true(bool(guard_debug.get("left_wrist_above_elbow", false)))
-	assert_true(bool(guard_debug.get("right_wrist_above_elbow", false)))
-	assert_true(bool(guard_debug.get("left_wrist_near_nose", false)))
-	assert_true(bool(guard_debug.get("right_wrist_near_nose", false)))
-	assert_true(is_equal_approx(float(guard_debug.get("max_wrist_separation_x", 0.0)), 0.20))
-	assert_true(is_equal_approx(float(guard_debug.get("max_wrist_separation_y", 0.0)), 0.12))
-	assert_true(is_equal_approx(float(guard_debug.get("max_wrist_nose_distance", 0.0)), 0.15))
-	assert_true(float(guard_debug.get("left_wrist_nose_distance", 0.0)) <= float(guard_debug.get("max_wrist_nose_distance", 0.0)))
-	assert_true(float(guard_debug.get("right_wrist_nose_distance", 0.0)) <= float(guard_debug.get("max_wrist_nose_distance", 0.0)))
-	var guard_end_state := substrate.process_landmarks(_make_pose_frame(), 1300)
-	assert_true(_event_names(guard_end_state.get("events", [])).has("guard_end"))
-
-	var squat_start_state := substrate.process_landmarks(_make_pose_frame({}, 0.50, 0.78), 1400)
-	assert_eq(_event_names(squat_start_state.get("events", [])), ["squat_start"])
-	var squat_end_state := substrate.process_landmarks(_make_pose_frame(), 1500)
-	assert_eq(_event_names(squat_end_state.get("events", [])), ["squat_end"])
-
-	var weave_left_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.57, "y": 0.85},
-	}), 1600)
-	assert_eq(_event_names(weave_left_state.get("events", [])), ["weave_left_start"])
-	var weave_end_state := substrate.process_landmarks(_make_pose_frame(), 1700)
-	assert_eq(_event_names(weave_end_state.get("events", [])), ["weave_left_end"])
-
-	var sidestep_right_state := substrate.process_landmarks(_make_pose_frame({}, 0.60, 1.0), 1800)
-	assert_true(_event_names(sidestep_right_state.get("events", [])).has("sidestep_right_start"))
-	var sidestep_end_state := substrate.process_landmarks(_make_pose_frame(), 1900)
-	assert_true(_event_names(sidestep_end_state.get("events", [])).has("sidestep_right_end"))
-
 func test_guard_no_longer_uses_old_elbow_shoulder_head_composite_rule() -> void:
 	_calibrate_stance()
 	var old_rule_like_pose := substrate.process_landmarks(_make_pose_frame({
@@ -1730,192 +1659,6 @@ func test_weave_remains_active_only_while_live_weave_criteria_still_pass() -> vo
 	}), 1400)
 	assert_true(_event_names(weave_end_state.get("events", [])).has("weave_left_end"))
 
-func test_detects_knee_and_leg_lift_events_with_reset_behavior() -> void:
-	_calibrate_stance()
-	var knee_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_KNEE: {"x": 0.44, "y": 0.34},
-		PoseLandmarkIds.LEFT_ANKLE: {"x": 0.46, "y": 0.18},
-	}), 1200)
-	assert_true(_event_names(knee_state.get("events", [])).has("knee_left"))
-	var no_refire_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_KNEE: {"x": 0.44, "y": 0.35},
-		PoseLandmarkIds.LEFT_ANKLE: {"x": 0.46, "y": 0.19},
-	}), 1300)
-	assert_eq(_event_names(no_refire_state.get("events", [])), [])
-	var knee_reset_state := substrate.process_landmarks(_make_pose_frame(), 1400)
-	assert_eq(_event_names(knee_reset_state.get("events", [])), [])
-	var knee_refire_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_KNEE: {"x": 0.44, "y": 0.34},
-		PoseLandmarkIds.LEFT_ANKLE: {"x": 0.46, "y": 0.18},
-	}), 1500)
-	assert_eq(_event_names(knee_refire_state.get("events", [])), ["knee_left"])
-
-	var leg_lift_start_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ANKLE: {"x": 0.73, "y": 0.20},
-	}), 1600)
-	assert_eq(_event_names(leg_lift_start_state.get("events", [])), ["leg_lift_right_start"])
-	var leg_lift_end_state := substrate.process_landmarks(_make_pose_frame(), 1700)
-	assert_eq(_event_names(leg_lift_end_state.get("events", [])), ["leg_lift_right_end"])
-
-func test_prototype_backend_emits_side_aware_straight_and_surfaces_debug_state() -> void:
-	_enable_prototype_backend({
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 250,
-		"emit_hold_ms": 100,
-	})
-	_calibrate_stance()
-	var timestamps := [1100, 1165, 1230, 1295, 1350]
-	var left_sequence := [
-		{"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00},
-		{"elbow_x": 0.336, "elbow_y": 0.66, "wrist_x": 0.276, "wrist_y": 0.60, "elbow_z": -0.02, "wrist_z": -0.05},
-		{"elbow_x": 0.328, "elbow_y": 0.656, "wrist_x": 0.268, "wrist_y": 0.60, "elbow_z": -0.04, "wrist_z": -0.10},
-		{"elbow_x": 0.316, "elbow_y": 0.65, "wrist_x": 0.260, "wrist_y": 0.60, "elbow_z": -0.06, "wrist_z": -0.15},
-		{"elbow_x": 0.308, "elbow_y": 0.644, "wrist_x": 0.252, "wrist_y": 0.60, "elbow_z": -0.08, "wrist_z": -0.20},
-	]
-	var state: Dictionary = {}
-	var saw_emit := false
-	for idx in range(timestamps.size()):
-		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(timestamps[idx]))
-		saw_emit = saw_emit or _event_names(state.get("events", [])).has("punch_left")
-	assert_true(saw_emit)
-	var gesture_debug: Dictionary = state.get("gesture_debug", {})
-	assert_eq(String(gesture_debug.get("punch_detection", {}).get("backend", "")), "per_family")
-	var matcher_debug: Dictionary = gesture_debug.get("prototype", gesture_debug.get("prototype", {}))
-	assert_eq(String(matcher_debug.get("result_class", "")), "straight_left")
-	assert_true(["emitted", "emit_hold_active"].has(String(matcher_debug.get("reason", ""))))
-	assert_eq(String(matcher_debug.get("library_id", "")), "boxing_side_aware_v1")
-	assert_true(float(matcher_debug.get("best_score", 0.0)) >= 0.70)
-	if String(matcher_debug.get("reason", "")) == "emitted":
-		assert_eq(String(matcher_debug.get("emitted_event_name", "")), "punch_left")
-		assert_true(bool(matcher_debug.get("emitted", false)))
-	else:
-		assert_eq(String(matcher_debug.get("active_event_class", "")), "straight_left")
-
-func test_prototype_backend_rejects_no_punch_when_threshold_is_not_met() -> void:
-	_enable_prototype_backend({
-		"match_score_min": 0.99,
-		"emit_cooldown_ms": 250,
-		"emit_hold_ms": 100,
-	})
-	_calibrate_stance()
-	var timestamps := [1100, 1165, 1230, 1295, 1350]
-	var left_sequence := [
-		{"elbow_x": 0.344, "elbow_y": 0.664, "wrist_x": 0.286, "wrist_y": 0.620, "elbow_z": 0.00, "wrist_z": 0.00},
-		{"elbow_x": 0.340, "elbow_y": 0.664, "wrist_x": 0.282, "wrist_y": 0.622, "elbow_z": -0.01, "wrist_z": -0.03},
-		{"elbow_x": 0.334, "elbow_y": 0.660, "wrist_x": 0.276, "wrist_y": 0.624, "elbow_z": -0.02, "wrist_z": -0.05},
-		{"elbow_x": 0.326, "elbow_y": 0.656, "wrist_x": 0.270, "wrist_y": 0.626, "elbow_z": -0.03, "wrist_z": -0.07},
-		{"elbow_x": 0.320, "elbow_y": 0.652, "wrist_x": 0.264, "wrist_y": 0.628, "elbow_z": -0.04, "wrist_z": -0.09},
-	]
-	var state: Dictionary = {}
-	for idx in range(timestamps.size()):
-		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(timestamps[idx]))
-	assert_false(_event_names(state.get("events", [])).has("punch_left"))
-	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype", {})
-	assert_eq(String(matcher_debug.get("result_class", "")), "no_punch")
-	assert_eq(String(matcher_debug.get("reason", "")), "below_threshold")
-	assert_eq(String(matcher_debug.get("best_class", "")), "straight_left")
-	assert_true(float(matcher_debug.get("best_score", 0.0)) < 0.99)
-
-func test_prototype_backend_applies_emit_cooldown_and_hold_without_spam() -> void:
-	_enable_prototype_backend({
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 250,
-		"emit_hold_ms": 100,
-	})
-	_calibrate_stance()
-	var timestamps := [1100, 1165, 1230, 1295, 1350]
-	var left_sequence := [
-		{"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00},
-		{"elbow_x": 0.336, "elbow_y": 0.66, "wrist_x": 0.276, "wrist_y": 0.60, "elbow_z": -0.02, "wrist_z": -0.05},
-		{"elbow_x": 0.328, "elbow_y": 0.656, "wrist_x": 0.268, "wrist_y": 0.60, "elbow_z": -0.04, "wrist_z": -0.10},
-		{"elbow_x": 0.316, "elbow_y": 0.65, "wrist_x": 0.260, "wrist_y": 0.60, "elbow_z": -0.06, "wrist_z": -0.15},
-		{"elbow_x": 0.308, "elbow_y": 0.644, "wrist_x": 0.252, "wrist_y": 0.60, "elbow_z": -0.08, "wrist_z": -0.20},
-	]
-	var state: Dictionary = {}
-	var saw_initial_emit := false
-	for idx in range(timestamps.size()):
-		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(timestamps[idx]))
-		saw_initial_emit = saw_initial_emit or _event_names(state.get("events", [])).has("punch_left")
-	assert_true(saw_initial_emit)
-	state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[left_sequence.size() - 1]), 1420)
-	assert_false(_event_names(state.get("events", [])).has("punch_left"))
-	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype", {})
-	assert_true(["emit_hold_active", "emit_cooldown_active"].has(String(matcher_debug.get("reason", ""))))
-	if String(matcher_debug.get("reason", "")) == "emit_hold_active":
-		assert_true(int(matcher_debug.get("hold_ms_remaining", 0)) > 0)
-	else:
-		assert_true(int(matcher_debug.get("cooldown_ms_remaining", 0)) > 0)
-	state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[left_sequence.size() - 1]), 1490)
-	assert_false(_event_names(state.get("events", [])).has("punch_left"))
-	matcher_debug = state.get("gesture_debug", {}).get("prototype", {})
-	assert_eq(String(matcher_debug.get("reason", "")), "emit_cooldown_active")
-	assert_true(int(matcher_debug.get("cooldown_ms_remaining", 0)) > 0)
-	var replay_times := [1660, 1725, 1790, 1855, 1910]
-	var saw_replay_emit := false
-	for idx in range(replay_times.size()):
-		state = substrate.process_landmarks(_prototype_pose_frame("left", left_sequence[idx]), int(replay_times[idx]))
-		saw_replay_emit = saw_replay_emit or _event_names(state.get("events", [])).has("punch_left")
-	assert_true(saw_replay_emit)
-	matcher_debug = state.get("gesture_debug", {}).get("prototype", {})
-	assert_true(["emitted", "emit_hold_active"].has(String(matcher_debug.get("reason", ""))))
-
-func test_prototype_backend_blocks_opposite_side_same_family_candidate_during_hold() -> void:
-	_enable_prototype_backend({
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 500,
-		"emit_hold_ms": 250,
-		"window_step_ms": 1,
-	})
-	_calibrate_stance()
-	var matcher: Variant = substrate.get("_prototype_punch_matcher")
-	matcher.set("_last_emitted_class", "straight_left")
-	matcher.set("_emit_hold_until_ms", 1400)
-	var right_sequence := [
-		{"elbow_x": 0.66, "elbow_y": 0.66, "wrist_x": 0.72, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00},
-		{"elbow_x": 0.664, "elbow_y": 0.66, "wrist_x": 0.724, "wrist_y": 0.60, "elbow_z": -0.02, "wrist_z": -0.05},
-		{"elbow_x": 0.672, "elbow_y": 0.656, "wrist_x": 0.732, "wrist_y": 0.60, "elbow_z": -0.04, "wrist_z": -0.10},
-		{"elbow_x": 0.684, "elbow_y": 0.65, "wrist_x": 0.740, "wrist_y": 0.60, "elbow_z": -0.06, "wrist_z": -0.15},
-		{"elbow_x": 0.692, "elbow_y": 0.644, "wrist_x": 0.748, "wrist_y": 0.60, "elbow_z": -0.08, "wrist_z": -0.20},
-	]
-	var timestamps := [1120, 1140, 1160, 1180, 1200]
-	var state: Dictionary = {}
-	for idx in range(timestamps.size()):
-		state = substrate.process_landmarks(_prototype_pose_frame("right", right_sequence[idx]), int(timestamps[idx]))
-	assert_false(_event_names(state.get("events", [])).has("punch_right"))
-	var matcher_debug: Dictionary = state.get("gesture_debug", {}).get("prototype", {})
-	assert_eq(String(matcher_debug.get("best_class", "")), "straight_right")
-	assert_eq(String(matcher_debug.get("result_class", "")), "straight_right")
-	assert_eq(String(matcher_debug.get("reason", "")), "same_family_active")
-	assert_true(bool(matcher_debug.get("same_family_blocked", false)))
-	assert_eq(String(matcher_debug.get("blocking_family", "")), "straight_punch")
-	assert_eq(String(matcher_debug.get("blocking_class", "")), "straight_left")
-	assert_eq(String(matcher_debug.get("active_event_class", "")), "straight_left")
-	assert_true(int(matcher_debug.get("hold_ms_remaining", 0)) > 0)
-
-func test_classifier_backend_blocks_opposite_side_same_family_candidate_during_hold() -> void:
-	var model_path := _write_test_classifier_model("straight_right", 10.0)
-	_enable_classifier_backend({
-		"model_path": model_path,
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 500,
-		"emit_hold_ms": 250,
-	})
-	_calibrate_stance()
-	var classifier: Variant = substrate.get("_learned_punch_classifier")
-	classifier.set("_last_emitted_class", "straight_left")
-	classifier.set("_emit_hold_until_ms", 1400)
-	var state := substrate.process_landmarks(_prototype_pose_frame("right", {"elbow_x": 0.66, "elbow_y": 0.66, "wrist_x": 0.72, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1200)
-	assert_eq(_event_names(state.get("events", [])), [])
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
-	assert_eq(String(learned_debug.get("best_class", "")), "straight_right")
-	assert_eq(String(learned_debug.get("result_class", "")), "straight_right")
-	assert_eq(String(learned_debug.get("reason", "")), "same_family_active")
-	assert_true(bool(learned_debug.get("same_family_blocked", false)))
-	assert_eq(String(learned_debug.get("blocking_family", "")), "straight_punch")
-	assert_eq(String(learned_debug.get("blocking_class", "")), "straight_left")
-	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
-	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
-
 func test_straight_same_family_trigger_exposes_threshold_blocking_truth_while_blocking_side_is_not_ready() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.020), _tracked_hand_payload_physical("right", 0.020)))
@@ -1969,221 +1712,6 @@ func test_hook_same_family_trigger_exposes_threshold_blocking_truth() -> void:
 	assert_eq(String(left_state.get("blocking_event_name", "")), "hook_right")
 	assert_eq(String(left_state.get("blocking_phase", "")), "triggered")
 
-func test_classifier_backend_emits_and_surfaces_truthful_debug_state() -> void:
-	var model_path := _write_test_classifier_model("straight_left", 10.0)
-	_enable_classifier_backend({
-		"model_path": model_path,
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 250,
-		"emit_hold_ms": 100,
-	})
-	_calibrate_stance()
-	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
-	assert_eq(_event_names(state.get("events", [])), ["punch_left"])
-	var gesture_debug: Dictionary = state.get("gesture_debug", {})
-	assert_eq(String(gesture_debug.get("punch_detection", {}).get("backend", "")), "per_family")
-	assert_true(bool(gesture_debug.get("punch_detection", {}).get("classifier_enabled", false)))
-	var learned_debug: Dictionary = gesture_debug.get("classifier", gesture_debug.get("classifier", {}))
-	assert_eq(String(learned_debug.get("selected_backend", "")), "classifier")
-	assert_eq(String(learned_debug.get("active_backend", "")), "classifier")
-	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
-	assert_eq(String(learned_debug.get("result_class", "")), "straight_left")
-	assert_eq(String(learned_debug.get("emitted_event_name", "")), "punch_left")
-	assert_true(bool(learned_debug.get("model_loaded", false)))
-	assert_eq(String(learned_debug.get("model_path", "")), model_path)
-	assert_true(float(learned_debug.get("best_score", 0.0)) >= 0.70)
-
-func test_classifier_non_eval_frames_preserve_last_scored_debug_truth() -> void:
-	var model_path := _write_test_classifier_model("straight_left", 10.0, 2)
-	_enable_classifier_backend({
-		"model_path": model_path,
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 250,
-		"emit_hold_ms": 100,
-	})
-	_calibrate_stance()
-	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
-	assert_eq(String(state.get("gesture_debug", {}).get("classifier", {}).get("reason", "")), "window_not_full")
-	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
-	assert_eq(_event_names(state.get("events", [])), ["punch_left"])
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
-	var emitted_class_scores: Dictionary = learned_debug.get("class_scores", {})
-	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
-	assert_eq(String(learned_debug.get("result_class", "")), "straight_left")
-	assert_eq(String(learned_debug.get("emitted_event_name", "")), "punch_left")
-	assert_true(float(learned_debug.get("best_score", 0.0)) >= 0.70)
-	assert_false(emitted_class_scores.is_empty())
-
-	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.36, "elbow_y": 0.66, "wrist_x": 0.26, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 120)
-	assert_eq(_event_names(state.get("events", [])), [])
-	learned_debug = state.get("gesture_debug", {}).get("classifier", {})
-	assert_eq(String(learned_debug.get("reason", "")), "step_wait")
-	assert_false(bool(learned_debug.get("emitted", true)))
-	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
-	assert_eq(String(learned_debug.get("result_class", "")), "straight_left")
-	assert_eq(String(learned_debug.get("emitted_event_name", "")), "punch_left")
-	assert_true(is_equal_approx(float(learned_debug.get("best_score", 0.0)), float(emitted_class_scores.get("straight_left", 0.0))))
-	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
-	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
-	assert_true(int(learned_debug.get("cooldown_ms_remaining", 0)) > 0)
-	var step_wait_scores: Dictionary = learned_debug.get("class_scores", {})
-	assert_true(is_equal_approx(float(step_wait_scores.get("straight_left", 0.0)), float(emitted_class_scores.get("straight_left", 0.0))))
-
-func test_classifier_replay_timestamp_rewind_resets_temporal_gate_state() -> void:
-	var model_path := _write_test_classifier_model("straight_left", 10.0, 2)
-	_enable_classifier_backend({
-		"model_path": model_path,
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 250,
-		"emit_hold_ms": 100,
-	})
-	_calibrate_stance()
-	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
-	assert_eq(String(learned_debug.get("reason", "")), "window_not_full")
-	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
-	assert_eq(_event_names(state.get("events", [])), ["punch_left"])
-	learned_debug = state.get("gesture_debug", {}).get("classifier", {})
-	assert_true(int(learned_debug.get("last_eval_timestamp_ms", 0)) > 0)
-	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
-	assert_true(int(learned_debug.get("cooldown_ms_remaining", 0)) > 0)
-	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
-
-	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 20)
-	assert_eq(_event_names(state.get("events", [])), [])
-	learned_debug = state.get("gesture_debug", {}).get("classifier", {})
-	assert_eq(int(learned_debug.get("window_sample_count", -1)), 1)
-	assert_eq(int(learned_debug.get("last_eval_timestamp_ms", -1)), 0)
-	assert_eq(int(learned_debug.get("hold_ms_remaining", -1)), 0)
-	assert_eq(int(learned_debug.get("cooldown_ms_remaining", -1)), 0)
-	assert_eq(String(learned_debug.get("active_event_class", "")), "no_punch")
-	assert_eq(String(learned_debug.get("reason", "")), "window_not_full")
-
-func test_classifier_lost_tracking_cleanup_resets_temporal_gate_state() -> void:
-	var model_path := _write_test_classifier_model("straight_left", 10.0, 2)
-	_enable_classifier_backend({
-		"model_path": model_path,
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 250,
-		"emit_hold_ms": 100,
-	})
-	_calibrate_stance()
-	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 40)
-	state = substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.35, "elbow_y": 0.66, "wrist_x": 0.27, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 100)
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
-	assert_eq(String(learned_debug.get("active_event_class", "")), "straight_left")
-	assert_true(int(learned_debug.get("hold_ms_remaining", 0)) > 0)
-	assert_true(int(learned_debug.get("cooldown_ms_remaining", 0)) > 0)
-
-	state = substrate.process_landmarks(_make_pose_frame({}, 0.50, 1.0, 0.2, 0.2), 116)
-	state = substrate.process_landmarks(_make_pose_frame({}, 0.50, 1.0, 0.2, 0.2), 132)
-	state = substrate.process_landmarks(_make_pose_frame({}, 0.50, 1.0, 0.2, 0.2), 148)
-	assert_eq(String(state.get("tracking_state", "")), "lost")
-	learned_debug = state.get("gesture_debug", {}).get("classifier", {})
-	assert_eq(int(learned_debug.get("window_sample_count", -1)), 0)
-	assert_eq(int(learned_debug.get("last_eval_timestamp_ms", -1)), 0)
-	assert_eq(int(learned_debug.get("hold_ms_remaining", -1)), 0)
-	assert_eq(int(learned_debug.get("cooldown_ms_remaining", -1)), 0)
-	assert_eq(String(learned_debug.get("active_event_class", "")), "no_punch")
-	assert_eq(String(learned_debug.get("reason", "")), "idle")
-
-func test_classifier_repo_root_docs_path_falls_back_to_addon_mount_in_testbed() -> void:
-	_enable_classifier_backend({
-		"model_path": "res://docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json",
-	})
-	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
-	assert_true(bool(learned_debug.get("model_loaded", false)))
-	assert_eq(String(learned_debug.get("model_error", "")), "")
-	assert_eq(String(learned_debug.get("model_path", "")), "res://addons/aerobeat-input-camera-tracking/docs/baselines/boxing-punch-classifier-frozen-benchmark-mlp-vs-cnn-2026-06-16/mlp/mlp-result.json")
-	assert_ne(String(learned_debug.get("reason", "")), "model_unavailable")
-
-func test_per_family_backend_routes_straights_to_classifier_and_surfaces_truth() -> void:
-	var model_path := _write_test_classifier_model("straight_left", 10.0, 2, [
-		"left_elbow_shoulder_xy_distance_over_shoulder_width",
-		"left_elbow_shoulder_radial_velocity_over_shoulder_width",
-		"right_elbow_shoulder_xy_distance_over_shoulder_width",
-		"right_elbow_shoulder_radial_velocity_over_shoulder_width",
-	])
-	_enable_per_family_backend({
-		"model_path": model_path,
-		"match_score_min": 0.70,
-		"emit_cooldown_ms": 250,
-		"emit_hold_ms": 100,
-	})
-	_calibrate_stance()
-	var first_frame := _prototype_pose_frame("left", {"elbow_x": 0.42, "elbow_y": 0.67, "wrist_x": 0.32, "wrist_y": 0.62, "elbow_z": 0.00, "wrist_z": 0.00})
-	var second_frame := _prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00})
-	var state := substrate.process_landmarks(first_frame, 40)
-	assert_eq(String(state.get("gesture_debug", {}).get("classifier", state.get("gesture_debug", {}).get("classifier", {})).get("reason", "")), "window_not_full")
-	state = substrate.process_landmarks(second_frame, 100)
-	var event_names := _event_names(state.get("events", []))
-	assert_true(event_names.has("punch_left"))
-	assert_false(event_names.has("hook_left"))
-	var gesture_debug: Dictionary = state.get("gesture_debug", {})
-	var punch_detection_debug: Dictionary = gesture_debug.get("punch_detection", {})
-	assert_eq(String(punch_detection_debug.get("active_backend", "")), "per_family")
-	assert_eq(String(punch_detection_debug.get("routing_mode", "")), "per_family")
-	assert_eq(String(punch_detection_debug.get("straight_backend", "")), "classifier")
-	assert_eq(String(punch_detection_debug.get("hook_backend", "")), "threshold")
-	assert_eq(String(punch_detection_debug.get("uppercut_backend", "")), "threshold")
-	assert_eq(String(punch_detection_debug.get("straight_model_path", "")), model_path)
-	var learned_debug: Dictionary = gesture_debug.get("classifier", gesture_debug.get("classifier", {}))
-	assert_eq(String(learned_debug.get("selected_backend", "")), "classifier")
-	assert_eq(String(learned_debug.get("active_backend", "")), "classifier")
-	assert_true(["punch_left", "straight_left"].has(String(learned_debug.get("emitted_event_name", learned_debug.get("active_event_class", "")))))
-
-func test_per_family_backend_filters_non_straight_learned_events() -> void:
-	var model_path := _write_test_classifier_model("hook_left", 10.0)
-	_enable_per_family_backend({
-		"model_path": model_path,
-		"match_score_min": 0.70,
-	})
-	_calibrate_stance()
-	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
-	var event_names := _event_names(state.get("events", []))
-	assert_false(event_names.has("hook_left"))
-	assert_false(event_names.has("punch_left"))
-	assert_eq(String(state.get("gesture_debug", {}).get("classifier", {}).get("best_class", "")), "hook_left")
-
-func test_per_family_backend_prefers_straight_family_classifier_artifact_path() -> void:
-	var straight_model_path := _write_test_classifier_model("straight_left", 10.0)
-	var hook_model_path := _write_test_classifier_model("hook_left", 10.0)
-	config.tracker_profile_document = {
-		"tracking": {
-			"hands": {
-				"enabled": false,
-			},
-		},
-	}
-	config.gesture_profile_document = {
-		"straight_punch": {
-			"backend": "classifier",
-			"classifier": {
-				"model": {"artifact_path": straight_model_path},
-				"thresholds": {"match_score_min": 0.70},
-			},
-		},
-		"hook": {
-			"backend": "classifier",
-			"classifier": {
-				"model": {"artifact_path": hook_model_path},
-				"thresholds": {"match_score_min": 0.70},
-			},
-		},
-		"uppercut": {"backend": "disabled"},
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
-	_calibrate_stance()
-	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
-	assert_true(_event_names(state.get("events", [])).has("punch_left"))
-	var learned_debug: Dictionary = state.get("gesture_debug", {}).get("classifier", {})
-	var punch_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
-	assert_eq(String(learned_debug.get("model_path", "")), straight_model_path)
-	assert_eq(String(punch_debug.get("straight_model_path", "")), straight_model_path)
-	assert_eq(String(learned_debug.get("best_class", "")), "straight_left")
-
 func test_disabled_family_backend_prevents_any_punch_runtime_activation() -> void:
 	config.tracker_profile_document = {
 		"tracking": {
@@ -2217,45 +1745,14 @@ func test_disabled_straight_family_suppresses_punch_events_while_threshold_famil
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_prototype_pose_frame("left", {"elbow_x": 0.34, "elbow_y": 0.66, "wrist_x": 0.28, "wrist_y": 0.60, "elbow_z": 0.00, "wrist_z": 0.00}), 1400)
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.66, "z": 0.0},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.28, "y": 0.60, "z": 0.0},
+	}), 1400)
 	assert_false(_event_names(state.get("events", [])).has("punch_left"))
 	var punch_detection_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
 	assert_eq(String(punch_detection_debug.get("straight_backend", "")), "disabled")
 	assert_true(bool(punch_detection_debug.get("threshold_enabled", false)))
-
-func test_disabled_non_punch_families_suppress_knee_leg_lift_and_side_step_events() -> void:
-	config.gesture_profile_document = {
-		"knee_strike": {"backend": "disabled"},
-		"leg_lift": {"backend": "disabled"},
-		"side_step": {"backend": "disabled"},
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
-	_calibrate_stance()
-
-	var knee_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_KNEE: {"x": 0.44, "y": 0.34},
-		PoseLandmarkIds.LEFT_ANKLE: {"x": 0.46, "y": 0.18},
-	}), 1200)
-	assert_false(_event_names(knee_state.get("events", [])).has("knee_left"))
-	var knee_debug: Dictionary = knee_state.get("gesture_debug", {}).get("knee_strike", {})
-	assert_eq(String(knee_debug.get("backend", "")), "disabled")
-	assert_false(bool(knee_debug.get("enabled", true)))
-
-	var leg_lift_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ANKLE: {"x": 0.73, "y": 0.20},
-	}), 1300)
-	assert_false(_event_names(leg_lift_state.get("events", [])).has("leg_lift_right_start"))
-	var leg_lift_debug: Dictionary = leg_lift_state.get("gesture_debug", {}).get("leg_lift", {})
-	assert_eq(String(leg_lift_debug.get("backend", "")), "disabled")
-	assert_false(bool(leg_lift_debug.get("enabled", true)))
-	assert_false(bool(leg_lift_debug.get("right_state", true)))
-
-	var side_step_state := substrate.process_landmarks(_make_pose_frame({}, 0.60, 1.0), 1400)
-	assert_false(_event_names(side_step_state.get("events", [])).has("sidestep_right_start"))
-	var side_step_debug: Dictionary = side_step_state.get("gesture_debug", {}).get("side_step", {})
-	assert_eq(String(side_step_debug.get("backend", "")), "disabled")
-	assert_false(bool(side_step_debug.get("enabled", true)))
-	assert_eq(String(side_step_debug.get("state", "")), "inactive")
 
 func _calibrate_stance() -> void:
 	for idx in range(5):
@@ -2269,11 +1766,11 @@ func _flow_events(events: Array) -> Array:
 			continue
 		var event_data: Dictionary = event_variant
 		var event_name := String(event_data.get("name", ""))
-		if not event_name.begins_with("swing_") and not event_name.begins_with("trail_"):
+		if not event_name.begins_with("flow_"):
 			continue
 		flow_events.append({
 			"name": event_name,
-			"placement": int(event_data.get("placement", -1)),
+			"cell": int(event_data.get("cell", -1)),
 			"direction": int(event_data.get("direction", -1)),
 		})
 	return flow_events
@@ -2393,115 +1890,6 @@ func _disable_hand_tracking_for_straight_punch() -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 
-func _enable_prototype_backend(options: Dictionary = {}) -> void:
-	config.tracker_profile_document = {
-		"tracking": {
-			"hands": {
-				"enabled": false,
-			},
-		},
-	}
-	var prototype_block := {
-		"prototype_library": {
-			"library_id": "boxing_side_aware_v1",
-		},
-		"evaluation": {
-			"window_ms": int(options.get("window_ms", 250)),
-			"window_step_ms": int(options.get("window_step_ms", 33)),
-		},
-		"thresholds": {
-			"match_score_min": float(options.get("match_score_min", 0.70)),
-		},
-		"timing": {
-			"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
-			"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
-		},
-		"debug": {
-			"show_scores": true,
-			"show_event_gate_state": true,
-		},
-	}
-	config.gesture_profile_document = {
-		"straight_punch": {"backend": "prototype", "prototype": prototype_block.duplicate(true)},
-		"hook": {"backend": "prototype", "prototype": prototype_block.duplicate(true)},
-		"uppercut": {"backend": "prototype", "prototype": prototype_block.duplicate(true)},
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
-
-func _enable_per_family_backend(options: Dictionary = {}) -> void:
-	config.tracker_profile_document = {
-		"tracking": {
-			"hands": {
-				"enabled": false,
-			},
-		},
-	}
-	var straight_threshold := {
-		"evaluation": {"window_ms": 250},
-		"thresholds": {
-			"min_velocity": 0.5,
-			"min_bbox_area_growth": 0.003,
-			"max_elbow_shoulder_xy_distance": 0.14,
-			"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
-		},
-		"timing": {"triggered_grace_ms": 10},
-		"rearm": {"bbox_area_retract_epsilon": 0.0003, "pose_only_rearm_ms": 10},
-		"state_machine": {"lost_tracking_reacquire_stable_ms": 40},
-	}
-	var classifier_block := {
-		"model": {
-			"artifact_path": String(options.get("model_path", "")),
-		},
-		"thresholds": {
-			"match_score_min": float(options.get("match_score_min", 0.70)),
-		},
-		"timing": {
-			"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
-			"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
-		},
-		"debug": {
-			"show_scores": true,
-			"show_event_gate_state": true,
-		},
-	}
-	config.gesture_profile_document = {
-		"straight_punch": {"backend": "classifier", "threshold": straight_threshold.duplicate(true), "classifier": classifier_block.duplicate(true)},
-		"hook": {"backend": "threshold", "threshold": _default_hook_threshold_block()},
-		"uppercut": {"backend": "threshold", "threshold": _default_uppercut_threshold_block()},
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
-
-func _enable_classifier_backend(options: Dictionary = {}) -> void:
-	config.tracker_profile_document = {
-		"tracking": {
-			"hands": {
-				"enabled": false,
-			},
-		},
-	}
-	var classifier_block := {
-		"model": {
-			"artifact_path": String(options.get("model_path", "")),
-		},
-		"thresholds": {
-			"match_score_min": float(options.get("match_score_min", 0.70)),
-		},
-		"timing": {
-			"emit_cooldown_ms": int(options.get("emit_cooldown_ms", 250)),
-			"emit_hold_ms": int(options.get("emit_hold_ms", 100)),
-		},
-		"debug": {
-			"show_scores": true,
-			"show_event_gate_state": true,
-		},
-	}
-	config.gesture_profile_document = {
-		"straight_punch": {"backend": "classifier", "classifier": classifier_block.duplicate(true)},
-		"hook": {"backend": "classifier", "classifier": classifier_block.duplicate(true)},
-		"uppercut": {"backend": "classifier", "classifier": classifier_block.duplicate(true)},
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
-
 func _default_hook_threshold_block() -> Dictionary:
 	return {
 		"evaluation": {"window_ms": 250},
@@ -2525,79 +1913,6 @@ func _default_uppercut_threshold_block() -> Dictionary:
 		"rearm": {"pose_only_rearm_ms": 50},
 		"state_machine": {"lost_tracking_reacquire_stable_ms": 40},
 	}
-
-func _write_test_classifier_model(winner_class: String = "straight_left", confidence_logit: float = 10.0, frame_count: int = 1, frame_feature_names: Array = []) -> String:
-	var feature_slug := "default" if frame_feature_names.is_empty() else str(frame_feature_names.size())
-	var path := "user://test-learned-classifier-%s-%d-%s.json" % [winner_class, frame_count, feature_slug]
-	var class_order := ["straight_left", "straight_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right", "no_punch"]
-	var winner_index := class_order.find(winner_class)
-	assert_true(winner_index >= 0)
-	var means: Array = []
-	var stds: Array = []
-	var effective_frame_feature_names := frame_feature_names.duplicate(true)
-	var effective_side_feature_names: Array = []
-	if effective_frame_feature_names.is_empty():
-		for feature_name in [
-			"left_shoulder_x", "left_shoulder_y", "left_elbow_x", "left_elbow_y", "left_wrist_x", "left_wrist_y", "left_combined_elbow_wrist_velocity_xy_magnitude", "left_elbow_shoulder_xy_distance_over_shoulder_width",
-			"right_shoulder_x", "right_shoulder_y", "right_elbow_x", "right_elbow_y", "right_wrist_x", "right_wrist_y", "right_combined_elbow_wrist_velocity_xy_magnitude", "right_elbow_shoulder_xy_distance_over_shoulder_width",
-		]:
-			effective_frame_feature_names.append(feature_name)
-		effective_side_feature_names = [
-			"shoulder_x", "shoulder_y", "elbow_x", "elbow_y", "wrist_x", "wrist_y", "combined_elbow_wrist_velocity_xy_magnitude", "elbow_shoulder_xy_distance_over_shoulder_width",
-		]
-	else:
-		var seen_side_feature_names: Dictionary = {}
-		for frame_feature_name_variant in effective_frame_feature_names:
-			var frame_feature_name := String(frame_feature_name_variant)
-			var side_feature_name := frame_feature_name
-			if frame_feature_name.begins_with("left_"):
-				side_feature_name = frame_feature_name.trim_prefix("left_")
-			elif frame_feature_name.begins_with("right_"):
-				side_feature_name = frame_feature_name.trim_prefix("right_")
-			if not seen_side_feature_names.has(side_feature_name):
-				seen_side_feature_names[side_feature_name] = true
-				effective_side_feature_names.append(side_feature_name)
-	for _idx in range(frame_count * effective_frame_feature_names.size()):
-		means.append(0.0)
-		stds.append(1.0)
-	var logits_biases: Array = []
-	for idx in range(class_order.size()):
-		logits_biases.append(confidence_logit if idx == winner_index else 0.0)
-	var input_dim := frame_count * effective_frame_feature_names.size()
-	var hidden_weights: Array = []
-	for _idx in range(input_dim):
-		hidden_weights.append(0.0)
-	var document := {
-		"schema": "aerobeat.boxing_punch_classifier_mlp_result",
-		"version": 1,
-		"class_order": class_order,
-		"dataset_window_shape": {
-			"frame_count": frame_count,
-			"frame_feature_count": effective_frame_feature_names.size(),
-			"flattened_input_dim": input_dim,
-		},
-		"side_feature_names": effective_side_feature_names,
-		"frame_feature_names": effective_frame_feature_names,
-		"standardization": {
-			"means": means,
-			"stds": stds,
-		},
-		"model": {
-			"input_dim": input_dim,
-			"hidden_dim": 1,
-			"output_dim": class_order.size(),
-			"w1": [hidden_weights],
-			"b1": [1.0],
-			"w2": [[0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]],
-			"b2": logits_biases,
-		},
-	}
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	assert_not_null(file)
-	file.store_string(JSON.stringify(document))
-	file.flush()
-	file = null
-	return path
 
 func _tracked_hand_payload(side: String, bbox_area: float, tracking_state: String = "tracked", tracking_valid: bool = true, stale_frames: int = 0, frame_index: int = 1, timestamp_seconds: float = 0.0, fresh_sample: Variant = null, sample_source: String = "", stable_ms: int = -1) -> Dictionary:
 	var physical_bbox_area := maxf(0.10 - bbox_area, 0.0)
@@ -2671,22 +1986,6 @@ func _tracked_hand_payload_physical(side: String, bbox_area: float, tracking_sta
 	if sample_source != "":
 		payload["sample_source"] = sample_source
 	return payload
-
-func _prototype_pose_frame(side: String, sample: Dictionary) -> Array:
-	var overrides := {}
-	var elbow_id := PoseLandmarkIds.LEFT_ELBOW if side == "left" else PoseLandmarkIds.RIGHT_ELBOW
-	var wrist_id := PoseLandmarkIds.LEFT_WRIST if side == "left" else PoseLandmarkIds.RIGHT_WRIST
-	overrides[elbow_id] = {
-		"x": float(sample.get("elbow_x", 0.0)),
-		"y": float(sample.get("elbow_y", 0.0)),
-		"z": float(sample.get("elbow_z", 0.0)),
-	}
-	overrides[wrist_id] = {
-		"x": float(sample.get("wrist_x", 0.0)),
-		"y": float(sample.get("wrist_y", 0.0)),
-		"z": float(sample.get("wrist_z", 0.0)),
-	}
-	return _make_pose_frame(overrides)
 
 func _make_pose_frame(overrides: Dictionary = {}, center_x: float = 0.50, height_scale: float = 1.0, visibility: float = 0.99, knee_visibility: float = 0.99) -> Array:
 	var shoulder_y := 0.70

@@ -21,14 +21,8 @@ const TRACKING_SESSION_NODE_NAME := "CameraTracking"
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const PROVIDER_LANE_CAMERA_TRACKING := "camera_tracking"
 
-signal swing_left(placement: int, direction: int)
-signal swing_right(placement: int, direction: int)
-signal trail_left(placement: int, direction: int)
-signal trail_right(placement: int, direction: int)
-signal weave_left_start()
-signal weave_left_end()
-signal weave_right_start()
-signal weave_right_end()
+signal flow_left_cell_entered(cell: int, direction: int)
+signal flow_right_cell_entered(cell: int, direction: int)
 signal straight_punch_state_changed(side: String, state: String, detail: Dictionary)
 signal hook_state_changed(side: String, state: String, detail: Dictionary)
 signal uppercut_state_changed(side: String, state: String, detail: Dictionary)
@@ -427,10 +421,8 @@ func _connect_provider_signals() -> void:
 	_connect_provider_signal("uppercut_right", _on_provider_uppercut_right)
 	_connect_provider_signal("hook_left", _on_provider_hook_left)
 	_connect_provider_signal("hook_right", _on_provider_hook_right)
-	_connect_provider_signal("swing_left", _on_provider_swing_left)
-	_connect_provider_signal("swing_right", _on_provider_swing_right)
-	_connect_provider_signal("trail_left", _on_provider_trail_left)
-	_connect_provider_signal("trail_right", _on_provider_trail_right)
+	_connect_provider_signal("flow_left_cell_entered", _on_provider_flow_left_cell_entered)
+	_connect_provider_signal("flow_right_cell_entered", _on_provider_flow_right_cell_entered)
 	_connect_provider_signal("guard_start", _on_provider_guard_start)
 	_connect_provider_signal("guard_end", _on_provider_guard_end)
 	_connect_provider_signal("squat_start", _on_provider_squat_start)
@@ -439,16 +431,6 @@ func _connect_provider_signals() -> void:
 	_connect_provider_signal("weave_left_end", _on_provider_weave_left_end)
 	_connect_provider_signal("weave_right_start", _on_provider_weave_right_start)
 	_connect_provider_signal("weave_right_end", _on_provider_weave_right_end)
-	_connect_provider_signal("sidestep_left_start", _on_provider_sidestep_left_start)
-	_connect_provider_signal("sidestep_left_end", _on_provider_sidestep_left_end)
-	_connect_provider_signal("sidestep_right_start", _on_provider_sidestep_right_start)
-	_connect_provider_signal("sidestep_right_end", _on_provider_sidestep_right_end)
-	_connect_provider_signal("knee_left", _on_provider_knee_left)
-	_connect_provider_signal("knee_right", _on_provider_knee_right)
-	_connect_provider_signal("leg_lift_left_start", _on_provider_leg_lift_left_start)
-	_connect_provider_signal("leg_lift_left_end", _on_provider_leg_lift_left_end)
-	_connect_provider_signal("leg_lift_right_start", _on_provider_leg_lift_right_start)
-	_connect_provider_signal("leg_lift_right_end", _on_provider_leg_lift_right_end)
 
 func _connect_provider_signal(signal_name: StringName, callback: Callable) -> void:
 	if _provider == null or not _provider.has_signal(String(signal_name)):
@@ -611,17 +593,11 @@ func _on_provider_hook_left(power: float) -> void:
 func _on_provider_hook_right(power: float) -> void:
 	hook_right.emit(power)
 
-func _on_provider_swing_left(placement: int, direction: int) -> void:
-	swing_left.emit(placement, direction)
+func _on_provider_flow_left_cell_entered(cell: int, direction: int) -> void:
+	flow_left_cell_entered.emit(cell, direction)
 
-func _on_provider_swing_right(placement: int, direction: int) -> void:
-	swing_right.emit(placement, direction)
-
-func _on_provider_trail_left(placement: int, direction: int) -> void:
-	trail_left.emit(placement, direction)
-
-func _on_provider_trail_right(placement: int, direction: int) -> void:
-	trail_right.emit(placement, direction)
+func _on_provider_flow_right_cell_entered(cell: int, direction: int) -> void:
+	flow_right_cell_entered.emit(cell, direction)
 
 func _on_provider_guard_start() -> void:
 	guard_start.emit()
@@ -647,35 +623,6 @@ func _on_provider_weave_right_start() -> void:
 func _on_provider_weave_right_end() -> void:
 	weave_right_end.emit()
 
-func _on_provider_sidestep_left_start() -> void:
-	sidestep_left_start.emit()
-
-func _on_provider_sidestep_left_end() -> void:
-	sidestep_left_end.emit()
-
-func _on_provider_sidestep_right_start() -> void:
-	sidestep_right_start.emit()
-
-func _on_provider_sidestep_right_end() -> void:
-	sidestep_right_end.emit()
-
-func _on_provider_knee_left(power: float) -> void:
-	knee_left.emit(power)
-
-func _on_provider_knee_right(power: float) -> void:
-	knee_right.emit(power)
-
-func _on_provider_leg_lift_left_start() -> void:
-	leg_lift_left_start.emit()
-
-func _on_provider_leg_lift_left_end() -> void:
-	leg_lift_left_end.emit()
-
-func _on_provider_leg_lift_right_start() -> void:
-	leg_lift_right_start.emit()
-
-func _on_provider_leg_lift_right_end() -> void:
-	leg_lift_right_end.emit()
 
 func _to_provider_mode(mode: TrackingMode) -> int:
 	return 1 if mode == TrackingMode.MODE_3D else 0
