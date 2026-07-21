@@ -124,24 +124,6 @@ theme_override_constants/margin_bottom = 12
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="CalibrationTitleLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770013]
-layout_mode = 2
-text = "Athlete Calibration"
-
-[node name="CalibrationCountdownLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770014]
-layout_mode = 2
-text = "5-second countdown, then shared baseline capture"
-
-[node name="CalibrationInstructionLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770015]
-layout_mode = 2
-autowrap_mode = 3
-text = ""
-
-[node name="CalibrationStatusLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770016]
-layout_mode = 2
-autowrap_mode = 3
-text = ""
-
 [node name="Buttons" type="HBoxContainer" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770017]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -178,8 +160,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_landmarks")
-
-
 
 [node name="QuickStatsPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=1045360063]
 custom_minimum_size = Vector2(0, 210)
@@ -220,16 +200,15 @@ visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-text = ""
 
-[node name="Margin" type="MarginContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel"]
+[node name="Margin" type="MarginContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel" unique_id=93458436]
 layout_mode = 2
 theme_override_constants/margin_left = 18
 theme_override_constants/margin_top = 18
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 18
 
-[node name="GridPreviewGrid" type="GridContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin"]
+[node name="GridPreviewGrid" type="GridContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin" unique_id=1968052119]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -237,36 +216,36 @@ theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 3
 
-[node name="NosePlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid"]
+[node name="NosePlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid" unique_id=2035025970]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="NosePlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/NosePlacementCard"]
+[node name="NosePlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/NosePlacementCard" unique_id=1389142084]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("6_flow_ring_chart")
 chart_title = "Nose Cell"
 
-[node name="LeftPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid"]
+[node name="LeftPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid" unique_id=1522018343]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="LeftPlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/LeftPlacementCard"]
+[node name="LeftPlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/LeftPlacementCard" unique_id=1617182960]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("6_flow_ring_chart")
 chart_title = "Left Wrist Cell"
 
-[node name="RightPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid"]
+[node name="RightPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid" unique_id=885082194]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RightPlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/RightPlacementCard"]
+[node name="RightPlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/RightPlacementCard" unique_id=1179206975]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -292,4 +271,3 @@ size_flags_vertical = 3
 theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 3
-
