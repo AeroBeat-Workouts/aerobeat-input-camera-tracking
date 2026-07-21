@@ -216,7 +216,7 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 
 **Commits:**
 - `d6bb10d` - Truthfully disable replay calibration in proving harness
-- `PENDING` - Restore straight-punch replay trigger truth at boxing publish cadence
+- `689608d` - Restore straight-punch replay trigger truth
 
 **Lessons Learned:** Current repo tests validate the shared calibration contract and boxing profile shape, but replay-facing truth can still drift when publication cadence and gesture-state timers stop matching. For replay-first proving flows, both UI copy and detector/profile timing need explicit cadence-aware coverage so short-lived `triggered` phases cannot disappear between published updates.
 
