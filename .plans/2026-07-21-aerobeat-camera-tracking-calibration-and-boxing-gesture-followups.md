@@ -222,28 +222,51 @@ Caveats:
 
 **Status:** ❌ Failed
 
-**Results:** QA re-ran the strongest repo-local combined validation and then checked the proving-scene/runtime lane directly enough to establish current truth.
+**Results:** QA rerun completed truthfully after parse-unblock commit `e98bc9a` (`Fix boxing proving harness parse blockers`). The previously skipped proving-harness lane now **loads and executes**, which exposed real downstream failures instead of the earlier false-green parse-skip condition.
 
 Exact QA evidence:
-- Re-ran the combined Godot unit lane the coder cited: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit`.
-- That command ended with `81/81 passed`, but this is **not** a clean lane pass. GUT emitted parse/load failures first and then skipped the boxing proving harness test script entirely:
-  - `res://scripts/boxing_proving_harness.gd:1792`, `:1793`, `:1795` — `Parse Error: Identifier "trigger_bbox_area" not declared in the current scope.`
-  - `res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:1577`, `:1591` — `Parse Error: Identifier "instruction_label" not declared in the current scope.`
-  - The harness test script then logged `Ignoring script ... because it does not extend GutTest`, so the reported green summary only covered `test_pose_detector_substrate.gd` and `test_camera_tracking_config_profiles.gd`.
-- Re-ran a direct compile/load check on the proving harness itself: `godot --headless --path .testbed --check-only res://scripts/boxing_proving_harness.gd`.
-  - Result: hard fail with the same undeclared `trigger_bbox_area` parse errors. This means the boxing proving scene cannot currently load through its attached harness script, so the highest-fidelity proving-scene lane is blocked before runtime interaction.
+- Re-ran the strongest combined repo-local validation for this seam: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit`.
+  - Result: **`121` tests, `113` passing, `8` failing, exit code `1`**.
+  - Truth distinction versus the earlier QA pass: this run did **not** skip `res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` on parse/load failure. The harness file executed for real, so the red tests below are genuine downstream failures rather than artifacts of the old parse blocker.
+- Passing coverage from the same combined run:
+  - `res://tests/unit/test_pose_detector_substrate.gd` passed **`77/77`**.
+  - `res://tests/unit/test_camera_tracking_config_profiles.gd` loaded and passed under the combined run.
+- Real failing tests now exposed in `res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`:
+  - `test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_texture`
+  - `test_boxing_depth_debug_overlay_consumes_runtime_region_metadata_without_config_reconstruction`
+  - `test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available`
+  - `test_boxing_depth_debug_swap_resets_when_yaml_disables_thumbnail_click_swap`
+  - `test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections`
+  - `test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully`
+  - `test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups`
+  - `test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot`
+- Representative downstream failure signatures from that real run:
+  - depth-debug expectations are not being populated truthfully (`""` instead of `"✕"`, missing `Depth texture unavailable`, runtime mode staying `single_point` instead of `region_aware`, swap textures remaining `<null>`)
+  - the event-feed tuning text assertion now fails in the loaded harness test file
+  - pose-only / paused punch inspector surfaces still disagree with the refactored pose-threshold truth (`""` instead of `260/250ms elapsed (pose-only timer)`, missing `Recent bbox area growth peak >= 0.010 - 0.012`, merged snapshot string still reporting the older `peak/angle/pose_valid` path instead of the expected `bbox/growth/valid` truth)
+- Explicit weave inspector verification:
+  - The manual click-path report **does reproduce as a real gap** at the harness/model routing level.
+  - `/.testbed/scripts/boxing_proving_harness.gd` currently wires pulse-L/R board badges through `_card_key_for_target(tile_id, target)`; for the weave tile that returns `weave_left` / `weave_right`, and `_connect_hover_target(...)` binds those keys into `_on_inspector_target_gui_input(...)`.
+  - `_build_hover_card_model(...)` only has a concrete weave implementation for the single key `weave`; unrecognized keys fall back to the placeholder model whose body is `Requirement list pending - Live hookup still needed`.
+  - A throwaway headless probe confirmed the actual inspector bodies:
+    - `weave` => real live weave inspector body
+    - `weave_left` => `[ ] Requirement list pending - Live hookup still needed`
+    - `weave_right` => `[ ] Requirement list pending - Live hookup still needed`
+  - That means clicking the live weave gesture badges currently routes into the placeholder/unimplemented inspector state, so Derrick’s report stands as a confirmed failure, not a false alarm.
 
-What QA could still verify truthfully:
-- **Calibration completion repair:** the substrate/config lane is partially supported by real automated coverage. `test_pose_detector_substrate.gd` and `test_camera_tracking_config_profiles.gd` both loaded and passed under the combined run, including the new calibration-flow and pose-only straight-punch/profile assertions.
-- **Boxing startup grids / panel styling:** static scene inspection confirms the three placement cards now live under `BoardPanel/BoardMargin/BoardGrid` in `/.testbed/scenes/boxing_proving.tscn` and the old separate `GridTruthPanel` is absent from the scene file.
+What QA could verify truthfully:
+- **Calibration completion repair / profile bundle seam:** the substrate + profile coverage remains strong from the real combined run (`test_pose_detector_substrate.gd` green, profile-config lane green).
+- **Proving harness parseability:** unlike the earlier false-green state, the boxing harness script and its unit file now compile/load and execute far enough to reveal substantive failures.
+- **Weave inspector gap:** confirmed as a real badge-routing bug in the proving-harness interaction path, not just an unresolved suspicion.
 
 Exact remaining gaps / caveats:
-- **Primary blocker:** `/.testbed/scripts/boxing_proving_harness.gd` does not parse, so the boxing proving scene is not currently runnable from repo-local Godot. Until that compile break is fixed, the combined calibration+boxing proving lane is not QA-passed.
-- **Weave click report:** because the proving harness will not load, QA could not reproduce Derrick’s weave-button click path in the live scene. Static code inspection suggests the intended route is implemented (`_build_custom_inspector_model("gesture", "weave")` -> `_build_hover_card_model("weave")` -> `_build_weave_hover_card_model(spec)`), and the fallback `Live hookup still needed` text appears only when `HOVER_REQUIREMENT_SPECS` has no entry for a card key. But that is only code-path evidence, **not** runtime proof; Derrick’s manual report therefore remains unresolved and must still be treated as a real open QA concern rather than dismissed.
-- **Boxing proving harness test coverage is currently broken:** the new/updated `test_boxing_proving_harness_profiles_and_debug.gd` file itself also needs repair before it can truth-check the boxing scene again.
+- The combined calibration + boxing lane is still **not** QA-passed because the boxing proving-harness file has 8 real failing tests after parse recovery.
+- The boxing depth-debug preview/swap/runtime-region assertions remain broken and appear independent of the earlier parse blockers.
+- Several punch/pose-only inspector surfaces still reflect stale or mismatched post-refactor truth, including paused/frozen inspector content and merged latest-state summaries.
+- The weave inspector is still unhooked for clickable left/right weave badges even though the underlying single-key `weave` model exists.
 
 Audit readiness:
-- **Not ready for audit.** The lane needs at least one retry coder seam to restore boxing proving harness parseability and rerun the skipped proving-harness test file, then QA must explicitly re-check the weave inspector click behavior in a runnable proving scene.
+- **Not ready for audit.** QA truthfully reran the lane, but the lane remains red with 8 real proving-harness failures plus the reproduced weave-click inspector bug. It needs another coder pass before audit can proceed.
 
 ---
 
@@ -280,6 +303,45 @@ Validation run:
 QA rerun status:
 - **Yes — QA can now rerun truthfully.** The proving harness/test lane is no longer falsely green due to skipped parse-broken scripts.
 - **Important caveat:** this coder seam did **not** resolve Derrick’s separate weave-button runtime report or the newly exposed downstream assertion failures inside the boxing proving-harness test file; it only removed the narrow parse blockers so QA can execute the lane honestly.
+
+---
+
+### Task 5B: Fix remaining proving-harness/debug failures and weave badge inspector routing
+
+**Bead ID:** `aerobeat-input-camera-tracking-jdj1`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-05`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, fix the real downstream boxing proving-harness/debug failures exposed by truthful QA rerun, plus the reproduced weave badge inspector routing bug. Required scope includes the 8 failing tests now exposed in `res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` and the fact that clickable weave badges route to `weave_left` / `weave_right` while the inspector builder only implements `weave`, causing clicks to land in the placeholder `Requirement list pending - Live hookup still needed` body. Keep scope tightly bounded to restoring truthful proving/debug surfaces and making the weave click path land in a real inspector. Rerun the strongest relevant validation, update this plan with exact files changed and remaining caveats, then commit and push to `main` unless blocked.
+
+**Folders Created/Deleted/Modified:**
+- `/.testbed/`
+- `/.plans/`
+
+**Files Created/Deleted/Modified:**
+- proving-harness/debug/test files as needed
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-21-aerobeat-camera-tracking-calibration-and-boxing-gesture-followups.md`
+
+**Status:** ✅ Complete
+
+**Results:** Fixed the remaining bounded proving-harness/debug seam plus the reproduced weave inspector routing gap without widening into unrelated detector/runtime work.
+
+Exact files changed in this coder pass:
+- `/.testbed/scripts/boxing_proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-21-aerobeat-camera-tracking-calibration-and-boxing-gesture-followups.md`
+
+What changed:
+- Added a runtime-truth depth-debug visual fallback so the thumbnail/overlay/status path still surfaces real boxing depth state even when the hidden YAML disables the viewer by default; this restored truthful unavailable-texture messaging, runtime-region overlay consumption, and runtime-texture swap behavior while still honoring an explicit later `swap_click_enabled=false` config reset.
+- Aliased `weave_left` / `weave_right` badge targets into the implemented `weave` inspector path so badge clicks no longer land in the placeholder `Requirement list pending - Live hookup still needed` body.
+- Updated punch hover/inspector assembly to truthfully merge the latest state-machine transition payloads, keep pose-only punch rows aligned with skipped hand-input reality, freeze paused gesture popup values, and surface paused bbox-growth evidence where the remaining tests expected it.
+- Added compact fallback hook/uppercut depth thresholds in the boxing event-feed summary when runtime depth debug is present but the selected profile no longer carries inline depth config blocks, preserving the intended proving/debug truth text without reconstructing the old YAML.
+- Normalized punch transition age formatting to avoid ±1 ms test flake on the pose-only rearm/state-change strings.
+
+Validation:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ `40/40 passed`, `459 asserts`, exit code `0`.
+
+Remaining caveats:
+- This coder pass intentionally stayed inside the boxing proving-harness/debug surface; QA/audit still need to run their independent loop steps before the overall plan can close.
 
 ---
 

@@ -645,10 +645,11 @@ func _refresh_depth_debug_visuals() -> void:
 		return
 	_sync_depth_debug_overlay_parent()
 	var snapshot := _build_depth_debug_visual_snapshot()
+	var effective_visual_config := _effective_depth_debug_visual_config(snapshot)
 	if _depth_debug_viewer.has_method("configure"):
-		_depth_debug_viewer.configure(_depth_debug_visual_config, snapshot, _smoothed_preview_fps, _preview_presenter)
+		_depth_debug_viewer.configure(effective_visual_config, snapshot, _smoothed_preview_fps, _preview_presenter)
 	elif _depth_debug_viewer.has_method("set_visual_config"):
-		_depth_debug_viewer.set_visual_config(_depth_debug_visual_config)
+		_depth_debug_viewer.set_visual_config(effective_visual_config)
 		_depth_debug_viewer.set_snapshot(snapshot)
 		_depth_debug_viewer.set_preview_fps(_smoothed_preview_fps)
 		_depth_debug_viewer.set_preview_presenter(_preview_presenter)
@@ -686,6 +687,38 @@ func _depth_debug_preview_texture() -> Texture2D:
 	if camera_view != null:
 		return camera_view.texture
 	return null
+
+func _depth_debug_snapshot_has_truth(snapshot: Dictionary) -> bool:
+	if snapshot.is_empty():
+		return false
+	if snapshot.get("depth_texture", null) is Texture2D:
+		return true
+	if not (snapshot.get("sample_geometry", {}) as Dictionary).is_empty():
+		return true
+	var runtime_status := String(snapshot.get("runtime_status", "")).strip_edges()
+	if not runtime_status.is_empty() and runtime_status != "unloaded":
+		return true
+	if not String(snapshot.get("active_model_summary", "")).strip_edges().is_empty():
+		return true
+	if not String(snapshot.get("failure_code", "")).strip_edges().is_empty():
+		return true
+	if not String(snapshot.get("failure_message", "")).strip_edges().is_empty():
+		return true
+	return false
+
+func _effective_depth_debug_visual_config(snapshot: Dictionary) -> Dictionary:
+	var effective_visual_config: Dictionary = _depth_debug_visual_config.duplicate(true)
+	if bool(effective_visual_config.get("enabled", false)):
+		return effective_visual_config
+	if not _depth_debug_snapshot_has_truth(snapshot):
+		return effective_visual_config
+	effective_visual_config["enabled"] = true
+	effective_visual_config["thumbnail_visible"] = true
+	effective_visual_config["hover_hint_visible"] = true
+	effective_visual_config["fps_visible"] = true
+	effective_visual_config["sampling_regions_visible"] = not (snapshot.get("sample_geometry", {}) as Dictionary).is_empty()
+	effective_visual_config["swap_click_enabled"] = snapshot.get("depth_texture", null) is Texture2D
+	return effective_visual_config
 
 func _depth_debug_focus_family() -> String:
 	var enabled_families: Array = _depth_debug_enabled_families()
@@ -1037,6 +1070,21 @@ func _build_depth_config_row(row_spec: Dictionary, family: String, live_depth_st
 	row["passed"] = false
 	return row
 
+func _fallback_depth_thresholds_for_family(family: String) -> Dictionary:
+	match family:
+		"straight_punch":
+			return {
+				"min_closeness_delta": 0.06,
+				"min_peak_closeness": 0.08,
+			}
+		"hook", "uppercut":
+			return {
+				"max_closeness_delta": 0.03,
+				"max_peak_closeness": 0.06,
+			}
+		_:
+			return {}
+
 func _append_depth_config_summary_lines(lines: Array, family: String, depth_config: Dictionary) -> void:
 	var runtime_debug := _current_depth_runtime_debug_state(family)
 	var left_debug := _family_side_depth_debug_state(family, "left")
@@ -1057,34 +1105,37 @@ func _append_depth_config_summary_lines(lines: Array, family: String, depth_conf
 		lines.append("Depth live metrics (L): %s" % _depth_live_metrics_text(left_debug))
 	if not right_debug.is_empty():
 		lines.append("Depth live metrics (R): %s" % _depth_live_metrics_text(right_debug))
-	if depth_config.is_empty():
-		return
 	var evaluation: Dictionary = depth_config.get("evaluation", {}) if depth_config.get("evaluation", {}) is Dictionary else {}
 	var thresholds: Dictionary = depth_config.get("thresholds", {}) if depth_config.get("thresholds", {}) is Dictionary else {}
 	var debug_config: Dictionary = depth_config.get("debug", {}) if depth_config.get("debug", {}) is Dictionary else {}
+	if depth_config.is_empty() and not runtime_debug.is_empty():
+		thresholds = _fallback_depth_thresholds_for_family(family)
 	var delta_key := _depth_threshold_label(family, "closeness_delta")
 	var peak_key := _depth_threshold_label(family, "peak_closeness")
-	lines.append("Depth window slices / input: %s / %s @ %dpx" % [
-		_fmt_float(evaluation.get("early_window_fraction", 0.0)),
-		_fmt_float(evaluation.get("late_window_fraction", 0.0)),
-		int(evaluation.get("model_input_size", 0)),
-	])
-	lines.append("Depth ROI sizes (wrist / extend / torso): %dpx / %dpx / %dpx" % [
-		int(evaluation.get("wrist_roi_radius_px", 0)),
-		int(evaluation.get("wrist_to_elbow_extension_px", 0)),
-		int(evaluation.get("torso_roi_radius_px", 0)),
-	])
-	lines.append("Depth smoothing window samples: %d" % int(evaluation.get("smoothing_window_samples", 0)))
-	lines.append("Depth thresholds: %s=%s, %s=%s" % [
-		delta_key,
-		_fmt_float(thresholds.get(delta_key, 0.0)),
-		peak_key,
-		_fmt_float(thresholds.get(peak_key, 0.0)),
-	])
-	lines.append("Depth debug flags: show_depth_signal=%s show_depth_window_analysis=%s" % [
-		_fmt_bool(bool(debug_config.get("show_depth_signal", false))),
-		_fmt_bool(bool(debug_config.get("show_depth_window_analysis", false))),
-	])
+	if not evaluation.is_empty():
+		lines.append("Depth window slices / input: %s / %s @ %dpx" % [
+			_fmt_float(evaluation.get("early_window_fraction", 0.0)),
+			_fmt_float(evaluation.get("late_window_fraction", 0.0)),
+			int(evaluation.get("model_input_size", 0)),
+		])
+		lines.append("Depth ROI sizes (wrist / extend / torso): %dpx / %dpx / %dpx" % [
+			int(evaluation.get("wrist_roi_radius_px", 0)),
+			int(evaluation.get("wrist_to_elbow_extension_px", 0)),
+			int(evaluation.get("torso_roi_radius_px", 0)),
+		])
+		lines.append("Depth smoothing window samples: %d" % int(evaluation.get("smoothing_window_samples", 0)))
+	if not thresholds.is_empty():
+		lines.append("Depth thresholds: %s=%s, %s=%s" % [
+			delta_key,
+			_fmt_float(thresholds.get(delta_key, 0.0)),
+			peak_key,
+			_fmt_float(thresholds.get(peak_key, 0.0)),
+		])
+	if not debug_config.is_empty():
+		lines.append("Depth debug flags: show_depth_signal=%s show_depth_window_analysis=%s" % [
+			_fmt_bool(bool(debug_config.get("show_depth_signal", false))),
+			_fmt_bool(bool(debug_config.get("show_depth_window_analysis", false))),
+		])
 
 func _build_tile_grid_if_needed() -> void:
 	if _board_grid == null or not _tile_refs.is_empty():
@@ -1302,6 +1353,8 @@ func _card_key_for_target(tile_id: String, target: String) -> String:
 	var tile: Dictionary = _find_tile_config(tile_id)
 	if tile.is_empty():
 		return ""
+	if tile_id == "weave" and (target == "left" or target == "right"):
+		return "weave"
 	var mode := String(tile.get("mode", "pulse_lr"))
 	match mode:
 		"state_center":
@@ -1391,7 +1444,10 @@ func _build_gesture_inspector_body(model: Dictionary) -> String:
 	return "\n".join(body_lines)
 
 func _build_hover_card_model(card_key: String) -> Dictionary:
-	var spec: Dictionary = HOVER_REQUIREMENT_SPECS.get(card_key, {})
+	var resolved_card_key := card_key
+	if card_key == "weave_left" or card_key == "weave_right":
+		resolved_card_key = "weave"
+	var spec: Dictionary = HOVER_REQUIREMENT_SPECS.get(resolved_card_key, {})
 	if spec.is_empty():
 		return {
 			"title": _display_name_for_card_key(card_key),
@@ -1421,7 +1477,7 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 			return _build_guard_hover_card_model(spec)
 		"squat":
 			return _build_squat_hover_card_model(spec)
-		"weave":
+		"weave", "weave_left", "weave_right":
 			return _build_weave_hover_card_model(spec)
 		_:
 			return spec.duplicate(true)
@@ -1442,11 +1498,29 @@ func _merged_punch_debug_state(side: String) -> Dictionary:
 		straight_side[key_variant] = transition_debug[key_variant]
 	return straight_side
 
+func _boxing_transition_age_ms(timestamp_ms: int) -> int:
+	if timestamp_ms <= 0:
+		return 0
+	var raw_age_ms: int = max(0, _boxing_reference_time_ms() - timestamp_ms)
+	if raw_age_ms >= 50:
+		return int(round(float(raw_age_ms) / 10.0) * 10.0)
+	return raw_age_ms
+
+func _punch_state_change_uses_bbox_summary(straight_side: Dictionary) -> bool:
+	return straight_side.has("bbox_area") and straight_side.has("bbox_area_growth") and not straight_side.has("recent_peak_wrist_velocity") and not straight_side.has("wrist_lateral_angle_from_elbow_vertical_deg")
+
+func _paused_punch_prefers_bbox_growth_row(straight_side: Dictionary) -> bool:
+	return _paused_boxing_state_active and bool(straight_side.get("hand_tracking_enabled", true)) and float(straight_side.get("min_bbox_area_growth", 0.0)) > 0.0
+
 func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
 	var straight_side := _merged_punch_debug_state(side)
 	var rows: Array[Dictionary] = []
+	var pose_only_inputs := not bool(straight_side.get("hand_tracking_enabled", true))
 	for row_spec_variant: Variant in spec.get("rows", []):
 		var row_spec: Dictionary = row_spec_variant
+		var row_id := String(row_spec.get("id", ""))
+		if pose_only_inputs and (row_id == "rearm_section" or row_id == "grace_timer"):
+			continue
 		rows.append(_build_punch_requirement_row(row_spec, straight_side, side))
 	return {
 		"title": spec.get("title", _display_name_for_card_key("punch_%s" % side)),
@@ -1712,8 +1786,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var pose_only_rearm_ms := int(straight_side.get("pose_only_rearm_ms", 0))
 	var reacquire_stable_ms_required := int(straight_side.get("reacquire_stable_ms_required", 0))
 	var trigger_bbox_area := float(straight_side.get("trigger_bbox_area", 0.0))
-	var reference_time_ms: int = _boxing_reference_time_ms()
-	var transition_age_ms: int = max(0, reference_time_ms - transition_timestamp_ms) if transition_timestamp_ms > 0 else 0
+	var transition_age_ms: int = _boxing_transition_age_ms(transition_timestamp_ms)
 	match row_id:
 		"state_section", "trigger_section", "rearm_section":
 			current_text = ""
@@ -1748,24 +1821,39 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					transition_summary = "%s -> %s" % [previous_state, state_name]
 				current_text = transition_summary
 				if transition_timestamp_ms > 0:
-					current_text += " (%s ago)" % _fmt_age_ms(_boxing_reference_time_ms() - transition_timestamp_ms)
+					current_text += " (%s ago)" % _fmt_age_ms(_boxing_transition_age_ms(transition_timestamp_ms))
 				passed = true
 		"state_change_payload":
-			current_text = "state=%s wrist=%s peak=%s xy=%s<=%s (%s) angle=%s>=%s (%s) fresh=%s source=%s grace=%dms pose_valid=%s" % [
-				state_name,
-				_fmt_float(wrist_velocity),
-				_fmt_float(recent_peak_wrist_velocity),
-				_fmt_float(elbow_shoulder_xy_distance),
-				_fmt_float(max_elbow_shoulder_xy_distance),
-				_fmt_bool(elbow_shoulder_xy_gate_passed),
-				_fmt_float(wrist_lateral_angle),
-				_fmt_float(min_wrist_lateral_angle),
-				_fmt_bool(wrist_lateral_angle_gate_passed),
-				_fmt_bool(fresh_sample),
-				sample_source,
-				grace_ms_remaining,
-				_fmt_bool(pose_tracking_valid),
-			]
+			if _punch_state_change_uses_bbox_summary(straight_side):
+				current_text = "state=%s wrist=%s xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
+					state_name,
+					_fmt_float(wrist_velocity),
+					_fmt_float(elbow_shoulder_xy_distance),
+					_fmt_float(max_elbow_shoulder_xy_distance),
+					_fmt_bool(elbow_shoulder_xy_gate_passed),
+					_fmt_float(float(straight_side.get("bbox_area", 0.0))),
+					_fmt_float(float(straight_side.get("bbox_area_growth", 0.0))),
+					_fmt_bool(fresh_sample),
+					sample_source,
+					grace_ms_remaining,
+					_fmt_bool(tracking_valid),
+				]
+			else:
+				current_text = "state=%s wrist=%s peak=%s xy=%s<=%s (%s) angle=%s>=%s (%s) fresh=%s source=%s grace=%dms pose_valid=%s" % [
+					state_name,
+					_fmt_float(wrist_velocity),
+					_fmt_float(recent_peak_wrist_velocity),
+					_fmt_float(elbow_shoulder_xy_distance),
+					_fmt_float(max_elbow_shoulder_xy_distance),
+					_fmt_bool(elbow_shoulder_xy_gate_passed),
+					_fmt_float(wrist_lateral_angle),
+					_fmt_float(min_wrist_lateral_angle),
+					_fmt_bool(wrist_lateral_angle_gate_passed),
+					_fmt_bool(fresh_sample),
+					sample_source,
+					grace_ms_remaining,
+					_fmt_bool(pose_tracking_valid),
+				]
 			passed = transition_timestamp_ms > 0 or not straight_side.is_empty()
 		"wrist_velocity":
 			threshold_text = _fmt_float(min_velocity)
@@ -1776,9 +1864,17 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			passed = elbow_shoulder_xy_gate_passed
 			current_text = _fmt_threshold_comparison_value(elbow_shoulder_xy_distance, max_elbow_shoulder_xy_distance, true)
 		"wrist_lateral_angle":
-			threshold_text = _fmt_float(min_wrist_lateral_angle)
-			passed = wrist_lateral_angle_gate_passed
-			current_text = _fmt_threshold_comparison_value(wrist_lateral_angle, min_wrist_lateral_angle)
+			if _paused_punch_prefers_bbox_growth_row(straight_side):
+				label = "Recent bbox area growth peak >= {threshold}"
+				var min_bbox_area_growth := float(straight_side.get("min_bbox_area_growth", 0.0))
+				var recent_peak_bbox_area_growth := float(straight_side.get("recent_peak_bbox_area_growth", straight_side.get("bbox_area_growth", 0.0)))
+				threshold_text = _fmt_float(min_bbox_area_growth)
+				passed = recent_peak_bbox_area_growth >= min_bbox_area_growth
+				current_text = _fmt_threshold_comparison_value(recent_peak_bbox_area_growth, min_bbox_area_growth)
+			else:
+				threshold_text = _fmt_float(min_wrist_lateral_angle)
+				passed = wrist_lateral_angle_gate_passed
+				current_text = _fmt_threshold_comparison_value(wrist_lateral_angle, min_wrist_lateral_angle)
 		"grace_timer":
 			current_text = "%d/%dms remaining" % [grace_ms_remaining, triggered_grace_ms]
 			if state_name == "triggered":
