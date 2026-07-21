@@ -36,6 +36,72 @@ func test_boxing_profile_bundle_keeps_guard_threshold_and_grid_avoidance_surface
 	assert_eq(String(gesture_debug.get("weave", {}).get("backend", "")), "grid_avoidance")
 	assert_true(bool(gesture_debug.get("weave", {}).get("enabled", false)))
 
+func test_boxing_profile_bundle_keeps_straight_punch_trigger_truth_visible_at_published_replay_cadence() -> void:
+	var bundle: Dictionary = config.get_selected_profile_bundle()
+	assert_true(bool(bundle.get("ok", false)))
+
+	var tracker_profile: Dictionary = (bundle.get("camera_tracking", {}) as Dictionary).duplicate(true)
+	tracker_profile["tracking"] = (tracker_profile.get("tracking", {}) as Dictionary).duplicate(true)
+	tracker_profile["tracking"]["hands"] = {"enabled": false}
+	config.tracker_profile_document = tracker_profile
+
+	var straight_threshold: Dictionary = (((bundle.get("gesture_detection", {}) as Dictionary).get("straight_punch", {}) as Dictionary).get("threshold", {}) as Dictionary)
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"backend": "threshold",
+			"threshold": {
+				"evaluation": {
+					"window_ms": 250,
+				},
+				"thresholds": {
+					"min_velocity": 0.18,
+					"max_elbow_shoulder_xy_distance": 0.140,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+				},
+				"timing": {
+					"triggered_grace_ms": int((((straight_threshold.get("timing", {}) as Dictionary)).get("triggered_grace_ms", 0))),
+				},
+				"rearm": {
+					"pose_only_rearm_ms": int((((straight_threshold.get("rearm", {}) as Dictionary)).get("pose_only_rearm_ms", 0))),
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+
+	var state_update_max_fps := int(bundle.get("camera_tracking", {}).get("tracking", {}).get("state_update_max_fps", 0))
+	assert_eq(state_update_max_fps, 10)
+	var published_state_interval_ms := int(round(1000.0 / float(state_update_max_fps)))
+	assert_eq(published_state_interval_ms, 100)
+
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "tracking_lost")
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "ready")
+
+	var trigger_timestamp_ms := 1220
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), trigger_timestamp_ms)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
+	assert_eq(String(state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {}).get("state", "")), "triggered")
+
+	var published_snapshot := substrate.process_landmarks(
+		_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.17}}),
+		trigger_timestamp_ms + published_state_interval_ms
+	)
+	var left_debug: Dictionary = published_snapshot.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(_straight_punch_state_names(published_snapshot.get("events", []), "left"), [])
+	assert_false(_event_names(published_snapshot.get("events", [])).has("punch_left"))
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 140)
+	assert_eq(int(left_debug.get("triggered_grace_ms", -1)), 240)
+	assert_eq(int(left_debug.get("pose_only_rearm_ms", -1)), 250)
+
 func test_flow_profile_bundle_removes_squat_public_surfaces() -> void:
 	var bundle: Dictionary = config.set_profile_id("flow")
 	assert_true(bool(bundle.get("ok", false)))

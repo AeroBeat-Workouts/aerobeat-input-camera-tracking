@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-20  
 **Status:** In Progress  
-**Last Updated:** 2026-07-20 20:24 EDT  
+**Last Updated:** 2026-07-20 21:08 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -136,18 +136,89 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 
 ---
 
+### Task 3: QA replay calibration truth seam
+
+**Bead ID:** `aerobeat-input-camera-tracking-fsal`  
+**SubAgent:** `primary` (for `qa`)  
+**Role:** `qa`  
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, QA the replay calibration truth seam against bead `aerobeat-input-camera-tracking-fsal`. Claim it on start with `bd update aerobeat-input-camera-tracking-fsal --status in_progress --json`. Verify that default prerecorded proving replays now truthfully disable shared calibration, that calibration requests are not routed on those replay fixtures, that replay-derived `auto_bootstrap` baselines no longer render misleading shared grid overlay/truth output, and that live-source shared-calibration coverage still behaves correctly. Re-run the strongest relevant repo-local validation and inspect the proving-harness behavior at the highest-fidelity repo-local level available. Do not self-implement missing work; report exact evidence, any gaps, and whether this slice is ready for audit. Do not close the bead. Update this plan with the QA results before finishing.  
+
+**Folders Created/Deleted/Modified:**
+- verification-only if needed
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-calibration-loop-grid-overlay-and-straight-punch-regressions.md`
+
+**Status:** ✅ Complete  
+
+**Results:**
+- **QA verdict:** the replay-calibration truth slice behaves correctly in repo-local proving-harness coverage and is **ready for audit** as scoped. I did **not** touch the separate straight-punch replay-timing seam.
+- **Strongest relevant repo-local validation re-run:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=shared_calibration -gexit` ✅ passed (**3/3 tests, 58 asserts, 8.319s**).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=grid_truth -gexit` ✅ passed (**2/2 tests, 40 asserts, 13.847s**).
+- **What those QA passes proved at the highest-fidelity repo-local level available:**
+  - **Default prerecorded proving replays truthfully disable shared calibration** in both Boxing and Flow proving scenes. The disabled primary button label is `Replay Calibration Unavailable`, the secondary cancel button stays hidden, and the explanatory copy says calibration is disabled for prerecorded proving replay / this prerecorded replay / default action clip.
+  - **Calibration requests are not routed on replay fixtures.** The replay-scene regression test emits the disabled button press and confirms `FakeAthleteRecalibrateProvider.request_count == 0`, so the proving harness no longer forwards recalibration starts for the default replay fixtures.
+  - **Replay-derived `auto_bootstrap` baselines no longer render misleading shared grid truth.** With `capture_source = "auto_bootstrap"`, the shared Flow grid overlay is hidden and the grid-truth panel body switches to explanatory hidden-for-replay / auto-bootstrap copy instead of rendering a false shared-calibration overlay.
+  - **Live-source shared calibration still behaves correctly.** The live-harness coverage still exercises start/cancel plus success/failure truth: start button routes one request, active countdown/capture copy appears, cancellation routes once and switches to retry copy, failure surfaces centered-camera guidance, and success restores `Recalibrate Athlete` plus `Captured baseline: 5/5 frames` / `Calibration complete` truth.
+- **Source-level QA spot check:** `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` now contains dedicated live (`LiveCalibrationHarness`) versus prerecorded replay coverage, and `/.testbed/scripts/proving_harness.gd` contains the corresponding gating/helpers (`_shared_calibration_supported_for_active_source()`, replay `auto_bootstrap` overlay suppression) that explain the passing behavior.
+- **Gap / caveat:** I did not perform a manual physical-camera or interactive GUI proving run. The highest-fidelity repo-local evidence available in this lane was the headless proving-scene GUT coverage that instantiates the real Boxing/Flow proving scenes and exercises the harness UI/state wiring in-process.
+- **Background noise explicitly out of scope:** a broader run of the full `test_boxing_proving_harness_profiles_and_debug.gd` file still hit pre-existing unrelated depth-debug failures (`test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_texture`, `test_boxing_depth_debug_overlay_consumes_runtime_region_metadata_without_config_reconstruction`, `test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available`, `test_boxing_depth_debug_swap_resets_when_yaml_disables_thumbnail_click_swap`). I stopped that noisy pass after confirming those failures are outside this replay-calibration slice.
+
+---
+
+### Task 4: Fix straight-punch replay timing truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-59bh`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the separate straight-punch replay timing fix against bead `aerobeat-input-camera-tracking-59bh`. Claim it on start with `bd update aerobeat-input-camera-tracking-59bh --status in_progress --json`. Fix the boxing replay/debug truth seam where straight-punch `triggered` state can vanish between published updates. Keep the slice narrow and truthful: adjust timing/profile/publication behavior so the default boxing replay path can surface straight-punch trigger truth reliably at the published replay/debug cadence, and add a dedicated replay-facing regression test. Do not widen back into the replay-calibration seam except for tightly related harness/test plumbing if truly necessary. Update this plan with exact files changed and the route you chose, run the strongest repo-local validation, commit, and push to `main` before handoff unless blocked. Do not close the bead. Leave it ready for QA with exact evidence, commit hash, and any remaining timing/profile caveats.  
+
+**Folders Created/Deleted/Modified:**
+- `assets/`
+- `/.testbed/tests/unit/`
+- runtime/testbed surfaces only as needed
+
+**Files Created/Deleted/Modified:**
+- `assets/boxing.gesture_detection.yaml`
+- `/.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-calibration-loop-grid-overlay-and-straight-punch-regressions.md`
+
+**Status:** ✅ Complete  
+
+**Results:**
+- **Chosen route:** kept the boxing replay/debug publish cap at **10 fps** and fixed the truth seam in the boxing gesture profile itself. Straight-punch replay now restores a `triggered` grace window and pose-only rearm window that outlive the published replay/debug cadence instead of collapsing within ~10 ms.
+- **Exact config change:** `assets/boxing.gesture_detection.yaml`
+  - `straight_punch.threshold.timing.triggered_grace_ms`: **10 -> 240**
+  - `straight_punch.threshold.rearm.pose_only_rearm_ms`: **10 -> 250**
+  - I intentionally left `assets/boxing.camera_tracking.yaml` unchanged at `tracking.state_update_max_fps: 10`; the narrow truthful fix is to make boxing trigger truth survive the existing published cadence rather than broadening replay/state publication behavior.
+- **Regression coverage added:**
+  - `/.testbed/tests/unit/test_camera_tracking_config_profiles.gd` now locks the canonical boxing profile values at `triggered_grace_ms = 240` and `pose_only_rearm_ms = 250` so the shortened 10 ms overrides cannot silently come back.
+  - `/.testbed/tests/unit/test_pose_detector_substrate.gd` now adds `test_boxing_profile_bundle_keeps_straight_punch_trigger_truth_visible_at_published_replay_cadence()`, a dedicated replay-facing cadence regression. It uses the boxing profile's real `state_update_max_fps = 10` publish cap, applies the boxing timing values, and proves that a straight-punch trigger is still visible **100 ms later** with `grace_ms_remaining = 140` instead of vanishing between published updates.
+- **Strongest repo-local validation run:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅ passed.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ passed (**74/74 tests, 843 asserts, 1.679s**).
+  - Focused spot check before the full pass: `-gunit_test_name=straight_punch_trigger_truth_visible_at_published_replay_cadence` ✅ passed (**1/1 tests, 20 asserts**).
+- **Remaining timing/profile caveat for QA:** the new cadence regression uses pose-only straight-punch plumbing for determinism while pulling the boxing profile's real publish cadence and timing values. QA should still verify the default boxing proving replay surfaces the improved trigger truth at product level, but the repo-local detector/config seam is now explicitly covered.
+
+---
+
 ## Final Results
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Completed the audit plus the first implementation slice. Default prerecorded proving replays now truthfully disable shared calibration, and replay `auto_bootstrap` baselines no longer masquerade as valid shared grid truth. The separate straight-punch replay timing seam remains intentionally untouched for the next pass.
+**What We Built:** Completed the audit, the replay-calibration truth slice, its QA pass, and the separate straight-punch replay-timing slice. Default prerecorded proving replays now truthfully disable shared calibration / hide replay auto-bootstrap grid truth, and the boxing profile once again keeps straight-punch `triggered` truth visible across the profile's published 10 fps replay/debug cadence.
 
-**Reference Check:** `REF-01` correctly named the regression lane. `REF-02` explains why calibration now requires a centered T-pose and why baseline reset clears gameplay truth. `REF-03` explains why the shared overlay consumes the single runtime baseline/grid payload. `REF-04` confirms the later cleanup work did not address either seam.
+**Reference Check:** `REF-01` correctly named the regression lane. `REF-02` explains why shared calibration now requires centered T-pose capture and why baseline reset clears gameplay truth. `REF-03` explains why the shared overlay consumes the single runtime baseline/grid payload and why replay auto-bootstrap truth had to be separated from real calibration truth. `REF-04` confirms the later cleanup work did not address either seam.
 
 **Commits:**
 - `d6bb10d` - Truthfully disable replay calibration in proving harness
+- `PENDING` - Restore straight-punch replay trigger truth at boxing publish cadence
 
-**Lessons Learned:** Current repo tests validate the shared calibration contract and boxing profile shape, but they do not prove that the default proving replay fixtures are calibratable or that boxing straight-punch `triggered` state survives the profile's published replay/debug cadence. For replay-first proving flows, the UI must explicitly distinguish live/shared-calibration truth from replay auto-bootstrap convenience state.
+**Lessons Learned:** Current repo tests validate the shared calibration contract and boxing profile shape, but replay-facing truth can still drift when publication cadence and gesture-state timers stop matching. For replay-first proving flows, both UI copy and detector/profile timing need explicit cadence-aware coverage so short-lived `triggered` phases cannot disappear between published updates.
 
 ---
 
