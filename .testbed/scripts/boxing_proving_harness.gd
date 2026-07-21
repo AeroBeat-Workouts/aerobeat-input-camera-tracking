@@ -1711,6 +1711,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var triggered_grace_ms := int(straight_side.get("triggered_grace_ms", 0))
 	var pose_only_rearm_ms := int(straight_side.get("pose_only_rearm_ms", 0))
 	var reacquire_stable_ms_required := int(straight_side.get("reacquire_stable_ms_required", 0))
+	var trigger_bbox_area := float(straight_side.get("trigger_bbox_area", 0.0))
 	var reference_time_ms: int = _boxing_reference_time_ms()
 	var transition_age_ms: int = max(0, reference_time_ms - transition_timestamp_ms) if transition_timestamp_ms > 0 else 0
 	match row_id:

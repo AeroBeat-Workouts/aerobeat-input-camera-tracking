@@ -1561,9 +1561,11 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	harness_set_provider(scene_root, provider)
 	var start_button := scene_root.find_child("AthleteRecalibrateButton", true, false) as Button
 	var countdown_label := scene_root.find_child("CalibrationCountdownLabel", true, false) as Label
+	var instruction_label := scene_root.find_child("CalibrationInstructionLabel", true, false) as Label
 	var status_label := scene_root.find_child("CalibrationStatusLabel", true, false) as Label
 	assert_not_null(start_button)
 	assert_not_null(countdown_label)
+	assert_not_null(instruction_label)
 	assert_not_null(status_label)
 
 	provider.calibration_session = provider._make_session("failed", {
