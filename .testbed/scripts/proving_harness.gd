@@ -191,6 +191,7 @@ var show_trails := true
 @onready var signal_status_label: RichTextLabel = find_child("SignalStatus", true, false) as RichTextLabel
 @onready var metrics_label: RichTextLabel = find_child("Metrics", true, false) as RichTextLabel
 @onready var events_label: RichTextLabel = find_child("Events", true, false) as RichTextLabel
+@onready var nose_placement_chart: Control = find_child("NosePlacementChart", true, false) as Control
 @onready var left_placement_chart: Control = find_child("LeftPlacementChart", true, false) as Control
 @onready var right_placement_chart: Control = find_child("RightPlacementChart", true, false) as Control
 @onready var left_direction_chart: Control = find_child("LeftDirectionChart", true, false) as Control
@@ -200,6 +201,7 @@ var show_trails := true
 @onready var athlete_calibration_countdown_label: Label = find_child("CalibrationCountdownLabel", true, false) as Label
 @onready var athlete_calibration_instruction_label: Label = find_child("CalibrationInstructionLabel", true, false) as Label
 @onready var athlete_calibration_status_label: Label = find_child("CalibrationStatusLabel", true, false) as Label
+@onready var grid_truth_panel: Control = find_child("GridTruthPanel", true, false) as Control
 @onready var grid_truth_label: RichTextLabel = find_child("GridTruthLabel", true, false) as RichTextLabel
 
 var provider: Node = null
@@ -462,8 +464,6 @@ func _refresh_calibration_flow_ui() -> void:
 	var session := _resolve_calibration_session()
 	var state_name := String(session.get("state", "idle"))
 	var is_active := bool(session.get("is_active", false))
-	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
-	var instructions: Dictionary = session.get("instructions", {}) if session.get("instructions", {}) is Dictionary else {}
 	var baseline: Dictionary = _latest_state.get("baseline", {}) if _latest_state.get("baseline", {}) is Dictionary else {}
 	var has_baseline := bool(baseline.get("is_calibrated", false))
 	var start_supported := provider_has_start_calibration()
@@ -472,13 +472,13 @@ func _refresh_calibration_flow_ui() -> void:
 
 	if _athlete_recalibrate_button != null:
 		_athlete_recalibrate_button.disabled = is_active or not start_supported
-		_athlete_recalibrate_button.tooltip_text = "Start a shared athlete calibration countdown, then capture the centered T-pose baseline from the visible pose feed."
-		if state_name == "failed" or state_name == "cancelled":
-			_athlete_recalibrate_button.text = "Retry Calibration"
-		elif has_baseline and not _active_source_uses_replay_bootstrap_baseline():
-			_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
+		_athlete_recalibrate_button.tooltip_text = "Capture a shared athlete baseline from the visible pose feed."
+		if state_name == "failed":
+			_athlete_recalibrate_button.text = "Error, Press To Try Again"
+		elif state_name == "countdown" or state_name == "capture_pending" or state_name == "capturing":
+			_athlete_recalibrate_button.text = "Hold T-Pose... 5s"
 		else:
-			_athlete_recalibrate_button.text = "Start Calibration"
+			_athlete_recalibrate_button.text = "Calibrate Athlete"
 	if _athlete_calibration_secondary_button != null:
 		_athlete_calibration_secondary_button.visible = is_active and cancel_supported
 		_athlete_calibration_secondary_button.disabled = not (is_active and cancel_supported)
@@ -486,9 +486,11 @@ func _refresh_calibration_flow_ui() -> void:
 	if athlete_calibration_countdown_label != null:
 		athlete_calibration_countdown_label.text = _calibration_countdown_text(state_name, session)
 	if athlete_calibration_instruction_label != null:
-		athlete_calibration_instruction_label.text = _build_calibration_instruction_lines(instructions, readiness)
+		athlete_calibration_instruction_label.text = _build_calibration_instruction_lines()
+		athlete_calibration_instruction_label.visible = not athlete_calibration_instruction_label.text.is_empty()
 	if athlete_calibration_status_label != null:
 		athlete_calibration_status_label.text = _calibration_status_text(state_name, session, has_baseline)
+		athlete_calibration_status_label.visible = not athlete_calibration_status_label.text.is_empty()
 
 func _apply_calibration_session_transition(state_name: String, session: Dictionary) -> void:
 	if state_name.is_empty():
@@ -524,27 +526,14 @@ func _apply_calibration_session_transition(state_name: String, session: Dictiona
 	})
 	_record_fixture_state_snapshot(event_name)
 
-func _build_calibration_instruction_lines(instructions: Dictionary, readiness: Dictionary) -> String:
-	var centered_ready := bool(readiness.get("centered_in_camera", false))
-	var t_pose_ready := bool(readiness.get("t_pose_ready", false))
-	var centered_text := "Stand centered in camera"
-	var t_pose_text := "Hold a T-pose"
-	if instructions.get("stand_centered", {}) is Dictionary:
-		centered_text = String((instructions.get("stand_centered", {}) as Dictionary).get("text", centered_text))
-	if instructions.get("hold_t_pose", {}) is Dictionary:
-		t_pose_text = String((instructions.get("hold_t_pose", {}) as Dictionary).get("text", t_pose_text))
-	var lines := ["%s %s" % ["✓" if centered_ready else "○", centered_text], "%s %s" % ["✓" if t_pose_ready else "○", t_pose_text]]
-	if _is_prerecorded_source_active():
-		lines.append("○ Replay calibration uses the visible pose in the video feed; random action clips may never yield a usable centered baseline")
-	return "\n".join(lines)
+func _build_calibration_instruction_lines() -> String:
+	return ""
 
 func _calibration_countdown_text(state_name: String, session: Dictionary) -> String:
 	match state_name:
 		"countdown":
 			return "Countdown: %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
-		"capture_pending":
-			return "Countdown complete — waiting for centered T-pose"
-		"capturing":
+		"capture_pending", "capturing":
 			return "Capturing baseline: %d/%d frames" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
 		"succeeded":
 			return "Captured baseline: %d/%d frames" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
@@ -558,40 +547,24 @@ func _calibration_countdown_text(state_name: String, session: Dictionary) -> Str
 func _calibration_status_text(state_name: String, session: Dictionary, has_baseline: bool) -> String:
 	match state_name:
 		"countdown":
-			return "Stand centered in camera and get into a T-pose before the countdown ends."
-		"capture_pending":
-			if _is_prerecorded_source_active():
-				return "Countdown finished. Waiting for a centered T-pose in the replay feed. If this clip never shows one, calibration will fail honestly without replacing the hidden auto-bootstrap baseline."
-			return "Countdown finished. Waiting until the athlete is centered and holding a T-pose."
-		"capturing":
+			return "Calibration in progress."
+		"capture_pending", "capturing":
 			return "Capturing the shared athlete baseline now — hold steady."
 		"succeeded":
 			return "Calibration complete. Boxing and Flow are now using the shared captured baseline."
 		"failed":
-			return "Calibration failed: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "waiting_for_pose")))
+			return "Calibration failed: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_wrist_data_unavailable")))
 		"cancelled":
-			return "Calibration cancelled. Start again when the athlete is ready."
+			return "Calibration cancelled."
 		_:
-			if has_baseline and _active_source_uses_replay_bootstrap_baseline():
-				return "Replay-derived auto-bootstrap baselines stay hidden so the grid does not pretend a truthful centered T-pose capture already happened. Start calibration when the replay visibly shows a usable centered T-pose segment."
 			if has_baseline:
-				return "Calibration ready. Re-run anytime if the athlete changes position."
-			if _is_prerecorded_source_active():
-				return "Start calibration, then use the visible replay pose like live input: stand centered in frame in a T-pose. Random clips may never yield a usable baseline, and that failure is expected truth rather than a harness bug."
-			return "Start calibration, then stand centered in camera in a T-pose."
+				return "Calibration ready."
+			return ""
 
 func _humanize_calibration_failure_reason(reason: String) -> String:
 	match reason:
-		"not_centered":
-			return "move back to the center of the camera"
-		"t_pose_required":
-			return "hold a clear T-pose"
-		"required_landmarks_missing":
-			return "keep the nose, shoulders, hips, and wrists visible"
-		"tracking_unavailable":
-			return "tracking is unavailable"
-		"capture_window_expired":
-			return "the capture window expired before a stable pose was ready"
+		"required_wrist_data_unavailable", "missing_wrist_landmarks", "tracking_lost":
+			return "left or right wrist data was unavailable at capture time"
 		"cancelled":
 			return "the session was cancelled"
 		_:
@@ -2393,6 +2366,7 @@ func _ensure_shared_grid_truth_ui() -> void:
 func _refresh_shared_flow_grid_truth_surfaces() -> void:
 	_refresh_flow_grid_overlay()
 	_refresh_grid_truth_panel()
+	_refresh_shared_flow_grid_charts()
 
 func _refresh_flow_grid_overlay() -> void:
 	if flow_grid_overlay == null:
@@ -2409,43 +2383,24 @@ func _refresh_flow_grid_overlay() -> void:
 		flow_grid_overlay.update_grid_debug(grid_debug)
 
 func _refresh_grid_truth_panel() -> void:
+	if grid_truth_panel != null:
+		grid_truth_panel.visible = harness_mode == HarnessMode.BOXING and not _active_source_uses_replay_bootstrap_baseline()
 	if grid_truth_label == null:
 		return
-	grid_truth_label.text = _build_grid_truth_text()
+	grid_truth_label.visible = false
+	grid_truth_label.text = ""
 
-func _build_grid_truth_text() -> String:
-	if _active_source_uses_replay_bootstrap_baseline():
-		return "Grid truth\n=========\nShared grid truth hidden for this prerecorded replay.\nThe current baseline came from replay auto-bootstrap, not an explicit centered T-pose calibration capture.\nUse a live camera, or swap to a replay fixture with a real calibration segment, before trusting the overlay grid."
+func _refresh_shared_flow_grid_charts() -> void:
 	var flow_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("flow", {})
 	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {}) if flow_debug.get("tracked_landmarks", {}) is Dictionary else {}
 	var nose_debug: Dictionary = tracked_landmarks.get("nose", {}) if tracked_landmarks.get("nose", {}) is Dictionary else {}
 	var left_debug: Dictionary = tracked_landmarks.get("left_wrist", flow_debug.get("left", {})) if tracked_landmarks.get("left_wrist", flow_debug.get("left", {})) is Dictionary else {}
 	var right_debug: Dictionary = tracked_landmarks.get("right_wrist", flow_debug.get("right", {})) if tracked_landmarks.get("right_wrist", flow_debug.get("right", {})) is Dictionary else {}
-	var lines := [
-		"Grid truth",
-		"=========",
-		"Shared calibrated 4x3 occupancy + 8-way direction.",
-		"",
-		_build_grid_truth_section("Nose", nose_debug),
-		"",
-		_build_grid_truth_section("Left Wrist", left_debug),
-		"",
-		_build_grid_truth_section("Right Wrist", right_debug),
-	]
-	return "
-".join(lines)
-
-func _build_grid_truth_section(label: String, landmark_debug: Dictionary) -> String:
-	var lines := [
-		label,
-		"- occupied cell: %s" % _fmt_flow_candidate(landmark_debug),
-		"- direction: %s" % _fmt_flow_direction_candidate(landmark_debug),
-	]
-	var confidence := float(landmark_debug.get("latest_confidence", 0.0))
-	if confidence > 0.0:
-		lines.append("- confidence: %s" % _fmt_float(confidence))
-	return "
-".join(lines)
+	_set_flow_chart_active_index(nose_placement_chart, int(nose_debug.get("current_cell", -1)))
+	_set_flow_chart_active_index(left_placement_chart, int(left_debug.get("current_cell", -1)))
+	_set_flow_chart_active_index(right_placement_chart, int(right_debug.get("current_cell", -1)))
+	_set_flow_chart_active_index(left_direction_chart, int(left_debug.get("current_direction", -1)))
+	_set_flow_chart_active_index(right_direction_chart, int(right_debug.get("current_direction", -1)))
 
 func get_shared_flow_grid_truth_refs() -> Dictionary:
 	return {
@@ -2752,15 +2707,7 @@ func _build_events_text() -> String:
 	return "\n".join(lines)
 
 func _refresh_flow_ring_board() -> void:
-	if harness_mode != HarnessMode.FLOW:
-		return
-	var flow_debug: Dictionary = (_latest_state.get("gesture_debug", {}) as Dictionary).get("flow", {})
-	var left_flow: Dictionary = flow_debug.get("left", {})
-	var right_flow: Dictionary = flow_debug.get("right", {})
-	_set_flow_chart_active_index(left_placement_chart, int(left_flow.get("current_cell", -1)))
-	_set_flow_chart_active_index(right_placement_chart, int(right_flow.get("current_cell", -1)))
-	_set_flow_chart_active_index(left_direction_chart, int(left_flow.get("current_direction", -1)))
-	_set_flow_chart_active_index(right_direction_chart, int(right_flow.get("current_direction", -1)))
+	_refresh_shared_flow_grid_charts()
 
 func _set_flow_chart_active_index(chart: Control, active_index: int) -> void:
 	if chart == null or not is_instance_valid(chart):

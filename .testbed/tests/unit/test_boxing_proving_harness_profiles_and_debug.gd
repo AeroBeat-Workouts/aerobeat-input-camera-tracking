@@ -1352,10 +1352,9 @@ func test_proving_harness_surfaces_shared_calibration_flow_and_routes_start_canc
 	assert_not_null(countdown_label)
 	assert_not_null(instruction_label)
 	assert_not_null(status_label)
-	assert_eq(start_button.text, "Start Calibration")
+	assert_eq(start_button.text, "Calibrate Athlete")
 	assert_string_contains(String(countdown_label.text), "5-second countdown")
-	assert_string_contains(String(instruction_label.text), "Stand centered in camera")
-	assert_string_contains(String(instruction_label.text), "Hold a T-pose")
+	assert_eq(String(instruction_label.text), "")
 
 	start_button.emit_signal("pressed")
 	assert_eq(provider.request_count, 1)
@@ -1363,28 +1362,23 @@ func test_proving_harness_surfaces_shared_calibration_flow_and_routes_start_canc
 	assert_eq(start_button.disabled, true)
 	assert_eq(cancel_button.visible, true)
 	assert_string_contains(String(countdown_label.text), "Countdown: 5s")
-	assert_string_contains(String(status_label.text), "Stand centered in camera")
+	assert_string_contains(String(status_label.text), "Calibration in progress")
 
 	provider.calibration_session = provider._make_session("capturing", {
 		"is_active": true,
 		"captured_sample_frames": 2,
-		"readiness": {"centered_in_camera": true, "t_pose_ready": true},
-		"instructions": {
-			"stand_centered": {"text": "Stand centered in camera", "ready": true},
-			"hold_t_pose": {"text": "Hold a T-pose", "ready": true},
-		},
+		"readiness": {"ready": true},
 	})
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
 	assert_string_contains(String(countdown_label.text), "2/5 frames")
-	assert_string_contains(String(instruction_label.text), "✓ Stand centered in camera")
-	assert_string_contains(String(instruction_label.text), "✓ Hold a T-pose")
+	assert_eq(String(instruction_label.text), "")
 	assert_string_contains(String(status_label.text), "Capturing the shared athlete baseline")
 
 	cancel_button.emit_signal("pressed")
 	assert_eq(provider.cancel_count, 1)
 	scene_root.call("_refresh_calibration_flow_ui")
-	assert_eq(start_button.text, "Retry Calibration")
+	assert_eq(start_button.text, "Calibrate Athlete")
 	assert_string_contains(String(status_label.text), "Calibration cancelled")
 
 func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_replays() -> void:
@@ -1408,13 +1402,11 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		assert_not_null(instruction_label)
 		assert_not_null(status_label)
 		assert_eq(start_button.disabled, false)
-		assert_eq(start_button.text, "Start Calibration")
+		assert_eq(start_button.text, "Calibrate Athlete")
 		assert_eq(cancel_button.visible, false)
 		assert_string_contains(String(countdown_label.text), "5-second countdown")
-		assert_string_contains(String(instruction_label.text), "Stand centered in camera")
-		assert_string_contains(String(instruction_label.text), "Hold a T-pose")
-		assert_string_contains(String(instruction_label.text), "visible pose in the video feed")
-		assert_string_contains(String(status_label.text), "Random clips may never yield a usable baseline")
+		assert_eq(String(instruction_label.text), "")
+		assert_eq(String(status_label.text), "")
 
 		start_button.emit_signal("pressed")
 		assert_eq(provider.request_count, 1)
@@ -1426,12 +1418,14 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 
 		provider.calibration_session = provider._make_session("capture_pending", {
 			"is_active": true,
-			"failure_reason": "t_pose_required",
+			"captured_sample_frames": 1,
+			"failure_reason": "",
+			"readiness": {"ready": true},
 		})
 		scene_root.set("_latest_state", provider.get_detector_state())
 		scene_root.call("_refresh_calibration_flow_ui")
-		assert_string_contains(String(status_label.text), "Waiting for a centered T-pose in the replay feed")
-		assert_string_contains(String(status_label.text), "fail honestly")
+		assert_string_contains(String(status_label.text), "Capturing the shared athlete baseline")
+		assert_eq(start_button.text, "Hold T-Pose... 5s")
 
 func _shared_flow_grid_truth_state(capture_source: String = "calibration_session") -> Dictionary:
 	return {
@@ -1480,21 +1474,24 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		var refs: Dictionary = scene_root.call("get_shared_flow_grid_truth_refs")
 		var overlay := refs.get("flow_grid_overlay", null) as Object
 		var truth_label := refs.get("grid_truth_label", null) as RichTextLabel
+		var nose_chart := scene_root.find_child("NosePlacementChart", true, false) as Control
+		var left_chart := scene_root.find_child("LeftPlacementChart", true, false) as Control
+		var right_chart := scene_root.find_child("RightPlacementChart", true, false) as Control
 		assert_not_null(overlay)
 		assert_not_null(truth_label)
+		assert_not_null(nose_chart)
+		assert_not_null(left_chart)
+		assert_not_null(right_chart)
 		assert_same((overlay as Control).get_parent(), presenter.get_overlay_layer())
 		assert_true(bool((overlay as Control).visible))
 		var overlay_snapshot: Dictionary = overlay.call("get_overlay_snapshot")
 		assert_eq(int(overlay_snapshot.get("columns", 0)), 4)
 		assert_eq(int(overlay_snapshot.get("rows", 0)), 3)
 		assert_eq(int(overlay_snapshot.get("cell_count", 0)), 12)
-		var body := String(truth_label.text)
-		assert_string_contains(body, "Nose")
-		assert_string_contains(body, "Left Wrist")
-		assert_string_contains(body, "Right Wrist")
-		assert_string_contains(body, "cell 5")
-		assert_string_contains(body, "left")
-		assert_string_contains(body, "right")
+		assert_eq(int(nose_chart.get("active_index")), 5)
+		assert_eq(int(left_chart.get("active_index")), 4)
+		assert_eq(int(right_chart.get("active_index")), 7)
+		assert_eq(String(truth_label.text), "")
 
 func test_proving_scenes_hide_replay_auto_bootstrap_grid_truth() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
@@ -1510,12 +1507,14 @@ func test_proving_scenes_hide_replay_auto_bootstrap_grid_truth() -> void:
 		var refs: Dictionary = scene_root.call("get_shared_flow_grid_truth_refs")
 		var overlay := refs.get("flow_grid_overlay", null) as Control
 		var truth_label := refs.get("grid_truth_label", null) as RichTextLabel
+		var grid_truth_panel := scene_root.find_child("GridTruthPanel", true, false) as Control
 		assert_not_null(overlay)
 		assert_not_null(truth_label)
 		assert_eq(overlay.visible, false)
-		var body := String(truth_label.text)
-		assert_string_contains(body, "hidden for this prerecorded replay")
-		assert_string_contains(body, "auto-bootstrap")
+		assert_eq(String(truth_label.text), "")
+		if packed_scene == BoxingProvingScene:
+			assert_not_null(grid_truth_panel)
+			assert_eq(grid_truth_panel.visible, false)
 
 func harness_set_provider(scene_root: Control, provider: Node) -> void:
 	scene_root.set("provider", provider)
@@ -1534,27 +1533,23 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 
 	provider.calibration_session = provider._make_session("failed", {
 		"result": "failed",
-		"failure_reason": "not_centered",
+		"failure_reason": "missing_wrist_landmarks",
 	})
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
-	assert_eq(start_button.text, "Retry Calibration")
+	assert_eq(start_button.text, "Error, Press To Try Again")
 	assert_string_contains(String(countdown_label.text), "Capture failed")
-	assert_string_contains(String(status_label.text), "move back to the center of the camera")
+	assert_string_contains(String(status_label.text), "wrist data was unavailable")
 
 	provider.baseline = {"is_calibrated": true, "sample_frames": 5}
 	provider.calibration_session = provider._make_session("succeeded", {
 		"result": "succeeded",
 		"captured_sample_frames": 5,
-		"readiness": {"centered_in_camera": true, "t_pose_ready": true},
-		"instructions": {
-			"stand_centered": {"text": "Stand centered in camera", "ready": true},
-			"hold_t_pose": {"text": "Hold a T-pose", "ready": true},
-		},
+		"readiness": {"ready": true},
 	})
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
-	assert_eq(start_button.text, "Recalibrate Athlete")
+	assert_eq(start_button.text, "Calibrate Athlete")
 	assert_string_contains(String(countdown_label.text), "Captured baseline: 5/5 frames")
 	assert_string_contains(String(status_label.text), "Calibration complete")
 

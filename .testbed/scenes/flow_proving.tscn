@@ -189,14 +189,13 @@ text = "5-second countdown, then shared baseline capture"
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.97, 0.98, 1, 1)
-text = "○ Stand centered in camera
-○ Hold a T-pose"
+text = ""
 
 [node name="CalibrationStatusLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215880016]
 layout_mode = 2
 autowrap_mode = 3
 theme_override_colors/font_color = Color(0.88, 0.94, 1, 0.94)
-text = "Start calibration, then stand centered in camera in a T-pose."
+text = ""
 
 [node name="Buttons" type="HBoxContainer" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215880017]
 layout_mode = 2
@@ -205,7 +204,7 @@ theme_override_constants/separation = 8
 [node name="AthleteRecalibrateButton" type="Button" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column/Buttons" unique_id=215880018]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Start Calibration"
+text = "Calibrate Athlete"
 
 [node name="AthleteCalibrationSecondaryButton" type="Button" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column/Buttons" unique_id=215880019]
 visible = false
@@ -273,6 +272,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 10
 
 [node name="GridTruthCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn" unique_id=194100777]
+visible = false
 custom_minimum_size = Vector2(0, 210)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -294,7 +294,20 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
-columns = 2
+columns = 3
+
+[node name="NosePlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("2_cell_style")
+
+[node name="NosePlacementChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid/NosePlacementCard"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("5_flow_ring_chart")
+chart_title = "Nose Cell"
 
 [node name="LeftPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=139140040]
 layout_mode = 2
@@ -308,7 +321,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
 chart_title = "Left Wrist Cell"
-chart_subtitle = "Calibrated 4x3 athlete-relative grid"
 
 [node name="RightPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=1888742916]
 layout_mode = 2
@@ -322,7 +334,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
 chart_title = "Right Wrist Cell"
-chart_subtitle = "Calibrated 4x3 athlete-relative grid"
 
 [node name="LeftDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=442721612]
 layout_mode = 2
@@ -336,7 +347,6 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
 chart_title = "Left Wrist Direction"
-chart_subtitle = "8-way shoulder-relative recent motion"
 chart_mode = 1
 
 [node name="RightDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=776296951]
@@ -351,5 +361,4 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
 chart_title = "Right Wrist Direction"
-chart_subtitle = "8-way shoulder-relative recent motion"
 chart_mode = 1

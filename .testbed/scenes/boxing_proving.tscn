@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://d2qmw5c7pnoth" path="res://scripts/boxing_proving_harness.gd" id="1_harness"]
 [ext_resource type="Script" uid="uid://b7yrfwv07ycys" path="res://scripts/landmark_drawer.gd" id="2_landmarks"]
 [ext_resource type="Texture2D" uid="uid://cv2cmj48bnykt" path="res://assets/backgrounds/perfect-hue-may-08-2026-hd.png" id="5_background"]
+[ext_resource type="Script" uid="uid://d3wj7236jb6nf" path="res://scripts/flow_ring_chart.gd" id="6_flow_ring_chart"]
 
 [node name="BoxingProving" type="Control" unique_id=212338292]
 layout_mode = 3
@@ -134,13 +135,12 @@ text = "5-second countdown, then shared baseline capture"
 [node name="CalibrationInstructionLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770015]
 layout_mode = 2
 autowrap_mode = 3
-text = "○ Stand centered in camera
-○ Hold a T-pose"
+text = ""
 
 [node name="CalibrationStatusLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770016]
 layout_mode = 2
 autowrap_mode = 3
-text = "Start calibration, then stand centered in camera in a T-pose."
+text = ""
 
 [node name="Buttons" type="HBoxContainer" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215770017]
 layout_mode = 2
@@ -149,7 +149,7 @@ theme_override_constants/separation = 8
 [node name="AthleteRecalibrateButton" type="Button" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column/Buttons" unique_id=215770018]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Start Calibration"
+text = "Calibrate Athlete"
 
 [node name="AthleteCalibrationSecondaryButton" type="Button" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column/Buttons" unique_id=215770019]
 visible = false
@@ -216,10 +216,62 @@ size_flags_horizontal = 3
 size_flags_vertical = 0
 
 [node name="GridTruthLabel" type="RichTextLabel" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel" unique_id=215770041]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-text = "Grid truth\n\nWaiting for shared calibration..."
+text = ""
+
+[node name="Margin" type="MarginContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="GridPreviewGrid" type="GridContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
+columns = 3
+
+[node name="NosePlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="NosePlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/NosePlacementCard"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("6_flow_ring_chart")
+chart_title = "Nose Cell"
+
+[node name="LeftPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LeftPlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/LeftPlacementCard"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("6_flow_ring_chart")
+chart_title = "Left Wrist Cell"
+
+[node name="RightPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RightPlacementChart" type="Control" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn/GridTruthPanel/Margin/GridPreviewGrid/RightPlacementCard"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("6_flow_ring_chart")
+chart_title = "Right Wrist Cell"
 
 [node name="BoardPanel" type="PanelContainer" parent="Margin/VSplit/Content/RightPanelScroll/RightColumn" unique_id=5295170]
 layout_mode = 2

@@ -19,16 +19,6 @@ const DIRECTION_ARROW_LABELS := {
 	6: "↙",
 	7: "↘",
 }
-const DIRECTION_TEXT_LABELS := {
-	0: "up",
-	1: "down",
-	2: "left",
-	3: "right",
-	4: "up-left",
-	5: "up-right",
-	6: "down-left",
-	7: "down-right",
-}
 const COMPASS_OFFSETS := {
 	0: Vector2(0, -1),
 	1: Vector2(0, 1),
@@ -134,11 +124,6 @@ func _draw_direction_compass(chart_rect: Rect2, font: Font, font_size: int) -> v
 	var center_rect := Rect2(origin + Vector2(slot_size + gap, slot_size + gap), Vector2(slot_size, slot_size))
 	draw_rect(center_rect, Color(1.0, 1.0, 1.0, 0.04), true)
 	draw_rect(center_rect, line_color, false, stroke_width)
-	var center_font_size := clampi(font_size - 2, 10, 14)
-	var center_text := "recent\nmotion"
-	var center_size := font.get_multiline_string_size(center_text, HORIZONTAL_ALIGNMENT_CENTER, center_rect.size.x, center_font_size)
-	var center_position := center_rect.position + Vector2(0.0, (center_rect.size.y - center_size.y) * 0.5 + center_font_size)
-	draw_multiline_string(font, center_position, center_text, HORIZONTAL_ALIGNMENT_CENTER, center_rect.size.x, center_font_size, -1, subtitle_color)
 	for direction_index: int in COMPASS_OFFSETS.keys():
 		var offset: Vector2 = COMPASS_OFFSETS[direction_index]
 		var cell_origin := origin + Vector2((offset.x + 1.0) * (slot_size + gap), (offset.y + 1.0) * (slot_size + gap))
@@ -149,10 +134,5 @@ func _draw_direction_compass(chart_rect: Rect2, font: Font, font_size: int) -> v
 		var arrow := String(DIRECTION_ARROW_LABELS.get(direction_index, "?"))
 		var arrow_font_size := clampi(font_size + 3, 14, 22)
 		var arrow_size := font.get_string_size(arrow, HORIZONTAL_ALIGNMENT_LEFT, -1, arrow_font_size)
-		var arrow_baseline := cell_rect.position + Vector2((cell_rect.size.x - arrow_size.x) * 0.5, cell_rect.size.y * 0.48)
+		var arrow_baseline := cell_rect.position + Vector2((cell_rect.size.x - arrow_size.x) * 0.5, cell_rect.size.y * 0.60)
 		draw_string(font, arrow_baseline, arrow, HORIZONTAL_ALIGNMENT_LEFT, -1, arrow_font_size, label_color)
-		var text := String(DIRECTION_TEXT_LABELS.get(direction_index, "-"))
-		var text_font_size := clampi(font_size - 4, 9, 12)
-		var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, text_font_size)
-		var text_baseline := cell_rect.position + Vector2((cell_rect.size.x - text_size.x) * 0.5, cell_rect.size.y * 0.82)
-		draw_string(font, text_baseline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, text_font_size, subtitle_color)

@@ -224,25 +224,20 @@ func _build_default_calibration_readiness() -> Dictionary:
 	return {
 		"tracking_ready": false,
 		"required_landmarks_ready": false,
-		"centered_in_camera": false,
-		"t_pose_ready": false,
+		"centered_in_camera": true,
+		"t_pose_ready": true,
 		"ready": false,
-		"failure_reason": "waiting_for_pose",
-		"instruction_key": "stand_centered",
-		"instruction_text": "Stand centered in camera",
+		"failure_reason": "required_wrist_data_unavailable",
+		"instruction_key": "hold_t_pose",
+		"instruction_text": "Hold T-Pose",
 	}
 
 func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
 	return {
-		"stand_centered": {
-			"key": "stand_centered",
-			"text": "Stand centered in camera",
-			"ready": bool(readiness.get("centered_in_camera", false)),
-		},
 		"hold_t_pose": {
 			"key": "hold_t_pose",
-			"text": "Hold a T-pose",
-			"ready": bool(readiness.get("t_pose_ready", false)),
+			"text": "Hold T-Pose",
+			"ready": bool(readiness.get("ready", false)),
 		},
 	}
 
@@ -734,77 +729,46 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 		_calibration_session["seconds_remaining"] = int(ceil(float(remaining_ms) / 1000.0)) if remaining_ms > 0 else 0
 		if remaining_ms > 0:
 			return
-		_calibration_session["state"] = CALIBRATION_SESSION_CAPTURE_PENDING
-		state_name = CALIBRATION_SESSION_CAPTURE_PENDING
+		if not bool(readiness.get("ready", false)):
+			_calibration_session["is_active"] = false
+			_calibration_session["state"] = CALIBRATION_SESSION_FAILED
+			_calibration_session["result"] = CALIBRATION_SESSION_FAILED
+			_calibration_session["failure_reason"] = "required_wrist_data_unavailable"
+			return
+		_calibration_session["state"] = CALIBRATION_SESSION_CAPTURING
+		state_name = CALIBRATION_SESSION_CAPTURING
+		_calibration_session["capture_started_at_ms"] = timestamp_ms
 		_calibration_session["capture_deadline_at_ms"] = timestamp_ms + CALIBRATION_CAPTURE_WINDOW_MS
 		_calibration_session["captured_sample_frames"] = 0
+		_calibration_session["failure_reason"] = ""
 	if state_name == CALIBRATION_SESSION_CAPTURE_PENDING or state_name == CALIBRATION_SESSION_CAPTURING:
 		var deadline_ms := int(_calibration_session.get("capture_deadline_at_ms", 0))
 		if deadline_ms > 0 and timestamp_ms > deadline_ms:
 			_calibration_session["is_active"] = false
 			_calibration_session["state"] = CALIBRATION_SESSION_FAILED
 			_calibration_session["result"] = CALIBRATION_SESSION_FAILED
-			_calibration_session["failure_reason"] = String(readiness.get("failure_reason", "capture_window_expired"))
+			_calibration_session["failure_reason"] = "capture_window_expired"
 			return
-		if bool(readiness.get("ready", false)):
-			if state_name != CALIBRATION_SESSION_CAPTURING:
-				_calibration_session["state"] = CALIBRATION_SESSION_CAPTURING
-				_calibration_session["capture_started_at_ms"] = timestamp_ms
-				_calibration_session["failure_reason"] = ""
-		else:
-			_calibration_session["state"] = CALIBRATION_SESSION_CAPTURE_PENDING
-			_calibration_session["failure_reason"] = String(readiness.get("failure_reason", "waiting_for_pose"))
+		if not bool(readiness.get("ready", false)):
+			_calibration_session["is_active"] = false
+			_calibration_session["state"] = CALIBRATION_SESSION_FAILED
+			_calibration_session["result"] = CALIBRATION_SESSION_FAILED
+			_calibration_session["failure_reason"] = "required_wrist_data_unavailable"
 
-func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
+func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
 	var readiness := _build_default_calibration_readiness()
 	if tracking_state != TRACKING_TRACKING and tracking_state != TRACKING_REACQUIRING:
 		readiness["failure_reason"] = "tracking_lost"
 		return readiness
-	var required_ids := [
-		PoseLandmarkIds.NOSE,
-		PoseLandmarkIds.LEFT_SHOULDER,
-		PoseLandmarkIds.RIGHT_SHOULDER,
-		PoseLandmarkIds.LEFT_ELBOW,
-		PoseLandmarkIds.RIGHT_ELBOW,
-		PoseLandmarkIds.LEFT_WRIST,
-		PoseLandmarkIds.RIGHT_WRIST,
-		PoseLandmarkIds.LEFT_HIP,
-		PoseLandmarkIds.RIGHT_HIP,
-	]
-	for landmark_id in required_ids:
-		var landmark := PoseMetrics.get_landmark(landmarks_by_id, landmark_id)
-		if landmark.is_empty():
-			readiness["failure_reason"] = "missing_landmarks"
-			return readiness
-	readiness["tracking_ready"] = true
-	readiness["required_landmarks_ready"] = true
-	var measurements: Dictionary = metrics.get("measurements", {})
-	var body_centerline_x := float(measurements.get("body_centerline_x", 0.5))
-	var centered_in_camera := absf(body_centerline_x - 0.5) <= CALIBRATION_CENTER_TOLERANCE
-	readiness["centered_in_camera"] = centered_in_camera
-	var torso_height := maxf(float(measurements.get("torso_height", 0.0)), 0.000001)
 	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
 	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
-	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
-	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
-	var left_arm_extended := float(measurements.get("left_arm_extension", 0.0)) >= CALIBRATION_T_POSE_ARM_EXTENSION_MIN
-	var right_arm_extended := float(measurements.get("right_arm_extension", 0.0)) >= CALIBRATION_T_POSE_ARM_EXTENSION_MIN
-	var left_elbow_ready := float(measurements.get("left_elbow_bend_deg", 0.0)) >= CALIBRATION_T_POSE_ELBOW_BEND_MIN_DEG
-	var right_elbow_ready := float(measurements.get("right_elbow_bend_deg", 0.0)) >= CALIBRATION_T_POSE_ELBOW_BEND_MIN_DEG
-	var left_wrist_level := absf(float(left_wrist.get("y", 0.0)) - float(left_shoulder.get("y", 0.0))) <= torso_height * CALIBRATION_T_POSE_WRIST_Y_TOLERANCE_RATIO
-	var right_wrist_level := absf(float(right_wrist.get("y", 0.0)) - float(right_shoulder.get("y", 0.0))) <= torso_height * CALIBRATION_T_POSE_WRIST_Y_TOLERANCE_RATIO
-	var t_pose_ready := left_arm_extended and right_arm_extended and left_elbow_ready and right_elbow_ready and left_wrist_level and right_wrist_level
-	readiness["t_pose_ready"] = t_pose_ready
-	if not centered_in_camera:
-		readiness["failure_reason"] = "not_centered_in_camera"
-		readiness["instruction_key"] = "stand_centered"
-		readiness["instruction_text"] = "Stand centered in camera"
+	if left_wrist.is_empty() or right_wrist.is_empty():
+		readiness["failure_reason"] = "missing_wrist_landmarks"
 		return readiness
-	if not t_pose_ready:
-		readiness["failure_reason"] = "t_pose_required"
-		readiness["instruction_key"] = "hold_t_pose"
-		readiness["instruction_text"] = "Hold a T-pose"
-		return readiness
+	readiness["tracking_ready"] = true
+	readiness["required_landmarks_ready"] = true
+	readiness["centered_in_camera"] = true
+	readiness["t_pose_ready"] = true
 	readiness["ready"] = true
 	readiness["failure_reason"] = ""
 	return readiness
