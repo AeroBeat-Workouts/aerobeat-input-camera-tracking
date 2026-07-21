@@ -1652,6 +1652,45 @@ func test_calibration_session_commits_baseline_only_after_countdown_and_capture_
 	assert_eq(String(session.get("state", "")), "succeeded")
 	assert_eq(int(session.get("captured_sample_frames", 0)), 5)
 
+func test_calibration_session_waits_through_boundary_blip_before_capture() -> void:
+	_calibrate_stance()
+	substrate.request_athlete_recalibration()
+	substrate.call("_update_calibration_session", 6100, {
+		"ready": false,
+		"failure_reason": "missing_wrist_landmarks",
+	})
+	var session: Dictionary = substrate.get_calibration_session()
+	assert_eq(String(session.get("state", "")), "capture_pending")
+	assert_true(bool(session.get("is_active", false)))
+	assert_eq(String(session.get("failure_reason", "")), "missing_wrist_landmarks")
+	var state := substrate.get_latest_state()
+	for idx in range(5):
+		state = substrate.process_landmarks(_make_pose_frame(), 6120 + idx * 16)
+	var baseline: Dictionary = state.get("baseline", {})
+	session = state.get("calibration_session", {})
+	assert_true(bool(baseline.get("is_calibrated", false)))
+	assert_eq(String(session.get("state", "")), "succeeded")
+
+func test_calibration_session_tolerates_brief_live_capture_dropout_within_window() -> void:
+	_calibrate_stance()
+	substrate.request_athlete_recalibration()
+	var state := substrate.process_landmarks(_make_pose_frame({}, 0.70), 6100)
+	assert_eq(String(state.get("calibration_session", {}).get("state", "")), "capturing")
+	state = substrate.process_landmarks(_make_pose_frame(), 6120)
+	substrate.call("_update_calibration_session", 6136, {
+		"ready": false,
+		"failure_reason": "missing_wrist_landmarks",
+	})
+	var pending_session: Dictionary = substrate.get_calibration_session()
+	assert_eq(String(pending_session.get("state", "")), "capture_pending")
+	assert_true(bool(pending_session.get("is_active", false)))
+	for idx in range(3):
+		state = substrate.process_landmarks(_make_pose_frame(), 6152 + idx * 16)
+	var baseline: Dictionary = state.get("baseline", {})
+	var session: Dictionary = state.get("calibration_session", {})
+	assert_true(bool(baseline.get("is_calibrated", false)))
+	assert_eq(String(session.get("state", "")), "succeeded")
+
 func test_calibration_session_fails_when_countdown_finishes_without_wrist_data() -> void:
 	_calibrate_stance()
 	substrate.request_athlete_recalibration()
@@ -1661,8 +1700,16 @@ func test_calibration_session_fails_when_countdown_finishes_without_wrist_data()
 	})
 	var session: Dictionary = substrate.get_calibration_session()
 	var state := substrate.get_latest_state()
-	assert_eq(String(session.get("state", "")), "failed")
+	assert_eq(String(session.get("state", "")), "capture_pending")
+	assert_true(bool(session.get("is_active", false)))
 	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
+	assert_eq(String(session.get("failure_reason", "")), "required_wrist_data_unavailable")
+	substrate.call("_update_calibration_session", 9201, {
+		"ready": false,
+		"failure_reason": "required_wrist_data_unavailable",
+	})
+	session = substrate.get_calibration_session()
+	assert_eq(String(session.get("state", "")), "failed")
 	assert_eq(String(session.get("failure_reason", "")), "required_wrist_data_unavailable")
 
 func test_cancel_athlete_recalibration_keeps_runtime_uncalibrated_until_retry() -> void:

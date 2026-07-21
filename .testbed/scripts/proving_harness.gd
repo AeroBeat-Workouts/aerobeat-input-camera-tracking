@@ -53,11 +53,12 @@ const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
 const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
 const INSPECTOR_FOOTER_TEXT := "Click away to close"
-const RECALIBRATE_BUTTON_TEXT := "Recalibrate Athlete"
-const RECALIBRATE_BUTTON_RIGHT_MARGIN := 24.0
-const RECALIBRATE_BUTTON_TOP_MARGIN := 20.0
-const CALIBRATION_PANEL_MIN_HEIGHT := 134.0
-const CALIBRATION_PANEL_FALLBACK_WIDTH := 312.0
+const RECALIBRATE_BUTTON_TEXT := "Calibrate Athlete"
+const RECALIBRATE_BUTTON_RIGHT_MARGIN := 16.0
+const RECALIBRATE_BUTTON_TOP_MARGIN := 16.0
+const CALIBRATION_PANEL_FALLBACK_WIDTH := 296.0
+const CALIBRATION_PANEL_MIN_HEIGHT := 0.0
+const CALIBRATION_BUTTON_MIN_SIZE := Vector2(156, 34)
 const LANDMARK_NAMES := [
 	"Nose",
 	"Left Eye Inner",
@@ -325,61 +326,42 @@ func _ready() -> void:
 
 func _ensure_calibration_flow_ui() -> void:
 	if athlete_calibration_panel == null:
+		athlete_calibration_panel = find_child("AthleteCalibrationPanel", true, false) as Control
+	if athlete_calibration_panel == null:
 		athlete_calibration_panel = PanelContainer.new()
 		athlete_calibration_panel.name = "AthleteCalibrationPanel"
-		athlete_calibration_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-		athlete_calibration_panel.custom_minimum_size = Vector2(CALIBRATION_PANEL_FALLBACK_WIDTH, CALIBRATION_PANEL_MIN_HEIGHT)
-		athlete_calibration_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-		athlete_calibration_panel.offset_left = -CALIBRATION_PANEL_FALLBACK_WIDTH - RECALIBRATE_BUTTON_RIGHT_MARGIN
-		athlete_calibration_panel.offset_top = RECALIBRATE_BUTTON_TOP_MARGIN
-		athlete_calibration_panel.offset_right = -RECALIBRATE_BUTTON_RIGHT_MARGIN
-		athlete_calibration_panel.offset_bottom = RECALIBRATE_BUTTON_TOP_MARGIN + CALIBRATION_PANEL_MIN_HEIGHT
 		add_child(athlete_calibration_panel)
-		_apply_panel_style(athlete_calibration_panel as PanelContainer, Color(0.0, 0.0, 0.0, 0.76), Color(1.0, 1.0, 1.0, 0.12), 16, 1, 0)
-
 		var margin := MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 12)
-		margin.add_theme_constant_override("margin_top", 12)
-		margin.add_theme_constant_override("margin_right", 12)
-		margin.add_theme_constant_override("margin_bottom", 12)
+		margin.name = "Margin"
+		margin.add_theme_constant_override("margin_left", 10)
+		margin.add_theme_constant_override("margin_top", 10)
+		margin.add_theme_constant_override("margin_right", 10)
+		margin.add_theme_constant_override("margin_bottom", 10)
 		athlete_calibration_panel.add_child(margin)
-
 		var column := VBoxContainer.new()
+		column.name = "Column"
 		column.add_theme_constant_override("separation", 6)
 		margin.add_child(column)
-
 		athlete_calibration_title_label = Label.new()
 		athlete_calibration_title_label.name = "CalibrationTitleLabel"
-		athlete_calibration_title_label.text = "Athlete Calibration"
-		athlete_calibration_title_label.add_theme_font_size_override("font_size", 16)
 		column.add_child(athlete_calibration_title_label)
-
 		athlete_calibration_countdown_label = Label.new()
 		athlete_calibration_countdown_label.name = "CalibrationCountdownLabel"
 		column.add_child(athlete_calibration_countdown_label)
-
 		athlete_calibration_instruction_label = Label.new()
 		athlete_calibration_instruction_label.name = "CalibrationInstructionLabel"
-		athlete_calibration_instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		column.add_child(athlete_calibration_instruction_label)
-
 		athlete_calibration_status_label = Label.new()
 		athlete_calibration_status_label.name = "CalibrationStatusLabel"
-		athlete_calibration_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		column.add_child(athlete_calibration_status_label)
-
 		var button_row := HBoxContainer.new()
-		button_row.add_theme_constant_override("separation", 8)
+		button_row.name = "Buttons"
 		column.add_child(button_row)
-
 		_athlete_recalibrate_button = Button.new()
 		_athlete_recalibrate_button.name = "AthleteRecalibrateButton"
-		_athlete_recalibrate_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button_row.add_child(_athlete_recalibrate_button)
-
 		_athlete_calibration_secondary_button = Button.new()
 		_athlete_calibration_secondary_button.name = "AthleteCalibrationSecondaryButton"
-		_athlete_calibration_secondary_button.visible = false
 		button_row.add_child(_athlete_calibration_secondary_button)
 	else:
 		_athlete_recalibrate_button = athlete_calibration_panel.find_child("AthleteRecalibrateButton", true, false) as Button
@@ -389,13 +371,64 @@ func _ensure_calibration_flow_ui() -> void:
 		athlete_calibration_instruction_label = athlete_calibration_panel.find_child("CalibrationInstructionLabel", true, false) as Label
 		athlete_calibration_status_label = athlete_calibration_panel.find_child("CalibrationStatusLabel", true, false) as Label
 
-	if athlete_calibration_title_label != null and athlete_calibration_title_label.text.is_empty():
-		athlete_calibration_title_label.text = "Athlete Calibration"
+	_sync_calibration_overlay_parent()
+	athlete_calibration_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	athlete_calibration_panel.custom_minimum_size = Vector2(CALIBRATION_PANEL_FALLBACK_WIDTH, CALIBRATION_PANEL_MIN_HEIGHT)
+	athlete_calibration_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	athlete_calibration_panel.offset_left = -CALIBRATION_PANEL_FALLBACK_WIDTH - RECALIBRATE_BUTTON_RIGHT_MARGIN
+	athlete_calibration_panel.offset_top = RECALIBRATE_BUTTON_TOP_MARGIN
+	athlete_calibration_panel.offset_right = -RECALIBRATE_BUTTON_RIGHT_MARGIN
+	athlete_calibration_panel.offset_bottom = 0.0
+	athlete_calibration_panel.size_flags_horizontal = 0
+	athlete_calibration_panel.size_flags_vertical = 0
+	athlete_calibration_panel.z_as_relative = true
+	athlete_calibration_panel.z_index = LANDMARK_DRAWER_Z_INDEX + 2
+	_apply_panel_style(athlete_calibration_panel as PanelContainer, Color(0.0, 0.0, 0.0, 0.76), Color(1.0, 1.0, 1.0, 0.12), 16, 1, 0)
+
+	var button_row := _athlete_recalibrate_button.get_parent() as HBoxContainer if _athlete_recalibrate_button != null else null
+	if button_row != null:
+		button_row.alignment = BoxContainer.ALIGNMENT_END
+		button_row.add_theme_constant_override("separation", 8)
+		var button_column := button_row.get_parent() as VBoxContainer
+		if button_column != null:
+			button_column.move_child(button_row, 0)
+	if _athlete_recalibrate_button != null:
+		_athlete_recalibrate_button.custom_minimum_size = CALIBRATION_BUTTON_MIN_SIZE
+	if _athlete_calibration_secondary_button != null:
+		_athlete_calibration_secondary_button.custom_minimum_size = Vector2(88, CALIBRATION_BUTTON_MIN_SIZE.y)
+	if athlete_calibration_title_label != null:
+		athlete_calibration_title_label.visible = false
+	if athlete_calibration_countdown_label != null:
+		athlete_calibration_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		athlete_calibration_countdown_label.add_theme_color_override("font_color", Color(0.87, 0.93, 1.0, 1.0))
+	if athlete_calibration_instruction_label != null:
+		athlete_calibration_instruction_label.text = ""
+		athlete_calibration_instruction_label.visible = false
+	if athlete_calibration_status_label != null:
+		athlete_calibration_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		athlete_calibration_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		athlete_calibration_status_label.add_theme_color_override("font_color", Color(0.88, 0.94, 1.0, 0.94))
+
 	if _athlete_recalibrate_button != null and not _athlete_recalibrate_button.pressed.is_connected(_on_athlete_recalibrate_pressed):
 		_athlete_recalibrate_button.pressed.connect(_on_athlete_recalibrate_pressed)
 	if _athlete_calibration_secondary_button != null and not _athlete_calibration_secondary_button.pressed.is_connected(_on_athlete_calibration_secondary_pressed):
 		_athlete_calibration_secondary_button.pressed.connect(_on_athlete_calibration_secondary_pressed)
 	_refresh_calibration_flow_ui()
+
+func _resolve_calibration_overlay_parent() -> Node:
+	var overlay_parent := _resolve_preview_overlay_parent()
+	if overlay_parent != null and is_instance_valid(overlay_parent):
+		return overlay_parent
+	if camera_display != null and is_instance_valid(camera_display):
+		return camera_display
+	return self
+
+func _sync_calibration_overlay_parent() -> void:
+	if athlete_calibration_panel == null:
+		return
+	var overlay_parent := _resolve_calibration_overlay_parent()
+	if overlay_parent != null and athlete_calibration_panel.get_parent() != overlay_parent:
+		athlete_calibration_panel.reparent(overlay_parent)
 
 func _on_athlete_recalibrate_pressed() -> void:
 	if _start_athlete_calibration_request():
@@ -474,20 +507,20 @@ func _refresh_calibration_flow_ui() -> void:
 		_athlete_recalibrate_button.disabled = is_active or not start_supported
 		_athlete_recalibrate_button.tooltip_text = "Capture a shared athlete baseline from the visible pose feed."
 		if state_name == "failed":
-			_athlete_recalibrate_button.text = "Error, Press To Try Again"
-		elif state_name == "countdown" or state_name == "capture_pending" or state_name == "capturing":
-			_athlete_recalibrate_button.text = "Hold T-Pose... 5s"
+			_athlete_recalibrate_button.text = "Try Again"
+		elif state_name == "countdown":
+			_athlete_recalibrate_button.text = "Hold T-Pose · %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
+		elif state_name == "capture_pending" or state_name == "capturing":
+			_athlete_recalibrate_button.text = "Capturing…"
 		else:
-			_athlete_recalibrate_button.text = "Calibrate Athlete"
+			_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
 	if _athlete_calibration_secondary_button != null:
 		_athlete_calibration_secondary_button.visible = is_active and cancel_supported
 		_athlete_calibration_secondary_button.disabled = not (is_active and cancel_supported)
 		_athlete_calibration_secondary_button.text = "Cancel"
 	if athlete_calibration_countdown_label != null:
 		athlete_calibration_countdown_label.text = _calibration_countdown_text(state_name, session)
-	if athlete_calibration_instruction_label != null:
-		athlete_calibration_instruction_label.text = _build_calibration_instruction_lines()
-		athlete_calibration_instruction_label.visible = not athlete_calibration_instruction_label.text.is_empty()
+		athlete_calibration_countdown_label.visible = not athlete_calibration_countdown_label.text.is_empty()
 	if athlete_calibration_status_label != null:
 		athlete_calibration_status_label.text = _calibration_status_text(state_name, session, has_baseline)
 		athlete_calibration_status_label.visible = not athlete_calibration_status_label.text.is_empty()
@@ -526,14 +559,14 @@ func _apply_calibration_session_transition(state_name: String, session: Dictiona
 	})
 	_record_fixture_state_snapshot(event_name)
 
-func _build_calibration_instruction_lines() -> String:
-	return ""
 
 func _calibration_countdown_text(state_name: String, session: Dictionary) -> String:
 	match state_name:
 		"countdown":
 			return "Countdown: %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
-		"capture_pending", "capturing":
+		"capture_pending":
+			return "Waiting for clean capture frame: %d/%d" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
+		"capturing":
 			return "Capturing baseline: %d/%d frames" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
 		"succeeded":
 			return "Captured baseline: %d/%d frames" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
@@ -548,7 +581,9 @@ func _calibration_status_text(state_name: String, session: Dictionary, has_basel
 	match state_name:
 		"countdown":
 			return "Calibration in progress."
-		"capture_pending", "capturing":
+		"capture_pending":
+			return "Hold steady — waiting for both wrists to stay tracked for capture."
+		"capturing":
 			return "Capturing the shared athlete baseline now — hold steady."
 		"succeeded":
 			return "Calibration complete. Boxing and Flow are now using the shared captured baseline."
@@ -1878,6 +1913,7 @@ func _ensure_contract_preview_surface() -> void:
 		if preview_surface is TextureRect:
 			camera_view = preview_surface
 	_sync_overlay_drawers_to_preview_presenter()
+	_sync_calibration_overlay_parent()
 	_ensure_overlay_drawers_ready()
 
 func _sync_overlay_drawers_to_preview_presenter() -> void:
@@ -1892,6 +1928,7 @@ func _sync_overlay_drawers_to_preview_presenter() -> void:
 			drawer.reparent(overlay_parent)
 		if drawer.has_method("set_preview_presenter"):
 			drawer.set_preview_presenter(_preview_presenter)
+	_sync_calibration_overlay_parent()
 
 func _resolve_preview_overlay_parent() -> Node:
 	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("get_overlay_layer"):

@@ -636,7 +636,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	if not _is_calibration_session_active_state(session_state) and session_state != CALIBRATION_SESSION_IDLE and session_state != CALIBRATION_SESSION_SUCCEEDED:
 		return
 	if _is_calibration_session_active_state(session_state):
-		if session_state != CALIBRATION_SESSION_CAPTURING:
+		if session_state == CALIBRATION_SESSION_COUNTDOWN:
 			return
 		if not bool((_calibration_session.get("readiness", {}) as Dictionary).get("ready", false)):
 			return
@@ -729,31 +729,31 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 		_calibration_session["seconds_remaining"] = int(ceil(float(remaining_ms) / 1000.0)) if remaining_ms > 0 else 0
 		if remaining_ms > 0:
 			return
-		if not bool(readiness.get("ready", false)):
-			_calibration_session["is_active"] = false
-			_calibration_session["state"] = CALIBRATION_SESSION_FAILED
-			_calibration_session["result"] = CALIBRATION_SESSION_FAILED
-			_calibration_session["failure_reason"] = "required_wrist_data_unavailable"
-			return
-		_calibration_session["state"] = CALIBRATION_SESSION_CAPTURING
-		state_name = CALIBRATION_SESSION_CAPTURING
+		_calibration_session["state"] = CALIBRATION_SESSION_CAPTURE_PENDING
+		state_name = CALIBRATION_SESSION_CAPTURE_PENDING
 		_calibration_session["capture_started_at_ms"] = timestamp_ms
 		_calibration_session["capture_deadline_at_ms"] = timestamp_ms + CALIBRATION_CAPTURE_WINDOW_MS
 		_calibration_session["captured_sample_frames"] = 0
 		_calibration_session["failure_reason"] = ""
 	if state_name == CALIBRATION_SESSION_CAPTURE_PENDING or state_name == CALIBRATION_SESSION_CAPTURING:
 		var deadline_ms := int(_calibration_session.get("capture_deadline_at_ms", 0))
+		if bool(readiness.get("ready", false)):
+			_calibration_session["state"] = CALIBRATION_SESSION_CAPTURING
+			_calibration_session["failure_reason"] = ""
+		else:
+			_calibration_session["state"] = CALIBRATION_SESSION_CAPTURE_PENDING
+			_calibration_session["failure_reason"] = String(readiness.get("failure_reason", "required_wrist_data_unavailable"))
 		if deadline_ms > 0 and timestamp_ms > deadline_ms:
 			_calibration_session["is_active"] = false
 			_calibration_session["state"] = CALIBRATION_SESSION_FAILED
 			_calibration_session["result"] = CALIBRATION_SESSION_FAILED
-			_calibration_session["failure_reason"] = "capture_window_expired"
+			var failure_reason := String(readiness.get("failure_reason", "")).strip_edges()
+			if failure_reason.is_empty():
+				failure_reason = String(_calibration_session.get("failure_reason", "capture_window_expired")).strip_edges()
+			if failure_reason.is_empty():
+				failure_reason = "capture_window_expired"
+			_calibration_session["failure_reason"] = failure_reason
 			return
-		if not bool(readiness.get("ready", false)):
-			_calibration_session["is_active"] = false
-			_calibration_session["state"] = CALIBRATION_SESSION_FAILED
-			_calibration_session["result"] = CALIBRATION_SESSION_FAILED
-			_calibration_session["failure_reason"] = "required_wrist_data_unavailable"
 
 func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
 	var readiness := _build_default_calibration_readiness()

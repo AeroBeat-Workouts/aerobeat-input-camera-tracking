@@ -1424,8 +1424,8 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		})
 		scene_root.set("_latest_state", provider.get_detector_state())
 		scene_root.call("_refresh_calibration_flow_ui")
-		assert_string_contains(String(status_label.text), "Capturing the shared athlete baseline")
-		assert_eq(start_button.text, "Hold T-Pose... 5s")
+		assert_string_contains(String(status_label.text), "waiting for both wrists")
+		assert_eq(start_button.text, "Capturing…")
 
 func _shared_flow_grid_truth_state(capture_source: String = "calibration_session") -> Dictionary:
 	return {
@@ -1537,7 +1537,7 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	})
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
-	assert_eq(start_button.text, "Error, Press To Try Again")
+	assert_eq(start_button.text, "Try Again")
 	assert_string_contains(String(countdown_label.text), "Capture failed")
 	assert_string_contains(String(status_label.text), "wrist data was unavailable")
 
