@@ -6,18 +6,6 @@
 [ext_resource type="Texture2D" uid="uid://cv2cmj48bnykt" path="res://assets/backgrounds/perfect-hue-may-08-2026-hd.png" id="6_background"]
 [ext_resource type="Script" uid="uid://biadje5xucy7c" path="res://scripts/flow_brand_mark.gd" id="7_brand_mark"]
 
-[sub_resource type="StyleBoxFlat" id="4_camera_style"]
-bg_color = Color(1, 1, 1, 0.01)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 1, 1, 0.12)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
 [sub_resource type="StyleBoxFlat" id="3_events_style"]
 content_margin_left = 12.0
 content_margin_top = 10.0
@@ -33,6 +21,18 @@ corner_radius_top_left = 14
 corner_radius_top_right = 14
 corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="4_camera_style"]
+bg_color = Color(1, 1, 1, 0.01)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.12)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="1_board_style"]
 content_margin_left = 4.0
@@ -175,28 +175,6 @@ theme_override_constants/margin_bottom = 12
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="CalibrationTitleLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215880013]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.97, 0.98, 1, 1)
-text = "Athlete Calibration"
-
-[node name="CalibrationCountdownLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215880014]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.87, 0.93, 1, 1)
-text = "5-second countdown, then shared baseline capture"
-
-[node name="CalibrationInstructionLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215880015]
-layout_mode = 2
-autowrap_mode = 3
-theme_override_colors/font_color = Color(0.97, 0.98, 1, 1)
-text = ""
-
-[node name="CalibrationStatusLabel" type="Label" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215880016]
-layout_mode = 2
-autowrap_mode = 3
-theme_override_colors/font_color = Color(0.88, 0.94, 1, 0.94)
-text = ""
-
 [node name="Buttons" type="HBoxContainer" parent="Margin/VSplit/Content/LeftColumn/AthleteCalibrationPanel/Margin/Column" unique_id=215880017]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -234,7 +212,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_landmarks")
-
 
 [node name="EventsPanel" type="PanelContainer" parent="Margin/VSplit/Content/LeftColumn" unique_id=230485248]
 custom_minimum_size = Vector2(0, 144)
@@ -296,13 +273,13 @@ theme_override_constants/h_separation = 10
 theme_override_constants/v_separation = 10
 columns = 3
 
-[node name="NosePlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid"]
+[node name="NosePlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=913974245]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("2_cell_style")
 
-[node name="NosePlacementChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid/NosePlacementCard"]
+[node name="NosePlacementChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid/NosePlacementCard" unique_id=899251428]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
