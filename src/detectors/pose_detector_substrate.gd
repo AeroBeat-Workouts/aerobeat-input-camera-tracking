@@ -228,15 +228,25 @@ func _build_default_calibration_readiness() -> Dictionary:
 		"t_pose_ready": true,
 		"ready": false,
 		"failure_reason": "required_wrist_data_unavailable",
-		"instruction_key": "hold_t_pose",
-		"instruction_text": "Hold T-Pose",
+		"instruction_key": "show_both_wrists",
+		"instruction_text": "Need tracking/reacquiring plus both wrists visible",
 	}
 
 func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
 	return {
-		"hold_t_pose": {
-			"key": "hold_t_pose",
-			"text": "Hold T-Pose",
+		"tracking_ready": {
+			"key": "tracking_ready",
+			"text": "Tracking state is tracking/reacquiring",
+			"ready": bool(readiness.get("tracking_ready", false)),
+		},
+		"show_both_wrists": {
+			"key": "show_both_wrists",
+			"text": "Both wrists stay visible",
+			"ready": bool(readiness.get("required_landmarks_ready", false)),
+		},
+		"capture_frames": {
+			"key": "capture_frames",
+			"text": "Capture 5 valid frames during the live window",
 			"ready": bool(readiness.get("ready", false)),
 		},
 	}
@@ -759,18 +769,24 @@ func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: Strin
 	var readiness := _build_default_calibration_readiness()
 	if tracking_state != TRACKING_TRACKING and tracking_state != TRACKING_REACQUIRING:
 		readiness["failure_reason"] = "tracking_lost"
+		readiness["instruction_key"] = "tracking_ready"
+		readiness["instruction_text"] = "Need tracking or reacquiring before capture can start"
 		return readiness
+	readiness["tracking_ready"] = true
 	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
 	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
 	if left_wrist.is_empty() or right_wrist.is_empty():
 		readiness["failure_reason"] = "missing_wrist_landmarks"
+		readiness["instruction_key"] = "show_both_wrists"
+		readiness["instruction_text"] = "Need both wrists visible before capture can start"
 		return readiness
-	readiness["tracking_ready"] = true
 	readiness["required_landmarks_ready"] = true
 	readiness["centered_in_camera"] = true
 	readiness["t_pose_ready"] = true
 	readiness["ready"] = true
 	readiness["failure_reason"] = ""
+	readiness["instruction_key"] = "capture_frames"
+	readiness["instruction_text"] = "Capture window is live — keep both wrists visible for 5 valid frames"
 	return readiness
 
 func _average_x(points: Array) -> float:

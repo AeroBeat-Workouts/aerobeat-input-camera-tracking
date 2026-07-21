@@ -110,9 +110,27 @@ Touched/likely files from the audit:
 - targeted tests as needed
 - this plan file
 
-**Status:** ⏳ In Progress
+**Status:** ✅ Complete
 
-**Results:** Audit complete and approved for execution. Bead `aerobeat-input-camera-tracking-tr1p` is now in progress with a coder subagent implementing the calibration UX/truth seam.
+**Results:** Implemented the bounded calibration UX/truth repair without widening into the boxing/runtime seam. Exact files changed in this coder pass:
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-21-aerobeat-camera-tracking-calibration-and-boxing-gesture-followups.md`
+
+What changed:
+- Reworked calibration readiness/instruction truth in `pose_detector_substrate.gd` so the session now exposes the real narrow contract in-session: tracking must be `tracking`/`reacquiring`, both wrists must exist, and once the capture window is live the user is explicitly told it still needs 5 valid frames.
+- Repaired `proving_harness.gd` so the proving UI recreates the missing calibration labels even if the scene no longer contains them, then surfaces clearer countdown/status/instruction copy for baseline-cleared countdown, live capture progress, retry requirements, and failure/no-baseline truth.
+- Added targeted substrate assertions for the new instruction/readiness surface in `test_pose_detector_substrate.gd`.
+
+Validation run:
+- `git diff --check` ✅
+- Attempted: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ⚠️ blocked by pre-existing repo/testbed failures outside this seam, including `Invalid call. Nonexistent function 'new' in base 'GDScript'` from `test_pose_detector_substrate.gd:16` and an existing parse error in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd` (`trigger_bbox_area` undeclared at lines 1792/1793/1795).
+- Attempted: `godot --headless --path .testbed --check-only res://addons/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd` ⚠️ also blocked by that same pre-existing `boxing_proving_harness.gd` parse failure during project script load.
+
+Remaining caveats:
+- I intentionally did **not** widen this bead into the already-dirty boxing seam files currently modified in the repo (`.testbed/scripts/boxing_proving_harness.gd`, `assets/boxing.gesture_detection.yaml`).
+- Because of the existing testbed parse/load failures above, this coder pass is ready for QA/audit review but could not produce a clean Godot green run from the current repo state.
 
 ---
 

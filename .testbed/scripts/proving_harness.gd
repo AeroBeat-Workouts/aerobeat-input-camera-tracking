@@ -371,6 +371,14 @@ func _ensure_calibration_flow_ui() -> void:
 		athlete_calibration_instruction_label = athlete_calibration_panel.find_child("CalibrationInstructionLabel", true, false) as Label
 		athlete_calibration_status_label = athlete_calibration_panel.find_child("CalibrationStatusLabel", true, false) as Label
 
+	var button_row := _athlete_recalibrate_button.get_parent() as HBoxContainer if _athlete_recalibrate_button != null else null
+	var button_column := button_row.get_parent() as VBoxContainer if button_row != null else null
+	if button_column != null:
+		athlete_calibration_title_label = _ensure_calibration_panel_label(athlete_calibration_title_label, "CalibrationTitleLabel", button_column)
+		athlete_calibration_countdown_label = _ensure_calibration_panel_label(athlete_calibration_countdown_label, "CalibrationCountdownLabel", button_column)
+		athlete_calibration_instruction_label = _ensure_calibration_panel_label(athlete_calibration_instruction_label, "CalibrationInstructionLabel", button_column)
+		athlete_calibration_status_label = _ensure_calibration_panel_label(athlete_calibration_status_label, "CalibrationStatusLabel", button_column)
+
 	_sync_calibration_overlay_parent()
 	athlete_calibration_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	athlete_calibration_panel.custom_minimum_size = Vector2(CALIBRATION_PANEL_FALLBACK_WIDTH, CALIBRATION_PANEL_MIN_HEIGHT)
@@ -385,11 +393,11 @@ func _ensure_calibration_flow_ui() -> void:
 	athlete_calibration_panel.z_index = LANDMARK_DRAWER_Z_INDEX + 2
 	_apply_panel_style(athlete_calibration_panel as PanelContainer, Color(0.0, 0.0, 0.0, 0.76), Color(1.0, 1.0, 1.0, 0.12), 16, 1, 0)
 
-	var button_row := _athlete_recalibrate_button.get_parent() as HBoxContainer if _athlete_recalibrate_button != null else null
+	button_row = _athlete_recalibrate_button.get_parent() as HBoxContainer if _athlete_recalibrate_button != null else null
 	if button_row != null:
 		button_row.alignment = BoxContainer.ALIGNMENT_END
 		button_row.add_theme_constant_override("separation", 8)
-		var button_column := button_row.get_parent() as VBoxContainer
+		button_column = button_row.get_parent() as VBoxContainer
 		if button_column != null:
 			button_column.move_child(button_row, 0)
 	if _athlete_recalibrate_button != null:
@@ -404,6 +412,9 @@ func _ensure_calibration_flow_ui() -> void:
 	if athlete_calibration_instruction_label != null:
 		athlete_calibration_instruction_label.text = ""
 		athlete_calibration_instruction_label.visible = false
+		athlete_calibration_instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		athlete_calibration_instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		athlete_calibration_instruction_label.add_theme_color_override("font_color", Color(0.72, 0.90, 1.0, 0.92))
 	if athlete_calibration_status_label != null:
 		athlete_calibration_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		athlete_calibration_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -429,6 +440,16 @@ func _sync_calibration_overlay_parent() -> void:
 	var overlay_parent := _resolve_calibration_overlay_parent()
 	if overlay_parent != null and athlete_calibration_panel.get_parent() != overlay_parent:
 		athlete_calibration_panel.reparent(overlay_parent)
+
+func _ensure_calibration_panel_label(existing: Label, label_name: String, parent_column: VBoxContainer) -> Label:
+	if existing != null:
+		return existing
+	var label := Label.new()
+	label.name = label_name
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	parent_column.add_child(label)
+	return label
 
 func _on_athlete_recalibrate_pressed() -> void:
 	if _start_athlete_calibration_request():
@@ -521,6 +542,9 @@ func _refresh_calibration_flow_ui() -> void:
 	if athlete_calibration_countdown_label != null:
 		athlete_calibration_countdown_label.text = _calibration_countdown_text(state_name, session)
 		athlete_calibration_countdown_label.visible = not athlete_calibration_countdown_label.text.is_empty()
+	if athlete_calibration_instruction_label != null:
+		athlete_calibration_instruction_label.text = _calibration_instruction_text(state_name, session)
+		athlete_calibration_instruction_label.visible = not athlete_calibration_instruction_label.text.is_empty()
 	if athlete_calibration_status_label != null:
 		athlete_calibration_status_label.text = _calibration_status_text(state_name, session, has_baseline)
 		athlete_calibration_status_label.visible = not athlete_calibration_status_label.text.is_empty()
@@ -561,45 +585,79 @@ func _apply_calibration_session_transition(state_name: String, session: Dictiona
 
 
 func _calibration_countdown_text(state_name: String, session: Dictionary) -> String:
+	var captured_frames := int(session.get("captured_sample_frames", 0))
+	var required_frames := maxi(int(session.get("required_capture_frames", 0)), 5)
 	match state_name:
 		"countdown":
-			return "Countdown: %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
+			return "Countdown: %ds · previous baseline cleared" % maxi(int(session.get("seconds_remaining", 0)), 0)
 		"capture_pending":
-			return "Waiting for clean capture frame: %d/%d" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
+			return "Capture window live: %d/%d valid frames" % [captured_frames, required_frames]
 		"capturing":
-			return "Capturing baseline: %d/%d frames" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
+			return "Capturing baseline: %d/%d valid frames" % [captured_frames, required_frames]
 		"succeeded":
-			return "Captured baseline: %d/%d frames" % [int(session.get("captured_sample_frames", 0)), int(session.get("required_capture_frames", 0))]
+			return "Captured baseline: %d/%d valid frames" % [captured_frames, required_frames]
 		"failed":
-			return "Capture failed"
+			return "Capture failed after %d/%d valid frames" % [captured_frames, required_frames]
 		"cancelled":
-			return "Calibration cancelled"
+			return "Calibration cancelled before a new baseline was captured"
 		_:
-			return "5-second countdown, then shared baseline capture"
+			return "5-second countdown, then 5 valid capture frames"
+
+func _calibration_instruction_text(state_name: String, session: Dictionary) -> String:
+	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
+	var instruction_text := String(readiness.get("instruction_text", "")).strip_edges()
+	match state_name:
+		"countdown":
+			return "Countdown first. When capture opens, keep tracking live and both wrists visible."
+		"capture_pending":
+			if bool(readiness.get("ready", false)):
+				return "Success still needs 5 valid frames with nose + both wrists present and positive body measurements."
+			if not instruction_text.is_empty():
+				return instruction_text
+			return "Need tracking/reacquiring plus both wrists visible before valid frames can accumulate."
+		"capturing":
+			return "Success still needs 5 valid frames with nose + both wrists present and positive body measurements."
+		"failed":
+			if not instruction_text.is_empty():
+				return "Retry requirement: %s" % instruction_text
+			return "Retry requirement: keep tracking live and both wrists visible during the capture window."
+		"cancelled":
+			return "Start again to clear the baseline and rerun the countdown + capture window."
+		_:
+			return ""
 
 func _calibration_status_text(state_name: String, session: Dictionary, has_baseline: bool) -> String:
+	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
+	var captured_frames := int(session.get("captured_sample_frames", 0))
+	var required_frames := maxi(int(session.get("required_capture_frames", 0)), 5)
 	match state_name:
 		"countdown":
-			return "Calibration in progress."
+			return "Calibration in progress. The old shared baseline is intentionally gone until a new one finishes."
 		"capture_pending":
-			return "Hold steady — waiting for both wrists to stay tracked for capture."
+			if bool(readiness.get("ready", false)):
+				return "Capture window is open. Waiting for the next valid frame while the new shared baseline builds: %d/%d so far." % [captured_frames, required_frames]
+			return "Capture window is open, but no valid frame is accumulating yet: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_wrist_data_unavailable")))
 		"capturing":
-			return "Capturing the shared athlete baseline now — hold steady."
+			return "Capture window is open and valid frames are accumulating toward the new shared athlete baseline."
 		"succeeded":
 			return "Calibration complete. Boxing and Flow are now using the shared captured baseline."
 		"failed":
-			return "Calibration failed: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_wrist_data_unavailable")))
+			return "Calibration failed: %s. No new shared baseline was committed." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_wrist_data_unavailable")))
 		"cancelled":
-			return "Calibration cancelled."
+			return "Calibration cancelled. No shared baseline is active until you try again."
 		_:
 			if has_baseline:
 				return "Calibration ready."
-			return ""
+			return "No shared baseline captured yet."
 
 func _humanize_calibration_failure_reason(reason: String) -> String:
 	match reason:
-		"required_wrist_data_unavailable", "missing_wrist_landmarks", "tracking_lost":
-			return "left or right wrist data was unavailable at capture time"
+		"required_wrist_data_unavailable", "missing_wrist_landmarks":
+			return "both wrists must stay visible during the capture window"
+		"tracking_lost":
+			return "tracking must be in tracking or reacquiring during the capture window"
+		"capture_window_expired":
+			return "the capture window expired before 5 valid frames were collected"
 		"cancelled":
 			return "the session was cancelled"
 		_:

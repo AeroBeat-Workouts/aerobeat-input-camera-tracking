@@ -1621,6 +1621,9 @@ func test_request_athlete_recalibration_starts_shared_countdown_session() -> voi
 	assert_eq(int(session.get("seconds_remaining", 0)), 5)
 	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
 	assert_true(state.get("metrics", {}).has("calibration_session"))
+	assert_eq(String(session.get("readiness", {}).get("instruction_text", "")), "Need tracking/reacquiring plus both wrists visible")
+	assert_eq(String(session.get("instructions", {}).get("show_both_wrists", {}).get("text", "")), "Both wrists stay visible")
+	assert_eq(String(session.get("instructions", {}).get("capture_frames", {}).get("text", "")), "Capture 5 valid frames during the live window")
 
 func test_calibration_readiness_only_requires_live_left_and_right_wrist_data() -> void:
 	_calibrate_stance()
@@ -1632,10 +1635,17 @@ func test_calibration_readiness_only_requires_live_left_and_right_wrist_data() -
 	assert_true(bool(readiness.get("ready", false)))
 	assert_true(bool(readiness.get("centered_in_camera", false)))
 	assert_true(bool(readiness.get("t_pose_ready", false)))
+	assert_eq(String(readiness.get("instruction_text", "")), "Capture window is live — keep both wrists visible for 5 valid frames")
 
 	var missing_wrist_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), {})
 	assert_false(bool(missing_wrist_readiness.get("ready", true)))
 	assert_eq(String(missing_wrist_readiness.get("failure_reason", "")), "missing_wrist_landmarks")
+	assert_eq(String(missing_wrist_readiness.get("instruction_text", "")), "Need both wrists visible before capture can start")
+
+	var missing_tracking_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("lost"), {})
+	assert_false(bool(missing_tracking_readiness.get("ready", true)))
+	assert_eq(String(missing_tracking_readiness.get("failure_reason", "")), "tracking_lost")
+	assert_eq(String(missing_tracking_readiness.get("instruction_text", "")), "Need tracking or reacquiring before capture can start")
 
 func test_calibration_session_commits_baseline_only_after_countdown_and_capture_window() -> void:
 	_calibrate_stance()
