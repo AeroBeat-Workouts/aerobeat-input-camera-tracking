@@ -1,9 +1,9 @@
 # AeroBeat Input Camera Tracking - Calibration Loop, Grid Overlay, and Straight-Punch Regressions
 
-**Date:** 2026-07-20  
-**Status:** In Progress  
-**Last Updated:** 2026-07-20 21:08 EDT  
-**Blocked Reason:** None  
+**Date:** 2026-07-20
+**Status:** In Progress
+**Last Updated:** 2026-07-20 21:24 EDT
+**Blocked Reason:** None
 **Agent:** `pico`
 
 ---
@@ -19,6 +19,8 @@ Audit and fix the newly reported replay/calibration regressions so Flow/Boxing p
 The latest AeroBeat handoff explicitly called out a follow-up regression seam in `aerobeat-input-camera-tracking` that had not yet been worked: calibration loops `10s -> 5s -> 10s -> 5s` indefinitely, the Flow/Boxing overlay grid appears undersized/centered and then disappears after calibration starts, and straight punches in replay are no longer firing their pose threshold. That work was not actually completed after the handoff; the most recent repo activity only archived completed calibration/grid plans and cleaned a separate `FlowGridOverlay` warning seam.
 
 This plan keeps the regression lane honest and narrow. We start by auditing the exact code/config/runtime truth behind the three reported symptoms, then materialize the smallest truthful repair path, then run QA and audit before claiming the seam is fixed.
+
+**2026-07-20 product clarification from Derrick:** for the `/.testbed/` project, replay calibration is a required testing capability. We should not treat prerecorded replay as categorically ineligible for calibration. The earlier proving-harness slice that disabled calibration on default replay fixtures was a truthful short-term stopgap for the misleading current behavior, but it is **not** the desired final product behavior for this testbed. The next seam is to allow calibration on arbitrary replay videos while staying honest about whether the footage actually yields a usable baseline.
 
 ---
 
@@ -37,11 +39,11 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 
 ### Task 1: Audit calibration loop, overlay-grid, and straight-punch regressions
 
-**Bead ID:** `aerobeat-input-camera-tracking-2ne7`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`  
-**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, audit bead `aerobeat-input-camera-tracking-2ne7`. Claim it on start with `bd update aerobeat-input-camera-tracking-2ne7 --status in_progress --json`. Investigate the three reported regressions from the latest AeroBeat handoff: (1) calibration loops `10s -> 5s -> 10s -> 5s` and never completes, (2) Flow/Boxing overlay grid appears too small/centered and then disappears after calibration trigger, and (3) straight punches in replay are not firing their pose threshold. Determine whether these share a root cause or are separate seams, identify the narrowest truthful next fix slice, and update this plan with exact findings, touched files, and recommended coder scope. Do not implement fixes yet unless the audit proves a tiny contained code correction is inseparable from reproducing the bug.  
+**Bead ID:** `aerobeat-input-camera-tracking-2ne7`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, audit bead `aerobeat-input-camera-tracking-2ne7`. Claim it on start with `bd update aerobeat-input-camera-tracking-2ne7 --status in_progress --json`. Investigate the three reported regressions from the latest AeroBeat handoff: (1) calibration loops `10s -> 5s -> 10s -> 5s` and never completes, (2) Flow/Boxing overlay grid appears too small/centered and then disappears after calibration trigger, and (3) straight punches in replay are not firing their pose threshold. Determine whether these share a root cause or are separate seams, identify the narrowest truthful next fix slice, and update this plan with exact findings, touched files, and recommended coder scope. Do not implement fixes yet unless the audit proves a tiny contained code correction is inseparable from reproducing the bug.
 
 **Folders Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
@@ -51,7 +53,7 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-calibration-loop-grid-overlay-and-straight-punch-regressions.md`
 - investigation notes/probes only if needed
 
-**Status:** ✅ Complete  
+**Status:** ✅ Complete
 
 **Results:**
 - **Root-cause split:** the three symptoms do **not** collapse into one code bug. Symptoms **(1) calibration never completes** and **(2) overlay grid starts undersized/centered then disappears on calibration trigger** share the same proving-scene replay/calibration seam. Symptom **(3) straight punches in replay not firing their pose threshold** is a separate boxing threshold/timing seam.
@@ -96,11 +98,11 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 
 ### Task 2: Fix replay calibration truth seam
 
-**Bead ID:** `aerobeat-input-camera-tracking-eh63`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`  
-**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the first recommended fix slice against bead `aerobeat-input-camera-tracking-eh63`. Claim it on start with `bd update aerobeat-input-camera-tracking-eh63 --status in_progress --json`. Fix the replay-calibration truth seam that explains both the calibration loop / non-completion complaint and the undersized/disappearing overlay-grid complaint. Keep the slice narrow and truthful: either disable/relabel calibration for action-replay sources that are not actually calibratable, or switch the proving scenes to assets/flows that are truly calibratable, and only preserve the previous grid during recalibration if that is necessary to keep the UX truthful. Do not broaden into the separate straight-punch timing seam yet. Update this plan with exact files changed and what route you chose, run the strongest repo-local validation, commit, and push to `main` before handoff unless blocked. Do not close the bead; leave it ready for QA with exact evidence and any remaining replay/UX caveats.  
+**Bead ID:** `aerobeat-input-camera-tracking-eh63`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the first recommended fix slice against bead `aerobeat-input-camera-tracking-eh63`. Claim it on start with `bd update aerobeat-input-camera-tracking-eh63 --status in_progress --json`. Fix the replay-calibration truth seam that explains both the calibration loop / non-completion complaint and the undersized/disappearing overlay-grid complaint. Keep the slice narrow and truthful: either disable/relabel calibration for action-replay sources that are not actually calibratable, or switch the proving scenes to assets/flows that are truly calibratable, and only preserve the previous grid during recalibration if that is necessary to keep the UX truthful. Do not broaden into the separate straight-punch timing seam yet. Update this plan with exact files changed and what route you chose, run the strongest repo-local validation, commit, and push to `main` before handoff unless blocked. Do not close the bead; leave it ready for QA with exact evidence and any remaining replay/UX caveats.
 
 **Folders Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/`
@@ -112,7 +114,7 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 - `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-calibration-loop-grid-overlay-and-straight-punch-regressions.md`
 
-**Status:** ✅ Complete  
+**Status:** ✅ Complete
 
 **Results:**
 - **Chosen route:** kept the slice narrow and truthful by fixing the proving-harness contract instead of broadening runtime calibration logic or changing boxing timing. Default prerecorded proving replays now surface shared calibration as unavailable, with explicit copy explaining that the action replay does not provide a truthful centered T-pose capture segment and that testers should use a live camera or a replay fixture with explicit calibration setup.
@@ -132,17 +134,17 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
   - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=grid_truth -gexit` ✅ passed (2/2).
   - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=calibration_session -gexit` ✅ passed (2/2).
   - Broader context check: the full `test_boxing_proving_harness_profiles_and_debug.gd` file still reports unrelated pre-existing depth-debug failures outside this slice; this change did not widen into that seam.
-- **Remaining replay/UX caveat for QA:** shared calibration is now intentionally unavailable on the default prerecorded proving clips. QA should verify that this is the truthful desired product behavior for those fixtures, and treat any future desire for replay-side calibration as a separate asset/capability seam rather than a bug in this slice.
+- **Post-implementation truth update (superseded by Derrick clarification):** shared calibration is now intentionally unavailable on the default prerecorded proving clips. That stopgap was useful for preventing misleading testbed behavior, but Derrick has now clarified that the `/.testbed/` harness must support calibration on arbitrary replay videos for testing. Treat this completed slice as an interim truth-maintenance fix, not the final desired behavior.
 
 ---
 
 ### Task 3: QA replay calibration truth seam
 
-**Bead ID:** `aerobeat-input-camera-tracking-fsal`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`  
-**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, QA the replay calibration truth seam against bead `aerobeat-input-camera-tracking-fsal`. Claim it on start with `bd update aerobeat-input-camera-tracking-fsal --status in_progress --json`. Verify that default prerecorded proving replays now truthfully disable shared calibration, that calibration requests are not routed on those replay fixtures, that replay-derived `auto_bootstrap` baselines no longer render misleading shared grid overlay/truth output, and that live-source shared-calibration coverage still behaves correctly. Re-run the strongest relevant repo-local validation and inspect the proving-harness behavior at the highest-fidelity repo-local level available. Do not self-implement missing work; report exact evidence, any gaps, and whether this slice is ready for audit. Do not close the bead. Update this plan with the QA results before finishing.  
+**Bead ID:** `aerobeat-input-camera-tracking-fsal`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, QA the replay calibration truth seam against bead `aerobeat-input-camera-tracking-fsal`. Claim it on start with `bd update aerobeat-input-camera-tracking-fsal --status in_progress --json`. Verify that default prerecorded proving replays now truthfully disable shared calibration, that calibration requests are not routed on those replay fixtures, that replay-derived `auto_bootstrap` baselines no longer render misleading shared grid overlay/truth output, and that live-source shared-calibration coverage still behaves correctly. Re-run the strongest relevant repo-local validation and inspect the proving-harness behavior at the highest-fidelity repo-local level available. Do not self-implement missing work; report exact evidence, any gaps, and whether this slice is ready for audit. Do not close the bead. Update this plan with the QA results before finishing.
 
 **Folders Created/Deleted/Modified:**
 - verification-only if needed
@@ -150,7 +152,7 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 **Files Created/Deleted/Modified:**
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-calibration-loop-grid-overlay-and-straight-punch-regressions.md`
 
-**Status:** ✅ Complete  
+**Status:** ✅ Complete
 
 **Results:**
 - **QA verdict:** the replay-calibration truth slice behaves correctly in repo-local proving-harness coverage and is **ready for audit** as scoped. I did **not** touch the separate straight-punch replay-timing seam.
@@ -170,11 +172,11 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 
 ### Task 4: Fix straight-punch replay timing truth
 
-**Bead ID:** `aerobeat-input-camera-tracking-59bh`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`  
-**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the separate straight-punch replay timing fix against bead `aerobeat-input-camera-tracking-59bh`. Claim it on start with `bd update aerobeat-input-camera-tracking-59bh --status in_progress --json`. Fix the boxing replay/debug truth seam where straight-punch `triggered` state can vanish between published updates. Keep the slice narrow and truthful: adjust timing/profile/publication behavior so the default boxing replay path can surface straight-punch trigger truth reliably at the published replay/debug cadence, and add a dedicated replay-facing regression test. Do not widen back into the replay-calibration seam except for tightly related harness/test plumbing if truly necessary. Update this plan with exact files changed and the route you chose, run the strongest repo-local validation, commit, and push to `main` before handoff unless blocked. Do not close the bead. Leave it ready for QA with exact evidence, commit hash, and any remaining timing/profile caveats.  
+**Bead ID:** `aerobeat-input-camera-tracking-59bh`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the separate straight-punch replay timing fix against bead `aerobeat-input-camera-tracking-59bh`. Claim it on start with `bd update aerobeat-input-camera-tracking-59bh --status in_progress --json`. Fix the boxing replay/debug truth seam where straight-punch `triggered` state can vanish between published updates. Keep the slice narrow and truthful: adjust timing/profile/publication behavior so the default boxing replay path can surface straight-punch trigger truth reliably at the published replay/debug cadence, and add a dedicated replay-facing regression test. Do not widen back into the replay-calibration seam except for tightly related harness/test plumbing if truly necessary. Update this plan with exact files changed and the route you chose, run the strongest repo-local validation, commit, and push to `main` before handoff unless blocked. Do not close the bead. Leave it ready for QA with exact evidence, commit hash, and any remaining timing/profile caveats.
 
 **Folders Created/Deleted/Modified:**
 - `assets/`
@@ -187,7 +189,7 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 - `/.testbed/tests/unit/test_pose_detector_substrate.gd`
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-calibration-loop-grid-overlay-and-straight-punch-regressions.md`
 
-**Status:** ✅ Complete  
+**Status:** ✅ Complete
 
 **Results:**
 - **Chosen route:** kept the boxing replay/debug publish cap at **10 fps** and fixed the truth seam in the boxing gesture profile itself. Straight-punch replay now restores a `triggered` grace window and pose-only rearm window that outlive the published replay/debug cadence instead of collapsing within ~10 ms.
@@ -206,19 +208,59 @@ This plan keeps the regression lane honest and narrow. We start by auditing the 
 
 ---
 
+### Task 5: Enable calibration on arbitrary replay videos in testbed
+
+**Bead ID:** `aerobeat-input-camera-tracking-j0to`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement replay-calibration support for arbitrary replay videos in the `/.testbed/` harness against bead `aerobeat-input-camera-tracking-j0to`. Claim it on start with `bd update aerobeat-input-camera-tracking-j0to --status in_progress --json`. Derrick has clarified that replay calibration is a required testbed capability, so do not keep the current blanket replay-calibration disable path as the final product behavior. Re-enable calibration for replay sources in a truthful way: the harness should allow calibration attempts on replay video, use the visible pose data from the video feed just like live input, and stay honest when a random clip never yields a usable baseline. Remove only the unnecessary replay safeguards; do not reintroduce misleading auto-bootstrap grid truth as if it were a real calibration capture. Keep this slice narrow and focused on replay calibration support rather than reopening the separate straight-punch seam. Update this plan with exact files changed and the route chosen, run the strongest repo-local validation, commit, and push to `main` before handoff unless blocked. Do not close the bead; leave it ready for QA with exact evidence and any remaining replay-calibration caveats.
+
+**Folders Created/Deleted/Modified:**
+- `/.testbed/`
+- runtime/testbed surfaces only as needed
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/`
+
+**Files Created/Deleted/Modified:**
+- likely `/.testbed/scripts/proving_harness.gd`
+- likely `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- maybe proving-scene fixture/config surfaces if required
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-20-calibration-loop-grid-overlay-and-straight-punch-regressions.md`
+
+**Status:** ✅ Complete  
+
+**Results:**
+- **Chosen route:** removed the proving-harness replay-only calibration block and restored replay calibration as a first-class `/.testbed/` capability, while keeping the existing auto-bootstrap grid-truth guardrail intact. The harness now lets replay sources attempt the same shared calibration flow as live input, but its copy stays explicit that calibration still depends on the visible replay frames actually containing a centered T-pose segment.
+- **Exact harness changes:**
+  - `/.testbed/scripts/proving_harness.gd`
+    - removed the source gate from `_start_athlete_calibration_request()`, `provider_has_start_calibration()`, and `provider_has_cancel_calibration()` so replay sources can request/cancel shared calibration the same way live sources do.
+    - replaced the replay-disable button/copy path in `_refresh_calibration_flow_ui()` with truthful replay-capable copy. Replay scenes now show `Start Calibration` instead of `Replay Calibration Unavailable`, keep the normal countdown/capture state machine, and explain that replay calibration uses the visible pose in the video feed and may honestly fail when a random action clip never presents a usable centered T-pose baseline.
+    - preserved the existing `_active_source_uses_replay_bootstrap_baseline()` guard so replay `auto_bootstrap` baselines still do **not** reappear as fake shared calibration truth in the grid overlay/truth panel.
+  - `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+    - replaced the prior prerecorded-replay disable regression with `test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_replays()`.
+    - new coverage proves both Boxing and Flow proving scenes enable the replay calibration button, route one calibration request on press, surface replay-specific honesty copy, and report `capture_pending` truth as “waiting for a centered T-pose in the replay feed” rather than pretending calibration is categorically unavailable.
+- **Strongest repo-local validation run:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=shared_calibration -gexit` ✅ passed (**3/3 tests, 72 asserts, 6.209s**).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=grid_truth -gexit` ✅ passed (**2/2 tests, 40 asserts, 9.831s**).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=calibration_session -gexit` ✅ passed (**2/2 tests, 20 asserts, 0.42s**).
+- **Remaining replay-calibration caveat for QA:** this change intentionally does **not** fabricate success for arbitrary replay footage. A replay clip still needs to visibly satisfy the same centered T-pose readiness checks as live input before the substrate will capture a truthful `calibration_session` baseline. When a clip never shows that pose, the harness now treats failure as expected truth instead of disabling the feature up front.
+
+---
+
 ## Final Results
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Completed the audit, the replay-calibration truth slice, its QA pass, and the separate straight-punch replay-timing slice. Default prerecorded proving replays now truthfully disable shared calibration / hide replay auto-bootstrap grid truth, and the boxing profile once again keeps straight-punch `triggered` truth visible across the profile's published 10 fps replay/debug cadence.
+**What We Built:** Completed the audit, the straight-punch replay-timing fix, and the final replay-calibration harness correction Derrick asked for. The `/.testbed/` harness once again allows shared calibration attempts on prerecorded replay sources, but it does so honestly: the UI now says replay calibration uses the visible video pose feed and may fail when a clip never presents a usable centered T-pose. The earlier replay-only disable path is gone, while the existing `auto_bootstrap` grid-truth hiding guard remains in place so replay baselines still are not mislabeled as real calibration captures.
 
-**Reference Check:** `REF-01` correctly named the regression lane. `REF-02` explains why shared calibration now requires centered T-pose capture and why baseline reset clears gameplay truth. `REF-03` explains why the shared overlay consumes the single runtime baseline/grid payload and why replay auto-bootstrap truth had to be separated from real calibration truth. `REF-04` confirms the later cleanup work did not address either seam.
+**Reference Check:** `REF-01` correctly named the regression lane. `REF-02` explains why shared calibration now requires centered T-pose capture and why baseline reset clears gameplay truth. `REF-03` explains why the shared overlay consumes the single runtime baseline/grid payload and why replay auto-bootstrap truth must stay separate from real calibration truth. `REF-04` confirms the later cleanup work did not address either seam. Derrick's replay-calibration clarification is now implemented in Task 5 rather than just noted as future work.
 
 **Commits:**
 - `d6bb10d` - Truthfully disable replay calibration in proving harness
 - `689608d` - Restore straight-punch replay trigger truth
+- `HEAD at handoff` - Re-enable truthful replay calibration attempts in proving harness
 
-**Lessons Learned:** Current repo tests validate the shared calibration contract and boxing profile shape, but replay-facing truth can still drift when publication cadence and gesture-state timers stop matching. For replay-first proving flows, both UI copy and detector/profile timing need explicit cadence-aware coverage so short-lived `triggered` phases cannot disappear between published updates.
+**Lessons Learned:** Current repo tests validate the shared calibration contract and boxing profile shape, but replay-facing truth can still drift when the harness UI policy diverges from the substrate's actual readiness contract. Replay-first proving flows need explicit tests for both directions: (1) never pretend auto-bootstrap is a real shared calibration capture, and (2) never disable a legitimate calibration path just because arbitrary footage might fail to satisfy the pose prerequisites.
 
 ---
 

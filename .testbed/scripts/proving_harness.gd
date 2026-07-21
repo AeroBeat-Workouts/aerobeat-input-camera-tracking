@@ -435,8 +435,6 @@ func _resolve_calibration_session() -> Dictionary:
 	return {}
 
 func _start_athlete_calibration_request() -> bool:
-	if not _shared_calibration_supported_for_active_source():
-		return false
 	if provider != null:
 		if provider.has_method("start_athlete_calibration"):
 			return bool(provider.start_athlete_calibration())
@@ -470,22 +468,17 @@ func _refresh_calibration_flow_ui() -> void:
 	var has_baseline := bool(baseline.get("is_calibrated", false))
 	var start_supported := provider_has_start_calibration()
 	var cancel_supported := provider_has_cancel_calibration()
-	var calibration_supported_for_source := _shared_calibration_supported_for_active_source()
 	_apply_calibration_session_transition(state_name, session)
 
 	if _athlete_recalibrate_button != null:
 		_athlete_recalibrate_button.disabled = is_active or not start_supported
-		if calibration_supported_for_source:
-			_athlete_recalibrate_button.tooltip_text = "Start a shared athlete calibration countdown, then capture the centered T-pose baseline."
-			if state_name == "failed" or state_name == "cancelled":
-				_athlete_recalibrate_button.text = "Retry Calibration"
-			elif has_baseline:
-				_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
-			else:
-				_athlete_recalibrate_button.text = "Start Calibration"
+		_athlete_recalibrate_button.tooltip_text = "Start a shared athlete calibration countdown, then capture the centered T-pose baseline from the visible pose feed."
+		if state_name == "failed" or state_name == "cancelled":
+			_athlete_recalibrate_button.text = "Retry Calibration"
+		elif has_baseline and not _active_source_uses_replay_bootstrap_baseline():
+			_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
 		else:
-			_athlete_recalibrate_button.text = "Replay Calibration Unavailable"
-			_athlete_recalibrate_button.tooltip_text = "Shared athlete calibration is disabled for prerecorded proving replays. Use a live camera, or swap to a replay fixture with an explicit centered T-pose setup, before capturing a truthful shared baseline."
+			_athlete_recalibrate_button.text = "Start Calibration"
 	if _athlete_calibration_secondary_button != null:
 		_athlete_calibration_secondary_button.visible = is_active and cancel_supported
 		_athlete_calibration_secondary_button.disabled = not (is_active and cancel_supported)
@@ -532,8 +525,6 @@ func _apply_calibration_session_transition(state_name: String, session: Dictiona
 	_record_fixture_state_snapshot(event_name)
 
 func _build_calibration_instruction_lines(instructions: Dictionary, readiness: Dictionary) -> String:
-	if not _shared_calibration_supported_for_active_source():
-		return "○ Shared athlete calibration disabled for this prerecorded replay\n○ Use a live camera or a replay fixture with a centered T-pose setup"
 	var centered_ready := bool(readiness.get("centered_in_camera", false))
 	var t_pose_ready := bool(readiness.get("t_pose_ready", false))
 	var centered_text := "Stand centered in camera"
@@ -542,11 +533,12 @@ func _build_calibration_instruction_lines(instructions: Dictionary, readiness: D
 		centered_text = String((instructions.get("stand_centered", {}) as Dictionary).get("text", centered_text))
 	if instructions.get("hold_t_pose", {}) is Dictionary:
 		t_pose_text = String((instructions.get("hold_t_pose", {}) as Dictionary).get("text", t_pose_text))
-	return "%s %s\n%s %s" % ["✓" if centered_ready else "○", centered_text, "✓" if t_pose_ready else "○", t_pose_text]
+	var lines := ["%s %s" % ["✓" if centered_ready else "○", centered_text], "%s %s" % ["✓" if t_pose_ready else "○", t_pose_text]]
+	if _is_prerecorded_source_active():
+		lines.append("○ Replay calibration uses the visible pose in the video feed; random action clips may never yield a usable centered baseline")
+	return "\n".join(lines)
 
 func _calibration_countdown_text(state_name: String, session: Dictionary) -> String:
-	if not _shared_calibration_supported_for_active_source():
-		return "Shared calibration disabled for prerecorded proving replay"
 	match state_name:
 		"countdown":
 			return "Countdown: %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
@@ -564,14 +556,12 @@ func _calibration_countdown_text(state_name: String, session: Dictionary) -> Str
 			return "5-second countdown, then shared baseline capture"
 
 func _calibration_status_text(state_name: String, session: Dictionary, has_baseline: bool) -> String:
-	if not _shared_calibration_supported_for_active_source():
-		if has_baseline and _active_source_uses_replay_bootstrap_baseline():
-			return "Shared calibration is disabled for this prerecorded proving replay, and replay-derived auto-bootstrap baselines are hidden so the grid does not pretend it came from a truthful centered T-pose capture."
-		return "Shared calibration is disabled for this prerecorded proving replay because the default action clip does not provide a truthful centered T-pose capture segment. Use a live camera, or switch to a replay fixture with explicit calibration setup, before recalibrating."
 	match state_name:
 		"countdown":
 			return "Stand centered in camera and get into a T-pose before the countdown ends."
 		"capture_pending":
+			if _is_prerecorded_source_active():
+				return "Countdown finished. Waiting for a centered T-pose in the replay feed. If this clip never shows one, calibration will fail honestly without replacing the hidden auto-bootstrap baseline."
 			return "Countdown finished. Waiting until the athlete is centered and holding a T-pose."
 		"capturing":
 			return "Capturing the shared athlete baseline now — hold steady."
@@ -582,8 +572,12 @@ func _calibration_status_text(state_name: String, session: Dictionary, has_basel
 		"cancelled":
 			return "Calibration cancelled. Start again when the athlete is ready."
 		_:
+			if has_baseline and _active_source_uses_replay_bootstrap_baseline():
+				return "Replay-derived auto-bootstrap baselines stay hidden so the grid does not pretend a truthful centered T-pose capture already happened. Start calibration when the replay visibly shows a usable centered T-pose segment."
 			if has_baseline:
 				return "Calibration ready. Re-run anytime if the athlete changes position."
+			if _is_prerecorded_source_active():
+				return "Start calibration, then use the visible replay pose like live input: stand centered in frame in a T-pose. Random clips may never yield a usable baseline, and that failure is expected truth rather than a harness bug."
 			return "Start calibration, then stand centered in camera in a T-pose."
 
 func _humanize_calibration_failure_reason(reason: String) -> String:
@@ -604,23 +598,19 @@ func _humanize_calibration_failure_reason(reason: String) -> String:
 			return reason.replace("_", " ")
 
 func provider_has_start_calibration() -> bool:
-	if not _shared_calibration_supported_for_active_source():
-		return false
 	if provider != null and (provider.has_method("start_athlete_calibration") or provider.has_method("request_athlete_recalibration")):
 		return true
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	return tracking_singleton != null and (tracking_singleton.has_method("start_athlete_calibration") or tracking_singleton.has_method("request_athlete_recalibration"))
 
 func provider_has_cancel_calibration() -> bool:
-	if not _shared_calibration_supported_for_active_source():
-		return false
 	if provider != null and provider.has_method("cancel_athlete_calibration"):
 		return true
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	return tracking_singleton != null and tracking_singleton.has_method("cancel_athlete_calibration")
 
 func _shared_calibration_supported_for_active_source() -> bool:
-	return not _is_prerecorded_source_active()
+	return provider_has_start_calibration()
 
 func _active_source_uses_replay_bootstrap_baseline() -> bool:
 	if not _is_prerecorded_source_active():

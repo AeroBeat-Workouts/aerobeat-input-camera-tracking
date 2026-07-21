@@ -1387,7 +1387,7 @@ func test_proving_harness_surfaces_shared_calibration_flow_and_routes_start_canc
 	assert_eq(start_button.text, "Retry Calibration")
 	assert_string_contains(String(status_label.text), "Calibration cancelled")
 
-func test_proving_scenes_disable_shared_calibration_for_prerecorded_replays() -> void:
+func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_replays() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
 		var packed_scene := packed_scene_variant as PackedScene
 		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
@@ -1407,15 +1407,31 @@ func test_proving_scenes_disable_shared_calibration_for_prerecorded_replays() ->
 		assert_not_null(countdown_label)
 		assert_not_null(instruction_label)
 		assert_not_null(status_label)
-		assert_eq(start_button.disabled, true)
-		assert_eq(start_button.text, "Replay Calibration Unavailable")
+		assert_eq(start_button.disabled, false)
+		assert_eq(start_button.text, "Start Calibration")
 		assert_eq(cancel_button.visible, false)
-		assert_string_contains(String(countdown_label.text), "disabled for prerecorded proving replay")
-		assert_string_contains(String(instruction_label.text), "disabled for this prerecorded replay")
-		assert_string_contains(String(status_label.text), "default action clip")
+		assert_string_contains(String(countdown_label.text), "5-second countdown")
+		assert_string_contains(String(instruction_label.text), "Stand centered in camera")
+		assert_string_contains(String(instruction_label.text), "Hold a T-pose")
+		assert_string_contains(String(instruction_label.text), "visible pose in the video feed")
+		assert_string_contains(String(status_label.text), "Random clips may never yield a usable baseline")
 
 		start_button.emit_signal("pressed")
-		assert_eq(provider.request_count, 0)
+		assert_eq(provider.request_count, 1)
+		scene_root.set("_latest_state", provider.get_detector_state())
+		scene_root.call("_refresh_calibration_flow_ui")
+		assert_eq(start_button.disabled, true)
+		assert_eq(cancel_button.visible, true)
+		assert_string_contains(String(countdown_label.text), "Countdown: 5s")
+
+		provider.calibration_session = provider._make_session("capture_pending", {
+			"is_active": true,
+			"failure_reason": "t_pose_required",
+		})
+		scene_root.set("_latest_state", provider.get_detector_state())
+		scene_root.call("_refresh_calibration_flow_ui")
+		assert_string_contains(String(status_label.text), "Waiting for a centered T-pose in the replay feed")
+		assert_string_contains(String(status_label.text), "fail honestly")
 
 func _shared_flow_grid_truth_state(capture_source: String = "calibration_session") -> Dictionary:
 	return {
