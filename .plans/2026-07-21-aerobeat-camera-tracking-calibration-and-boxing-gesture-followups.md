@@ -319,7 +319,7 @@ QA rerun status:
 - `/.plans/`
 
 **Files Created/Deleted/Modified:**
-- proving-harness/debug/test files as needed
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-21-aerobeat-camera-tracking-calibration-and-boxing-gesture-followups.md`
 
 **Status:** ✅ Complete
