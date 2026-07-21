@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-21  
 **Status:** In Progress  
-**Last Updated:** 2026-07-21 18:25 EDT
+**Last Updated:** 2026-07-21 18:52 EDT
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -370,12 +370,13 @@ Remaining caveats:
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Completed the sync/research audit plus three coder seams: calibration-session truth repair, boxing grid-panel integration, and the straight-punch / pose-strike inspector cleanup that makes the proving surfaces match the active pose-threshold boxing system again. After QA exposed a false-green proving lane, follow-up bead `aerobeat-input-camera-tracking-oh7a` repaired the narrow proving-harness/test parse breaks so QA can rerun truthfully.
+**What We Built:** Completed the sync/research audit plus four bounded coder seams: calibration-session truth repair, boxing grid-panel integration, straight-punch / pose-strike inspector cleanup, and the final boxing proving-harness/debug truth pass that restored the remaining depth-preview, pose-only rearm, paused-punch popup, event-feed, and weave badge inspector routing gaps. QA’s earlier false-green state is gone; the focused proving-harness file now reruns cleanly at `40/40`.
 
-**Reference Check:** `REF-01` and `REF-02` are now satisfied for the completed coder seams: calibration success conditions are explicit again, boxing placement cards are integrated into the main detector board, weave remains live-hooked, and the stale straight-punch bbox/depth inspector surfaces were replaced with active pose-threshold truth. `REF-03`..`REF-06` were used for prior-state comparison and continuity.
+**Reference Check:** `REF-01` and `REF-02` are satisfied for the completed coder seams: calibration success conditions are explicit again, boxing placement cards are integrated into the main detector board, weave badge clicks now land in the real live inspector path, and the stale straight-punch/depth proving surfaces now reflect the active pose-threshold truth. `REF-03`..`REF-06` were used for prior-state comparison and continuity.
 
 **Commits:**
-- Pending final repo commit after QA/audit
+- `60d31ae` - Fix boxing proving harness debug truth surfaces
+- `5e8e8b3` - Fix boxing proving harness debug truth
 
 **Lessons Learned:** The underlying straight-punch runtime did not need a wholesale detector rewrite; the real seam was truthfulness. A small pose-reference shoulder-width fallback plus inspector/debug cleanup fixed the visible `tracking_lost`/zero-peak confusion without widening back into retired bbox/depth logic.
 
