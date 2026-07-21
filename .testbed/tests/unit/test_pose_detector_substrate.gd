@@ -1182,9 +1182,23 @@ func test_straight_punch_pose_only_mode_triggers_from_pose_velocity_without_hand
 	assert_true(bool(left_debug.get("pose_tracking_valid", false)))
 	assert_eq(String(left_debug.get("sample_source", "")), "pose")
 	assert_eq(String(left_debug.get("velocity_signal_source", "")), "elbow_plus_wrist")
-	assert_eq(int(left_debug.get("positive_growth_samples", -1)), 0)
-	assert_true(is_equal_approx(float(left_debug.get("bbox_area_growth", -1.0)), 0.0))
+	assert_true(float(left_debug.get("recent_peak_wrist_velocity", 0.0)) >= float(left_debug.get("wrist_velocity", 0.0)))
 	assert_eq(String(left_debug.get("state", "")), "triggered")
+
+func test_straight_punch_pose_only_mode_uses_calibrated_shoulder_width_when_live_width_is_missing() -> void:
+	_disable_hand_tracking_for_straight_punch()
+	_calibrate_stance()
+	substrate.process_landmarks(_make_pose_frame(), 1100)
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_SHOULDER: {"x": 0.40, "v": 0.2},
+		PoseLandmarkIds.LEFT_SHOULDER: {"x": 0.40},
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.02},
+	}), 1140)
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	assert_true(bool(left_debug.get("pose_tracking_valid", false)))
+	assert_ne(String(left_debug.get("pose_reference_shoulder_width_source", "")), "missing")
+	assert_true(float(left_debug.get("pose_reference_shoulder_width", 0.0)) > 0.0)
 
 func test_straight_punch_pose_only_mode_enters_tracking_lost_from_pose_loss() -> void:
 	_disable_hand_tracking_for_straight_punch()

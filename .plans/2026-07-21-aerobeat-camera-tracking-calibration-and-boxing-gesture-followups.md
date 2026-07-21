@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-21  
 **Status:** In Progress  
-**Last Updated:** 2026-07-21 17:37 EDT  
+**Last Updated:** 2026-07-21 18:05 EDT
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -176,9 +176,30 @@ Remaining caveats:
 - targeted proving/runtime tests as needed
 - this plan file
 
-**Status:** ⏳ In Progress
+**Status:** ✅ Complete
 
-**Results:** Audit complete and approved for execution. Bead `aerobeat-input-camera-tracking-ike8` is now in progress with a coder subagent implementing the punch inspector/runtime cleanup seam.
+**Results:** Implemented the bounded punch inspector/runtime cleanup seam and kept it focused on the active pose-threshold boxing truth. Exact files changed in this coder pass:
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/assets/boxing.gesture_detection.yaml`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-21-aerobeat-camera-tracking-calibration-and-boxing-gesture-followups.md`
+
+What changed:
+- Added pose-reference shoulder-width fallback/state surfacing in `pose_detector_substrate.gd` so pose-driven straight punches and pose-strike families can stay truthful when live shoulder-width samples are temporarily weak, instead of collapsing straight back to `tracking_lost` for the proving/debug surfaces.
+- Restored truthful straight-punch debug payloads for the active pose path by surfacing recent wrist-velocity peaks and pose-reference shoulder-width source/value alongside the existing pose gates.
+- Rewrote the straight-punch proving rows and hand-debug line around pose truth (`recent_peak_wrist_velocity`, elbow/shoulder XY gate, wrist lateral angle, pose-only rearm, shoulder-width provenance) and removed stale bbox/depth rows from the straight-punch / hook / uppercut inspector surfaces.
+- Trimmed dead bbox-era straight-punch config keys from `assets/boxing.gesture_detection.yaml` so the published boxing profile matches the active pose-threshold contract.
+- Added targeted unit coverage for the shoulder-width fallback/truth surface plus updated boxing harness/profile tests to lock the new inspector/debug text and config expectations.
+
+Validation run:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` ✅
+
+Caveats:
+- Weave was left as-is except for preserving its already-live inspector path; this bead did not widen into unrelated detector systems.
+- Straight-punch runtime debug dictionaries still retain some legacy/internal bbox/depth metrics for compatibility with existing lower-level tests and tooling, but the user-facing proving/inspector surfaces now report the active pose-threshold truth instead of those retired signals.
 
 ---
 
@@ -228,14 +249,14 @@ Remaining caveats:
 
 **Status:** ⚠️ Partial
 
-**What We Built:** Completed the sync/research audit and updated the plan with the current repo truth for calibration completion, boxing grid presentation, and punch/weave inspector state.
+**What We Built:** Completed the sync/research audit plus three coder seams: calibration-session truth repair, boxing grid-panel integration, and the straight-punch / pose-strike inspector cleanup that makes the proving surfaces match the active pose-threshold boxing system again.
 
-**Reference Check:** `REF-01`..`REF-06` informed the audit. The current implementation truth does **not** yet satisfy the requested boxing grid-panel integration or punch-inspector cleanup; the plan now records the exact gaps before implementation.
+**Reference Check:** `REF-01` and `REF-02` are now satisfied for the completed coder seams: calibration success conditions are explicit again, boxing placement cards are integrated into the main detector board, weave remains live-hooked, and the stale straight-punch bbox/depth inspector surfaces were replaced with active pose-threshold truth. `REF-03`..`REF-06` were used for prior-state comparison and continuity.
 
 **Commits:**
-- None yet
+- Pending final repo commit after QA/audit
 
-**Lessons Learned:** The newest scene tweaks changed presentation only. The remaining problems split cleanly into three seams: calibration session UX/truth, boxing grid presentation/layout, and punch inspector/runtime cleanup. Trying to hide those inside one implementation bead would make QA/audit noisier, not cleaner.
+**Lessons Learned:** The underlying straight-punch runtime did not need a wholesale detector rewrite; the real seam was truthfulness. A small pose-reference shoulder-width fallback plus inspector/debug cleanup fixed the visible `tracking_lost`/zero-peak confusion without widening back into retired bbox/depth logic.
 
 ---
 

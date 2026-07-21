@@ -35,17 +35,14 @@ straight_punch:
     evaluation:
       fresh_samples_only: true
       sample_window_size: 4
-      min_positive_growth_samples: 1
       window_ms: 250
     thresholds:
       min_velocity: 0.5
-      min_bbox_area_growth: 0.003
       max_elbow_shoulder_xy_distance: 0.140
       min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
     timing:
       triggered_grace_ms: 240
     rearm:
-      bbox_area_retract_epsilon: 0.0003
       pose_only_rearm_ms: 250
     state_machine:
       lost_tracking_reacquire_stable_ms: 40

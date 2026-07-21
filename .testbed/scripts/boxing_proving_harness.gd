@@ -1809,10 +1809,14 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 		"reacquire_progress":
 			if hand_tracking_enabled:
 				current_text = "%d/%dms hand stable" % [hand_stable_ms, reacquire_stable_ms_required]
-				passed = hand_stable_ms >= reacquire_stable_ms_required
 			else:
-				current_text = "%s pose stable for straight-punch gating" % ["tracked" if pose_tracking_valid else "waiting"]
-				passed = pose_tracking_valid
+				current_text = "%s / %dms required (shoulder width %s via %s)" % [
+					"tracked" if pose_tracking_valid else "waiting",
+					reacquire_stable_ms_required,
+					_fmt_float(pose_reference_shoulder_width),
+					pose_reference_shoulder_width_source,
+				]
+			passed = hand_stable_ms >= reacquire_stable_ms_required if hand_tracking_enabled else pose_tracking_valid
 		_:
 			current_text = "pending"
 			passed = false
@@ -1824,8 +1828,6 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 
 func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictionary, family: String, _side: String) -> Dictionary:
 	var row_id := String(row_spec.get("id", ""))
-	if row_id.begins_with("depth_"):
-		return _build_depth_config_row(row_spec, family, side_debug)
 	var row := row_spec.duplicate(true)
 	var label := String(row_spec.get("label", ""))
 	var passed := false
@@ -2405,7 +2407,6 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 	var uppercut_side_debug: Dictionary = (uppercut_debug.get(side, {}) as Dictionary)
 	var hand_tracking_enabled := bool(side_debug.get("hand_tracking_enabled", true))
 	var state_name := String(side_debug.get("state", side_debug.get("phase", hand.get("tracking_state", "tracking_lost"))))
-	var bbox: Dictionary = hand.get("bbox", {}) if hand.get("bbox", {}) is Dictionary else {}
 	var tracking_state := String(hand.get("tracking_state", side_debug.get("tracking_state", "idle")))
 	var tracking_valid := bool(hand.get("tracking_valid", side_debug.get("tracking_valid", false)))
 	var sample_source := String(hand.get("sample_source", side_debug.get("sample_source", "none")))
@@ -2416,24 +2417,27 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		tracking_state = String(side_debug.get("tracking_state", tracking_state))
 		tracking_valid = bool(side_debug.get("pose_tracking_valid", tracking_valid))
 		sample_source = String(side_debug.get("sample_source", "pose"))
-		bbox = {}
 		hand_grace_ms = 0
 		hand_stable_ms = 0
 		stale_ms = 0
-	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s wrist_forward_vel=%s depth_spike=%s elbow_shoulder_xy=%s<=%s(%s) bbox_area=%s bbox_growth=%s grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
+	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s peak_xyz_vel=%s wrist_forward_vel=%s depth_spike=%s elbow_shoulder_xy=%s<=%s(%s) wrist_angle=%s>=%s(%s) shoulder_width=%s(%s) grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
 		"L" if side == "left" else "R",
 		state_name,
 		tracking_state,
 		_fmt_bool(tracking_valid),
 		sample_source,
 		_fmt_float(side_debug.get("wrist_velocity", 0.0)),
+		_fmt_float(side_debug.get("recent_peak_wrist_velocity", side_debug.get("wrist_velocity", 0.0))),
 		_fmt_float(side_debug.get("wrist_forward_velocity", 0.0)),
 		_fmt_float(side_debug.get("recent_peak_forward_depth_spike", side_debug.get("forward_depth_spike", 0.0))),
 		_fmt_float(side_debug.get("elbow_shoulder_xy_distance", 0.0)),
 		_fmt_float(side_debug.get("max_elbow_shoulder_xy_distance", 0.0)),
 		_fmt_bool(bool(side_debug.get("elbow_shoulder_xy_gate_passed", false))),
-		_fmt_float(bbox.get("area", side_debug.get("bbox_area", 0.0))),
-		_fmt_float(side_debug.get("bbox_area_growth", 0.0)),
+		_fmt_float(side_debug.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0)),
+		_fmt_float(side_debug.get("min_wrist_lateral_angle_from_elbow_vertical_deg", 0.0)),
+		_fmt_bool(bool(side_debug.get("wrist_lateral_angle_gate_passed", false))),
+		_fmt_float(side_debug.get("pose_reference_shoulder_width", 0.0)),
+		String(side_debug.get("pose_reference_shoulder_width_source", "missing")),
 		int(side_debug.get("grace_ms_remaining", 0)),
 		String(hook_side_debug.get("state", "tracking_lost")),
 		_fmt_float(hook_side_debug.get("horizontal_direction_velocity", hook_side_debug.get("outward_velocity", 0.0))),

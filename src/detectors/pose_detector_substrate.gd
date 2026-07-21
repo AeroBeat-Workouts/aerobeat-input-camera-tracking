@@ -952,6 +952,8 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"reacquire_stable_ms_required": int(straight_punch_config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS)),
 		"hand_tracking_enabled": _straight_punch_uses_hand_tracking(),
 		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
+		"pose_reference_shoulder_width": float(state.get("pose_reference_shoulder_width", 0.0)),
+		"pose_reference_shoulder_width_source": String(state.get("pose_reference_shoulder_width_source", "missing")),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),
 		"sample_source": String(hand_payload.get("sample_source", state.get("hand_sample_source", "none"))),
 		"velocity_signal_source": String(state.get("velocity_signal_source", "wrist_only")),
@@ -1026,6 +1028,8 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"pose_only_rearm_ms": int(config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS)),
 		"reacquire_stable_ms_required": int(config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS)),
 		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
+		"pose_reference_shoulder_width": float(state.get("pose_reference_shoulder_width", 0.0)),
+		"pose_reference_shoulder_width_source": String(state.get("pose_reference_shoulder_width_source", "missing")),
 		"tracking_valid": bool(state.get("pose_tracking_valid", false)),
 		"tracking_state": String(state.get("tracking_state", "pose_missing")),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),
@@ -1361,7 +1365,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	var state := _get_straight_punch_state(side)
 	_clear_same_family_block(state)
 	var use_hand_tracking := _straight_punch_uses_hand_tracking()
-	var pose_tracking_valid := _is_pose_valid_for_straight_punch(shoulder, wrist, shoulder_width)
+	var pose_reference_shoulder_width := _resolve_pose_reference_shoulder_width(shoulder_width)
+	var pose_tracking_valid := _is_pose_valid_for_straight_punch(shoulder, wrist, pose_reference_shoulder_width)
 	var hand_payload := _get_tracking_hand_payload(tracking_frame, side)
 	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
 	var bbox_area := maxf(float(bbox.get("area", 0.0)), 0.0)
@@ -1391,6 +1396,8 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	state["hand_tracking_state"] = hand_tracking_state
 	state["hand_sample_source"] = String(hand_payload.get("sample_source", "none")) if use_hand_tracking else "pose"
 	state["pose_tracking_valid"] = pose_tracking_valid
+	state["pose_reference_shoulder_width"] = pose_reference_shoulder_width
+	state["pose_reference_shoulder_width_source"] = _pose_reference_shoulder_width_source(shoulder_width, pose_reference_shoulder_width)
 	state["elbow_shoulder_xy_distance"] = elbow_shoulder_xy_distance
 	state["max_elbow_shoulder_xy_distance"] = max_elbow_shoulder_xy_distance
 	state["elbow_shoulder_xy_gate_passed"] = elbow_shoulder_xy_gate_passed
@@ -1632,7 +1639,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		return
 	var state := _get_pose_strike_state(family, side)
 	_clear_same_family_block(state)
-	var pose_tracking_valid := _is_pose_valid_for_pose_strike(shoulder, elbow, wrist, shoulder_width)
+	var pose_reference_shoulder_width := _resolve_pose_reference_shoulder_width(shoulder_width)
+	var pose_tracking_valid := _is_pose_valid_for_pose_strike(shoulder, elbow, wrist, pose_reference_shoulder_width)
 	var fresh_sample := pose_tracking_valid
 	var wrist_position := PoseMetrics.to_vector3(wrist)
 	var velocity_signal_position := _resolve_straight_punch_velocity_signal_position(state, elbow, wrist_position)
@@ -1660,6 +1668,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["last_vertical_velocity"] = vertical_speed
 	state["last_sample_fresh"] = fresh_sample
 	state["pose_tracking_valid"] = pose_tracking_valid
+	state["pose_reference_shoulder_width"] = pose_reference_shoulder_width
+	state["pose_reference_shoulder_width_source"] = _pose_reference_shoulder_width_source(shoulder_width, pose_reference_shoulder_width)
 	state["tracking_state"] = "pose_tracked" if pose_tracking_valid else "pose_missing"
 	state["current_timestamp_ms"] = timestamp_ms
 	_apply_depth_analysis_to_state(state, depth_analysis)
@@ -2356,6 +2366,8 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"velocity_signal_source": "wrist_only",
 		"hand_tracking_valid": false,
 		"pose_tracking_valid": false,
+		"pose_reference_shoulder_width": 0.0,
+		"pose_reference_shoulder_width_source": "missing",
 		"stale_frames": 0,
 		"reacquire_started_timestamp_ms": -1,
 		"not_ready_started_timestamp_ms": -1,
@@ -2717,6 +2729,8 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"last_sample_fresh": false,
 		"velocity_signal_source": "wrist_only",
 		"pose_tracking_valid": false,
+		"pose_reference_shoulder_width": 0.0,
+		"pose_reference_shoulder_width_source": "missing",
 		"tracking_state": "pose_missing",
 		"reacquire_started_timestamp_ms": -1,
 		"not_ready_started_timestamp_ms": -1,
@@ -2839,6 +2853,20 @@ func _straight_punch_uses_hand_tracking() -> bool:
 	var tracking: Dictionary = tracker_profile_document.get("tracking", {}) if tracker_profile_document.get("tracking", {}) is Dictionary else {}
 	var hands: Dictionary = tracking.get("hands", {}) if tracking.get("hands", {}) is Dictionary else {}
 	return bool(hands.get("enabled", true))
+
+func _resolve_pose_reference_shoulder_width(shoulder_width: float) -> float:
+	if shoulder_width > 0.0:
+		return shoulder_width
+	if bool(_baseline.get("is_calibrated", false)):
+		return maxf(float(_baseline.get("shoulder_width", 0.0)), 0.0)
+	return 0.0
+
+func _pose_reference_shoulder_width_source(raw_shoulder_width: float, reference_shoulder_width: float) -> String:
+	if raw_shoulder_width > 0.0:
+		return "live"
+	if reference_shoulder_width > 0.0:
+		return "baseline"
+	return "missing"
 
 func _is_pose_valid_for_straight_punch(shoulder: Dictionary, wrist: Dictionary, shoulder_width: float) -> bool:
 	if shoulder.is_empty() or wrist.is_empty() or shoulder_width <= 0.0:
@@ -3157,7 +3185,6 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"side": side,
 		"state": next_phase,
 		"previous_state": previous_phase,
-		"trigger_bbox_area": float(state.get("trigger_bbox_area", 0.0)),
 		"elbow_shoulder_xy_distance": float(state.get("elbow_shoulder_xy_distance", 0.0)),
 		"max_elbow_shoulder_xy_distance": float(state.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE)),
 		"elbow_shoulder_xy_gate_passed": bool(state.get("elbow_shoulder_xy_gate_passed", false)),
@@ -3165,17 +3192,18 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"min_wrist_lateral_angle_from_elbow_vertical_deg": float(state.get("min_wrist_lateral_angle_from_elbow_vertical_deg", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG)),
 		"wrist_lateral_angle_gate_passed": bool(state.get("wrist_lateral_angle_gate_passed", false)),
 		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
-		"bbox_area": float(state.get("last_bbox_area", 0.0)),
-		"bbox_area_growth": float(state.get("last_bbox_area_growth", 0.0)),
+		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
+		"recent_peak_wrist_velocity": float(state.get("recent_peak_wrist_velocity", 0.0)),
+		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),
 		"forward_depth_spike": float(state.get("last_forward_depth_spike", 0.0)),
 		"recent_peak_forward_depth_spike": float(state.get("recent_peak_forward_depth_spike", 0.0)),
-		"positive_growth_samples": int(state.get("positive_growth_samples", 0)),
-		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
-		"wrist_forward_velocity": float(state.get("last_wrist_forward_velocity", 0.0)),
 		"fresh_sample": bool(state.get("last_sample_fresh", false)),
 		"sample_source": String(state.get("hand_sample_source", "none")),
 		"tracking_state": String(state.get("hand_tracking_state", "idle")),
 		"tracking_valid": bool(state.get("hand_tracking_valid", false)),
+		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
+		"pose_reference_shoulder_width": float(state.get("pose_reference_shoulder_width", 0.0)),
+		"pose_reference_shoulder_width_source": String(state.get("pose_reference_shoulder_width_source", "missing")),
 	})
 
 func _transition_pose_strike_state(events: Array, family: String, side: String, state: Dictionary, next_phase: String) -> void:

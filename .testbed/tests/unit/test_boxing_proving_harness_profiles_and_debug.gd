@@ -731,7 +731,7 @@ func test_boxing_proving_profile_visual_config_keeps_pose_landmark_debug_truthfu
 	assert_false(bool(landmark_drawer.get("show_debug_hit_target_labels")))
 
 
-func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
+func test_boxing_proving_hand_debug_line_surfaces_pose_threshold_metrics() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
@@ -742,10 +742,15 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 					"wrist_forward_velocity": 0.09,
 					"forward_depth_spike": 0.11,
 					"recent_peak_forward_depth_spike": 0.14,
+					"recent_peak_wrist_velocity": 0.46,
 					"elbow_shoulder_xy_distance": 0.082,
 					"max_elbow_shoulder_xy_distance": 0.090,
 					"elbow_shoulder_xy_gate_passed": true,
-					"bbox_area_growth": 0.015,
+					"wrist_lateral_angle_from_elbow_vertical_deg": 19.0,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+					"wrist_lateral_angle_gate_passed": true,
+					"pose_reference_shoulder_width": 0.31,
+					"pose_reference_shoulder_width_source": "live",
 					"grace_ms_remaining": 160,
 				}
 			}
@@ -773,23 +778,25 @@ func test_boxing_proving_hand_debug_line_surfaces_bbox_state_metrics() -> void:
 	assert_string_contains(line, "valid=true")
 	assert_string_contains(line, "source=none")
 	assert_string_contains(line, "wrist_xyz_vel=0.420")
+	assert_string_contains(line, "peak_xyz_vel=0.460")
 	assert_string_contains(line, "wrist_forward_vel=0.090")
 	assert_string_contains(line, "depth_spike=0.140")
 	assert_string_contains(line, "elbow_shoulder_xy=0.082<=0.090(true)")
-	assert_string_contains(line, "bbox_area=0.055")
-	assert_string_contains(line, "bbox_growth=0.015")
+	assert_string_contains(line, "wrist_angle=19.000>=15.000(true)")
+	assert_string_contains(line, "shoulder_width=0.310(live)")
 	assert_string_contains(line, "grace=160ms")
 	assert_string_contains(line, "hand_grace=0ms")
 	assert_string_contains(line, "hand_stable=80ms")
 	assert_string_contains(line, "stale=0ms")
 
-func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void:
+func test_boxing_punch_hover_card_uses_pose_threshold_state_machine_debug_fields() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"straight_punch": {
 				"left": {
 					"state": "not_ready",
+					"pose_tracking_valid": true,
 					"tracking_state": "tracked",
 					"sample_source": "fresh_inference",
 					"tracking_valid": true,
@@ -800,6 +807,7 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"stable_ms": 120,
 					"fresh_sample": true,
 					"wrist_velocity": 0.420,
+					"recent_peak_wrist_velocity": 0.455,
 					"wrist_forward_velocity": 0.150,
 					"forward_depth_spike": 0.090,
 					"recent_peak_forward_depth_spike": 0.120,
@@ -807,17 +815,14 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 					"elbow_shoulder_xy_distance": 0.082,
 					"max_elbow_shoulder_xy_distance": 0.090,
 					"elbow_shoulder_xy_gate_passed": true,
-					"bbox_area": 0.052,
-					"bbox_area_growth": 0.015,
-					"min_bbox_area_growth": 0.010,
-					"positive_growth_samples": 3,
-					"min_positive_growth_samples": 3,
-					"sample_window_size": 4,
-					"growth_window_areas": [0.020, 0.028, 0.041, 0.052],
+					"wrist_lateral_angle_from_elbow_vertical_deg": 18.0,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+					"wrist_lateral_angle_gate_passed": true,
+					"pose_reference_shoulder_width": 0.31,
+					"pose_reference_shoulder_width_source": "live",
 					"grace_ms_remaining": 0,
 					"triggered_grace_ms": 240,
-					"trigger_bbox_area": 0.061,
-					"bbox_area_retract_epsilon": 0.003,
+					"pose_only_rearm_ms": 250,
 					"reacquire_stable_ms_required": 40,
 				}
 			}
@@ -831,13 +836,15 @@ func test_boxing_punch_hover_card_uses_bbox_state_machine_debug_fields() -> void
 	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, source=fresh_inference, stale=40ms (1 frames), grace=40ms (1 frames), stable=120ms")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[4].get("current_text", "")), "waiting for first straight-punch state change")
-	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 xy=0.082<=0.090 (true) bbox=0.052 growth=0.015 fresh=true source=fresh_inference grace=0ms valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 peak=0.455 xy=0.082<=0.090 (true) angle=18.000>=15.000 (true) fresh=true source=fresh_inference grace=0ms pose_valid=true")
 	assert_eq(String(rows[7].get("threshold_text", "")), "0.180")
-	assert_eq(String(rows[7].get("current_text", "")), "0.420")
+	assert_eq(String(rows[7].get("current_text", "")), "0.455")
 	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
 	assert_eq(String(rows[8].get("current_text", "")), "0.082")
+	assert_eq(String(rows[9].get("threshold_text", "")), "15.000")
+	assert_eq(String(rows[9].get("current_text", "")), "18.000")
 
-func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
+func test_boxing_punch_inspector_body_calls_out_live_pose_inputs() -> void:
 	var harness = _new_harness()
 	harness.set("_latest_state", {
 		"gesture_debug": {
@@ -854,6 +861,7 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"stable_ms": 160,
 					"fresh_sample": false,
 					"wrist_velocity": 0.310,
+					"recent_peak_wrist_velocity": 0.365,
 					"wrist_forward_velocity": 0.120,
 					"forward_depth_spike": 0.080,
 					"recent_peak_forward_depth_spike": 0.110,
@@ -861,17 +869,14 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 					"elbow_shoulder_xy_distance": 0.076,
 					"max_elbow_shoulder_xy_distance": 0.090,
 					"elbow_shoulder_xy_gate_passed": true,
-					"bbox_area": 0.071,
-					"bbox_area_growth": 0.012,
-					"min_bbox_area_growth": 0.010,
-					"positive_growth_samples": 3,
-					"min_positive_growth_samples": 3,
-					"sample_window_size": 4,
-					"growth_window_areas": [0.020, 0.038, 0.055, 0.071],
+					"wrist_lateral_angle_from_elbow_vertical_deg": 18.0,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+					"wrist_lateral_angle_gate_passed": true,
+					"pose_reference_shoulder_width": 0.32,
+					"pose_reference_shoulder_width_source": "live",
 					"grace_ms_remaining": 160,
 					"triggered_grace_ms": 240,
-					"trigger_bbox_area": 0.071,
-					"bbox_area_retract_epsilon": 0.003,
+					"pose_only_rearm_ms": 250,
 					"reacquire_stable_ms_required": 40,
 				}
 			}
@@ -884,15 +889,12 @@ func test_boxing_punch_inspector_body_calls_out_live_bbox_inputs() -> void:
 	assert_string_contains(body, "Hand tracking - tracked, valid=true, source=carried_forward, stale=0ms (0 frames), grace=0ms (0 frames), stable=160ms")
 	assert_string_contains(body, "Fresh sample valid - false")
 	assert_false(body.contains("Event payload snapshot"))
-	assert_string_contains(body, "Recent punch velocity peak >= 0.180 - 0.310")
+	assert_string_contains(body, "Recent punch velocity peak >= 0.180 - 0.365")
 	assert_false(body.contains("Recent forward depth spike"))
 	assert_string_contains(body, "Elbow-shoulder XY distance <= 0.090 - 0.076")
-	assert_string_contains(body, "BBox area - 0.071")
-	assert_string_contains(body, "Recent bbox area growth peak >= 0.010 - 0.012")
-	assert_string_contains(body, "Positive growth samples >= 3/3 - 3/3")
+	assert_string_contains(body, "Wrist lateral angle from elbow vertical >= 15.000° - 18.000")
 	assert_string_contains(body, "Grace timer - 160/240ms remaining (active)")
-	assert_string_contains(body, "Stored trigger bbox area - 0.071")
-	assert_string_contains(body, "BBox retracted enough to rearm - 0.071 <= 0.068 (trigger 0.071 - eps 0.003)")
+	assert_string_contains(body, "Pose-only rearm - waiting for pose-only rearm timer")
 
 func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake_threshold_equality() -> void:
 	var harness = _new_harness()
@@ -942,8 +944,9 @@ func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Recent punch velocity peak >= 0.500 - 0.474")
 	assert_false(body.contains("Recent forward depth spike"))
-	assert_string_contains(body, "Recent bbox area growth peak >= 0.003 - 0.002972")
-	assert_string_contains(body, "Positive growth samples >= 1/16 - 4/16")
+	assert_string_contains(body, "Wrist lateral angle from elbow vertical")
+	assert_false(body.contains("Recent bbox area growth peak"))
+	assert_false(body.contains("Positive growth samples"))
 
 func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 	var harness = _new_harness()
@@ -958,8 +961,13 @@ func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 					"tracking_valid": true,
 					"sample_source": "pose",
 					"wrist_velocity": 0.42,
+					"recent_peak_wrist_velocity": 0.47,
 					"wrist_forward_velocity": 0.09,
-					"bbox_area_growth": 0.0,
+					"wrist_lateral_angle_from_elbow_vertical_deg": 21.0,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+					"wrist_lateral_angle_gate_passed": true,
+					"pose_reference_shoulder_width": 0.30,
+					"pose_reference_shoulder_width_source": "baseline",
 					"grace_ms_remaining": 160,
 				}
 			},
@@ -985,7 +993,9 @@ func test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth() -> void:
 	assert_string_contains(line, "tracking=pose_tracked")
 	assert_string_contains(line, "valid=true")
 	assert_string_contains(line, "source=pose")
-	assert_string_contains(line, "bbox_area=0.000")
+	assert_string_contains(line, "peak_xyz_vel=0.470")
+	assert_string_contains(line, "wrist_angle=21.000>=15.000(true)")
+	assert_string_contains(line, "shoulder_width=0.300(baseline)")
 	assert_string_contains(line, "hook=ready/0.310 dir=0.820")
 	assert_string_contains(line, "uppercut=tracking_lost/0.000 dir=0.000")
 
@@ -1131,10 +1141,10 @@ func test_punch_family_inspectors_keep_only_compact_depth_backend_and_thresholds
 
 	var straight_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var straight_body := String(straight_inspector.get("body", ""))
-	assert_string_contains(straight_body, "Depth tuning")
-	assert_string_contains(straight_body, "Depth backend - onnx / depth_anything_v2_small_onnx")
-	assert_string_contains(straight_body, "Depth delta threshold - min 0.060")
-	assert_string_contains(straight_body, "Depth peak threshold - min 0.040")
+	assert_false(straight_body.contains("Depth tuning"))
+	assert_false(straight_body.contains("Depth backend - onnx / depth_anything_v2_small_onnx"))
+	assert_false(straight_body.contains("Depth delta threshold - min 0.060"))
+	assert_false(straight_body.contains("Depth peak threshold - min 0.040"))
 	assert_false(straight_body.contains("Depth runtime status / stage"))
 	assert_false(straight_body.contains("Depth loader truth"))
 	assert_false(straight_body.contains("Active depth artifact path"))
@@ -1143,15 +1153,15 @@ func test_punch_family_inspectors_keep_only_compact_depth_backend_and_thresholds
 
 	var hook_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
 	var hook_body := String(hook_inspector.get("body", ""))
-	assert_string_contains(hook_body, "Depth backend - configured / openvino_midas_v21_small_256")
-	assert_string_contains(hook_body, "Depth delta threshold - max 0.030")
-	assert_string_contains(hook_body, "Depth peak threshold - max 0.060")
+	assert_false(hook_body.contains("Depth backend - configured / openvino_midas_v21_small_256"))
+	assert_false(hook_body.contains("Depth delta threshold - max 0.030"))
+	assert_false(hook_body.contains("Depth peak threshold - max 0.060"))
 
 	var uppercut_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "uppercut_left")
 	var uppercut_body := String(uppercut_inspector.get("body", ""))
-	assert_string_contains(uppercut_body, "Depth backend - configured / openvino_midas_v21_small_256")
-	assert_string_contains(uppercut_body, "Depth delta threshold - max 0.030")
-	assert_string_contains(uppercut_body, "Depth peak threshold - max 0.060")
+	assert_false(uppercut_body.contains("Depth backend - configured / openvino_midas_v21_small_256"))
+	assert_false(uppercut_body.contains("Depth delta threshold - max 0.030"))
+	assert_false(uppercut_body.contains("Depth peak threshold - max 0.060"))
 
 func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_inputs_truthfully() -> void:
 	var harness = _new_harness()
@@ -1196,21 +1206,21 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 
 	var model: Dictionary = harness._build_hover_card_model("punch_left")
 	var rows: Array = model.get("rows", [])
-	assert_eq(String(rows[2].get("current_text", "")), "pose-only fallback, pose_valid=true, tracking=pose_tracked, source=pose")
+	assert_eq(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
 	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
 	assert_eq(String(rows[8].get("current_text", "")), "0.082")
-	assert_eq(String(rows[9].get("current_text", "")), "pose-only fallback (bbox skipped)")
+	assert_eq(String(rows[10].get("current_text", "")), "260/250ms elapsed (pose-only timer)")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Hand tracking - pose-only fallback, pose_valid=true, tracking=pose_tracked, source=pose")
+	assert_string_contains(body, "Hand tracking - pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
 	assert_false(body.contains("Recent forward depth spike"))
 	assert_string_contains(body, "Elbow-shoulder XY distance <= 0.090 - 0.082")
-	assert_string_contains(body, "BBox area - pose-only fallback (bbox skipped)")
-	assert_string_contains(body, "Recent bbox area growth peak >= skipped - pose-only fallback")
-	assert_string_contains(body, "Positive growth samples >= skipped - pose-only fallback")
-	assert_string_contains(body, "BBox retracted enough to rearm - ")
-	assert_string_contains(body, "pose-only timer")
+	assert_string_contains(body, "Wrist lateral angle from elbow vertical")
+	assert_false(body.contains("BBox area - "))
+	assert_false(body.contains("Recent bbox area growth peak"))
+	assert_false(body.contains("Positive growth samples"))
+	assert_string_contains(body, "Pose-only rearm - 260/250ms elapsed (pose-only timer)")
 
 func test_guard_hover_card_reports_pose_only_thresholds_and_live_truth() -> void:
 	var harness = _new_harness()
