@@ -58,6 +58,15 @@ class PlaybackStateHarness:
 	func _is_prerecorded_source_active() -> bool:
 		return true
 
+class LiveCalibrationHarness:
+	extends ProvingHarnessScript
+
+	func _is_prerecorded_source_active() -> bool:
+		return false
+
+	func _get_effective_camera_source() -> String:
+		return "/dev/video0"
+
 class FakeAthleteRecalibrateProvider:
 	extends Node
 
@@ -129,6 +138,9 @@ func _new_depth_disabled_harness() -> Variant:
 
 func _new_playback_harness() -> Variant:
 	return add_child_autoqfree(PlaybackStateHarness.new())
+
+func _new_live_calibration_harness() -> Variant:
+	return add_child_autoqfree(LiveCalibrationHarness.new())
 
 func _depth_runtime_debug_payload(summary: String, artifact_path: String, backend_id: String, family_id: String, runtime_status: String, runtime_stage: String, failure_code: String = "", failure_message: String = "") -> Dictionary:
 	return {
@@ -1322,7 +1334,60 @@ func test_boxing_weave_hover_card_reports_grid_avoidance_truth() -> void:
 	assert_string_contains(body, "Left obstacle avoided - true")
 	assert_string_contains(body, "Right obstacle avoided - false")
 
-func test_proving_scenes_surface_shared_calibration_flow_and_route_start_cancel() -> void:
+func test_proving_harness_surfaces_shared_calibration_flow_and_routes_start_cancel_for_live_sources() -> void:
+	var scene_root: Control = _new_live_calibration_harness() as Control
+	assert_not_null(scene_root)
+	var provider := FakeAthleteRecalibrateProvider.new()
+	harness_set_provider(scene_root, provider)
+	scene_root.set("_latest_state", provider.get_detector_state())
+	scene_root.call("_refresh_calibration_flow_ui")
+
+	var start_button := scene_root.find_child("AthleteRecalibrateButton", true, false) as Button
+	var cancel_button := scene_root.find_child("AthleteCalibrationSecondaryButton", true, false) as Button
+	var countdown_label := scene_root.find_child("CalibrationCountdownLabel", true, false) as Label
+	var instruction_label := scene_root.find_child("CalibrationInstructionLabel", true, false) as Label
+	var status_label := scene_root.find_child("CalibrationStatusLabel", true, false) as Label
+	assert_not_null(start_button)
+	assert_not_null(cancel_button)
+	assert_not_null(countdown_label)
+	assert_not_null(instruction_label)
+	assert_not_null(status_label)
+	assert_eq(start_button.text, "Start Calibration")
+	assert_string_contains(String(countdown_label.text), "5-second countdown")
+	assert_string_contains(String(instruction_label.text), "Stand centered in camera")
+	assert_string_contains(String(instruction_label.text), "Hold a T-pose")
+
+	start_button.emit_signal("pressed")
+	assert_eq(provider.request_count, 1)
+	scene_root.call("_refresh_calibration_flow_ui")
+	assert_eq(start_button.disabled, true)
+	assert_eq(cancel_button.visible, true)
+	assert_string_contains(String(countdown_label.text), "Countdown: 5s")
+	assert_string_contains(String(status_label.text), "Stand centered in camera")
+
+	provider.calibration_session = provider._make_session("capturing", {
+		"is_active": true,
+		"captured_sample_frames": 2,
+		"readiness": {"centered_in_camera": true, "t_pose_ready": true},
+		"instructions": {
+			"stand_centered": {"text": "Stand centered in camera", "ready": true},
+			"hold_t_pose": {"text": "Hold a T-pose", "ready": true},
+		},
+	})
+	scene_root.set("_latest_state", provider.get_detector_state())
+	scene_root.call("_refresh_calibration_flow_ui")
+	assert_string_contains(String(countdown_label.text), "2/5 frames")
+	assert_string_contains(String(instruction_label.text), "✓ Stand centered in camera")
+	assert_string_contains(String(instruction_label.text), "✓ Hold a T-pose")
+	assert_string_contains(String(status_label.text), "Capturing the shared athlete baseline")
+
+	cancel_button.emit_signal("pressed")
+	assert_eq(provider.cancel_count, 1)
+	scene_root.call("_refresh_calibration_flow_ui")
+	assert_eq(start_button.text, "Retry Calibration")
+	assert_string_contains(String(status_label.text), "Calibration cancelled")
+
+func test_proving_scenes_disable_shared_calibration_for_prerecorded_replays() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
 		var packed_scene := packed_scene_variant as PackedScene
 		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
@@ -1342,46 +1407,22 @@ func test_proving_scenes_surface_shared_calibration_flow_and_route_start_cancel(
 		assert_not_null(countdown_label)
 		assert_not_null(instruction_label)
 		assert_not_null(status_label)
-		assert_eq(start_button.text, "Start Calibration")
-		assert_string_contains(String(countdown_label.text), "5-second countdown")
-		assert_string_contains(String(instruction_label.text), "Stand centered in camera")
-		assert_string_contains(String(instruction_label.text), "Hold a T-pose")
+		assert_eq(start_button.disabled, true)
+		assert_eq(start_button.text, "Replay Calibration Unavailable")
+		assert_eq(cancel_button.visible, false)
+		assert_string_contains(String(countdown_label.text), "disabled for prerecorded proving replay")
+		assert_string_contains(String(instruction_label.text), "disabled for this prerecorded replay")
+		assert_string_contains(String(status_label.text), "default action clip")
 
 		start_button.emit_signal("pressed")
-		assert_eq(provider.request_count, 1)
-		scene_root.call("_refresh_calibration_flow_ui")
-		assert_eq(start_button.disabled, true)
-		assert_eq(cancel_button.visible, true)
-		assert_string_contains(String(countdown_label.text), "Countdown: 5s")
-		assert_string_contains(String(status_label.text), "Stand centered in camera")
+		assert_eq(provider.request_count, 0)
 
-		provider.calibration_session = provider._make_session("capturing", {
-			"is_active": true,
-			"captured_sample_frames": 2,
-			"readiness": {"centered_in_camera": true, "t_pose_ready": true},
-			"instructions": {
-				"stand_centered": {"text": "Stand centered in camera", "ready": true},
-				"hold_t_pose": {"text": "Hold a T-pose", "ready": true},
-			},
-		})
-		scene_root.set("_latest_state", provider.get_detector_state())
-		scene_root.call("_refresh_calibration_flow_ui")
-		assert_string_contains(String(countdown_label.text), "2/5 frames")
-		assert_string_contains(String(instruction_label.text), "✓ Stand centered in camera")
-		assert_string_contains(String(instruction_label.text), "✓ Hold a T-pose")
-		assert_string_contains(String(status_label.text), "Capturing the shared athlete baseline")
-
-		cancel_button.emit_signal("pressed")
-		assert_eq(provider.cancel_count, 1)
-		scene_root.call("_refresh_calibration_flow_ui")
-		assert_eq(start_button.text, "Retry Calibration")
-		assert_string_contains(String(status_label.text), "Calibration cancelled")
-
-func _shared_flow_grid_truth_state() -> Dictionary:
+func _shared_flow_grid_truth_state(capture_source: String = "calibration_session") -> Dictionary:
 	return {
 		"baseline": {
 			"is_calibrated": true,
 			"sample_frames": 5,
+			"capture_source": capture_source,
 		},
 		"gesture_debug": {
 			"flow": {
@@ -1439,48 +1480,67 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_string_contains(body, "left")
 		assert_string_contains(body, "right")
 
-func harness_set_provider(scene_root: Control, provider: Node) -> void:
-	scene_root.set("provider", provider)
-
-func test_proving_scenes_surface_shared_calibration_success_and_failure_truthfully() -> void:
+func test_proving_scenes_hide_replay_auto_bootstrap_grid_truth() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
 		var packed_scene := packed_scene_variant as PackedScene
 		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
 		assert_not_null(scene_root)
-		var provider := FakeAthleteRecalibrateProvider.new()
-		harness_set_provider(scene_root, provider)
-		var start_button := scene_root.find_child("AthleteRecalibrateButton", true, false) as Button
-		var countdown_label := scene_root.find_child("CalibrationCountdownLabel", true, false) as Label
-		var status_label := scene_root.find_child("CalibrationStatusLabel", true, false) as Label
-		assert_not_null(start_button)
-		assert_not_null(countdown_label)
-		assert_not_null(status_label)
+		var presenter := add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+		scene_root.set("_preview_presenter", presenter)
+		scene_root.set("_latest_state", _shared_flow_grid_truth_state("auto_bootstrap"))
+		scene_root.call("_sync_overlay_drawers_to_preview_presenter")
+		scene_root.call("_refresh_debug_panels")
 
-		provider.calibration_session = provider._make_session("failed", {
-			"result": "failed",
-			"failure_reason": "not_centered",
-		})
-		scene_root.set("_latest_state", provider.get_detector_state())
-		scene_root.call("_refresh_calibration_flow_ui")
-		assert_eq(start_button.text, "Retry Calibration")
-		assert_string_contains(String(countdown_label.text), "Capture failed")
-		assert_string_contains(String(status_label.text), "move back to the center of the camera")
+		var refs: Dictionary = scene_root.call("get_shared_flow_grid_truth_refs")
+		var overlay := refs.get("flow_grid_overlay", null) as Control
+		var truth_label := refs.get("grid_truth_label", null) as RichTextLabel
+		assert_not_null(overlay)
+		assert_not_null(truth_label)
+		assert_eq(overlay.visible, false)
+		var body := String(truth_label.text)
+		assert_string_contains(body, "hidden for this prerecorded replay")
+		assert_string_contains(body, "auto-bootstrap")
 
-		provider.baseline = {"is_calibrated": true, "sample_frames": 5}
-		provider.calibration_session = provider._make_session("succeeded", {
-			"result": "succeeded",
-			"captured_sample_frames": 5,
-			"readiness": {"centered_in_camera": true, "t_pose_ready": true},
-			"instructions": {
-				"stand_centered": {"text": "Stand centered in camera", "ready": true},
-				"hold_t_pose": {"text": "Hold a T-pose", "ready": true},
-			},
-		})
-		scene_root.set("_latest_state", provider.get_detector_state())
-		scene_root.call("_refresh_calibration_flow_ui")
-		assert_eq(start_button.text, "Recalibrate Athlete")
-		assert_string_contains(String(countdown_label.text), "Captured baseline: 5/5 frames")
-		assert_string_contains(String(status_label.text), "Calibration complete")
+func harness_set_provider(scene_root: Control, provider: Node) -> void:
+	scene_root.set("provider", provider)
+
+func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthfully_for_live_sources() -> void:
+	var scene_root: Control = _new_live_calibration_harness() as Control
+	assert_not_null(scene_root)
+	var provider := FakeAthleteRecalibrateProvider.new()
+	harness_set_provider(scene_root, provider)
+	var start_button := scene_root.find_child("AthleteRecalibrateButton", true, false) as Button
+	var countdown_label := scene_root.find_child("CalibrationCountdownLabel", true, false) as Label
+	var status_label := scene_root.find_child("CalibrationStatusLabel", true, false) as Label
+	assert_not_null(start_button)
+	assert_not_null(countdown_label)
+	assert_not_null(status_label)
+
+	provider.calibration_session = provider._make_session("failed", {
+		"result": "failed",
+		"failure_reason": "not_centered",
+	})
+	scene_root.set("_latest_state", provider.get_detector_state())
+	scene_root.call("_refresh_calibration_flow_ui")
+	assert_eq(start_button.text, "Retry Calibration")
+	assert_string_contains(String(countdown_label.text), "Capture failed")
+	assert_string_contains(String(status_label.text), "move back to the center of the camera")
+
+	provider.baseline = {"is_calibrated": true, "sample_frames": 5}
+	provider.calibration_session = provider._make_session("succeeded", {
+		"result": "succeeded",
+		"captured_sample_frames": 5,
+		"readiness": {"centered_in_camera": true, "t_pose_ready": true},
+		"instructions": {
+			"stand_centered": {"text": "Stand centered in camera", "ready": true},
+			"hold_t_pose": {"text": "Hold a T-pose", "ready": true},
+		},
+	})
+	scene_root.set("_latest_state", provider.get_detector_state())
+	scene_root.call("_refresh_calibration_flow_ui")
+	assert_eq(start_button.text, "Recalibrate Athlete")
+	assert_string_contains(String(countdown_label.text), "Captured baseline: 5/5 frames")
+	assert_string_contains(String(status_label.text), "Calibration complete")
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
