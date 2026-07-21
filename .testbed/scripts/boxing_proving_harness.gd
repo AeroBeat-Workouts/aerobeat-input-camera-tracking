@@ -132,22 +132,8 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"label": "Elbow-shoulder XY distance <= {threshold}",
 	},
 	{
-		"id": "bbox_area",
-		"label": "BBox area",
-		"row_kind": "info",
-	},
-	{
-		"id": "bbox_area_growth",
-		"label": "Recent bbox area growth peak >= {threshold}",
-	},
-	{
-		"id": "positive_growth_samples",
-		"label": "Positive growth samples >= {threshold}",
-	},
-	{
-		"id": "growth_window_areas",
-		"label": "Growth window bbox areas",
-		"row_kind": "info",
+		"id": "wrist_lateral_angle",
+		"label": "Wrist lateral angle from elbow vertical >= {threshold}°",
 	},
 	{
 		"id": "rearm_section",
@@ -160,37 +146,13 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"row_kind": "info",
 	},
 	{
-		"id": "trigger_bbox_area",
-		"label": "Stored trigger bbox area",
-		"row_kind": "info",
-	},
-	{
 		"id": "rearm_status",
-		"label": "BBox retracted enough to rearm",
+		"label": "Pose-only rearm",
+		"row_kind": "info",
 	},
 	{
 		"id": "reacquire_progress",
 		"label": "Reacquire progress",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_section",
-		"label": "Depth tuning",
-		"row_kind": "section",
-	},
-	{
-		"id": "depth_backend_family",
-		"label": "Depth backend",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_family_delta_threshold",
-		"label": "Depth delta threshold",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_family_peak_threshold",
-		"label": "Depth peak threshold",
 		"row_kind": "info",
 	},
 ]
@@ -250,26 +212,6 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 	{
 		"id": "reacquire_progress",
 		"label": "Reacquire progress",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_section",
-		"label": "Depth tuning",
-		"row_kind": "section",
-	},
-	{
-		"id": "depth_backend_family",
-		"label": "Depth backend",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_family_delta_threshold",
-		"label": "Depth delta threshold",
-		"row_kind": "info",
-	},
-	{
-		"id": "depth_family_peak_threshold",
-		"label": "Depth peak threshold",
 		"row_kind": "info",
 	},
 ]
@@ -488,6 +430,7 @@ var _background_rect: TextureRect
 var _header_icon: TextureRect
 var _board_panel: PanelContainer
 var _board_grid: GridContainer
+var _shared_grid_card_panels: Array[PanelContainer] = []
 var _boxing_event_feed: Array[String] = []
 var _boxing_event_sequence := 0
 var _tile_refs := {}
@@ -827,6 +770,11 @@ func _resolve_boxing_shell_nodes() -> void:
 	_header_icon = find_child("HeaderIcon", true, false) as TextureRect
 	_board_panel = get_node_or_null("Margin/VSplit/Content/RightPanelScroll/RightColumn/BoardPanel") as PanelContainer
 	_board_grid = get_node_or_null("Margin/VSplit/Content/RightPanelScroll/RightColumn/BoardPanel/BoardMargin/BoardGrid") as GridContainer
+	_shared_grid_card_panels = []
+	for node_name: String in ["NosePlacementCard", "LeftPlacementCard", "RightPlacementCard"]:
+		var panel := find_child(node_name, true, false) as PanelContainer
+		if panel != null:
+			_shared_grid_card_panels.append(panel)
 
 func _default_profile_id() -> String:
 	return PROFILE_BOXING
@@ -1238,6 +1186,9 @@ func _apply_boxing_visual_shell() -> void:
 		_board_grid.columns = 3
 		_board_grid.add_theme_constant_override("h_separation", 10)
 		_board_grid.add_theme_constant_override("v_separation", 10)
+	for panel: PanelContainer in _shared_grid_card_panels:
+		panel.custom_minimum_size = Vector2(132, 158)
+		_apply_panel_style(panel, Color(0.22, 0.78, 0.88, 0.10), Color(0.60, 1.0, 1.0, 0.30), 18, 1, 0)
 	if _hover_card_panel:
 		_apply_panel_style(_hover_card_panel, Color(0.0, 0.0, 0.0, 0.82), Color(1.0, 1.0, 1.0, 0.14), 16, 1, 0)
 	if summary_label and summary_label.get_parent() is Control:
@@ -1737,20 +1688,14 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var wrist_velocity := float(straight_side.get("wrist_velocity", 0.0))
 	var recent_peak_wrist_velocity := float(straight_side.get("recent_peak_wrist_velocity", wrist_velocity))
 	var min_velocity := float(straight_side.get("min_velocity", 0.0))
-	var bbox_area := float(straight_side.get("bbox_area", 0.0))
 	var elbow_shoulder_xy_distance := float(straight_side.get("elbow_shoulder_xy_distance", 0.0))
 	var max_elbow_shoulder_xy_distance := float(straight_side.get("max_elbow_shoulder_xy_distance", 0.0))
 	var elbow_shoulder_xy_gate_passed := bool(straight_side.get("elbow_shoulder_xy_gate_passed", false))
-	var bbox_area_growth := float(straight_side.get("bbox_area_growth", 0.0))
-	var recent_peak_bbox_area_growth := float(straight_side.get("recent_peak_bbox_area_growth", bbox_area_growth))
-	var min_bbox_area_growth := float(straight_side.get("min_bbox_area_growth", 0.0))
-	var positive_growth_samples := int(straight_side.get("positive_growth_samples", 0))
-	var min_positive_growth_samples := int(straight_side.get("min_positive_growth_samples", 0))
-	var sample_window_size := int(straight_side.get("sample_window_size", 0))
-	var growth_window_areas: Array = straight_side.get("growth_window_areas", []) as Array
-	var positive_growth_sample_slots := maxi(growth_window_areas.size() - 1, 0)
-	if positive_growth_sample_slots <= 0:
-		positive_growth_sample_slots = maxi(sample_window_size - 1, 0)
+	var wrist_lateral_angle := float(straight_side.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
+	var min_wrist_lateral_angle := float(straight_side.get("min_wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
+	var wrist_lateral_angle_gate_passed := bool(straight_side.get("wrist_lateral_angle_gate_passed", false))
+	var pose_reference_shoulder_width := float(straight_side.get("pose_reference_shoulder_width", 0.0))
+	var pose_reference_shoulder_width_source := String(straight_side.get("pose_reference_shoulder_width_source", "missing"))
 	var fresh_sample := bool(straight_side.get("fresh_sample", false))
 	var tracking_valid := bool(straight_side.get("tracking_valid", false))
 	var tracking_state := String(straight_side.get("tracking_state", "idle"))
@@ -1764,11 +1709,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var previous_state := String(straight_side.get("previous_state", ""))
 	var grace_ms_remaining := int(straight_side.get("grace_ms_remaining", 0))
 	var triggered_grace_ms := int(straight_side.get("triggered_grace_ms", 0))
-	var trigger_bbox_area := float(straight_side.get("trigger_bbox_area", 0.0))
-	var bbox_area_retract_epsilon := float(straight_side.get("bbox_area_retract_epsilon", 0.0))
 	var pose_only_rearm_ms := int(straight_side.get("pose_only_rearm_ms", 0))
-	var rearm_threshold := maxf(trigger_bbox_area - bbox_area_retract_epsilon, 0.0)
-	var rearm_ready := trigger_bbox_area > 0.0 and bbox_area <= rearm_threshold
 	var reacquire_stable_ms_required := int(straight_side.get("reacquire_stable_ms_required", 0))
 	var reference_time_ms: int = _boxing_reference_time_ms()
 	var transition_age_ms: int = max(0, reference_time_ms - transition_timestamp_ms) if transition_timestamp_ms > 0 else 0
@@ -1782,10 +1723,15 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 		"tracking_status":
 			if hand_tracking_enabled:
 				current_text = "%s, valid=%s, source=%s, stale=%dms (%d frames), grace=%dms (%d frames), stable=%dms" % [tracking_state, _fmt_bool(tracking_valid), sample_source, stale_ms, stale_frames, grace_ms, grace_frames, hand_stable_ms]
-				passed = tracking_valid
 			else:
-				current_text = "pose-only fallback, pose_valid=%s, tracking=%s, source=%s" % [_fmt_bool(pose_tracking_valid), tracking_state, sample_source]
-				passed = pose_tracking_valid
+				current_text = "pose_valid=%s, tracking=%s, source=%s, shoulder_width=%s (%s)" % [
+					_fmt_bool(pose_tracking_valid),
+					tracking_state,
+					sample_source,
+					_fmt_float(pose_reference_shoulder_width),
+					pose_reference_shoulder_width_source,
+				]
+			passed = pose_tracking_valid if not hand_tracking_enabled else tracking_valid
 		"fresh_sample":
 			current_text = _fmt_bool(fresh_sample)
 			if not hand_tracking_enabled:
@@ -1804,18 +1750,20 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 					current_text += " (%s ago)" % _fmt_age_ms(_boxing_reference_time_ms() - transition_timestamp_ms)
 				passed = true
 		"state_change_payload":
-			current_text = "state=%s wrist=%s xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
+			current_text = "state=%s wrist=%s peak=%s xy=%s<=%s (%s) angle=%s>=%s (%s) fresh=%s source=%s grace=%dms pose_valid=%s" % [
 				state_name,
 				_fmt_float(wrist_velocity),
+				_fmt_float(recent_peak_wrist_velocity),
 				_fmt_float(elbow_shoulder_xy_distance),
 				_fmt_float(max_elbow_shoulder_xy_distance),
 				_fmt_bool(elbow_shoulder_xy_gate_passed),
-				_fmt_float(bbox_area),
-				_fmt_float(bbox_area_growth),
+				_fmt_float(wrist_lateral_angle),
+				_fmt_float(min_wrist_lateral_angle),
+				_fmt_bool(wrist_lateral_angle_gate_passed),
 				_fmt_bool(fresh_sample),
 				sample_source,
 				grace_ms_remaining,
-				_fmt_bool(tracking_valid),
+				_fmt_bool(pose_tracking_valid),
 			]
 			passed = transition_timestamp_ms > 0 or not straight_side.is_empty()
 		"wrist_velocity":
@@ -1826,41 +1774,10 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			threshold_text = _fmt_float(max_elbow_shoulder_xy_distance)
 			passed = elbow_shoulder_xy_gate_passed
 			current_text = _fmt_threshold_comparison_value(elbow_shoulder_xy_distance, max_elbow_shoulder_xy_distance, true)
-		"bbox_area":
-			if hand_tracking_enabled:
-				current_text = _fmt_float(bbox_area)
-				passed = bbox_area > 0.0
-			else:
-				current_text = "pose-only fallback (bbox skipped)"
-				passed = pose_tracking_valid
-		"bbox_area_growth":
-			if hand_tracking_enabled:
-				threshold_text = _fmt_float(min_bbox_area_growth)
-				passed = recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth
-				current_text = _fmt_threshold_comparison_value(recent_peak_bbox_area_growth, min_bbox_area_growth)
-			else:
-				threshold_text = "skipped"
-				current_text = "pose-only fallback"
-				passed = pose_tracking_valid
-		"positive_growth_samples":
-			if hand_tracking_enabled:
-				threshold_text = "%d/%d" % [min_positive_growth_samples, positive_growth_sample_slots]
-				current_text = "%d/%d" % [positive_growth_samples, positive_growth_sample_slots]
-				passed = positive_growth_samples >= min_positive_growth_samples
-			else:
-				threshold_text = "skipped"
-				current_text = "pose-only fallback"
-				passed = pose_tracking_valid
-		"growth_window_areas":
-			if hand_tracking_enabled:
-				var area_values: Array[String] = []
-				for area_variant: Variant in growth_window_areas:
-					area_values.append(_fmt_float(area_variant))
-				current_text = "[" + ", ".join(area_values) + "]" if not area_values.is_empty() else "[]"
-				passed = not area_values.is_empty()
-			else:
-				current_text = "pose-only fallback"
-				passed = pose_tracking_valid
+		"wrist_lateral_angle":
+			threshold_text = _fmt_float(min_wrist_lateral_angle)
+			passed = wrist_lateral_angle_gate_passed
+			current_text = _fmt_threshold_comparison_value(wrist_lateral_angle, min_wrist_lateral_angle)
 		"grace_timer":
 			current_text = "%d/%dms remaining" % [grace_ms_remaining, triggered_grace_ms]
 			if state_name == "triggered":
@@ -1880,28 +1797,15 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 				current_text = "pose-only fallback (no bbox snapshot)"
 				passed = true
 		"rearm_status":
-			if hand_tracking_enabled:
-				if trigger_bbox_area <= 0.0:
-					current_text = "waiting for a trigger bbox snapshot"
-					passed = state_name == "ready"
-				else:
-					current_text = "%s <= %s (trigger %s - eps %s)" % [
-						_fmt_float(bbox_area),
-						_fmt_float(rearm_threshold),
-						_fmt_float(trigger_bbox_area),
-						_fmt_float(bbox_area_retract_epsilon),
-					]
-					passed = rearm_ready
+			if state_name == "not_ready":
+				current_text = "%d/%dms elapsed (pose-only timer)" % [transition_age_ms, pose_only_rearm_ms]
+				passed = transition_age_ms >= pose_only_rearm_ms
+			elif state_name == "ready":
+				current_text = "pose-only timer satisfied -> ready"
+				passed = true
 			else:
-				if state_name == "not_ready":
-					current_text = "%d/%dms elapsed (pose-only timer)" % [transition_age_ms, pose_only_rearm_ms]
-					passed = transition_age_ms >= pose_only_rearm_ms
-				elif state_name == "ready":
-					current_text = "pose-only timer satisfied -> ready"
-					passed = true
-				else:
-					current_text = "waiting for pose-only rearm timer"
-					passed = state_name == "tracking_lost" or state_name == "triggered"
+				current_text = "waiting for pose-only rearm timer"
+				passed = state_name == "tracking_lost" or state_name == "triggered"
 		"reacquire_progress":
 			if hand_tracking_enabled:
 				current_text = "%d/%dms hand stable" % [hand_stable_ms, reacquire_stable_ms_required]

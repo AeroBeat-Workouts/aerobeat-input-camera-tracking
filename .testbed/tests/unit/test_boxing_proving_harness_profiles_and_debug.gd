@@ -1362,7 +1362,9 @@ func test_proving_harness_surfaces_shared_calibration_flow_and_routes_start_canc
 	assert_eq(start_button.disabled, true)
 	assert_eq(cancel_button.visible, true)
 	assert_string_contains(String(countdown_label.text), "Countdown: 5s")
-	assert_string_contains(String(status_label.text), "Calibration in progress")
+	assert_string_contains(String(countdown_label.text), "previous baseline cleared")
+	assert_string_contains(String(instruction_label.text), "Countdown first")
+	assert_string_contains(String(status_label.text), "old shared baseline is intentionally gone")
 
 	provider.calibration_session = provider._make_session("capturing", {
 		"is_active": true,
@@ -1371,9 +1373,9 @@ func test_proving_harness_surfaces_shared_calibration_flow_and_routes_start_canc
 	})
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
-	assert_string_contains(String(countdown_label.text), "2/5 frames")
-	assert_eq(String(instruction_label.text), "")
-	assert_string_contains(String(status_label.text), "Capturing the shared athlete baseline")
+	assert_string_contains(String(countdown_label.text), "2/5 valid frames")
+	assert_string_contains(String(instruction_label.text), "Success still needs 5 valid frames")
+	assert_string_contains(String(status_label.text), "valid frames are accumulating")
 
 	cancel_button.emit_signal("pressed")
 	assert_eq(provider.cancel_count, 1)
@@ -1406,7 +1408,7 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		assert_eq(cancel_button.visible, false)
 		assert_string_contains(String(countdown_label.text), "5-second countdown")
 		assert_eq(String(instruction_label.text), "")
-		assert_eq(String(status_label.text), "")
+		assert_string_contains(String(status_label.text), "No shared baseline captured yet")
 
 		start_button.emit_signal("pressed")
 		assert_eq(provider.request_count, 1)
@@ -1415,6 +1417,8 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		assert_eq(start_button.disabled, true)
 		assert_eq(cancel_button.visible, true)
 		assert_string_contains(String(countdown_label.text), "Countdown: 5s")
+		assert_string_contains(String(countdown_label.text), "previous baseline cleared")
+		assert_string_contains(String(instruction_label.text), "Countdown first")
 
 		provider.calibration_session = provider._make_session("capture_pending", {
 			"is_active": true,
@@ -1424,7 +1428,9 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		})
 		scene_root.set("_latest_state", provider.get_detector_state())
 		scene_root.call("_refresh_calibration_flow_ui")
-		assert_string_contains(String(status_label.text), "waiting for both wrists")
+		assert_string_contains(String(countdown_label.text), "1/5 valid frames")
+		assert_string_contains(String(instruction_label.text), "Success still needs 5 valid frames")
+		assert_string_contains(String(status_label.text), "Waiting for the next valid frame")
 		assert_eq(start_button.text, "Capturing…")
 
 func _shared_flow_grid_truth_state(capture_source: String = "calibration_session") -> Dictionary:
@@ -1493,6 +1499,27 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(right_chart.get("active_index")), 7)
 		assert_eq(String(truth_label.text), "")
 
+func test_boxing_proving_scene_places_shared_grid_cards_inside_board_grid_with_boxing_shell_style() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	assert_not_null(scene_root)
+	assert_null(scene_root.find_child("GridTruthPanel", true, false))
+	var board_grid := scene_root.find_child("BoardGrid", true, false) as GridContainer
+	var nose_card := scene_root.find_child("NosePlacementCard", true, false) as PanelContainer
+	var left_card := scene_root.find_child("LeftPlacementCard", true, false) as PanelContainer
+	var right_card := scene_root.find_child("RightPlacementCard", true, false) as PanelContainer
+	assert_not_null(board_grid)
+	assert_not_null(nose_card)
+	assert_not_null(left_card)
+	assert_not_null(right_card)
+	assert_same(nose_card.get_parent(), board_grid)
+	assert_same(left_card.get_parent(), board_grid)
+	assert_same(right_card.get_parent(), board_grid)
+	assert_eq(nose_card.custom_minimum_size, Vector2(132, 158))
+	var style := nose_card.get_theme_stylebox("panel") as StyleBoxFlat
+	assert_not_null(style)
+	assert_gt(style.border_color.a, 0.0)
+	assert_gt(style.bg_color.a, 0.0)
+
 func test_proving_scenes_hide_replay_auto_bootstrap_grid_truth() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
 		var packed_scene := packed_scene_variant as PackedScene
@@ -1507,14 +1534,12 @@ func test_proving_scenes_hide_replay_auto_bootstrap_grid_truth() -> void:
 		var refs: Dictionary = scene_root.call("get_shared_flow_grid_truth_refs")
 		var overlay := refs.get("flow_grid_overlay", null) as Control
 		var truth_label := refs.get("grid_truth_label", null) as RichTextLabel
-		var grid_truth_panel := scene_root.find_child("GridTruthPanel", true, false) as Control
 		assert_not_null(overlay)
 		assert_not_null(truth_label)
 		assert_eq(overlay.visible, false)
 		assert_eq(String(truth_label.text), "")
 		if packed_scene == BoxingProvingScene:
-			assert_not_null(grid_truth_panel)
-			assert_eq(grid_truth_panel.visible, false)
+			assert_null(scene_root.find_child("GridTruthPanel", true, false))
 
 func harness_set_provider(scene_root: Control, provider: Node) -> void:
 	scene_root.set("provider", provider)
@@ -1538,8 +1563,10 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
 	assert_eq(start_button.text, "Try Again")
-	assert_string_contains(String(countdown_label.text), "Capture failed")
-	assert_string_contains(String(status_label.text), "wrist data was unavailable")
+	assert_string_contains(String(countdown_label.text), "Capture failed after 0/5 valid frames")
+	assert_string_contains(String(instruction_label.text), "Retry requirement")
+	assert_string_contains(String(status_label.text), "both wrists must stay visible")
+	assert_string_contains(String(status_label.text), "No new shared baseline was committed")
 
 	provider.baseline = {"is_calibrated": true, "sample_frames": 5}
 	provider.calibration_session = provider._make_session("succeeded", {
@@ -1550,7 +1577,8 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
 	assert_eq(start_button.text, "Calibrate Athlete")
-	assert_string_contains(String(countdown_label.text), "Captured baseline: 5/5 frames")
+	assert_string_contains(String(countdown_label.text), "Captured baseline: 5/5 valid frames")
+	assert_eq(String(instruction_label.text), "")
 	assert_string_contains(String(status_label.text), "Calibration complete")
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
