@@ -78,7 +78,7 @@ class FakeAthleteRecalibrateProvider:
 	func start_athlete_calibration() -> bool:
 		request_count += 1
 		baseline = {"is_calibrated": false, "sample_frames": 0}
-		calibration_session = _make_session("countdown", {"is_active": true, "seconds_remaining": 5})
+		calibration_session = _make_session("countdown", {"is_active": true, "seconds_remaining": 10})
 		return true
 
 	func request_athlete_recalibration() -> bool:
@@ -105,15 +105,13 @@ class FakeAthleteRecalibrateProvider:
 			"result": state_name,
 			"seconds_remaining": 0,
 			"captured_sample_frames": 0,
-			"required_capture_frames": 5,
+			"required_capture_frames": 1,
 			"failure_reason": "",
 			"readiness": {
-				"centered_in_camera": false,
-				"t_pose_ready": false,
+				"required_landmarks_ready": false,
 			},
 			"instructions": {
-				"stand_centered": {"text": "Stand centered in camera", "ready": false},
-				"hold_t_pose": {"text": "Hold a T-pose", "ready": false},
+				"show_sample_landmarks": {"text": "Keep nose, left shoulder, and both wrists visible", "ready": false},
 			},
 		}
 		for key: Variant in overrides.keys():
@@ -1483,7 +1481,7 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		assert_false(instruction_label.visible)
 		assert_eq(String(status_label.text), "")
 		assert_false(status_label.visible)
-		assert_eq(start_button.text, "Capturing…")
+		assert_eq(start_button.text, "Sampling…")
 
 func _shared_flow_grid_truth_state(capture_source: String = "calibration_session") -> Dictionary:
 	return {

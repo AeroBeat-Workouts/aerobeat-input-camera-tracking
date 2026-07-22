@@ -77,13 +77,9 @@ const CALIBRATION_SESSION_CAPTURING := "capturing"
 const CALIBRATION_SESSION_SUCCEEDED := "succeeded"
 const CALIBRATION_SESSION_FAILED := "failed"
 const CALIBRATION_SESSION_CANCELLED := "cancelled"
-const CALIBRATION_COUNTDOWN_MS := 5000
-const CALIBRATION_CAPTURE_WINDOW_MS := 3000
-const CALIBRATION_CAPTURE_SAMPLE_FRAMES := 5
-const CALIBRATION_CENTER_TOLERANCE := 0.10
-const CALIBRATION_T_POSE_ARM_EXTENSION_MIN := 0.92
-const CALIBRATION_T_POSE_ELBOW_BEND_MIN_DEG := 150.0
-const CALIBRATION_T_POSE_WRIST_Y_TOLERANCE_RATIO := 0.35
+const CALIBRATION_COUNTDOWN_MS := 10000
+const CALIBRATION_CAPTURE_WINDOW_MS := 1000
+const CALIBRATION_CAPTURE_SAMPLE_FRAMES := 1
 
 var _config = null
 var _smoother: LandmarkSmoother = LandmarkSmoother.new()
@@ -95,6 +91,7 @@ var _baseline_accumulator := {
 	"athlete_height": 0.0,
 	"shoulder_center_x": 0.0,
 	"shoulder_center_y": 0.0,
+	"left_shoulder_y": 0.0,
 	"hip_center_y": 0.0,
 	"nose_x": 0.0,
 	"nose_y": 0.0,
@@ -118,6 +115,7 @@ var _baseline: Dictionary = {
 	"athlete_height": 0.0,
 	"shoulder_center_x": 0.0,
 	"shoulder_center_y": 0.0,
+	"left_shoulder_y": 0.0,
 	"hip_center_y": 0.0,
 	"nose_x": 0.0,
 	"nose_y": 0.0,
@@ -239,12 +237,10 @@ func _build_default_calibration_readiness() -> Dictionary:
 	return {
 		"tracking_ready": false,
 		"required_landmarks_ready": false,
-		"centered_in_camera": false,
-		"t_pose_ready": false,
 		"ready": false,
-		"failure_reason": "required_wrist_data_unavailable",
-		"instruction_key": "show_both_wrists",
-		"instruction_text": "Need tracking/reacquiring, both wrists visible, and a centered T-pose",
+		"failure_reason": "required_sample_landmarks_unavailable",
+		"instruction_key": "show_sample_landmarks",
+		"instruction_text": "Need tracking/reacquiring plus nose, left shoulder, and both wrists visible",
 	}
 
 func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
@@ -254,24 +250,14 @@ func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
 			"text": "Tracking state is tracking/reacquiring",
 			"ready": bool(readiness.get("tracking_ready", false)),
 		},
-		"show_both_wrists": {
-			"key": "show_both_wrists",
-			"text": "Both wrists stay visible",
+		"show_sample_landmarks": {
+			"key": "show_sample_landmarks",
+			"text": "Keep nose, left shoulder, and both wrists visible",
 			"ready": bool(readiness.get("required_landmarks_ready", false)),
 		},
-		"stand_centered": {
-			"key": "stand_centered",
-			"text": "Stand centered in camera",
-			"ready": bool(readiness.get("centered_in_camera", false)),
-		},
-		"hold_t_pose": {
-			"key": "hold_t_pose",
-			"text": "Hold a T-pose",
-			"ready": bool(readiness.get("t_pose_ready", false)),
-		},
-		"capture_frames": {
-			"key": "capture_frames",
-			"text": "Capture 5 valid frames during the live window",
+		"capture_sample": {
+			"key": "capture_sample",
+			"text": "Countdown ends, then one live wrist sample is captured",
 			"ready": bool(readiness.get("ready", false)),
 		},
 	}
@@ -305,6 +291,7 @@ func _reset_baseline_calibration() -> void:
 		"athlete_height": 0.0,
 		"shoulder_center_x": 0.0,
 		"shoulder_center_y": 0.0,
+		"left_shoulder_y": 0.0,
 		"hip_center_y": 0.0,
 		"nose_x": 0.0,
 		"nose_y": 0.0,
@@ -328,6 +315,7 @@ func _reset_baseline_calibration() -> void:
 		"athlete_height": 0.0,
 		"shoulder_center_x": 0.0,
 		"shoulder_center_y": 0.0,
+		"left_shoulder_y": 0.0,
 		"hip_center_y": 0.0,
 		"nose_x": 0.0,
 		"nose_y": 0.0,
@@ -699,6 +687,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var torso_height := float(measurements.get("torso_height", 0.0))
 	var athlete_height := float(measurements.get("athlete_height", 0.0))
 	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
+	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
 	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
 	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
 	var wrist_span := PoseMetrics.distance_2d(left_wrist, right_wrist)
@@ -706,7 +695,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var right_wrist_x := float(right_wrist.get("x", 0.0))
 	var horizontal_wrist_span := absf(right_wrist_x - left_wrist_x)
 	var wrist_midpoint_x := (left_wrist_x + right_wrist_x) * 0.5
-	if shoulder_width <= 0.0 or torso_height <= 0.0 or horizontal_wrist_span <= 0.0 or nose.is_empty():
+	if shoulder_width <= 0.0 or torso_height <= 0.0 or horizontal_wrist_span <= 0.0 or nose.is_empty() or left_shoulder.is_empty():
 		return
 	_baseline_accumulator["frames"] += 1
 	_baseline_accumulator["shoulder_width"] += shoulder_width
@@ -716,6 +705,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var shoulder_center: Variant = measurements.get("shoulder_center", Vector3.ZERO)
 	if shoulder_center is Vector3:
 		_baseline_accumulator["shoulder_center_y"] += shoulder_center.y
+	_baseline_accumulator["left_shoulder_y"] += float(left_shoulder.get("y", 0.0))
 	var hip_center: Variant = measurements.get("hip_center", Vector3.ZERO)
 	if hip_center is Vector3:
 		_baseline_accumulator["hip_center_y"] += hip_center.y
@@ -746,6 +736,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		"athlete_height": float(_baseline_accumulator["athlete_height"]) / float(frames),
 		"shoulder_center_x": float(_baseline_accumulator["shoulder_center_x"]) / float(frames),
 		"shoulder_center_y": float(_baseline_accumulator["shoulder_center_y"]) / float(frames),
+		"left_shoulder_y": float(_baseline_accumulator["left_shoulder_y"]) / float(frames),
 		"hip_center_y": float(_baseline_accumulator["hip_center_y"]) / float(frames),
 		"nose_x": float(_baseline_accumulator["nose_x"]) / float(frames),
 		"nose_y": float(_baseline_accumulator["nose_y"]) / float(frames),
@@ -786,7 +777,7 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 	if state_name == CALIBRATION_SESSION_COUNTDOWN:
 		var countdown_end_ms := int(_calibration_session.get("countdown_ends_at_ms", timestamp_ms))
 		var remaining_ms := maxi(countdown_end_ms - timestamp_ms, 0)
-		_calibration_session["seconds_remaining"] = int(ceil(float(remaining_ms) / 1000.0)) if remaining_ms > 0 else 0
+		_calibration_session["seconds_remaining"] = int(floor(float(remaining_ms) / 1000.0)) + 1 if remaining_ms > 0 else 0
 		if remaining_ms > 0:
 			return
 		_calibration_session["state"] = CALIBRATION_SESSION_CAPTURE_PENDING
@@ -802,7 +793,7 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 			_calibration_session["failure_reason"] = ""
 		else:
 			_calibration_session["state"] = CALIBRATION_SESSION_CAPTURE_PENDING
-			_calibration_session["failure_reason"] = String(readiness.get("failure_reason", "required_wrist_data_unavailable"))
+			_calibration_session["failure_reason"] = String(readiness.get("failure_reason", "required_sample_landmarks_unavailable"))
 		if deadline_ms > 0 and timestamp_ms > deadline_ms:
 			_calibration_session["is_active"] = false
 			_calibration_session["state"] = CALIBRATION_SESSION_FAILED
@@ -815,7 +806,7 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 			_calibration_session["failure_reason"] = failure_reason
 			return
 
-func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
+func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
 	var readiness := _build_default_calibration_readiness()
 	if tracking_state != TRACKING_TRACKING and tracking_state != TRACKING_REACQUIRING:
 		readiness["failure_reason"] = "tracking_lost"
@@ -823,64 +814,26 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 		readiness["instruction_text"] = "Need tracking or reacquiring before calibration capture can start"
 		return readiness
 	readiness["tracking_ready"] = true
+	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
+	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
 	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
 	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
-	if left_wrist.is_empty() or right_wrist.is_empty():
-		readiness["failure_reason"] = "missing_wrist_landmarks"
-		readiness["instruction_key"] = "show_both_wrists"
-		readiness["instruction_text"] = "Need both wrists visible before calibration capture can start"
+	if nose.is_empty() or left_shoulder.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
+		readiness["failure_reason"] = "required_sample_landmarks_unavailable"
+		readiness["instruction_key"] = "show_sample_landmarks"
+		readiness["instruction_text"] = "Need nose, left shoulder, and both wrists visible before calibration capture can complete"
 		return readiness
 	readiness["required_landmarks_ready"] = true
-
-	var measurements: Dictionary = metrics.get("measurements", {}) if metrics.get("measurements", {}) is Dictionary else {}
-	var body_centerline_x := float(measurements.get("body_centerline_x", 0.0))
-	readiness["centered_in_camera"] = absf(body_centerline_x - 0.5) <= CALIBRATION_CENTER_TOLERANCE
-	if not bool(readiness.get("centered_in_camera", false)):
-		readiness["failure_reason"] = "athlete_not_centered"
-		readiness["instruction_key"] = "stand_centered"
-		readiness["instruction_text"] = "Stand centered in camera before calibration capture can start"
+	var horizontal_wrist_span := absf(float(right_wrist.get("x", 0.0)) - float(left_wrist.get("x", 0.0)))
+	if horizontal_wrist_span <= 0.0:
+		readiness["failure_reason"] = "invalid_wrist_span"
+		readiness["instruction_key"] = "show_sample_landmarks"
+		readiness["instruction_text"] = "Move wrists apart so the calibration sample has non-zero width"
 		return readiness
-
-	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
-	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
-	var left_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_ELBOW)
-	var right_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_ELBOW)
-	if left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty():
-		readiness["failure_reason"] = "missing_t_pose_landmarks"
-		readiness["instruction_key"] = "hold_t_pose"
-		readiness["instruction_text"] = "Need shoulders, elbows, and wrists visible for a centered T-pose capture"
-		return readiness
-
-	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
-	var wrist_y_tolerance := shoulder_width * CALIBRATION_T_POSE_WRIST_Y_TOLERANCE_RATIO
-	var left_arm_extension := float(measurements.get("left_arm_extension", 0.0))
-	var right_arm_extension := float(measurements.get("right_arm_extension", 0.0))
-	var left_elbow_bend_deg := float(measurements.get("left_elbow_bend_deg", 0.0))
-	var right_elbow_bend_deg := float(measurements.get("right_elbow_bend_deg", 0.0))
-	var left_wrist_shoulder_delta := absf(float(left_wrist.get("y", 0.0)) - float(left_shoulder.get("y", 0.0)))
-	var right_wrist_shoulder_delta := absf(float(right_wrist.get("y", 0.0)) - float(right_shoulder.get("y", 0.0)))
-	var left_arm_order_valid := float(left_wrist.get("x", 0.0)) < float(left_elbow.get("x", 0.0)) and float(left_elbow.get("x", 0.0)) < float(left_shoulder.get("x", 0.0))
-	var right_arm_order_valid := float(right_shoulder.get("x", 0.0)) < float(right_elbow.get("x", 0.0)) and float(right_elbow.get("x", 0.0)) < float(right_wrist.get("x", 0.0))
-	readiness["t_pose_ready"] = (
-		left_arm_extension >= CALIBRATION_T_POSE_ARM_EXTENSION_MIN
-		and right_arm_extension >= CALIBRATION_T_POSE_ARM_EXTENSION_MIN
-		and left_elbow_bend_deg >= CALIBRATION_T_POSE_ELBOW_BEND_MIN_DEG
-		and right_elbow_bend_deg >= CALIBRATION_T_POSE_ELBOW_BEND_MIN_DEG
-		and left_wrist_shoulder_delta <= wrist_y_tolerance
-		and right_wrist_shoulder_delta <= wrist_y_tolerance
-		and left_arm_order_valid
-		and right_arm_order_valid
-	)
-	if not bool(readiness.get("t_pose_ready", false)):
-		readiness["failure_reason"] = "t_pose_not_ready"
-		readiness["instruction_key"] = "hold_t_pose"
-		readiness["instruction_text"] = "Hold a centered T-pose with straight arms and wrists level with shoulders"
-		return readiness
-
 	readiness["ready"] = true
 	readiness["failure_reason"] = ""
-	readiness["instruction_key"] = "capture_frames"
-	readiness["instruction_text"] = "Capture window is live — hold the centered T-pose for 5 valid frames"
+	readiness["instruction_key"] = "capture_sample"
+	readiness["instruction_text"] = "Countdown complete — capturing one wrist-width sample now"
 	return readiness
 
 func _average_x(points: Array) -> float:
@@ -1236,7 +1189,7 @@ func _build_flow_landmark_debug(landmark_key: StringName, landmark_id: int, hist
 		"latest_confidence": float(latest_sample.get("confidence", 0.0)),
 		"current_cell": int(latest_sample.get("cell", -1)),
 		"current_direction": int(analysis.get("direction", -1)),
-		"grid_anchor": Vector2(float(grid_rect.get("wrist_midpoint_x", 0.0)), float(grid_rect.get("anchor_y", 0.0))),
+		"grid_anchor": Vector2(float(grid_rect.get("anchor_x", 0.0)), float(grid_rect.get("anchor_y", 0.0))),
 		"grid_cell_size": float(grid_rect.get("cell_width", 0.0)),
 		"grid_cell_width": float(grid_rect.get("cell_width", 0.0)),
 		"grid_cell_height": float(grid_rect.get("cell_height", 0.0)),
@@ -1256,7 +1209,7 @@ func _build_flow_grid_debug() -> Dictionary:
 	var top_boundary := float(grid_rect.get("top_boundary", 0.0))
 	var right_boundary := float(grid_rect.get("right_boundary", 0.0))
 	var bottom_boundary := float(grid_rect.get("bottom_boundary", 0.0))
-	var wrist_midpoint_x := float(grid_rect.get("wrist_midpoint_x", 0.0))
+	var anchor_x := float(grid_rect.get("anchor_x", 0.0))
 	var anchor_y := float(grid_rect.get("anchor_y", 0.0))
 	var cell_rects: Array = []
 	if is_calibrated:
@@ -1275,13 +1228,14 @@ func _build_flow_grid_debug() -> Dictionary:
 		"is_calibrated": is_calibrated,
 		"columns": columns,
 		"rows": rows,
-		"anchor": Vector2(wrist_midpoint_x, anchor_y),
+		"anchor": Vector2(anchor_x, anchor_y),
 		"cell_size": cell_width,
 		"cell_width": cell_width,
 		"cell_height": cell_height,
 		"width": right_boundary - left_boundary,
 		"height": top_boundary - bottom_boundary,
-		"wrist_midpoint_x": wrist_midpoint_x,
+		"anchor_x": anchor_x,
+		"wrist_midpoint_x": float(_baseline.get("wrist_midpoint_x", 0.0)),
 		"anchor_y": anchor_y,
 		"left_wrist_x": float(_baseline.get("left_wrist_x", 0.0)),
 		"right_wrist_x": float(_baseline.get("right_wrist_x", 0.0)),
@@ -1296,14 +1250,11 @@ func _build_flow_grid_debug() -> Dictionary:
 func _get_flow_grid_rect() -> Dictionary:
 	var cell_width := _get_flow_cell_width()
 	var cell_height := _get_flow_cell_height(cell_width)
-	var left_boundary := float(_baseline.get("left_wrist_x", 0.0))
-	var right_boundary := float(_baseline.get("right_wrist_x", 0.0))
-	if right_boundary < left_boundary:
-		var swap := left_boundary
-		left_boundary = right_boundary
-		right_boundary = swap
-	var wrist_midpoint_x := float(_baseline.get("wrist_midpoint_x", (left_boundary + right_boundary) * 0.5))
-	var anchor_y := float(_baseline.get("shoulder_center_y", 0.0))
+	var grid_width := float(_baseline.get("horizontal_wrist_span", 0.0))
+	var anchor_x := float(_baseline.get("nose_x", 0.0))
+	var left_boundary := anchor_x - grid_width * 0.5
+	var right_boundary := anchor_x + grid_width * 0.5
+	var anchor_y := float(_baseline.get("left_shoulder_y", _baseline.get("shoulder_center_y", 0.0)))
 	var top_boundary := anchor_y + cell_height * 1.5
 	var bottom_boundary := top_boundary - cell_height * float(FLOW_GRID_ROWS)
 	return {
@@ -1313,7 +1264,7 @@ func _get_flow_grid_rect() -> Dictionary:
 		"right_boundary": right_boundary,
 		"top_boundary": top_boundary,
 		"bottom_boundary": bottom_boundary,
-		"wrist_midpoint_x": wrist_midpoint_x,
+		"anchor_x": anchor_x,
 		"anchor_y": anchor_y,
 	}
 

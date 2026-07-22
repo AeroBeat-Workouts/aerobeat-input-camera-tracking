@@ -532,9 +532,9 @@ func _refresh_calibration_flow_ui() -> void:
 		if state_name == "failed":
 			_athlete_recalibrate_button.text = "Try Again"
 		elif state_name == "countdown":
-			_athlete_recalibrate_button.text = "Hold T-Pose · %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
+			_athlete_recalibrate_button.text = "Calibrating · %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
 		elif state_name == "capture_pending" or state_name == "capturing":
-			_athlete_recalibrate_button.text = "Capturing…"
+			_athlete_recalibrate_button.text = "Sampling…"
 		else:
 			_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
 	if _athlete_calibration_secondary_button != null:
@@ -588,63 +588,63 @@ func _apply_calibration_session_transition(state_name: String, session: Dictiona
 
 func _calibration_countdown_text(state_name: String, session: Dictionary) -> String:
 	var captured_frames := int(session.get("captured_sample_frames", 0))
-	var required_frames := maxi(int(session.get("required_capture_frames", 0)), 5)
+	var required_frames := maxi(int(session.get("required_capture_frames", 0)), 1)
 	match state_name:
 		"countdown":
 			return "Countdown: %ds · previous baseline cleared" % maxi(int(session.get("seconds_remaining", 0)), 0)
 		"capture_pending":
-			return "Capture window live: %d/%d valid frames" % [captured_frames, required_frames]
+			return "Countdown complete: waiting for one live wrist sample"
 		"capturing":
-			return "Capturing baseline: %d/%d valid frames" % [captured_frames, required_frames]
+			return "Capturing wrist sample: %d/%d" % [captured_frames, required_frames]
 		"succeeded":
-			return "Captured baseline: %d/%d valid frames" % [captured_frames, required_frames]
+			return "Captured wrist sample: %d/%d" % [captured_frames, required_frames]
 		"failed":
-			return "Capture failed after %d/%d valid frames" % [captured_frames, required_frames]
+			return "Calibration sample failed after %d/%d captures" % [captured_frames, required_frames]
 		"cancelled":
 			return "Calibration cancelled before a new baseline was captured"
 		_:
-			return "5-second countdown, then 5 valid capture frames"
+			return "10-second countdown, then one live wrist sample"
 
 func _calibration_instruction_text(state_name: String, session: Dictionary) -> String:
 	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
 	var instruction_text := String(readiness.get("instruction_text", "")).strip_edges()
 	match state_name:
 		"countdown":
-			return "Countdown first. When capture opens, stay centered and hold a straight-arm T-pose with both wrists visible."
+			return "Countdown first. When it ends, keep nose, left shoulder, and both wrists visible for the sample."
 		"capture_pending":
 			if bool(readiness.get("ready", false)):
-				return "Success still needs 5 valid frames while the centered T-pose stays stable."
+				return "Countdown is done. Waiting for the live wrist-width sample frame now."
 			if not instruction_text.is_empty():
 				return instruction_text
-			return "Need tracking/reacquiring, both wrists visible, and a centered T-pose before valid frames can accumulate."
+			return "Need tracking/reacquiring plus nose, left shoulder, and both wrists visible before the sample can complete."
 		"capturing":
-			return "Success still needs 5 valid frames while the centered T-pose stays stable."
+			return "Sampling the current pose to set wrist width and grid anchor."
 		"failed":
 			if not instruction_text.is_empty():
 				return "Retry requirement: %s" % instruction_text
-			return "Retry requirement: keep tracking live, stay centered, and hold the T-pose during the capture window."
+			return "Retry requirement: keep tracking live with nose, left shoulder, and both wrists visible when the countdown ends."
 		"cancelled":
-			return "Start again to clear the baseline and rerun the countdown + capture window."
+			return "Start again to clear the baseline and rerun the 10-second countdown."
 		_:
 			return ""
 
 func _calibration_status_text(state_name: String, session: Dictionary, has_baseline: bool) -> String:
 	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
 	var captured_frames := int(session.get("captured_sample_frames", 0))
-	var required_frames := maxi(int(session.get("required_capture_frames", 0)), 5)
+	var required_frames := maxi(int(session.get("required_capture_frames", 0)), 1)
 	match state_name:
 		"countdown":
-			return "Calibration in progress. The old shared baseline is intentionally gone until a new one finishes."
+			return "Calibration in progress. The old shared baseline is intentionally gone until the new sample finishes."
 		"capture_pending":
 			if bool(readiness.get("ready", false)):
-				return "Capture window is open. Waiting for the next valid frame while the new shared baseline builds: %d/%d so far." % [captured_frames, required_frames]
-			return "Capture window is open, but no valid frame is accumulating yet: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_wrist_data_unavailable")))
+				return "Countdown is complete. Waiting for the live frame that will set the new wrist width and grid anchor: %d/%d samples so far." % [captured_frames, required_frames]
+			return "Countdown is complete, but the sample cannot finish yet: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_sample_landmarks_unavailable")))
 		"capturing":
-			return "Capture window is open and valid frames are accumulating toward the new shared athlete baseline."
+			return "Sampling the current pose to set the new shared athlete baseline."
 		"succeeded":
-			return "Calibration complete. Boxing and Flow are now using the shared captured baseline."
+			return "Calibration complete. Boxing and Flow are now using the sampled wrist width plus nose/left-shoulder anchor."
 		"failed":
-			return "Calibration failed: %s. No new shared baseline was committed." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_wrist_data_unavailable")))
+			return "Calibration failed: %s. No new shared baseline was committed." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_sample_landmarks_unavailable")))
 		"cancelled":
 			return "Calibration cancelled. No shared baseline is active until you try again."
 		_:
@@ -654,18 +654,16 @@ func _calibration_status_text(state_name: String, session: Dictionary, has_basel
 
 func _humanize_calibration_failure_reason(reason: String) -> String:
 	match reason:
-		"required_wrist_data_unavailable", "missing_wrist_landmarks":
-			return "both wrists must stay visible during the capture window"
+		"required_sample_landmarks_unavailable", "required_wrist_data_unavailable":
+			return "nose, left shoulder, and both wrists must stay visible when the sample runs"
+		"missing_wrist_landmarks":
+			return "both wrists must stay visible when the sample runs"
 		"tracking_lost":
-			return "tracking must be in tracking or reacquiring during the capture window"
-		"athlete_not_centered":
-			return "stand centered in camera during the capture window"
-		"missing_t_pose_landmarks":
-			return "shoulders, elbows, and wrists must stay visible for the T-pose capture"
-		"t_pose_not_ready":
-			return "hold a straight-arm T-pose with wrists level to the shoulders during the capture window"
+			return "tracking must be in tracking or reacquiring when the sample runs"
+		"invalid_wrist_span":
+			return "wrists must be separated so the sampled width is non-zero"
 		"capture_window_expired":
-			return "the capture window expired before 5 valid frames were collected"
+			return "the live sample did not complete before the retry window expired"
 		"cancelled":
 			return "the session was cancelled"
 		_:
