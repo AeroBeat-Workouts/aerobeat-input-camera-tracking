@@ -1,8 +1,8 @@
 # AeroBeat Input Camera Tracking - Boxing/Flow Grid and Straight-Punch Follow-up
 
 **Date:** 2026-07-21  
-**Status:** In Progress  
-**Last Updated:** 2026-07-21 23:01 EDT  
+**Status:** Complete  
+**Last Updated:** 2026-07-21 22:55 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -178,9 +178,29 @@ The plan keeps these as two explicit seams: (1) grid truth/geometry and (2) stra
 **Files Created/Deleted/Modified:**
 - `.plans/2026-07-21-boxing-flow-grid-and-straight-punch-followup.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA reran the strongest repo-local verification I could perform headlessly and the slice passed.
+
+- **Bead claim:** `bd update aerobeat-input-camera-tracking-9ufh --status in_progress --json`
+- **Commands run:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=flow -gexit`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=grid -gexit`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit`
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth -gexit`
+- **Command results:**
+  - Flow substrate slice: **6/6 passed** (`67` asserts)
+  - Grid/proving-harness slice: **5/5 passed** (`84` asserts)
+  - Config + substrate regression slice: **85/85 passed** (`1031` asserts)
+  - Focused boxing pose-only proving-harness truth: **1/1 passed** (`9` asserts)
+- **What this proves:**
+  1. calibrated flow/grid truth now stores and consumes the left/right horizontal wrist basis rather than reconstructing from the old nose-centered scalar span path
+  2. grid runtime/debug payload and overlay consumers now agree on explicit rect geometry (`cell_width` / `cell_height`) rather than fake scalar-cell geometry
+  3. Straight Punch L pose-only truth remains active under the threshold backend instead of surfacing `disabled` / `tracking_lost` from the missing-hands path when pose tracking is live
+  4. the shipped boxing bundle explicitly sets `tracking.hands.enabled: false`, and the substrate regression still covers the missing-hands fallback path so pose-only truth remains honest even if that stanza is omitted
+  5. related proving-harness / substrate / config coverage did not regress in this lane
+- **Caveat / boundary:** this QA pass was strong repo-local automated verification only. I did **not** perform a fresh interactive/live GUI proving-scene run against camera or replay in this lane, so visual live-scene confirmation still belongs to a manual served-scene pass if Derrick wants one.
+- **QA verdict:** **PASS** for repo-local truth of the boxing grid-geometry and straight-punch inspector follow-up slice.
 
 ---
 
@@ -198,24 +218,52 @@ The plan keeps these as two explicit seams: (1) grid truth/geometry and (2) stra
 **Files Created/Deleted/Modified:**
 - `.plans/2026-07-21-boxing-flow-grid-and-straight-punch-followup.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit passed. The lane looks truthfully fixed, not cosmetically papered over.
+
+- **Reference check against Derrick’s screenshots (`REF-01`):**
+  - Screenshot 1 shows `straight_punch.backend: threshold` with pose-only timing fields, so the old inspector output claiming `Tracking status - disabled` / `source=none` was genuinely contradictory.
+  - Screenshot 2 shows the exact contradiction on `Straight Punch L`: `Current state - tracking_lost` plus `Tracking status - disabled` despite the threshold config.
+  - Current repo truth now matches the intended semantics: `assets/boxing.camera_tracking.yaml` explicitly sets `tracking.hands.enabled: false`, and `src/detectors/pose_detector_substrate.gd` now routes boxing straight-punch truth through pose-only behavior when hands are omitted/disabled instead of silently taking the hand-tracking-disabled lane.
+- **Why this is a real fix, not a presentational-only change:**
+  1. **Grid truth** changed in runtime calibration/storage and quantization (`REF-05`), not just UI text. The substrate now stores calibrated `left_wrist_x`, `right_wrist_x`, `wrist_midpoint_x`, and `horizontal_wrist_span`; grid width comes from the horizontal wrist basis instead of nose-centered 2D wrist distance; grid geometry is published as explicit `cell_width` + `cell_height` rect truth.
+  2. **Grid rendering** changed in overlay consumption (`REF-03` / shared overlay path), so the proving overlay now draws from the rect payload instead of a fake single normalized square cell. That directly addresses Derrick’s reported wrist-width alignment and non-square-cell problem.
+  3. **Straight-punch truth** changed in shipped config plus runtime branching (`REF-05`, `REF-07`), not just inspector wording. The boxing bundle now declares pose-only hands-disabled truth, and the substrate fallback no longer lies when the hands stanza is missing.
+- **Independent validation rerun:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=flow -gexit` → **6/6 passed**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=grid -gexit` → **5/5 passed**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit` → **85/85 passed**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=test_boxing_straight_punch_missing_hands_config_falls_back_to_pose_only_truth -gexit` → **1/1 passed**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=test_straight_punch_pose_only_debug_surfaces_truthful_tracking_state -gexit` → **1/1 passed**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=test_calibration_stores_horizontal_wrist_basis_for_flow_grid -gexit` → **1/1 passed**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth -gexit` → **1/1 passed**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth -gexit` → **1/1 passed**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_proving_scenes_share_grid_truth_panel_and_preview_overlay -gexit` → **1/1 passed**
+- **Git / commit / push truth:**
+  - `git log` confirms the landed sequence on `main` / `origin/main`: `b577be3` (grid runtime/overlay fix), `31955ee` (plan update), `379c34d` (straight-punch truth fix), `b08960e` (plan update).
+  - `git branch -r --contains <commit>` confirms all four commits are contained by `origin/main`.
+  - Current dirt is limited to plan files (`.plans/2026-07-21-boxing-flow-grid-and-straight-punch-followup.md` from this audit and `.plans/2026-07-21-boxing-flow-proving-followups.md` already modified in the working tree); no uncommitted source/config/test drift was introduced by the audit run.
+- **Verdict / closure reasoning:** the remaining defects Derrick reported are addressed at the runtime/config/overlay truth layers, the headless proving/config/substrate coverage agrees, QA already passed, and git/push state is real. This bead is ready to close.
+- **Remaining caveat:** I did **not** independently perform a fresh interactive GUI/manual proving-scene run with live camera or replay in this audit pass. The strongest evidence here is repo-local source truth plus headless proving-harness/config/substrate verification. So the closure is strong for code/config/runtime truth, with manual visual reconfirmation still external to this audit pass.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Draft
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** Closed the boxing follow-up slice by fixing the flow grid’s runtime geometry basis and the straight-punch inspector/runtime truth path. The grid now derives from calibrated horizontal wrist geometry with explicit rect cell dimensions, and the boxing straight-punch path now truthfully reports pose-only threshold behavior instead of fake disabled/hand-source-none state.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-01` contradiction resolved at runtime/config truth; `REF-03`, `REF-04`, and `REF-05` now agree on shared grid and straight-punch debug payload semantics; `REF-07` now explicitly encodes the boxing hands-disabled pose-only profile expected by Derrick’s screenshot.
 
 **Commits:**
-- Pending.
+- `b577be3` - Fix flow calibration grid geometry basis
+- `31955ee` - Update follow-up plan with grid fix results
+- `379c34d` - Fix boxing straight-punch pose-only hand-tracking truth
+- `b08960e` - Update straight-punch follow-up plan with landed commit hash
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** When proving-scene debug contradicts config, audit the runtime branch-selection inputs first. The real bug here was split across baseline geometry truth and omitted config/fallback semantics, not just the visible inspector text.
 
 ---
 

@@ -1,8 +1,8 @@
 # AeroBeat Input Camera Tracking - Boxing/Flow Proving Follow-ups
 
 **Date:** 2026-07-21  
-**Status:** In Progress  
-**Last Updated:** 2026-07-21 21:36 EDT  
+**Status:** Complete  
+**Last Updated:** 2026-07-21 21:33 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -170,9 +170,27 @@ The plan keeps the work narrow and staged. First reproduce and map the exact cur
 **Files Created/Deleted/Modified:**
 - `.plans/2026-07-21-boxing-flow-proving-followups.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** QA re-ran the strongest repo-local verification available for this slice and the follow-up claims held up.
+- **Broad proving/local suites rerun:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ passed (**79/79 tests, 909 asserts**).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ passed (**40/40 tests, 491 asserts**).
+- **Targeted truth/regression proofs rerun:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=truthful_tracking_state -gexit` ✅ passed (`test_straight_punch_pose_only_debug_surfaces_truthful_tracking_state`). This proves the substrate now emits `truthful_state=pose_tracked` while raw `state` can still remain `tracking_lost` until genuine pose loss / trigger-state transitions happen.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=monotonic_runtime_time_across_replay_timestamp_rewind -gexit` ✅ passed (`test_calibration_session_uses_monotonic_runtime_time_across_replay_timestamp_rewind`). This proves calibration session timing now advances on monotonic runtime time across replay timestamp rewind instead of jumping backward with source timestamps.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=pose_only -gexit` ✅ passed (**4/4 tests, 40 asserts**). This covers the boxing proving harness pose-only truth surfaces that Derrick reported.
+- **Source-truth greps/checks:**
+  - `rg -n "button_row|invalid type in if condition|HBoxContainer" .testbed src -g '!**/.godot/**'` showed the remaining `button_row` references are normal locals/parents in `/.testbed/scripts/proving_harness.gd`; the old confusable redeclaration warning pattern no longer appears in the tested startup path.
+  - `rg -n "Hand tracking|DepthDebugRoot|truthful_state|CalibrationCountdownLabel|CalibrationInstructionLabel|CalibrationStatusLabel|Tracking status|No shared baseline captured yet\.|Calibration ready\.|5-second countdown, then 5 valid capture frames" .testbed src -g '!**/.godot/**'` plus existing unit assertions confirmed: the straight-punch top label is now `Tracking status`; `DepthDebugRoot` is absent by default in the boxing proving scene; substrate/harness truthful-state plumbing is present; the calibration helper labels still exist structurally but are intentionally hidden in the simplified UI and covered by tests.
+- **What this QA pass proves against the requested checks:**
+  1. **`button_row` startup warning gone:** no warning reappeared during the broad headless proving-harness startup/test pass, and the audited shadow/redeclaration pattern is no longer present in the exercised code path.
+  2. **Stale helper UI gone as intended:** boxing proving tests still assert `DepthDebugRoot` is absent by default, pose-only inspector copy now uses `Tracking status`, and the calibration helper labels are hidden in the simplified button-centric presentation.
+  3. **Straight Punch L no longer lies about `tracking_lost` in pose-only truth mode:** proven at both substrate level (`truthful_state`) and harness/UI level (`pose_only` proving-harness tests).
+  4. **Calibration replay-timing seam fixed at repo-local runtime/test level:** directly proven by the monotonic-runtime regression test across replay timestamp rewind.
+  5. **No related proving-harness regressions:** both broad suites stayed green after the fix.
+- **Honest caveat / boundary:** I did **not** run an interactive GUI/manual proving-scene session in a live window, so I cannot personally claim frame-by-frame visual confirmation of the exact on-screen countdown behavior across every replay transport path. This QA verdict is based on the highest-fidelity repo-local validation available here: full headless GUT coverage plus targeted replay-timing and pose-truth regression tests.
+- **QA verdict:** **PASS**. Repo-local evidence is strong enough to close the QA bead truthfully.
 
 ---
 
@@ -190,24 +208,43 @@ The plan keeps the work narrow and staged. First reproduce and map the exact cur
 **Files Created/Deleted/Modified:**
 - `.plans/2026-07-21-boxing-flow-proving-followups.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Independent audit passed. I rechecked the final tree, commit history, targeted source seams, and reran the strongest repo-local evidence instead of inheriting the earlier QA verdict.
+- **Git / commit / push truth:** `git rev-parse HEAD` and `git rev-parse origin/main` both resolve to `247f2ea9f9c61811061a1fb8cb49dbc06f59588c`, so the audited lane is pushed on `main`. The four claimed lane commits are real and ordered exactly as reported: `74f9fe1` (`Clean up boxing proving stale UI`), `e0aa343` (`Update boxing follow-up plan after stale UI cleanup`), `5ed93ed` (`Fix proving calibration replay timing truth`), `247f2ea` (`Update proving follow-up plan with coder results`).
+- **Derrick’s six reported items vs final audited state:**
+  1. **Startup warning:** `/.testbed/scripts/proving_harness.gd:357-365` now uses `calibration_button_row` instead of the old shadowing `button_row`, removing the audited confusable redeclaration pattern. Broad proving-harness test startup reruns did not surface the warning.
+  2. **Straight Punch L false `tracking_lost`:** this is no longer just a UI paper-over. `src/detectors/pose_detector_substrate.gd:912-920, 930-945` now emits substrate-level `truthful_state`, and `/.testbed/scripts/boxing_proving_harness.gd:1743-1755` prefers that runtime truth before any local fallback. The targeted substrate regression proves raw state can stay `tracking_lost` while truthful runtime state is `pose_tracked` only when pose-only tracking is genuinely valid.
+  3. **Stale hand-tracking copy:** `/.testbed/scripts/boxing_proving_harness.gd:101-105` now labels the top row `Tracking status`, and the pose-only inspector assertions in `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:1230-1248` confirm the body now reports `Current state - pose_tracked` plus truthful tracking-status text instead of stale hand-tracking wording.
+  4. **Extra calibration helper text under `Calibrate Athlete`:** `/.testbed/scripts/proving_harness.gd:409-425, 544-552` now clears and hides the countdown/instruction/status labels, and the harness tests at `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:1450-1485` confirm the button-centric presentation stays hidden through idle and active calibration states.
+  5. **Calibration countdown/capture loop:** this also is a real runtime fix, not cosmetic suppression. `src/detectors/pose_detector_substrate.gd:169-175, 318-347, 1322-1338` now advances calibration on monotonic `runtime_timestamp_ms` instead of replay source timestamps that can rewind on loop boundaries. The substrate regression at `/.testbed/tests/unit/test_pose_detector_substrate.gd:1735-1767` proves countdown/capture progress stays monotonic across replay timestamp rewind and still completes successfully.
+  6. **Leftover `Depth - Straight Punch` window:** `/.testbed/scripts/boxing_proving_harness.gd:642-650` now tears down the depth debug UI unless visuals are explicitly enabled, and the boxing proving-scene test at `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd:429` asserts `DepthDebugRoot` is absent by default.
+- **Independent validation rerun (auditor-owned):**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ passed (**79/79 tests, 909 asserts**).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ passed (**40/40 tests, 491 asserts**).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=truthful_tracking_state -gexit` ✅ passed.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=monotonic_runtime_time_across_replay_timestamp_rewind -gexit` ✅ passed.
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=pose_only -gexit` ✅ passed (**4/4 tests, 40 asserts**).
+- **Audit verdict:** the lane is truthfully done at repo-local scope. The deeper calibration seam was fixed in substrate timing, not merely hidden in UI, and the straight-punch truth now originates from substrate debug payloads rather than only harness-local reinterpretation.
+- **Remaining caveat:** I did **not** independently exercise an interactive GUI/manual proving-scene run in a live window, so I cannot personally claim frame-by-frame visual confirmation for every transport path beyond the headless proving/tests. That caveat is real, but given the monotonic-runtime regression proof plus green broad suites, it is not strong enough to force a retry.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Draft
+**Status:** ✅ Complete
 
-**What We Built:** Pending.
+**What We Built:** We closed the boxing/flow proving follow-up slice in two truthful implementation passes: first the stale proving-scene cleanup (startup warning removal, stale inspector wording removal, hidden calibration helper labels, and no default straight-punch depth window), then the deeper runtime/state repair that moved straight-punch truth into the substrate debug payload and made replay-driven athlete calibration run on monotonic runtime time across timestamp rewind.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-01` is satisfied at repo-local scope for all six reported complaints. `REF-02` is satisfied because the earlier overlay-truth bug pattern was not merely cosmetically masked; the substrate now exports `truthful_state` and the harness consumes it. `REF-03` is satisfied because the calibration regression seam was repaired at the shared timing/runtime layer rather than left as a proving-scene-only suppression. `REF-04` remains aligned because the proving-scene UI simplification stays button-centric and depth-debug is explicit opt-in. `REF-05`, `REF-06`, and `REF-07` were directly audited as the owning code paths; `REF-08` and `REF-09` remain covered indirectly via the proving-harness testbed scenes and scene-root assertions. The only remaining boundary is that this audit did not include an interactive GUI/manual proving-scene run.
 
 **Commits:**
-- Pending.
+- `74f9fe1` - Clean up boxing proving stale UI
+- `e0aa343` - Update boxing follow-up plan after stale UI cleanup
+- `5ed93ed` - Fix proving calibration replay timing truth
+- `247f2ea` - Update proving follow-up plan with coder results
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** When replay clips can rewind timestamps, calibration/session logic must run on a monotonic session clock distinct from source media time. Also, if pose-only fallback truth matters to operators, export that truth from the substrate itself instead of forcing every UI surface to reconstruct it locally.
 
 ---
 
