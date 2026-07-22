@@ -1500,13 +1500,13 @@ func _shared_flow_grid_truth_state(capture_source: String = "calibration_session
 					"rows": 3,
 					"cell_size": 0.08,
 					"cell_width": 0.08,
-					"cell_height": 0.1422222222,
+					"cell_height": 0.08,
 					"width": 0.32,
-					"height": 0.4266666666,
+					"height": 0.24,
 					"left_boundary": 0.34,
 					"top_boundary": 0.84,
 					"right_boundary": 0.66,
-					"bottom_boundary": 0.4133333334,
+					"bottom_boundary": 0.60,
 					"cell_rects": [
 						{"index": 0}, {"index": 1}, {"index": 2}, {"index": 3},
 						{"index": 4}, {"index": 5}, {"index": 6}, {"index": 7},
@@ -1553,7 +1553,7 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(overlay_snapshot.get("rows", 0)), 3)
 		assert_eq(int(overlay_snapshot.get("cell_count", 0)), 12)
 		assert_eq(float(overlay_snapshot.get("cell_width", 0.0)), 0.08)
-		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.1422222222)
+		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.08)
 		assert_eq(int(nose_chart.get("active_index")), 5)
 		assert_eq(int(left_chart.get("active_index")), 4)
 		assert_eq(int(right_chart.get("active_index")), 7)

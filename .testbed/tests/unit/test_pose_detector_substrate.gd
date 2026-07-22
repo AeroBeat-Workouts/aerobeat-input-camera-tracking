@@ -1637,10 +1637,10 @@ func test_quantizes_flow_direction_to_eight_direction_slots() -> void:
 
 func test_quantizes_flow_cells_from_calibrated_wrist_rect() -> void:
 	_calibrate_stance()
-	var first_cell := substrate._flow_cell_index_from_position(Vector2(0.30, 0.90))
-	var second_cell := substrate._flow_cell_index_from_position(Vector2(0.40, 0.90))
-	var third_cell := substrate._flow_cell_index_from_position(Vector2(0.50, 0.90))
-	var fourth_cell := substrate._flow_cell_index_from_position(Vector2(0.60, 0.90))
+	var first_cell := substrate._flow_cell_index_from_position(Vector2(0.30, 0.80))
+	var second_cell := substrate._flow_cell_index_from_position(Vector2(0.40, 0.80))
+	var third_cell := substrate._flow_cell_index_from_position(Vector2(0.50, 0.80))
+	var fourth_cell := substrate._flow_cell_index_from_position(Vector2(0.60, 0.80))
 	assert_true(first_cell >= 0)
 	assert_true(second_cell >= first_cell)
 	assert_true(third_cell >= second_cell)
@@ -1699,7 +1699,7 @@ func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
 	assert_true(is_equal_approx(float(grid_debug.get("left_boundary", 0.0)), 0.28))
 	assert_true(is_equal_approx(float(grid_debug.get("right_boundary", 0.0)), 0.72))
 	assert_true(is_equal_approx(float(grid_debug.get("cell_width", 0.0)), 0.11))
-	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.11 * (16.0 / 9.0)))
+	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.11))
 	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
 	var nose_debug: Dictionary = tracked_landmarks.get("nose", {})
 	var left_wrist_debug: Dictionary = tracked_landmarks.get("left_wrist", {})
@@ -1721,39 +1721,53 @@ func test_request_athlete_recalibration_starts_shared_countdown_session() -> voi
 	assert_eq(int(session.get("seconds_remaining", 0)), 5)
 	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
 	assert_true(state.get("metrics", {}).has("calibration_session"))
-	assert_eq(String(session.get("readiness", {}).get("instruction_text", "")), "Need tracking/reacquiring plus both wrists visible")
+	assert_eq(String(session.get("readiness", {}).get("instruction_text", "")), "Need tracking/reacquiring, both wrists visible, and a centered T-pose")
 	assert_eq(String(session.get("instructions", {}).get("show_both_wrists", {}).get("text", "")), "Both wrists stay visible")
+	assert_eq(String(session.get("instructions", {}).get("stand_centered", {}).get("text", "")), "Stand centered in camera")
+	assert_eq(String(session.get("instructions", {}).get("hold_t_pose", {}).get("text", "")), "Hold a T-pose")
 	assert_eq(String(session.get("instructions", {}).get("capture_frames", {}).get("text", "")), "Capture 5 valid frames during the live window")
 
-func test_calibration_readiness_only_requires_live_left_and_right_wrist_data() -> void:
+func test_calibration_readiness_requires_centered_t_pose_before_capture() -> void:
 	_calibrate_stance()
 	substrate.request_athlete_recalibration()
-	var state := substrate.process_landmarks(_make_pose_frame({}, 0.70), 6100)
+	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 6100)
 	var session: Dictionary = state.get("calibration_session", {})
 	var readiness: Dictionary = session.get("readiness", {})
 	assert_eq(String(session.get("state", "")), "capturing")
 	assert_true(bool(readiness.get("ready", false)))
 	assert_true(bool(readiness.get("centered_in_camera", false)))
 	assert_true(bool(readiness.get("t_pose_ready", false)))
-	assert_eq(String(readiness.get("instruction_text", "")), "Capture window is live — keep both wrists visible for 5 valid frames")
+	assert_eq(String(readiness.get("instruction_text", "")), "Capture window is live — hold the centered T-pose for 5 valid frames")
 
 	var missing_wrist_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), {})
 	assert_false(bool(missing_wrist_readiness.get("ready", true)))
 	assert_eq(String(missing_wrist_readiness.get("failure_reason", "")), "missing_wrist_landmarks")
-	assert_eq(String(missing_wrist_readiness.get("instruction_text", "")), "Need both wrists visible before capture can start")
+	assert_eq(String(missing_wrist_readiness.get("instruction_text", "")), "Need both wrists visible before calibration capture can start")
+
+	var off_center_state := substrate.process_landmarks(_make_calibration_pose_frame({}, 0.70), 6132)
+	var off_center_readiness: Dictionary = off_center_state.get("calibration_session", {}).get("readiness", {})
+	assert_false(bool(off_center_readiness.get("ready", true)))
+	assert_eq(String(off_center_readiness.get("failure_reason", "")), "athlete_not_centered")
+	assert_eq(String(off_center_readiness.get("instruction_text", "")), "Stand centered in camera before calibration capture can start")
+
+	var guard_state := substrate.process_landmarks(_make_pose_frame({}, 0.50), 6148)
+	var guard_readiness: Dictionary = guard_state.get("calibration_session", {}).get("readiness", {})
+	assert_false(bool(guard_readiness.get("ready", true)))
+	assert_eq(String(guard_readiness.get("failure_reason", "")), "t_pose_not_ready")
+	assert_eq(String(guard_readiness.get("instruction_text", "")), "Hold a centered T-pose with straight arms and wrists level with shoulders")
 
 	var missing_tracking_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("lost"), {})
 	assert_false(bool(missing_tracking_readiness.get("ready", true)))
 	assert_eq(String(missing_tracking_readiness.get("failure_reason", "")), "tracking_lost")
-	assert_eq(String(missing_tracking_readiness.get("instruction_text", "")), "Need tracking or reacquiring before capture can start")
+	assert_eq(String(missing_tracking_readiness.get("instruction_text", "")), "Need tracking or reacquiring before calibration capture can start")
 
 func test_calibration_session_commits_baseline_only_after_countdown_and_capture_window() -> void:
 	_calibrate_stance()
 	substrate.request_athlete_recalibration()
-	var state := substrate.process_landmarks(_make_pose_frame({}, 0.70), 6100)
+	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 6100)
 	assert_eq(String(state.get("calibration_session", {}).get("state", "")), "capturing")
 	for idx in range(5):
-		state = substrate.process_landmarks(_make_pose_frame(), 6120 + idx * 16)
+		state = substrate.process_landmarks(_make_calibration_pose_frame(), 6120 + idx * 16)
 	var baseline: Dictionary = state.get("baseline", {})
 	var session: Dictionary = state.get("calibration_session", {})
 	assert_true(bool(baseline.get("is_calibrated", false)))
@@ -1775,7 +1789,7 @@ func test_calibration_session_waits_through_boundary_blip_before_capture() -> vo
 	assert_eq(String(session.get("failure_reason", "")), "missing_wrist_landmarks")
 	var state := substrate.get_latest_state()
 	for idx in range(5):
-		state = substrate.process_landmarks(_make_pose_frame(), 6120 + idx * 16)
+		state = substrate.process_landmarks(_make_calibration_pose_frame(), 6120 + idx * 16)
 	var baseline: Dictionary = state.get("baseline", {})
 	session = state.get("calibration_session", {})
 	assert_true(bool(baseline.get("is_calibrated", false)))
@@ -1784,9 +1798,9 @@ func test_calibration_session_waits_through_boundary_blip_before_capture() -> vo
 func test_calibration_session_tolerates_brief_live_capture_dropout_within_window() -> void:
 	_calibrate_stance()
 	substrate.request_athlete_recalibration()
-	var state := substrate.process_landmarks(_make_pose_frame({}, 0.70), 6100)
+	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 6100)
 	assert_eq(String(state.get("calibration_session", {}).get("state", "")), "capturing")
-	state = substrate.process_landmarks(_make_pose_frame(), 6120)
+	state = substrate.process_landmarks(_make_calibration_pose_frame(), 6120)
 	substrate.call("_update_calibration_session", 6136, {
 		"ready": false,
 		"failure_reason": "missing_wrist_landmarks",
@@ -1795,7 +1809,7 @@ func test_calibration_session_tolerates_brief_live_capture_dropout_within_window
 	assert_eq(String(pending_session.get("state", "")), "capture_pending")
 	assert_true(bool(pending_session.get("is_active", false)))
 	for idx in range(3):
-		state = substrate.process_landmarks(_make_pose_frame(), 6152 + idx * 16)
+		state = substrate.process_landmarks(_make_calibration_pose_frame(), 6152 + idx * 16)
 	var baseline: Dictionary = state.get("baseline", {})
 	var session: Dictionary = state.get("calibration_session", {})
 	assert_true(bool(baseline.get("is_calibrated", false)))
@@ -1803,32 +1817,32 @@ func test_calibration_session_tolerates_brief_live_capture_dropout_within_window
 
 func test_calibration_session_uses_monotonic_runtime_time_across_replay_timestamp_rewind() -> void:
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 9500)
+	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 9500)
 	substrate.request_athlete_recalibration()
 	var session := substrate.get_calibration_session()
 	assert_eq(String(session.get("state", "")), "countdown")
 	assert_eq(int(session.get("seconds_remaining", 0)), 5)
 	assert_eq(int(substrate.get_latest_state().get("runtime_timestamp_ms", 0)), 9500)
 
-	state = substrate.process_landmarks(_make_pose_frame(), 9600)
+	state = substrate.process_landmarks(_make_calibration_pose_frame(), 9600)
 	var pre_rewind_session: Dictionary = state.get("calibration_session", {})
 	assert_eq(int(pre_rewind_session.get("seconds_remaining", 0)), 5)
 	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 9600)
 
-	state = substrate.process_landmarks(_make_pose_frame(), 100)
+	state = substrate.process_landmarks(_make_calibration_pose_frame(), 100)
 	var rewind_session: Dictionary = state.get("calibration_session", {})
 	assert_eq(String(rewind_session.get("state", "")), "countdown")
 	assert_true(int(rewind_session.get("seconds_remaining", 0)) <= int(pre_rewind_session.get("seconds_remaining", 0)))
 	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 9700)
 
 	for idx in range(48):
-		state = substrate.process_landmarks(_make_pose_frame(), 200 + idx * 100)
+		state = substrate.process_landmarks(_make_calibration_pose_frame(), 200 + idx * 100)
 	var capture_session: Dictionary = state.get("calibration_session", {})
 	assert_eq(String(capture_session.get("state", "")), "capturing")
 	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 14500)
 
 	for idx in range(4):
-		state = substrate.process_landmarks(_make_pose_frame(), 5000 + idx * 100)
+		state = substrate.process_landmarks(_make_calibration_pose_frame(), 5000 + idx * 100)
 	var baseline_after_rewind: Dictionary = state.get("baseline", {})
 	var final_session: Dictionary = state.get("calibration_session", {})
 	assert_true(bool(baseline_after_rewind.get("is_calibrated", false)))
@@ -1863,7 +1877,7 @@ func test_cancel_athlete_recalibration_keeps_runtime_uncalibrated_until_retry() 
 	var state := substrate.get_latest_state()
 	assert_eq(String(state.get("calibration_session", {}).get("state", "")), "cancelled")
 	for idx in range(5):
-		state = substrate.process_landmarks(_make_pose_frame(), 6100 + idx * 16)
+		state = substrate.process_landmarks(_make_calibration_pose_frame(), 6100 + idx * 16)
 	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
 
 func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
@@ -2344,6 +2358,17 @@ func _tracked_hand_payload_physical(side: String, bbox_area: float, tracking_sta
 		payload["sample_source"] = sample_source
 	return payload
 
+func _make_calibration_pose_frame(overrides: Dictionary = {}, center_x: float = 0.50, visibility: float = 0.99) -> Array:
+	var base_overrides := {
+		PoseLandmarkIds.LEFT_ELBOW: {"x": center_x - 0.28, "y": 0.70, "z": 0.0, "v": visibility},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": center_x + 0.28, "y": 0.70, "z": 0.0, "v": visibility},
+		PoseLandmarkIds.LEFT_WRIST: {"x": center_x - 0.40, "y": 0.70, "z": 0.0, "v": visibility},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": center_x + 0.40, "y": 0.70, "z": 0.0, "v": visibility},
+	}
+	for key_variant: Variant in overrides.keys():
+		base_overrides[key_variant] = overrides[key_variant]
+	return _make_pose_frame(base_overrides, center_x, 1.0, visibility)
+
 func _make_pose_frame(overrides: Dictionary = {}, center_x: float = 0.50, height_scale: float = 1.0, visibility: float = 0.99, knee_visibility: float = 0.99) -> Array:
 	var shoulder_y := 0.70
 	var hip_y := shoulder_y - 0.30 * height_scale
@@ -2381,3 +2406,10 @@ func _with_overrides(frame: Array, overrides: Dictionary) -> Array:
 					landmark[key_variant] = override_variant[key_variant]
 		updated.append(landmark)
 	return updated
+
+func _landmarks_by_id(frame: Array) -> Dictionary:
+	var landmarks_by_id := {}
+	for landmark_variant: Variant in frame:
+		var landmark: Dictionary = (landmark_variant as Dictionary).duplicate(true)
+		landmarks_by_id[int(landmark.get("id", -1))] = landmark
+	return landmarks_by_id

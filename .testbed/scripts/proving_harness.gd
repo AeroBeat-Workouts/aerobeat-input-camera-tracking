@@ -610,19 +610,19 @@ func _calibration_instruction_text(state_name: String, session: Dictionary) -> S
 	var instruction_text := String(readiness.get("instruction_text", "")).strip_edges()
 	match state_name:
 		"countdown":
-			return "Countdown first. When capture opens, keep tracking live and both wrists visible."
+			return "Countdown first. When capture opens, stay centered and hold a straight-arm T-pose with both wrists visible."
 		"capture_pending":
 			if bool(readiness.get("ready", false)):
-				return "Success still needs 5 valid frames with nose + both wrists present and positive body measurements."
+				return "Success still needs 5 valid frames while the centered T-pose stays stable."
 			if not instruction_text.is_empty():
 				return instruction_text
-			return "Need tracking/reacquiring plus both wrists visible before valid frames can accumulate."
+			return "Need tracking/reacquiring, both wrists visible, and a centered T-pose before valid frames can accumulate."
 		"capturing":
-			return "Success still needs 5 valid frames with nose + both wrists present and positive body measurements."
+			return "Success still needs 5 valid frames while the centered T-pose stays stable."
 		"failed":
 			if not instruction_text.is_empty():
 				return "Retry requirement: %s" % instruction_text
-			return "Retry requirement: keep tracking live and both wrists visible during the capture window."
+			return "Retry requirement: keep tracking live, stay centered, and hold the T-pose during the capture window."
 		"cancelled":
 			return "Start again to clear the baseline and rerun the countdown + capture window."
 		_:
@@ -658,6 +658,12 @@ func _humanize_calibration_failure_reason(reason: String) -> String:
 			return "both wrists must stay visible during the capture window"
 		"tracking_lost":
 			return "tracking must be in tracking or reacquiring during the capture window"
+		"athlete_not_centered":
+			return "stand centered in camera during the capture window"
+		"missing_t_pose_landmarks":
+			return "shoulders, elbows, and wrists must stay visible for the T-pose capture"
+		"t_pose_not_ready":
+			return "hold a straight-arm T-pose with wrists level to the shoulders during the capture window"
 		"capture_window_expired":
 			return "the capture window expired before 5 valid frames were collected"
 		"cancelled":

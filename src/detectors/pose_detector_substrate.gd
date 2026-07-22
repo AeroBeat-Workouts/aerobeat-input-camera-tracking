@@ -239,12 +239,12 @@ func _build_default_calibration_readiness() -> Dictionary:
 	return {
 		"tracking_ready": false,
 		"required_landmarks_ready": false,
-		"centered_in_camera": true,
-		"t_pose_ready": true,
+		"centered_in_camera": false,
+		"t_pose_ready": false,
 		"ready": false,
 		"failure_reason": "required_wrist_data_unavailable",
 		"instruction_key": "show_both_wrists",
-		"instruction_text": "Need tracking/reacquiring plus both wrists visible",
+		"instruction_text": "Need tracking/reacquiring, both wrists visible, and a centered T-pose",
 	}
 
 func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
@@ -258,6 +258,16 @@ func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
 			"key": "show_both_wrists",
 			"text": "Both wrists stay visible",
 			"ready": bool(readiness.get("required_landmarks_ready", false)),
+		},
+		"stand_centered": {
+			"key": "stand_centered",
+			"text": "Stand centered in camera",
+			"ready": bool(readiness.get("centered_in_camera", false)),
+		},
+		"hold_t_pose": {
+			"key": "hold_t_pose",
+			"text": "Hold a T-pose",
+			"ready": bool(readiness.get("t_pose_ready", false)),
 		},
 		"capture_frames": {
 			"key": "capture_frames",
@@ -391,8 +401,8 @@ func mark_tracking_timeout(timestamp_ms: int) -> void:
 	_latest_state["gesture_states"] = _gesture_state.get("states", {}).duplicate(true)
 	var readiness := _build_default_calibration_readiness()
 	readiness["failure_reason"] = "tracking_lost"
-	readiness["instruction_key"] = "stand_centered"
-	readiness["instruction_text"] = "Stand centered in camera"
+	readiness["instruction_key"] = "tracking_ready"
+	readiness["instruction_text"] = "Need tracking or reacquiring before calibration capture can start"
 	_update_calibration_session(timestamp_ms, readiness)
 	_latest_state["gesture_debug"] = _build_gesture_debug_state()
 	var metrics: Dictionary = _latest_state.get("metrics", {})
@@ -805,12 +815,12 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 			_calibration_session["failure_reason"] = failure_reason
 			return
 
-func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
+func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
 	var readiness := _build_default_calibration_readiness()
 	if tracking_state != TRACKING_TRACKING and tracking_state != TRACKING_REACQUIRING:
 		readiness["failure_reason"] = "tracking_lost"
 		readiness["instruction_key"] = "tracking_ready"
-		readiness["instruction_text"] = "Need tracking or reacquiring before capture can start"
+		readiness["instruction_text"] = "Need tracking or reacquiring before calibration capture can start"
 		return readiness
 	readiness["tracking_ready"] = true
 	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
@@ -818,15 +828,59 @@ func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: Strin
 	if left_wrist.is_empty() or right_wrist.is_empty():
 		readiness["failure_reason"] = "missing_wrist_landmarks"
 		readiness["instruction_key"] = "show_both_wrists"
-		readiness["instruction_text"] = "Need both wrists visible before capture can start"
+		readiness["instruction_text"] = "Need both wrists visible before calibration capture can start"
 		return readiness
 	readiness["required_landmarks_ready"] = true
-	readiness["centered_in_camera"] = true
-	readiness["t_pose_ready"] = true
+
+	var measurements: Dictionary = metrics.get("measurements", {}) if metrics.get("measurements", {}) is Dictionary else {}
+	var body_centerline_x := float(measurements.get("body_centerline_x", 0.0))
+	readiness["centered_in_camera"] = absf(body_centerline_x - 0.5) <= CALIBRATION_CENTER_TOLERANCE
+	if not bool(readiness.get("centered_in_camera", false)):
+		readiness["failure_reason"] = "athlete_not_centered"
+		readiness["instruction_key"] = "stand_centered"
+		readiness["instruction_text"] = "Stand centered in camera before calibration capture can start"
+		return readiness
+
+	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
+	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
+	var left_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_ELBOW)
+	var right_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_ELBOW)
+	if left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty():
+		readiness["failure_reason"] = "missing_t_pose_landmarks"
+		readiness["instruction_key"] = "hold_t_pose"
+		readiness["instruction_text"] = "Need shoulders, elbows, and wrists visible for a centered T-pose capture"
+		return readiness
+
+	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
+	var wrist_y_tolerance := shoulder_width * CALIBRATION_T_POSE_WRIST_Y_TOLERANCE_RATIO
+	var left_arm_extension := float(measurements.get("left_arm_extension", 0.0))
+	var right_arm_extension := float(measurements.get("right_arm_extension", 0.0))
+	var left_elbow_bend_deg := float(measurements.get("left_elbow_bend_deg", 0.0))
+	var right_elbow_bend_deg := float(measurements.get("right_elbow_bend_deg", 0.0))
+	var left_wrist_shoulder_delta := absf(float(left_wrist.get("y", 0.0)) - float(left_shoulder.get("y", 0.0)))
+	var right_wrist_shoulder_delta := absf(float(right_wrist.get("y", 0.0)) - float(right_shoulder.get("y", 0.0)))
+	var left_arm_order_valid := float(left_wrist.get("x", 0.0)) < float(left_elbow.get("x", 0.0)) and float(left_elbow.get("x", 0.0)) < float(left_shoulder.get("x", 0.0))
+	var right_arm_order_valid := float(right_shoulder.get("x", 0.0)) < float(right_elbow.get("x", 0.0)) and float(right_elbow.get("x", 0.0)) < float(right_wrist.get("x", 0.0))
+	readiness["t_pose_ready"] = (
+		left_arm_extension >= CALIBRATION_T_POSE_ARM_EXTENSION_MIN
+		and right_arm_extension >= CALIBRATION_T_POSE_ARM_EXTENSION_MIN
+		and left_elbow_bend_deg >= CALIBRATION_T_POSE_ELBOW_BEND_MIN_DEG
+		and right_elbow_bend_deg >= CALIBRATION_T_POSE_ELBOW_BEND_MIN_DEG
+		and left_wrist_shoulder_delta <= wrist_y_tolerance
+		and right_wrist_shoulder_delta <= wrist_y_tolerance
+		and left_arm_order_valid
+		and right_arm_order_valid
+	)
+	if not bool(readiness.get("t_pose_ready", false)):
+		readiness["failure_reason"] = "t_pose_not_ready"
+		readiness["instruction_key"] = "hold_t_pose"
+		readiness["instruction_text"] = "Hold a centered T-pose with straight arms and wrists level with shoulders"
+		return readiness
+
 	readiness["ready"] = true
 	readiness["failure_reason"] = ""
 	readiness["instruction_key"] = "capture_frames"
-	readiness["instruction_text"] = "Capture window is live — keep both wrists visible for 5 valid frames"
+	readiness["instruction_text"] = "Capture window is live — hold the centered T-pose for 5 valid frames"
 	return readiness
 
 func _average_x(points: Array) -> float:
@@ -2022,7 +2076,7 @@ func _get_flow_cell_height(cell_width: float = -1.0) -> float:
 		resolved_cell_width = _get_flow_cell_width()
 	if resolved_cell_width <= 0.0:
 		return 0.0
-	return resolved_cell_width * FLOW_GRID_SOURCE_ASPECT_RATIO
+	return resolved_cell_width
 
 func _get_flow_cell_size() -> float:
 	return _get_flow_cell_width()
