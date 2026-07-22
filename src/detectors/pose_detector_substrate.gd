@@ -1228,6 +1228,7 @@ func _build_flow_grid_debug() -> Dictionary:
 		"is_calibrated": is_calibrated,
 		"columns": columns,
 		"rows": rows,
+		"coordinate_space": "gameplay_bottom_left",
 		"anchor": Vector2(anchor_x, anchor_y),
 		"cell_size": cell_width,
 		"cell_width": cell_width,

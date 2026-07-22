@@ -5,6 +5,7 @@ const GRID_STROKE_COLOR := Color(0.89, 0.97, 1.0, 0.76)
 const GRID_STROKE_WIDTH := 1.3
 const GRID_BORDER_COLOR := Color(0.42, 0.86, 1.0, 0.94)
 const GRID_BORDER_WIDTH := 1.7
+const GRID_COORDINATE_SPACE_GAMEPLAY_BOTTOM_LEFT := "gameplay_bottom_left"
 
 var _preview_presenter: Node = null
 var _grid_debug: Dictionary = {}
@@ -28,10 +29,12 @@ func clear_grid_debug() -> void:
 
 func get_overlay_snapshot() -> Dictionary:
 	var cell_rects: Array = _grid_debug.get("cell_rects", []) as Array
+	var render_snapshot := _build_render_snapshot()
 	return {
 		"is_calibrated": bool(_grid_debug.get("is_calibrated", false)),
 		"columns": int(_grid_debug.get("columns", 0)),
 		"rows": int(_grid_debug.get("rows", 0)),
+		"coordinate_space": String(_grid_debug.get("coordinate_space", GRID_COORDINATE_SPACE_GAMEPLAY_BOTTOM_LEFT)),
 		"cell_size": float(_grid_debug.get("cell_size", 0.0)),
 		"cell_width": float(_grid_debug.get("cell_width", _grid_debug.get("cell_size", 0.0))),
 		"cell_height": float(_grid_debug.get("cell_height", _grid_debug.get("cell_size", 0.0))),
@@ -43,11 +46,41 @@ func get_overlay_snapshot() -> Dictionary:
 		"top_boundary": float(_grid_debug.get("top_boundary", 0.0)),
 		"right_boundary": float(_grid_debug.get("right_boundary", 0.0)),
 		"bottom_boundary": float(_grid_debug.get("bottom_boundary", 0.0)),
+		"render_top_left": render_snapshot.get("top_left", Vector2.ZERO),
+		"render_bottom_right": render_snapshot.get("bottom_right", Vector2.ZERO),
+		"render_cell_width_px": float(render_snapshot.get("cell_width_px", 0.0)),
+		"render_cell_height_px": float(render_snapshot.get("cell_height_px", 0.0)),
+		"render_width_px": float(render_snapshot.get("width_px", 0.0)),
+		"render_height_px": float(render_snapshot.get("height_px", 0.0)),
 	}
 
 func _draw() -> void:
-	if _grid_debug.is_empty() or not bool(_grid_debug.get("is_calibrated", false)):
+	var render_snapshot := _build_render_snapshot()
+	if not bool(render_snapshot.get("draw_ready", false)):
 		return
+	var columns := int(render_snapshot.get("columns", 0))
+	var rows := int(render_snapshot.get("rows", 0))
+	var top_left: Vector2 = render_snapshot.get("top_left", Vector2.ZERO)
+	var cell_width_px := float(render_snapshot.get("cell_width_px", 0.0))
+	var cell_height_px := float(render_snapshot.get("cell_height_px", 0.0))
+	for column: int in range(columns + 1):
+		var x := top_left.x + cell_width_px * float(column)
+		var start := Vector2(x, top_left.y)
+		var finish := Vector2(x, top_left.y + cell_height_px * float(rows))
+		var width := GRID_BORDER_WIDTH if column == 0 or column == columns else GRID_STROKE_WIDTH
+		var color := GRID_BORDER_COLOR if column == 0 or column == columns else GRID_STROKE_COLOR
+		draw_line(start, finish, color, width, true)
+	for row: int in range(rows + 1):
+		var y := top_left.y + cell_height_px * float(row)
+		var start := Vector2(top_left.x, y)
+		var finish := Vector2(top_left.x + cell_width_px * float(columns), y)
+		var width := GRID_BORDER_WIDTH if row == 0 or row == rows else GRID_STROKE_WIDTH
+		var color := GRID_BORDER_COLOR if row == 0 or row == rows else GRID_STROKE_COLOR
+		draw_line(start, finish, color, width, true)
+
+func _build_render_snapshot() -> Dictionary:
+	if _grid_debug.is_empty() or not bool(_grid_debug.get("is_calibrated", false)):
+		return {"draw_ready": false}
 	var columns := int(_grid_debug.get("columns", 0))
 	var rows := int(_grid_debug.get("rows", 0))
 	var cell_width := float(_grid_debug.get("cell_width", _grid_debug.get("cell_size", 0.0)))
@@ -55,23 +88,31 @@ func _draw() -> void:
 	var left_boundary := float(_grid_debug.get("left_boundary", 0.0))
 	var top_boundary := float(_grid_debug.get("top_boundary", 0.0))
 	if columns <= 0 or rows <= 0 or cell_width <= 0.000001 or cell_height <= 0.000001:
-		return
-	for column: int in range(columns + 1):
-		var x := left_boundary + cell_width * float(column)
-		var start := _map_normalized_point(Vector2(x, top_boundary))
-		var finish := _map_normalized_point(Vector2(x, top_boundary - cell_height * float(rows)))
-		var width := GRID_BORDER_WIDTH if column == 0 or column == columns else GRID_STROKE_WIDTH
-		var color := GRID_BORDER_COLOR if column == 0 or column == columns else GRID_STROKE_COLOR
-		draw_line(start, finish, color, width, true)
-	for row: int in range(rows + 1):
-		var y := top_boundary - cell_height * float(row)
-		var start := _map_normalized_point(Vector2(left_boundary, y))
-		var finish := _map_normalized_point(Vector2(left_boundary + cell_width * float(columns), y))
-		var width := GRID_BORDER_WIDTH if row == 0 or row == rows else GRID_STROKE_WIDTH
-		var color := GRID_BORDER_COLOR if row == 0 or row == rows else GRID_STROKE_COLOR
-		draw_line(start, finish, color, width, true)
+		return {"draw_ready": false}
+	var top_left_normalized := _to_preview_coordinate_space(Vector2(left_boundary, top_boundary))
+	var top_left := _map_preview_space_point(top_left_normalized)
+	var next_column := _map_preview_space_point(top_left_normalized + Vector2(cell_width, 0.0))
+	var cell_width_px := absf(next_column.x - top_left.x)
+	var cell_height_px := cell_width_px
+	return {
+		"draw_ready": cell_width_px > 0.000001,
+		"columns": columns,
+		"rows": rows,
+		"top_left": top_left,
+		"bottom_right": Vector2(top_left.x + cell_width_px * float(columns), top_left.y + cell_height_px * float(rows)),
+		"cell_width_px": cell_width_px,
+		"cell_height_px": cell_height_px,
+		"width_px": cell_width_px * float(columns),
+		"height_px": cell_height_px * float(rows),
+	}
 
-func _map_normalized_point(point: Vector2) -> Vector2:
+func _to_preview_coordinate_space(point: Vector2) -> Vector2:
+	var coordinate_space := String(_grid_debug.get("coordinate_space", GRID_COORDINATE_SPACE_GAMEPLAY_BOTTOM_LEFT)).strip_edges().to_lower()
+	if coordinate_space == GRID_COORDINATE_SPACE_GAMEPLAY_BOTTOM_LEFT:
+		return Vector2(point.x, 1.0 - point.y)
+	return point
+
+func _map_preview_space_point(point: Vector2) -> Vector2:
 	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("map_landmark_to_preview_position"):
 		return _preview_presenter.map_landmark_to_preview_position({"x": point.x, "y": point.y})
 	return Vector2(point.x * size.x, point.y * size.y)

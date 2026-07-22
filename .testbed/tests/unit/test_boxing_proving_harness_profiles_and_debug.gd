@@ -1496,6 +1496,7 @@ func _shared_flow_grid_truth_state(capture_source: String = "calibration_session
 					"is_calibrated": true,
 					"columns": 4,
 					"rows": 3,
+					"coordinate_space": "gameplay_bottom_left",
 					"cell_size": 0.08,
 					"cell_width": 0.08,
 					"cell_height": 0.08,
@@ -1556,6 +1557,27 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(left_chart.get("active_index")), 4)
 		assert_eq(int(right_chart.get("active_index")), 7)
 		assert_eq(String(truth_label.text), "")
+
+func test_flow_grid_overlay_flips_gameplay_y_and_renders_square_cells_in_preview_space() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	assert_not_null(scene_root)
+	var presenter := add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	scene_root.set("_preview_presenter", presenter)
+	scene_root.set("_latest_state", _shared_flow_grid_truth_state())
+	scene_root.call("_sync_overlay_drawers_to_preview_presenter")
+	scene_root.call("_refresh_debug_panels")
+
+	var refs: Dictionary = scene_root.call("get_shared_flow_grid_truth_refs")
+	var overlay := refs.get("flow_grid_overlay", null) as Object
+	assert_not_null(overlay)
+	var overlay_snapshot: Dictionary = overlay.call("get_overlay_snapshot")
+	var render_top_left: Vector2 = overlay_snapshot.get("render_top_left", Vector2.ZERO)
+	assert_true(is_equal_approx(render_top_left.x, 176.8))
+	assert_true(is_equal_approx(render_top_left.y, 46.88))
+	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_width_px", 0.0)), 41.6))
+	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_height_px", 0.0)), 41.6))
+	assert_true(is_equal_approx(float(overlay_snapshot.get("render_width_px", 0.0)), 166.4))
+	assert_true(is_equal_approx(float(overlay_snapshot.get("render_height_px", 0.0)), 124.8))
 
 func test_boxing_proving_scene_places_shared_grid_cards_inside_board_grid_with_boxing_shell_style() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
