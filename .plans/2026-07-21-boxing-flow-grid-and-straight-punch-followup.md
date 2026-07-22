@@ -133,7 +133,7 @@ The plan keeps these as two explicit seams: (1) grid truth/geometry and (2) stra
   - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=flow -gexit`
   - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=grid -gexit`
   - Result: **11 targeted tests passed** (`6/6` flow substrate + `5/5` grid/proving-harness).
-- **Commit:** `66e0b34` - `Fix flow calibration grid geometry basis`
+- **Commit:** `b577be3` - `Fix flow calibration grid geometry basis`
 
 ---
 
