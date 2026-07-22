@@ -100,7 +100,7 @@ const PUNCH_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "tracking_status",
-		"label": "Hand tracking",
+		"label": "Tracking status",
 		"row_kind": "info",
 	},
 	{
@@ -476,7 +476,6 @@ func _ready() -> void:
 	_build_tile_grid_if_needed()
 	_apply_boxing_visual_shell()
 	super._ready()
-	_ensure_depth_debug_ui()
 	_refresh_profile_controls()
 	_refresh_debug_panels()
 
@@ -641,11 +640,16 @@ func _depth_debug_can_swap(texture_available: bool) -> bool:
 	return bool(_depth_debug_viewer.can_swap(texture_available))
 
 func _refresh_depth_debug_visuals() -> void:
-	if _depth_debug_viewer == null:
-		return
-	_sync_depth_debug_overlay_parent()
 	var snapshot := _build_depth_debug_visual_snapshot()
 	var effective_visual_config := _effective_depth_debug_visual_config(snapshot)
+	if not bool(effective_visual_config.get("enabled", false)):
+		_cleanup_depth_debug_ui()
+		return
+	if _depth_debug_viewer == null:
+		_ensure_depth_debug_ui()
+		if _depth_debug_viewer == null:
+			return
+	_sync_depth_debug_overlay_parent()
 	if _depth_debug_viewer.has_method("configure"):
 		_depth_debug_viewer.configure(effective_visual_config, snapshot, _smoothed_preview_fps, _preview_presenter)
 	elif _depth_debug_viewer.has_method("set_visual_config"):
@@ -706,19 +710,8 @@ func _depth_debug_snapshot_has_truth(snapshot: Dictionary) -> bool:
 		return true
 	return false
 
-func _effective_depth_debug_visual_config(snapshot: Dictionary) -> Dictionary:
-	var effective_visual_config: Dictionary = _depth_debug_visual_config.duplicate(true)
-	if bool(effective_visual_config.get("enabled", false)):
-		return effective_visual_config
-	if not _depth_debug_snapshot_has_truth(snapshot):
-		return effective_visual_config
-	effective_visual_config["enabled"] = true
-	effective_visual_config["thumbnail_visible"] = true
-	effective_visual_config["hover_hint_visible"] = true
-	effective_visual_config["fps_visible"] = true
-	effective_visual_config["sampling_regions_visible"] = not (snapshot.get("sample_geometry", {}) as Dictionary).is_empty()
-	effective_visual_config["swap_click_enabled"] = snapshot.get("depth_texture", null) is Texture2D
-	return effective_visual_config
+func _effective_depth_debug_visual_config(_snapshot: Dictionary) -> Dictionary:
+	return _depth_debug_visual_config.duplicate(true)
 
 func _depth_debug_focus_family() -> String:
 	var enabled_families: Array = _depth_debug_enabled_families()
@@ -1747,6 +1740,17 @@ func _fmt_matcher_class_scores(class_scores: Dictionary) -> String:
 		pairs.append("%s=%s" % [key, _fmt_float(class_scores.get(key, 0.0))])
 	return "{" + ", ".join(pairs) + "}"
 
+func _truthful_punch_state_name(straight_side: Dictionary) -> String:
+	var state_name := String(straight_side.get("state", straight_side.get("phase", "tracking_lost")))
+	if bool(straight_side.get("hand_tracking_enabled", true)):
+		return state_name
+	if state_name != "tracking_lost":
+		return state_name
+	if not bool(straight_side.get("pose_tracking_valid", false)):
+		return state_name
+	var tracking_state := String(straight_side.get("tracking_state", "pose_tracked")).strip_edges()
+	return tracking_state if not tracking_state.is_empty() else state_name
+
 func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
 	var row_id := String(row_spec.get("id", ""))
 	if row_id.begins_with("depth_"):
@@ -1758,7 +1762,7 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 	var threshold_text := ""
 	var hand_tracking_enabled := bool(straight_side.get("hand_tracking_enabled", true))
 	var pose_tracking_valid := bool(straight_side.get("pose_tracking_valid", false))
-	var state_name := String(straight_side.get("state", straight_side.get("phase", "tracking_lost")))
+	var state_name := _truthful_punch_state_name(straight_side)
 	var wrist_velocity := float(straight_side.get("wrist_velocity", 0.0))
 	var recent_peak_wrist_velocity := float(straight_side.get("recent_peak_wrist_velocity", wrist_velocity))
 	var min_velocity := float(straight_side.get("min_velocity", 0.0))
@@ -2503,7 +2507,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 	var hook_side_debug: Dictionary = (hook_debug.get(side, {}) as Dictionary)
 	var uppercut_side_debug: Dictionary = (uppercut_debug.get(side, {}) as Dictionary)
 	var hand_tracking_enabled := bool(side_debug.get("hand_tracking_enabled", true))
-	var state_name := String(side_debug.get("state", side_debug.get("phase", hand.get("tracking_state", "tracking_lost"))))
+	var state_name := _truthful_punch_state_name(side_debug) if not side_debug.is_empty() else String(hand.get("tracking_state", "tracking_lost"))
 	var tracking_state := String(hand.get("tracking_state", side_debug.get("tracking_state", "idle")))
 	var tracking_valid := bool(hand.get("tracking_valid", side_debug.get("tracking_valid", false)))
 	var sample_source := String(hand.get("sample_source", side_debug.get("sample_source", "none")))

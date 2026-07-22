@@ -354,15 +354,15 @@ func _ensure_calibration_flow_ui() -> void:
 		athlete_calibration_status_label = Label.new()
 		athlete_calibration_status_label.name = "CalibrationStatusLabel"
 		column.add_child(athlete_calibration_status_label)
-		var button_row := HBoxContainer.new()
-		button_row.name = "Buttons"
-		column.add_child(button_row)
+		var calibration_button_row := HBoxContainer.new()
+		calibration_button_row.name = "Buttons"
+		column.add_child(calibration_button_row)
 		_athlete_recalibrate_button = Button.new()
 		_athlete_recalibrate_button.name = "AthleteRecalibrateButton"
-		button_row.add_child(_athlete_recalibrate_button)
+		calibration_button_row.add_child(_athlete_recalibrate_button)
 		_athlete_calibration_secondary_button = Button.new()
 		_athlete_calibration_secondary_button.name = "AthleteCalibrationSecondaryButton"
-		button_row.add_child(_athlete_calibration_secondary_button)
+		calibration_button_row.add_child(_athlete_calibration_secondary_button)
 	else:
 		_athlete_recalibrate_button = athlete_calibration_panel.find_child("AthleteRecalibrateButton", true, false) as Button
 		_athlete_calibration_secondary_button = athlete_calibration_panel.find_child("AthleteCalibrationSecondaryButton", true, false) as Button
@@ -407,6 +407,8 @@ func _ensure_calibration_flow_ui() -> void:
 	if athlete_calibration_title_label != null:
 		athlete_calibration_title_label.visible = false
 	if athlete_calibration_countdown_label != null:
+		athlete_calibration_countdown_label.text = ""
+		athlete_calibration_countdown_label.visible = false
 		athlete_calibration_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		athlete_calibration_countdown_label.add_theme_color_override("font_color", Color(0.87, 0.93, 1.0, 1.0))
 	if athlete_calibration_instruction_label != null:
@@ -416,6 +418,8 @@ func _ensure_calibration_flow_ui() -> void:
 		athlete_calibration_instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		athlete_calibration_instruction_label.add_theme_color_override("font_color", Color(0.72, 0.90, 1.0, 0.92))
 	if athlete_calibration_status_label != null:
+		athlete_calibration_status_label.text = ""
+		athlete_calibration_status_label.visible = false
 		athlete_calibration_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		athlete_calibration_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		athlete_calibration_status_label.add_theme_color_override("font_color", Color(0.88, 0.94, 1.0, 0.94))
@@ -518,8 +522,6 @@ func _refresh_calibration_flow_ui() -> void:
 	var session := _resolve_calibration_session()
 	var state_name := String(session.get("state", "idle"))
 	var is_active := bool(session.get("is_active", false))
-	var baseline: Dictionary = _latest_state.get("baseline", {}) if _latest_state.get("baseline", {}) is Dictionary else {}
-	var has_baseline := bool(baseline.get("is_calibrated", false))
 	var start_supported := provider_has_start_calibration()
 	var cancel_supported := provider_has_cancel_calibration()
 	_apply_calibration_session_transition(state_name, session)
@@ -540,14 +542,14 @@ func _refresh_calibration_flow_ui() -> void:
 		_athlete_calibration_secondary_button.disabled = not (is_active and cancel_supported)
 		_athlete_calibration_secondary_button.text = "Cancel"
 	if athlete_calibration_countdown_label != null:
-		athlete_calibration_countdown_label.text = _calibration_countdown_text(state_name, session)
-		athlete_calibration_countdown_label.visible = not athlete_calibration_countdown_label.text.is_empty()
+		athlete_calibration_countdown_label.text = ""
+		athlete_calibration_countdown_label.visible = false
 	if athlete_calibration_instruction_label != null:
-		athlete_calibration_instruction_label.text = _calibration_instruction_text(state_name, session)
-		athlete_calibration_instruction_label.visible = not athlete_calibration_instruction_label.text.is_empty()
+		athlete_calibration_instruction_label.text = ""
+		athlete_calibration_instruction_label.visible = false
 	if athlete_calibration_status_label != null:
-		athlete_calibration_status_label.text = _calibration_status_text(state_name, session, has_baseline)
-		athlete_calibration_status_label.visible = not athlete_calibration_status_label.text.is_empty()
+		athlete_calibration_status_label.text = ""
+		athlete_calibration_status_label.visible = false
 
 func _apply_calibration_session_transition(state_name: String, session: Dictionary) -> void:
 	if state_name.is_empty():

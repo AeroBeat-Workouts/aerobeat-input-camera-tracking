@@ -373,6 +373,20 @@ func _boxing_depth_debug_state(harness: Object) -> Dictionary:
 	assert_true(viewer.has_method("get_state_snapshot"))
 	return viewer.get_state_snapshot()
 
+func _enable_boxing_depth_debug(harness: Variant) -> void:
+	harness.set("_depth_debug_visual_config", {
+		"enabled": true,
+		"thumbnail_visible": true,
+		"swap_click_enabled": true,
+		"hover_hint_visible": true,
+		"sampling_regions_visible": true,
+		"fps_visible": true,
+		"request_runtime_texture": true,
+		"thumbnail_corner": "bottom_right",
+		"thumbnail_width_px": 196,
+		"thumbnail_margin_px": 14,
+	})
+
 func _has_editor_exposed_property(subject: Object, property_name: String) -> bool:
 	for property_info_variant: Variant in subject.get_property_list():
 		if not property_info_variant is Dictionary:
@@ -412,6 +426,7 @@ func test_boxing_proving_scene_applies_boxing_testbed_debug_yaml_to_live_nodes()
 	assert_false(bool(depth_debug_visuals.get("request_runtime_texture", false)))
 	assert_false(bool(depth_debug_visuals.get("sampling_regions_visible", false)))
 	assert_false(bool(depth_debug_visuals.get("fps_visible", false)))
+	assert_null(scene_root.find_child("DepthDebugRoot", true, false))
 
 func test_depth_debug_viewer_renders_prepared_snapshot_and_reparents_to_presenter_overlay() -> void:
 	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
@@ -526,6 +541,8 @@ func test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_text
 		}
 	})
 	harness._refresh_debug_panels()
+	_enable_boxing_depth_debug(harness)
+	harness._refresh_depth_debug_visuals()
 	var refs := _boxing_depth_debug_refs(harness)
 	var placeholder: Label = refs.get("thumbnail_placeholder_label", null) as Label
 	var status: Label = refs.get("thumbnail_status_label", null) as Label
@@ -563,6 +580,8 @@ func test_boxing_depth_debug_overlay_consumes_runtime_region_metadata_without_co
 		}
 	})
 	harness._refresh_debug_panels()
+	_enable_boxing_depth_debug(harness)
+	harness._refresh_depth_debug_visuals()
 	var sample_overlay: Object = _boxing_depth_debug_refs(harness).get("sample_overlay", null) as Object
 	assert_not_null(sample_overlay)
 	var overlay_snapshot: Dictionary = sample_overlay.get_overlay_snapshot()
@@ -587,6 +606,8 @@ func test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available() -> 
 		}
 	})
 	harness._refresh_debug_panels()
+	_enable_boxing_depth_debug(harness)
+	harness._refresh_depth_debug_visuals()
 	var refs := _boxing_depth_debug_refs(harness)
 	var main_texture: TextureRect = refs.get("main_texture", null) as TextureRect
 	var thumbnail_texture: TextureRect = refs.get("thumbnail_texture", null) as TextureRect
@@ -621,6 +642,8 @@ func test_boxing_depth_debug_swap_resets_when_yaml_disables_thumbnail_click_swap
 		}
 	})
 	harness._refresh_debug_panels()
+	_enable_boxing_depth_debug(harness)
+	harness._refresh_depth_debug_visuals()
 	harness._toggle_depth_debug_swap()
 	assert_true(bool(_boxing_depth_debug_state(harness).get("swapped_to_depth", false)))
 	harness._sync_depth_debug_visual_config({
@@ -886,7 +909,7 @@ func test_boxing_punch_inspector_body_calls_out_live_pose_inputs() -> void:
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_right")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Current state - triggered")
-	assert_string_contains(body, "Hand tracking - tracked, valid=true, source=carried_forward, stale=0ms (0 frames), grace=0ms (0 frames), stable=160ms")
+	assert_string_contains(body, "Tracking status - tracked, valid=true, source=carried_forward, stale=0ms (0 frames), grace=0ms (0 frames), stable=160ms")
 	assert_string_contains(body, "Fresh sample valid - false")
 	assert_false(body.contains("Event payload snapshot"))
 	assert_string_contains(body, "Recent punch velocity peak >= 0.180 - 0.365")
@@ -1169,7 +1192,7 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 		"gesture_debug": {
 			"straight_punch": {
 				"left": {
-					"state": "not_ready",
+					"state": "tracking_lost",
 					"previous_state": "triggered",
 					"timestamp_ms": Time.get_ticks_msec() - 260,
 					"hand_tracking_enabled": false,
@@ -1206,21 +1229,23 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 
 	var model: Dictionary = harness._build_hover_card_model("punch_left")
 	var rows: Array = model.get("rows", [])
+	assert_eq(String(rows[1].get("current_text", "")), "pose_tracked")
 	assert_eq(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
 	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
 	assert_eq(String(rows[8].get("current_text", "")), "0.082")
-	assert_eq(String(rows[10].get("current_text", "")), "260/250ms elapsed (pose-only timer)")
+	assert_eq(String(rows[10].get("current_text", "")), "waiting for pose-only rearm timer")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Hand tracking - pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
+	assert_string_contains(body, "Current state - pose_tracked")
+	assert_string_contains(body, "Tracking status - pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
 	assert_false(body.contains("Recent forward depth spike"))
 	assert_string_contains(body, "Elbow-shoulder XY distance <= 0.090 - 0.082")
 	assert_string_contains(body, "Wrist lateral angle from elbow vertical")
 	assert_false(body.contains("BBox area - "))
 	assert_false(body.contains("Recent bbox area growth peak"))
 	assert_false(body.contains("Positive growth samples"))
-	assert_string_contains(body, "Pose-only rearm - 260/250ms elapsed (pose-only timer)")
+	assert_string_contains(body, "Pose-only rearm - waiting for pose-only rearm timer")
 
 func test_guard_hover_card_reports_pose_only_thresholds_and_live_truth() -> void:
 	var harness = _new_harness()
@@ -1363,18 +1388,24 @@ func test_proving_harness_surfaces_shared_calibration_flow_and_routes_start_canc
 	assert_not_null(instruction_label)
 	assert_not_null(status_label)
 	assert_eq(start_button.text, "Calibrate Athlete")
-	assert_string_contains(String(countdown_label.text), "5-second countdown")
+	assert_eq(String(countdown_label.text), "")
+	assert_false(countdown_label.visible)
 	assert_eq(String(instruction_label.text), "")
+	assert_false(instruction_label.visible)
+	assert_eq(String(status_label.text), "")
+	assert_false(status_label.visible)
 
 	start_button.emit_signal("pressed")
 	assert_eq(provider.request_count, 1)
 	scene_root.call("_refresh_calibration_flow_ui")
 	assert_eq(start_button.disabled, true)
 	assert_eq(cancel_button.visible, true)
-	assert_string_contains(String(countdown_label.text), "Countdown: 5s")
-	assert_string_contains(String(countdown_label.text), "previous baseline cleared")
-	assert_string_contains(String(instruction_label.text), "Countdown first")
-	assert_string_contains(String(status_label.text), "old shared baseline is intentionally gone")
+	assert_eq(String(countdown_label.text), "")
+	assert_false(countdown_label.visible)
+	assert_eq(String(instruction_label.text), "")
+	assert_false(instruction_label.visible)
+	assert_eq(String(status_label.text), "")
+	assert_false(status_label.visible)
 
 	provider.calibration_session = provider._make_session("capturing", {
 		"is_active": true,
@@ -1383,15 +1414,19 @@ func test_proving_harness_surfaces_shared_calibration_flow_and_routes_start_canc
 	})
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
-	assert_string_contains(String(countdown_label.text), "2/5 valid frames")
-	assert_string_contains(String(instruction_label.text), "Success still needs 5 valid frames")
-	assert_string_contains(String(status_label.text), "valid frames are accumulating")
+	assert_eq(String(countdown_label.text), "")
+	assert_false(countdown_label.visible)
+	assert_eq(String(instruction_label.text), "")
+	assert_false(instruction_label.visible)
+	assert_eq(String(status_label.text), "")
+	assert_false(status_label.visible)
 
 	cancel_button.emit_signal("pressed")
 	assert_eq(provider.cancel_count, 1)
 	scene_root.call("_refresh_calibration_flow_ui")
 	assert_eq(start_button.text, "Calibrate Athlete")
-	assert_string_contains(String(status_label.text), "Calibration cancelled")
+	assert_eq(String(status_label.text), "")
+	assert_false(status_label.visible)
 
 func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_replays() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
@@ -1416,9 +1451,12 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		assert_eq(start_button.disabled, false)
 		assert_eq(start_button.text, "Calibrate Athlete")
 		assert_eq(cancel_button.visible, false)
-		assert_string_contains(String(countdown_label.text), "5-second countdown")
+		assert_eq(String(countdown_label.text), "")
+		assert_false(countdown_label.visible)
 		assert_eq(String(instruction_label.text), "")
-		assert_string_contains(String(status_label.text), "No shared baseline captured yet")
+		assert_false(instruction_label.visible)
+		assert_eq(String(status_label.text), "")
+		assert_false(status_label.visible)
 
 		start_button.emit_signal("pressed")
 		assert_eq(provider.request_count, 1)
@@ -1426,9 +1464,10 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		scene_root.call("_refresh_calibration_flow_ui")
 		assert_eq(start_button.disabled, true)
 		assert_eq(cancel_button.visible, true)
-		assert_string_contains(String(countdown_label.text), "Countdown: 5s")
-		assert_string_contains(String(countdown_label.text), "previous baseline cleared")
-		assert_string_contains(String(instruction_label.text), "Countdown first")
+		assert_eq(String(countdown_label.text), "")
+		assert_false(countdown_label.visible)
+		assert_eq(String(instruction_label.text), "")
+		assert_false(instruction_label.visible)
 
 		provider.calibration_session = provider._make_session("capture_pending", {
 			"is_active": true,
@@ -1438,9 +1477,12 @@ func test_proving_scenes_allow_shared_calibration_attempts_for_prerecorded_repla
 		})
 		scene_root.set("_latest_state", provider.get_detector_state())
 		scene_root.call("_refresh_calibration_flow_ui")
-		assert_string_contains(String(countdown_label.text), "1/5 valid frames")
-		assert_string_contains(String(instruction_label.text), "Success still needs 5 valid frames")
-		assert_string_contains(String(status_label.text), "Waiting for the next valid frame")
+		assert_eq(String(countdown_label.text), "")
+		assert_false(countdown_label.visible)
+		assert_eq(String(instruction_label.text), "")
+		assert_false(instruction_label.visible)
+		assert_eq(String(status_label.text), "")
+		assert_false(status_label.visible)
 		assert_eq(start_button.text, "Capturing…")
 
 func _shared_flow_grid_truth_state(capture_source: String = "calibration_session") -> Dictionary:
@@ -1575,10 +1617,12 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
 	assert_eq(start_button.text, "Try Again")
-	assert_string_contains(String(countdown_label.text), "Capture failed after 0/5 valid frames")
-	assert_string_contains(String(instruction_label.text), "Retry requirement")
-	assert_string_contains(String(status_label.text), "both wrists must stay visible")
-	assert_string_contains(String(status_label.text), "No new shared baseline was committed")
+	assert_eq(String(countdown_label.text), "")
+	assert_false(countdown_label.visible)
+	assert_eq(String(instruction_label.text), "")
+	assert_false(instruction_label.visible)
+	assert_eq(String(status_label.text), "")
+	assert_false(status_label.visible)
 
 	provider.baseline = {"is_calibrated": true, "sample_frames": 5}
 	provider.calibration_session = provider._make_session("succeeded", {
@@ -1589,9 +1633,12 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
 	assert_eq(start_button.text, "Calibrate Athlete")
-	assert_string_contains(String(countdown_label.text), "Captured baseline: 5/5 valid frames")
+	assert_eq(String(countdown_label.text), "")
+	assert_false(countdown_label.visible)
 	assert_eq(String(instruction_label.text), "")
-	assert_string_contains(String(status_label.text), "Calibration complete")
+	assert_false(instruction_label.visible)
+	assert_eq(String(status_label.text), "")
+	assert_false(status_label.visible)
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
