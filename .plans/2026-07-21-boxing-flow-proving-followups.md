@@ -151,7 +151,7 @@ The plan keeps the work narrow and staged. First reproduce and map the exact cur
   - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ passed (**79/79 tests, 909 asserts**).
   - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=shared_calibration -gexit` ✅ passed (**3/3 tests, 109 asserts**).
   - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=punch -gexit` ✅ passed (**8/8 tests, 69 asserts**).
-- **Commit hash:** `afbc3f5` (`Fix proving calibration replay timing truth`)
+- **Commit hash:** `5ed93ed` (`Fix proving calibration replay timing truth`)
 - **Remaining honesty boundary:** I reproduced the calibration bug truthfully at the repo-local runtime/state-machine level by simulating replay timestamp rewind and fixed that underlying timing seam. I did **not** run an interactive GUI/manual proving scene to claim the exact on-screen oscillation is visually gone in every transport scenario yet; QA should still verify the highest-fidelity proving run path.
 
 ---
