@@ -33,10 +33,16 @@ func get_overlay_snapshot() -> Dictionary:
 		"columns": int(_grid_debug.get("columns", 0)),
 		"rows": int(_grid_debug.get("rows", 0)),
 		"cell_size": float(_grid_debug.get("cell_size", 0.0)),
+		"cell_width": float(_grid_debug.get("cell_width", _grid_debug.get("cell_size", 0.0))),
+		"cell_height": float(_grid_debug.get("cell_height", _grid_debug.get("cell_size", 0.0))),
+		"width": float(_grid_debug.get("width", 0.0)),
+		"height": float(_grid_debug.get("height", 0.0)),
 		"line_count": maxi(0, int(_grid_debug.get("columns", 0)) + 1) + maxi(0, int(_grid_debug.get("rows", 0)) + 1),
 		"cell_count": cell_rects.size(),
 		"left_boundary": float(_grid_debug.get("left_boundary", 0.0)),
 		"top_boundary": float(_grid_debug.get("top_boundary", 0.0)),
+		"right_boundary": float(_grid_debug.get("right_boundary", 0.0)),
+		"bottom_boundary": float(_grid_debug.get("bottom_boundary", 0.0)),
 	}
 
 func _draw() -> void:
@@ -44,22 +50,23 @@ func _draw() -> void:
 		return
 	var columns := int(_grid_debug.get("columns", 0))
 	var rows := int(_grid_debug.get("rows", 0))
-	var cell_size := float(_grid_debug.get("cell_size", 0.0))
+	var cell_width := float(_grid_debug.get("cell_width", _grid_debug.get("cell_size", 0.0)))
+	var cell_height := float(_grid_debug.get("cell_height", _grid_debug.get("cell_size", 0.0)))
 	var left_boundary := float(_grid_debug.get("left_boundary", 0.0))
 	var top_boundary := float(_grid_debug.get("top_boundary", 0.0))
-	if columns <= 0 or rows <= 0 or cell_size <= 0.000001:
+	if columns <= 0 or rows <= 0 or cell_width <= 0.000001 or cell_height <= 0.000001:
 		return
 	for column: int in range(columns + 1):
-		var x := left_boundary + cell_size * float(column)
+		var x := left_boundary + cell_width * float(column)
 		var start := _map_normalized_point(Vector2(x, top_boundary))
-		var finish := _map_normalized_point(Vector2(x, top_boundary - cell_size * float(rows)))
+		var finish := _map_normalized_point(Vector2(x, top_boundary - cell_height * float(rows)))
 		var width := GRID_BORDER_WIDTH if column == 0 or column == columns else GRID_STROKE_WIDTH
 		var color := GRID_BORDER_COLOR if column == 0 or column == columns else GRID_STROKE_COLOR
 		draw_line(start, finish, color, width, true)
 	for row: int in range(rows + 1):
-		var y := top_boundary - cell_size * float(row)
+		var y := top_boundary - cell_height * float(row)
 		var start := _map_normalized_point(Vector2(left_boundary, y))
-		var finish := _map_normalized_point(Vector2(left_boundary + cell_size * float(columns), y))
+		var finish := _map_normalized_point(Vector2(left_boundary + cell_width * float(columns), y))
 		var width := GRID_BORDER_WIDTH if row == 0 or row == rows else GRID_STROKE_WIDTH
 		var color := GRID_BORDER_COLOR if row == 0 or row == rows else GRID_STROKE_COLOR
 		draw_line(start, finish, color, width, true)

@@ -2564,7 +2564,10 @@ func _build_quick_stats_text() -> String:
 	else:
 		var baseline: Dictionary = state.get("baseline", {})
 		lines.append("Grid calibrated: %s" % str(bool(baseline.get("is_calibrated", false))))
-		lines.append("Grid cell size: %s" % _fmt_float(left_flow.get("grid_cell_size", right_flow.get("grid_cell_size", 0.0))))
+		lines.append("Grid cell size: %s x %s" % [
+			_fmt_float(left_flow.get("grid_cell_width", left_flow.get("grid_cell_size", right_flow.get("grid_cell_width", right_flow.get("grid_cell_size", 0.0))))),
+			_fmt_float(left_flow.get("grid_cell_height", right_flow.get("grid_cell_height", 0.0))),
+		])
 		lines.append("Cell entries: L=%d R=%d" % [_event_count("flow_left_cell_entered"), _event_count("flow_right_cell_entered")])
 		lines.append("Live cell/direction L: %s / %s" % [_fmt_flow_candidate(left_flow), _fmt_flow_direction_candidate(left_flow)])
 		lines.append("Live cell/direction R: %s / %s" % [_fmt_flow_candidate(right_flow), _fmt_flow_direction_candidate(right_flow)])
@@ -2613,7 +2616,10 @@ func _build_summary_text() -> String:
 		lines.append("left entry: %s" % _describe_last_flow_event("flow_left_cell_entered"))
 		lines.append("right entry: %s" % _describe_last_flow_event("flow_right_cell_entered"))
 		lines.append("grid anchor: %s" % _fmt_vec2(left_flow.get("grid_anchor", right_flow.get("grid_anchor", Vector2.ZERO))))
-		lines.append("grid cell size: %s" % _fmt_float(left_flow.get("grid_cell_size", right_flow.get("grid_cell_size", 0.0))))
+		lines.append("grid cell size: %s x %s" % [
+			_fmt_float(left_flow.get("grid_cell_width", left_flow.get("grid_cell_size", right_flow.get("grid_cell_width", right_flow.get("grid_cell_size", 0.0))))),
+			_fmt_float(left_flow.get("grid_cell_height", right_flow.get("grid_cell_height", 0.0))),
+		])
 		lines.append("Current wrist states")
 		lines.append("-------------------")
 		lines.append(_format_flow_sanity_line("left", left_flow))

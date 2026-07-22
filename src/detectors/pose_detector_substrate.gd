@@ -68,6 +68,7 @@ const FLOW_DIRECTION_WINDOW_MIN_MS := 70
 const FLOW_DIRECTION_MIN_TRAVEL_CELL_RATIO := 0.35
 const FLOW_GRID_COLUMNS := 4
 const FLOW_GRID_ROWS := 3
+const FLOW_GRID_SOURCE_ASPECT_RATIO := 16.0 / 9.0
 
 const CALIBRATION_SESSION_IDLE := "idle"
 const CALIBRATION_SESSION_COUNTDOWN := "countdown"
@@ -97,6 +98,10 @@ var _baseline_accumulator := {
 	"hip_center_y": 0.0,
 	"nose_x": 0.0,
 	"nose_y": 0.0,
+	"left_wrist_x": 0.0,
+	"right_wrist_x": 0.0,
+	"wrist_midpoint_x": 0.0,
+	"horizontal_wrist_span": 0.0,
 	"wrist_span": 0.0,
 	"left_knee_y": 0.0,
 	"right_knee_y": 0.0,
@@ -116,6 +121,10 @@ var _baseline: Dictionary = {
 	"hip_center_y": 0.0,
 	"nose_x": 0.0,
 	"nose_y": 0.0,
+	"left_wrist_x": 0.0,
+	"right_wrist_x": 0.0,
+	"wrist_midpoint_x": 0.0,
+	"horizontal_wrist_span": 0.0,
 	"wrist_span": 0.0,
 	"left_knee_y": 0.0,
 	"right_knee_y": 0.0,
@@ -289,6 +298,10 @@ func _reset_baseline_calibration() -> void:
 		"hip_center_y": 0.0,
 		"nose_x": 0.0,
 		"nose_y": 0.0,
+		"left_wrist_x": 0.0,
+		"right_wrist_x": 0.0,
+		"wrist_midpoint_x": 0.0,
+		"horizontal_wrist_span": 0.0,
 		"wrist_span": 0.0,
 		"left_knee_y": 0.0,
 		"right_knee_y": 0.0,
@@ -308,6 +321,10 @@ func _reset_baseline_calibration() -> void:
 		"hip_center_y": 0.0,
 		"nose_x": 0.0,
 		"nose_y": 0.0,
+		"left_wrist_x": 0.0,
+		"right_wrist_x": 0.0,
+		"wrist_midpoint_x": 0.0,
+		"horizontal_wrist_span": 0.0,
 		"wrist_span": 0.0,
 		"left_knee_y": 0.0,
 		"right_knee_y": 0.0,
@@ -675,7 +692,11 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
 	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
 	var wrist_span := PoseMetrics.distance_2d(left_wrist, right_wrist)
-	if shoulder_width <= 0.0 or torso_height <= 0.0 or wrist_span <= 0.0 or nose.is_empty():
+	var left_wrist_x := float(left_wrist.get("x", 0.0))
+	var right_wrist_x := float(right_wrist.get("x", 0.0))
+	var horizontal_wrist_span := absf(right_wrist_x - left_wrist_x)
+	var wrist_midpoint_x := (left_wrist_x + right_wrist_x) * 0.5
+	if shoulder_width <= 0.0 or torso_height <= 0.0 or horizontal_wrist_span <= 0.0 or nose.is_empty():
 		return
 	_baseline_accumulator["frames"] += 1
 	_baseline_accumulator["shoulder_width"] += shoulder_width
@@ -690,6 +711,10 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		_baseline_accumulator["hip_center_y"] += hip_center.y
 	_baseline_accumulator["nose_x"] += float(nose.get("x", 0.0))
 	_baseline_accumulator["nose_y"] += float(nose.get("y", 0.0))
+	_baseline_accumulator["left_wrist_x"] += left_wrist_x
+	_baseline_accumulator["right_wrist_x"] += right_wrist_x
+	_baseline_accumulator["wrist_midpoint_x"] += wrist_midpoint_x
+	_baseline_accumulator["horizontal_wrist_span"] += horizontal_wrist_span
 	_baseline_accumulator["wrist_span"] += wrist_span
 	_baseline_accumulator["left_knee_y"] += float(PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_KNEE).get("y", 0.0))
 	_baseline_accumulator["right_knee_y"] += float(PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_KNEE).get("y", 0.0))
@@ -714,6 +739,10 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		"hip_center_y": float(_baseline_accumulator["hip_center_y"]) / float(frames),
 		"nose_x": float(_baseline_accumulator["nose_x"]) / float(frames),
 		"nose_y": float(_baseline_accumulator["nose_y"]) / float(frames),
+		"left_wrist_x": float(_baseline_accumulator["left_wrist_x"]) / float(frames),
+		"right_wrist_x": float(_baseline_accumulator["right_wrist_x"]) / float(frames),
+		"wrist_midpoint_x": float(_baseline_accumulator["wrist_midpoint_x"]) / float(frames),
+		"horizontal_wrist_span": float(_baseline_accumulator["horizontal_wrist_span"]) / float(frames),
 		"wrist_span": float(_baseline_accumulator["wrist_span"]) / float(frames),
 		"left_knee_y": float(_baseline_accumulator["left_knee_y"]) / float(frames),
 		"right_knee_y": float(_baseline_accumulator["right_knee_y"]) / float(frames),
@@ -1142,6 +1171,7 @@ func _build_flow_nose_debug() -> Dictionary:
 	return _build_flow_landmark_debug(&"nose", PoseLandmarkIds.NOSE, history, analysis, {}, latest_sample)
 
 func _build_flow_landmark_debug(landmark_key: StringName, landmark_id: int, history: Array, analysis: Dictionary, cell_meta: Dictionary = {}, latest_sample: Dictionary = {}) -> Dictionary:
+	var grid_rect := _get_flow_grid_rect()
 	return {
 		"landmark_key": String(landmark_key),
 		"landmark_id": landmark_id,
@@ -1152,22 +1182,28 @@ func _build_flow_landmark_debug(landmark_key: StringName, landmark_id: int, hist
 		"latest_confidence": float(latest_sample.get("confidence", 0.0)),
 		"current_cell": int(latest_sample.get("cell", -1)),
 		"current_direction": int(analysis.get("direction", -1)),
-		"grid_anchor": Vector2(float(_baseline.get("nose_x", 0.0)), float(_baseline.get("shoulder_center_y", 0.0))),
-		"grid_cell_size": _get_flow_cell_size(),
+		"grid_anchor": Vector2(float(grid_rect.get("wrist_midpoint_x", 0.0)), float(grid_rect.get("anchor_y", 0.0))),
+		"grid_cell_size": float(grid_rect.get("cell_width", 0.0)),
+		"grid_cell_width": float(grid_rect.get("cell_width", 0.0)),
+		"grid_cell_height": float(grid_rect.get("cell_height", 0.0)),
 		"grid": _build_flow_grid_debug(),
 		"direction_analysis": analysis.duplicate(true),
 		"cell_meta": cell_meta.duplicate(true),
 	}
 
 func _build_flow_grid_debug() -> Dictionary:
-	var cell_size := _get_flow_cell_size()
-	var is_calibrated := bool(_baseline.get("is_calibrated", false)) and cell_size > 0.000001
+	var grid_rect := _get_flow_grid_rect()
+	var cell_width := float(grid_rect.get("cell_width", 0.0))
+	var cell_height := float(grid_rect.get("cell_height", 0.0))
+	var is_calibrated := bool(_baseline.get("is_calibrated", false)) and cell_width > 0.000001 and cell_height > 0.000001
 	var columns := FLOW_GRID_COLUMNS
 	var rows := FLOW_GRID_ROWS
-	var anchor_x := float(_baseline.get("nose_x", 0.0))
-	var anchor_y := float(_baseline.get("shoulder_center_y", 0.0))
-	var left_boundary := anchor_x - cell_size * float(columns) * 0.5
-	var top_boundary := anchor_y + cell_size * 1.5
+	var left_boundary := float(grid_rect.get("left_boundary", 0.0))
+	var top_boundary := float(grid_rect.get("top_boundary", 0.0))
+	var right_boundary := float(grid_rect.get("right_boundary", 0.0))
+	var bottom_boundary := float(grid_rect.get("bottom_boundary", 0.0))
+	var wrist_midpoint_x := float(grid_rect.get("wrist_midpoint_x", 0.0))
+	var anchor_y := float(grid_rect.get("anchor_y", 0.0))
 	var cell_rects: Array = []
 	if is_calibrated:
 		for row: int in range(rows):
@@ -1176,22 +1212,55 @@ func _build_flow_grid_debug() -> Dictionary:
 					"index": row * columns + column,
 					"column": column,
 					"row": row,
-					"left": left_boundary + cell_size * float(column),
-					"right": left_boundary + cell_size * float(column + 1),
-					"top": top_boundary - cell_size * float(row),
-					"bottom": top_boundary - cell_size * float(row + 1),
+					"left": left_boundary + cell_width * float(column),
+					"right": left_boundary + cell_width * float(column + 1),
+					"top": top_boundary - cell_height * float(row),
+					"bottom": top_boundary - cell_height * float(row + 1),
 				})
 	return {
 		"is_calibrated": is_calibrated,
 		"columns": columns,
 		"rows": rows,
-		"anchor": Vector2(anchor_x, anchor_y),
-		"cell_size": cell_size,
+		"anchor": Vector2(wrist_midpoint_x, anchor_y),
+		"cell_size": cell_width,
+		"cell_width": cell_width,
+		"cell_height": cell_height,
+		"width": right_boundary - left_boundary,
+		"height": top_boundary - bottom_boundary,
+		"wrist_midpoint_x": wrist_midpoint_x,
+		"anchor_y": anchor_y,
+		"left_wrist_x": float(_baseline.get("left_wrist_x", 0.0)),
+		"right_wrist_x": float(_baseline.get("right_wrist_x", 0.0)),
+		"horizontal_wrist_span": float(_baseline.get("horizontal_wrist_span", 0.0)),
 		"left_boundary": left_boundary,
 		"top_boundary": top_boundary,
-		"right_boundary": left_boundary + cell_size * float(columns),
-		"bottom_boundary": top_boundary - cell_size * float(rows),
+		"right_boundary": right_boundary,
+		"bottom_boundary": bottom_boundary,
 		"cell_rects": cell_rects,
+	}
+
+func _get_flow_grid_rect() -> Dictionary:
+	var cell_width := _get_flow_cell_width()
+	var cell_height := _get_flow_cell_height(cell_width)
+	var left_boundary := float(_baseline.get("left_wrist_x", 0.0))
+	var right_boundary := float(_baseline.get("right_wrist_x", 0.0))
+	if right_boundary < left_boundary:
+		var swap := left_boundary
+		left_boundary = right_boundary
+		right_boundary = swap
+	var wrist_midpoint_x := float(_baseline.get("wrist_midpoint_x", (left_boundary + right_boundary) * 0.5))
+	var anchor_y := float(_baseline.get("shoulder_center_y", 0.0))
+	var top_boundary := anchor_y + cell_height * 1.5
+	var bottom_boundary := top_boundary - cell_height * float(FLOW_GRID_ROWS)
+	return {
+		"cell_width": cell_width,
+		"cell_height": cell_height,
+		"left_boundary": left_boundary,
+		"right_boundary": right_boundary,
+		"top_boundary": top_boundary,
+		"bottom_boundary": bottom_boundary,
+		"wrist_midpoint_x": wrist_midpoint_x,
+		"anchor_y": anchor_y,
 	}
 
 func _flow_history_duration_ms(history: Array) -> int:
@@ -1941,28 +2010,39 @@ func _analyze_flow_landmark_motion(history_name: String, max_window_ms: int) -> 
 		"latest_relative_position": last_pos,
 	}
 
-func _get_flow_cell_size() -> float:
-	var wrist_span := float(_baseline.get("wrist_span", 0.0))
-	if wrist_span <= 0.0:
+func _get_flow_cell_width() -> float:
+	var horizontal_wrist_span := float(_baseline.get("horizontal_wrist_span", 0.0))
+	if horizontal_wrist_span <= 0.0:
 		return 0.0
-	return wrist_span / float(FLOW_GRID_COLUMNS)
+	return horizontal_wrist_span / float(FLOW_GRID_COLUMNS)
+
+func _get_flow_cell_height(cell_width: float = -1.0) -> float:
+	var resolved_cell_width := cell_width
+	if resolved_cell_width < 0.0:
+		resolved_cell_width = _get_flow_cell_width()
+	if resolved_cell_width <= 0.0:
+		return 0.0
+	return resolved_cell_width * FLOW_GRID_SOURCE_ASPECT_RATIO
+
+func _get_flow_cell_size() -> float:
+	return _get_flow_cell_width()
 
 func _flow_cell_index_from_position(position: Vector2) -> int:
-	var cell_size := _get_flow_cell_size()
-	if cell_size <= 0.000001:
+	var grid_rect := _get_flow_grid_rect()
+	var cell_width := float(grid_rect.get("cell_width", 0.0))
+	var cell_height := float(grid_rect.get("cell_height", 0.0))
+	if cell_width <= 0.000001 or cell_height <= 0.000001:
 		return -1
-	var anchor_x := float(_baseline.get("nose_x", 0.0))
-	var anchor_y := float(_baseline.get("shoulder_center_y", 0.0))
-	var left_boundary := anchor_x - cell_size * float(FLOW_GRID_COLUMNS) * 0.5
+	var left_boundary := float(grid_rect.get("left_boundary", 0.0))
 	var relative_x := position.x - left_boundary
-	if relative_x < 0.0 or relative_x >= cell_size * float(FLOW_GRID_COLUMNS):
+	if relative_x < 0.0 or relative_x >= cell_width * float(FLOW_GRID_COLUMNS):
 		return -1
-	var top_boundary := anchor_y + cell_size * 1.5
+	var top_boundary := float(grid_rect.get("top_boundary", 0.0))
 	var relative_y := top_boundary - position.y
-	if relative_y < 0.0 or relative_y >= cell_size * float(FLOW_GRID_ROWS):
+	if relative_y < 0.0 or relative_y >= cell_height * float(FLOW_GRID_ROWS):
 		return -1
-	var column := int(floor(relative_x / cell_size))
-	var row := int(floor(relative_y / cell_size))
+	var column := int(floor(relative_x / cell_width))
+	var row := int(floor(relative_y / cell_height))
 	if column < 0 or column >= FLOW_GRID_COLUMNS or row < 0 or row >= FLOW_GRID_ROWS:
 		return -1
 	return row * FLOW_GRID_COLUMNS + column

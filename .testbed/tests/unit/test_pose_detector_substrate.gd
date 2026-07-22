@@ -1585,17 +1585,32 @@ func test_quantizes_flow_direction_to_eight_direction_slots() -> void:
 	assert_eq(substrate._flow_direction_index_from_vector(Vector2(-1.0, 0.0)), 2)
 	assert_eq(substrate._flow_direction_index_from_vector(Vector2(1.0, 0.0)), 3)
 
-func test_quantizes_flow_cells_from_nose_anchored_grid() -> void:
+func test_quantizes_flow_cells_from_calibrated_wrist_rect() -> void:
 	_calibrate_stance()
-	var first_cell := substrate._flow_cell_index_from_position(Vector2(0.40, 0.72))
-	var second_cell := substrate._flow_cell_index_from_position(Vector2(0.48, 0.72))
-	var third_cell := substrate._flow_cell_index_from_position(Vector2(0.56, 0.72))
-	var fourth_cell := substrate._flow_cell_index_from_position(Vector2(0.64, 0.72))
+	var first_cell := substrate._flow_cell_index_from_position(Vector2(0.30, 0.90))
+	var second_cell := substrate._flow_cell_index_from_position(Vector2(0.40, 0.90))
+	var third_cell := substrate._flow_cell_index_from_position(Vector2(0.50, 0.90))
+	var fourth_cell := substrate._flow_cell_index_from_position(Vector2(0.60, 0.90))
 	assert_true(first_cell >= 0)
 	assert_true(second_cell >= first_cell)
 	assert_true(third_cell >= second_cell)
 	assert_true(fourth_cell >= third_cell)
 	assert_true(first_cell != fourth_cell)
+
+func test_calibration_stores_horizontal_wrist_basis_for_flow_grid() -> void:
+	for idx in range(5):
+		var state := substrate.process_landmarks(_make_pose_frame({
+			PoseLandmarkIds.NOSE: {"x": 0.56},
+			PoseLandmarkIds.LEFT_WRIST: {"x": 0.18, "y": 0.62},
+			PoseLandmarkIds.RIGHT_WRIST: {"x": 0.62, "y": 0.80},
+		}), 1000 + idx * 16)
+		assert_eq(String(state["tracking_state"]), "tracking")
+	var baseline: Dictionary = substrate.get_latest_state().get("baseline", {})
+	assert_true(is_equal_approx(float(baseline.get("left_wrist_x", 0.0)), 0.18))
+	assert_true(is_equal_approx(float(baseline.get("right_wrist_x", 0.0)), 0.62))
+	assert_true(is_equal_approx(float(baseline.get("wrist_midpoint_x", 0.0)), 0.40))
+	assert_true(is_equal_approx(float(baseline.get("horizontal_wrist_span", 0.0)), 0.44))
+	assert_true(float(baseline.get("wrist_span", 0.0)) > float(baseline.get("horizontal_wrist_span", 0.0)))
 
 func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 	_calibrate_stance()
@@ -1631,6 +1646,10 @@ func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
 	assert_eq(int(grid_debug.get("columns", 0)), 4)
 	assert_eq(int(grid_debug.get("rows", 0)), 3)
 	assert_eq((grid_debug.get("cell_rects", []) as Array).size(), 12)
+	assert_true(is_equal_approx(float(grid_debug.get("left_boundary", 0.0)), 0.28))
+	assert_true(is_equal_approx(float(grid_debug.get("right_boundary", 0.0)), 0.72))
+	assert_true(is_equal_approx(float(grid_debug.get("cell_width", 0.0)), 0.11))
+	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.11 * (16.0 / 9.0)))
 	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
 	var nose_debug: Dictionary = tracked_landmarks.get("nose", {})
 	var left_wrist_debug: Dictionary = tracked_landmarks.get("left_wrist", {})
