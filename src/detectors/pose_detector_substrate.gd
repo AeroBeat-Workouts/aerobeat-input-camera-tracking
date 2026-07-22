@@ -2972,9 +2972,19 @@ func _straight_punch_uses_hand_tracking() -> bool:
 	var tracker_profile_document: Variant = _config.get("tracker_profile_document") if _config.has_method("get") else null
 	if not tracker_profile_document is Dictionary:
 		return true
+	return _tracker_profile_uses_hand_tracking(tracker_profile_document)
+
+func _tracker_profile_uses_hand_tracking(tracker_profile_document: Dictionary) -> bool:
 	var tracking: Dictionary = tracker_profile_document.get("tracking", {}) if tracker_profile_document.get("tracking", {}) is Dictionary else {}
 	var hands: Dictionary = tracking.get("hands", {}) if tracking.get("hands", {}) is Dictionary else {}
-	return bool(hands.get("enabled", true))
+	if not hands.is_empty() and hands.has("enabled"):
+		return bool(hands.get("enabled", true))
+	var profile_name := String(tracker_profile_document.get("profile", "")).strip_edges().to_lower()
+	var pose: Dictionary = tracking.get("pose", {}) if tracking.get("pose", {}) is Dictionary else {}
+	var pose_enabled := bool(pose.get("enabled", false))
+	if profile_name == "boxing" and pose_enabled:
+		return false
+	return true
 
 func _resolve_pose_reference_shoulder_width(shoulder_width: float) -> float:
 	if shoulder_width > 0.0:

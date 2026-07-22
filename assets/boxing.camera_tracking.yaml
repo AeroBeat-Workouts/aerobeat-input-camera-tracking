@@ -52,3 +52,6 @@ tracking:
     inference_interval_frames: 1
     # [lite_filtered, lite_raw] Pick the pose smoothing mode after pose samples come back. tool -> vendor.
     smoothing_style: lite_raw
+  hands:
+    # Boxing straight-punch threshold truth is pose-only unless a profile explicitly opts back into hand tracking.
+    enabled: false

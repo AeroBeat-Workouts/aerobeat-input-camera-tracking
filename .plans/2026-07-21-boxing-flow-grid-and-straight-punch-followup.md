@@ -147,18 +147,20 @@ The plan keeps these as two explicit seams: (1) grid truth/geometry and (2) stra
 
 **Folders Created/Deleted/Modified:**
 - `.testbed/`
+- `assets/`
 - `src/`
 - `.plans/`
 
 **Files Created/Deleted/Modified:**
-- likely `.testbed/scripts/boxing_proving_harness.gd`
-- likely `src/detectors/pose_detector_substrate.gd`
-- any tightly related tests/config plumbing required by the audit truth
+- `assets/boxing.camera_tracking.yaml`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
 - `.plans/2026-07-21-boxing-flow-grid-and-straight-punch-followup.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:** Root cause matched the audit lane: the boxing tracker profile enabled pose but omitted `tracking.hands`, while the substrate fallback treated missing hands config as enabled and kept straight-punch debug on the hand-tracking lane. I made the shipped boxing tracker bundle truthful by explicitly setting `tracking.hands.enabled: false` in `assets/boxing.camera_tracking.yaml`, and I hardened `src/detectors/pose_detector_substrate.gd` so a boxing tracker document with pose enabled but no hands stanza still falls back to pose-only truth instead of fake hand-tracking-disabled/tracking-lost truth. Added explicit coverage for both seams: the canonical boxing profile bundle test now asserts hands are disabled, and a new substrate regression proves the missing-hands-config boxing path stays pose-only and emits `ready` from pose samples. Validation passed with `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_pose_detector_substrate.gd -gexit` (85/85) plus `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=test_boxing_pose_only_hand_debug_line_uses_pose_fallback_truth -gexit` (1/1). Commit: `274d511` - `Fix boxing straight-punch pose-only hand-tracking truth`. Caveat: this slice proves repo-local runtime/config/harness truth, but I did not do a fresh manual live/replay scene run here.
 
 ---
 

@@ -102,6 +102,56 @@ func test_boxing_profile_bundle_keeps_straight_punch_trigger_truth_visible_at_pu
 	assert_eq(int(left_debug.get("triggered_grace_ms", -1)), 240)
 	assert_eq(int(left_debug.get("pose_only_rearm_ms", -1)), 250)
 
+func test_boxing_straight_punch_missing_hands_config_falls_back_to_pose_only_truth() -> void:
+	config.tracker_profile_document = {
+		"profile": "boxing",
+		"tracking": {
+			"pose": {
+				"enabled": true,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"backend": "threshold",
+			"threshold": {
+				"evaluation": {
+					"window_ms": 250,
+				},
+				"thresholds": {
+					"min_velocity": 0.18,
+					"max_elbow_shoulder_xy_distance": 0.140,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+				},
+				"timing": {
+					"triggered_grace_ms": 240,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 250,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_false(bool(left_debug.get("hand_tracking_enabled", true)))
+	assert_eq(String(left_debug.get("tracking_state", "")), "pose_tracked")
+	assert_eq(String(left_debug.get("truthful_state", "")), "pose_tracked")
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
+
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_false(bool(left_debug.get("hand_tracking_enabled", true)))
+	assert_eq(String(left_debug.get("sample_source", "")), "pose")
+	assert_eq(String(left_debug.get("state", "")), "ready")
+
 func test_flow_profile_bundle_removes_squat_public_surfaces() -> void:
 	var bundle: Dictionary = config.set_profile_id("flow")
 	assert_true(bool(bundle.get("ok", false)))
