@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-21  
 **Status:** In Progress  
-**Last Updated:** 2026-07-21 21:13 EDT  
+**Last Updated:** 2026-07-21 21:36 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -126,15 +126,33 @@ The plan keeps the work narrow and staged. First reproduce and map the exact cur
 - `.plans/`
 
 **Files Created/Deleted/Modified:**
-- `.testbed/scripts/proving_harness.gd`
 - `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
 - `src/detectors/pose_detector_substrate.gd`
-- any minimal proving-scene/config/test files required by the audited root cause
 - `.plans/2026-07-21-boxing-flow-proving-followups.md`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending.
+**Results:**
+- **Reproduced/found:** the remaining deeper seams still split cleanly rather than collapsing into one root cause.
+  - **Straight-punch runtime truth:** after the stale UI cleanup, the proving harness was still deriving pose-only `pose_tracked` truth locally in `boxing_proving_harness.gd`, but the substrate debug payload itself still exposed only raw straight-punch state-machine `state=tracking_lost`. That meant the top inspector row looked better, but the underlying runtime payload was still making the harness paper over pose-only truth instead of receiving it directly.
+  - **Calibration oscillation/restart seam:** the substrate still timed calibration countdown/capture windows off the incoming frame `timestamp_ms`. On replay clips, when playback timestamps rewound at loop boundaries, calibration session time could jump backward/upward and effectively restart or stretch the countdown instead of progressing monotonically with the visible replay session. This is the honest deeper runtime seam behind the reported proving-scene calibration loop.
+- **Exact implementation route:**
+  - `src/detectors/pose_detector_substrate.gd`
+    - added a monotonic session runtime clock (`runtime_timestamp_ms`) that advances with forward timestamps but does **not** jump backward on replay timestamp rewind.
+    - switched calibration-session start/update/baseline capture timing to that monotonic runtime clock while leaving the raw source `timestamp_ms` intact for the rest of the replay/debug surfaces.
+    - added straight-punch debug field `truthful_state` so pose-only replay/live consumers receive truthful runtime state directly from the substrate instead of reconstructing it only in UI code.
+  - `/.testbed/scripts/boxing_proving_harness.gd`
+    - updated `_truthful_punch_state_name()` to prefer substrate-provided `truthful_state` first, falling back to the prior local interpretation only when older payloads omit it.
+  - `/.testbed/tests/unit/test_pose_detector_substrate.gd`
+    - added regression coverage proving pose-only straight-punch debug now exposes `truthful_state = pose_tracked` while raw state remains `tracking_lost` until actual trigger-state transitions occur.
+    - added a replay-loop calibration regression proving a countdown started near the end of a replay clip no longer jumps upward after timestamp rewind and can still complete successfully across the wrap.
+- **Strongest repo-local validation:**
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gexit` ✅ passed (**79/79 tests, 909 asserts**).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=shared_calibration -gexit` ✅ passed (**3/3 tests, 109 asserts**).
+  - `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gunit_test_name=punch -gexit` ✅ passed (**8/8 tests, 69 asserts**).
+- **Commit hash:** `afbc3f5` (`Fix proving calibration replay timing truth`)
+- **Remaining honesty boundary:** I reproduced the calibration bug truthfully at the repo-local runtime/state-machine level by simulating replay timestamp rewind and fixed that underlying timing seam. I did **not** run an interactive GUI/manual proving scene to claim the exact on-screen oscillation is visually gone in every transport scenario yet; QA should still verify the highest-fidelity proving run path.
 
 ---
 

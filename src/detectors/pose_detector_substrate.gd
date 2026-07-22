@@ -129,6 +129,9 @@ var _consecutive_valid_frames := 0
 var _consecutive_invalid_frames := 0
 var _reacquire_frames_remaining := 0
 var _last_processed_timestamp_ms := 0
+var _last_session_source_timestamp_ms := 0
+var _session_runtime_timestamp_ms := 0
+var _last_session_runtime_step_ms := 0
 var _frame_index := 0
 var _depth_runtime_managers := {}
 var _depth_shared_runtime_pool: RefCounted = DepthSharedRuntimePoolScript.new()
@@ -153,6 +156,9 @@ func reset() -> void:
 	_consecutive_invalid_frames = 0
 	_reacquire_frames_remaining = 0
 	_last_processed_timestamp_ms = 0
+	_last_session_source_timestamp_ms = 0
+	_session_runtime_timestamp_ms = 0
+	_last_session_runtime_step_ms = 0
 	_frame_index = 0
 	_reset_baseline_calibration()
 	_reset_calibration_session()
@@ -161,7 +167,7 @@ func reset() -> void:
 	_configure_depth_runtime_managers()
 
 func request_athlete_recalibration() -> void:
-	var session_started_at_ms := int(_latest_state.get("timestamp_ms", 0))
+	var session_started_at_ms := int(_latest_state.get("runtime_timestamp_ms", _session_runtime_timestamp_ms))
 	if session_started_at_ms <= 0:
 		session_started_at_ms = Time.get_ticks_msec()
 	_reset_baseline_calibration()
@@ -312,16 +318,19 @@ func _reset_baseline_calibration() -> void:
 func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: Dictionary = {}) -> Dictionary:
 	if timestamp_ms <= 0:
 		timestamp_ms = Time.get_ticks_msec()
-	if _last_processed_timestamp_ms > 0 and timestamp_ms < _last_processed_timestamp_ms:
+	var source_timestamp_rewound := _last_processed_timestamp_ms > 0 and timestamp_ms < _last_processed_timestamp_ms
+	if source_timestamp_rewound:
 		_reset_temporal_runtime_state_for_timestamp_rewind()
+	var runtime_timestamp_ms := _advance_session_runtime_timestamp(timestamp_ms, source_timestamp_rewound)
 	_frame_index += 1
 	var smoothed_landmarks: Dictionary = _smoother.push_landmarks(landmarks)
 	var metrics: Dictionary = _build_metrics(smoothed_landmarks, timestamp_ms)
 	var tracking_state: StringName = _update_tracking_state(smoothed_landmarks)
 	var calibration_readiness := _evaluate_calibration_readiness(metrics, tracking_state, smoothed_landmarks)
-	_update_calibration_session(timestamp_ms, calibration_readiness)
-	_update_baseline(metrics, tracking_state, smoothed_landmarks, timestamp_ms)
+	_update_calibration_session(runtime_timestamp_ms, calibration_readiness)
+	_update_baseline(metrics, tracking_state, smoothed_landmarks, runtime_timestamp_ms)
 	metrics["tracking_state"] = tracking_state
+	metrics["runtime_timestamp_ms"] = runtime_timestamp_ms
 	metrics["baseline"] = _baseline.duplicate(true)
 	metrics["calibration_session"] = _calibration_session.duplicate(true)
 	metrics["hand_tracking"] = tracking_frame.get("hand_tracking", {}).duplicate(true) if tracking_frame.get("hand_tracking", {}) is Dictionary else {}
@@ -335,6 +344,7 @@ func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: 
 	_latest_state = {
 		"frame_index": _frame_index,
 		"timestamp_ms": timestamp_ms,
+		"runtime_timestamp_ms": runtime_timestamp_ms,
 		"tracking_state": tracking_state,
 		"landmarks_by_id": smoothed_landmarks.duplicate(true),
 		"baseline": _baseline.duplicate(true),
@@ -406,6 +416,7 @@ func _build_empty_state() -> Dictionary:
 	return {
 		"frame_index": 0,
 		"timestamp_ms": 0,
+		"runtime_timestamp_ms": _session_runtime_timestamp_ms,
 		"tracking_state": TRACKING_LOST,
 		"landmarks_by_id": {},
 		"baseline": _baseline.duplicate(true),
@@ -898,6 +909,16 @@ func _build_weave_debug_state(_metrics: Dictionary = {}) -> Dictionary:
 	weave_debug["calibration_sample_frames"] = int(_baseline.get("sample_frames", 0))
 	return weave_debug
 
+func _truthful_straight_punch_debug_state_name(state: Dictionary, hand_tracking_enabled: bool, tracking_state: String) -> String:
+	var state_name := String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST))
+	if hand_tracking_enabled:
+		return state_name
+	if state_name != STRAIGHT_PUNCH_STATE_TRACKING_LOST:
+		return state_name
+	if not bool(state.get("pose_tracking_valid", false)):
+		return state_name
+	return tracking_state if not tracking_state.is_empty() else state_name
+
 func _build_straight_punch_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var measurements: Dictionary = metrics.get("measurements", {}) if not metrics.is_empty() else _latest_state.get("metrics", {}).get("measurements", {})
 	var hands: Dictionary = metrics.get("hands", {}) if not metrics.is_empty() and metrics.get("hands", {}) is Dictionary else _latest_state.get("metrics", {}).get("hands", {})
@@ -914,10 +935,13 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		hands = _latest_state.get("metrics", {}).get("hands", {})
 	var hand_payload: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
 	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
+	var hand_tracking_enabled := _straight_punch_uses_hand_tracking()
+	var tracking_state := String(hand_payload.get("tracking_state", state.get("hand_tracking_state", "idle")))
 	return {
 		"backend": _get_punch_backend_for_family("straight_punch"),
 		"phase": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
 		"state": String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)),
+		"truthful_state": _truthful_straight_punch_debug_state_name(state, hand_tracking_enabled, tracking_state),
 		"previous_state": String(state.get("previous_state", "")),
 		"timestamp_ms": int(state.get("timestamp_ms", 0)),
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
@@ -950,7 +974,7 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"bbox_area_retract_epsilon": float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)),
 		"pose_only_rearm_ms": int(straight_punch_config.get("pose_only_rearm_ms", STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS)),
 		"reacquire_stable_ms_required": int(straight_punch_config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS)),
-		"hand_tracking_enabled": _straight_punch_uses_hand_tracking(),
+		"hand_tracking_enabled": hand_tracking_enabled,
 		"pose_tracking_valid": bool(state.get("pose_tracking_valid", false)),
 		"pose_reference_shoulder_width": float(state.get("pose_reference_shoulder_width", 0.0)),
 		"pose_reference_shoulder_width_source": String(state.get("pose_reference_shoulder_width_source", "missing")),
@@ -958,7 +982,7 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"sample_source": String(hand_payload.get("sample_source", state.get("hand_sample_source", "none"))),
 		"velocity_signal_source": String(state.get("velocity_signal_source", "wrist_only")),
 		"tracking_valid": bool(hand_payload.get("tracking_valid", state.get("hand_tracking_valid", false))),
-		"tracking_state": String(hand_payload.get("tracking_state", state.get("hand_tracking_state", "idle"))),
+		"tracking_state": tracking_state,
 		"stale_frames": int(hand_payload.get("stale_frames", state.get("stale_frames", 0))),
 		"stale_ms": int(hand_payload.get("stale_ms", 0)),
 		"grace_frames": int(hand_payload.get("grace_frames", 0)),
@@ -1294,6 +1318,24 @@ func _should_evaluate_gestures_this_frame() -> bool:
 
 func _clear_transient_gesture_state() -> void:
 	_reset_gesture_state()
+
+func _advance_session_runtime_timestamp(timestamp_ms: int, source_timestamp_rewound: bool) -> int:
+	if _session_runtime_timestamp_ms <= 0:
+		_session_runtime_timestamp_ms = timestamp_ms
+		_last_session_source_timestamp_ms = timestamp_ms
+		_last_session_runtime_step_ms = 0
+		return _session_runtime_timestamp_ms
+	var runtime_step_ms := 0
+	if not source_timestamp_rewound and _last_session_source_timestamp_ms > 0:
+		var source_step_ms := timestamp_ms - _last_session_source_timestamp_ms
+		if source_step_ms > 0:
+			runtime_step_ms = source_step_ms
+	if runtime_step_ms <= 0:
+		runtime_step_ms = maxi(_last_session_runtime_step_ms, 16)
+	_session_runtime_timestamp_ms += runtime_step_ms
+	_last_session_source_timestamp_ms = timestamp_ms
+	_last_session_runtime_step_ms = runtime_step_ms
+	return _session_runtime_timestamp_ms
 
 func _reset_temporal_runtime_state_for_timestamp_rewind() -> void:
 	_smoother = LandmarkSmoother.new(_get_smoothing_window_size(), _get_pose_smoothing_style())

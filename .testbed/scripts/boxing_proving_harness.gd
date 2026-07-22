@@ -1741,6 +1741,9 @@ func _fmt_matcher_class_scores(class_scores: Dictionary) -> String:
 	return "{" + ", ".join(pairs) + "}"
 
 func _truthful_punch_state_name(straight_side: Dictionary) -> String:
+	var truthful_state := String(straight_side.get("truthful_state", "")).strip_edges()
+	if not truthful_state.is_empty():
+		return truthful_state
 	var state_name := String(straight_side.get("state", straight_side.get("phase", "tracking_lost")))
 	if bool(straight_side.get("hand_tracking_enabled", true)):
 		return state_name

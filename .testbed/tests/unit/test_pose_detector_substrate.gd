@@ -1185,6 +1185,23 @@ func test_straight_punch_pose_only_mode_triggers_from_pose_velocity_without_hand
 	assert_true(float(left_debug.get("recent_peak_wrist_velocity", 0.0)) >= float(left_debug.get("wrist_velocity", 0.0)))
 	assert_eq(String(left_debug.get("state", "")), "triggered")
 
+func test_straight_punch_pose_only_debug_surfaces_truthful_tracking_state() -> void:
+	_disable_hand_tracking_for_straight_punch()
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
+	assert_eq(String(left_debug.get("truthful_state", "")), "pose_tracked")
+	assert_eq(String(left_debug.get("tracking_state", "")), "pose_tracked")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"v": 0.2},
+	}), 1180)
+	left_debug = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
+	assert_eq(String(left_debug.get("truthful_state", "")), "tracking_lost")
+	assert_eq(String(left_debug.get("tracking_state", "")), "pose_missing")
+
 func test_straight_punch_pose_only_mode_uses_calibrated_shoulder_width_when_live_width_is_missing() -> void:
 	_disable_hand_tracking_for_straight_punch()
 	_calibrate_stance()
@@ -1714,6 +1731,40 @@ func test_calibration_session_tolerates_brief_live_capture_dropout_within_window
 	var session: Dictionary = state.get("calibration_session", {})
 	assert_true(bool(baseline.get("is_calibrated", false)))
 	assert_eq(String(session.get("state", "")), "succeeded")
+
+func test_calibration_session_uses_monotonic_runtime_time_across_replay_timestamp_rewind() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 9500)
+	substrate.request_athlete_recalibration()
+	var session := substrate.get_calibration_session()
+	assert_eq(String(session.get("state", "")), "countdown")
+	assert_eq(int(session.get("seconds_remaining", 0)), 5)
+	assert_eq(int(substrate.get_latest_state().get("runtime_timestamp_ms", 0)), 9500)
+
+	state = substrate.process_landmarks(_make_pose_frame(), 9600)
+	var pre_rewind_session: Dictionary = state.get("calibration_session", {})
+	assert_eq(int(pre_rewind_session.get("seconds_remaining", 0)), 5)
+	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 9600)
+
+	state = substrate.process_landmarks(_make_pose_frame(), 100)
+	var rewind_session: Dictionary = state.get("calibration_session", {})
+	assert_eq(String(rewind_session.get("state", "")), "countdown")
+	assert_true(int(rewind_session.get("seconds_remaining", 0)) <= int(pre_rewind_session.get("seconds_remaining", 0)))
+	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 9700)
+
+	for idx in range(48):
+		state = substrate.process_landmarks(_make_pose_frame(), 200 + idx * 100)
+	var capture_session: Dictionary = state.get("calibration_session", {})
+	assert_eq(String(capture_session.get("state", "")), "capturing")
+	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 14500)
+
+	for idx in range(4):
+		state = substrate.process_landmarks(_make_pose_frame(), 5000 + idx * 100)
+	var baseline_after_rewind: Dictionary = state.get("baseline", {})
+	var final_session: Dictionary = state.get("calibration_session", {})
+	assert_true(bool(baseline_after_rewind.get("is_calibrated", false)))
+	assert_eq(String(baseline_after_rewind.get("capture_source", "")), "calibration_session")
+	assert_eq(String(final_session.get("state", "")), "succeeded")
 
 func test_calibration_session_fails_when_countdown_finishes_without_wrist_data() -> void:
 	_calibrate_stance()
