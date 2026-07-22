@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-21  
 **Status:** In Progress  
-**Last Updated:** 2026-07-21 21:11 EDT  
+**Last Updated:** 2026-07-21 21:13 EDT  
 **Blocked Reason:** None  
 **Agent:** `pico`
 
@@ -107,7 +107,8 @@ The plan keeps the work narrow and staged. First reproduce and map the exact cur
 - `/.testbed/scripts/boxing_proving_harness.gd`: renamed the straight-punch top inspector row from `Hand tracking` to `Tracking status`, added truthful pose-only fallback for the top `Current state` row when stale `tracking_lost` text conflicts with valid pose tracking, and stopped auto-creating/force-enabling the straight-punch depth debug viewer unless depth visuals are explicitly enabled.
 - `/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`: updated the calibration/UI expectations to the button-centric presentation, added coverage for truthful pose-only straight-punch state text, asserted the boxing proving scene no longer builds `DepthDebugRoot` by default, and kept explicit opt-in coverage for the depth-debug viewer behavior.
 - Strongest repo-local validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` ✅ passed (40/40, 491 asserts).
-- Commit hash: `PENDING_COMMIT_HASH` (update after commit/push).
+- Commit hash: `74f9fe1` (`Clean up boxing proving stale UI`).
+- Scope note: this resolves audited items 1-4 and 6. The separate calibration oscillation seam from item 5 was intentionally left untouched for a later slice unless QA disproves the audit.
 
 ---
 
