@@ -1583,19 +1583,22 @@ func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensi
 func test_flow_ring_chart_maps_gameplay_cells_into_athlete_space_visual_slots() -> void:
 	var chart := add_child_autoqfree(FlowRingChartScript.new()) as Control
 	assert_not_null(chart)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 11)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 8)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 7)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 3)), 4)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 3)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 0)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 8)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 11)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 4)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 3)), 7)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 0)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 3)
+	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 0, 0)), 0)
+	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 2, 3)), 11)
 
 func test_proving_harness_formats_flow_cells_in_athlete_space_row_and_column_order() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)
-	assert_eq(String(scene_root.call("_fmt_flow_cell", 0)), "cell 0 [r2 c3]")
-	assert_eq(String(scene_root.call("_fmt_flow_cell", 4)), "cell 4 [r1 c3]")
-	assert_eq(String(scene_root.call("_fmt_flow_cell", 8)), "cell 8 [r0 c3]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 0)), "cell 8 [r2 c0]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 4)), "cell 4 [r1 c0]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 8)), "cell 0 [r0 c0]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 11)), "cell 3 [r0 c3]")
 
 func test_boxing_proving_scene_places_shared_grid_cards_inside_board_grid_with_boxing_shell_style() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

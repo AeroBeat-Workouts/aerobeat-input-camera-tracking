@@ -1717,6 +1717,42 @@ func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
 	assert_true(int(left_wrist_debug.get("current_cell", -1)) >= 0)
 	assert_true(int(right_wrist_debug.get("current_cell", -1)) >= 0)
 
+func test_flow_debug_keeps_visible_wrist_tracking_when_other_wrist_drops_out() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.65, "y": 0.72},
+	}), 1200)
+	var tracked_landmarks: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
+	var left_wrist_debug: Dictionary = tracked_landmarks.get("left_wrist", {})
+	var right_wrist_debug: Dictionary = tracked_landmarks.get("right_wrist", {})
+	assert_eq(int(left_wrist_debug.get("current_cell", -1)), 4)
+	assert_eq(int(right_wrist_debug.get("current_cell", -1)), 7)
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.46, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.65, "y": 0.72, "v": 0.2},
+	}), 1280)
+	tracked_landmarks = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
+	left_wrist_debug = tracked_landmarks.get("left_wrist", {})
+	right_wrist_debug = tracked_landmarks.get("right_wrist", {})
+	assert_eq(int(left_wrist_debug.get("current_cell", -1)), 5)
+	assert_true(int(left_wrist_debug.get("history_points", 0)) >= 2)
+	assert_eq(int(right_wrist_debug.get("current_cell", -1)), -1)
+	assert_eq(int(right_wrist_debug.get("history_points", 0)), 0)
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.72, "v": 0.2},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.57, "y": 0.72},
+	}), 1360)
+	tracked_landmarks = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
+	left_wrist_debug = tracked_landmarks.get("left_wrist", {})
+	right_wrist_debug = tracked_landmarks.get("right_wrist", {})
+	assert_eq(int(left_wrist_debug.get("current_cell", -1)), -1)
+	assert_eq(int(left_wrist_debug.get("history_points", 0)), 0)
+	assert_eq(int(right_wrist_debug.get("current_cell", -1)), 6)
+	assert_true(int(right_wrist_debug.get("history_points", 0)) >= 1)
+
 func test_request_athlete_recalibration_starts_shared_countdown_session() -> void:
 	_calibrate_stance()
 	substrate.request_athlete_recalibration()
