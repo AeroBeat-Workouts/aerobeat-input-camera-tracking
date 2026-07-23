@@ -629,7 +629,7 @@ func _calibration_instruction_text(state_name: String, session: Dictionary) -> S
 				return instruction_text
 			return "Need tracking/reacquiring plus nose, shoulders, elbows, and wrists visible before the sample can complete."
 		"capturing":
-			return "Sampling the current pose to set joint-chain grid width, height, and anchor."
+			return "Sampling the current pose to set wrist-span grid width, square-cell height, and anchor."
 		"failed":
 			if not instruction_text.is_empty():
 				return "Retry requirement: %s" % instruction_text
@@ -648,12 +648,12 @@ func _calibration_status_text(state_name: String, session: Dictionary, has_basel
 			return "Calibration in progress. The old shared baseline is intentionally gone until the new sample finishes."
 		"capture_pending":
 			if bool(readiness.get("ready", false)):
-				return "Countdown is complete. Waiting for the live frame that will set the new joint-chain grid width, height, and anchor: %d/%d samples so far." % [captured_frames, required_frames]
+				return "Countdown is complete. Waiting for the live frame that will set the new wrist-span grid width, square-cell height, and anchor: %d/%d samples so far." % [captured_frames, required_frames]
 			return "Countdown is complete, but the sample cannot finish yet: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_sample_landmarks_unavailable")))
 		"capturing":
 			return "Sampling the current pose to set the new shared athlete baseline."
 		"succeeded":
-			return "Calibration complete. Boxing and Flow are now using the sampled joint-chain grid width and height plus nose/left-shoulder anchor."
+			return "Calibration complete. Boxing and Flow are now using the sampled wrist-span grid width, square-cell height, and nose/left-shoulder anchor."
 		"failed":
 			return "Calibration failed: %s. No new shared baseline was committed." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_sample_landmarks_unavailable")))
 		"cancelled":

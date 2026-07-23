@@ -706,8 +706,8 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var left_wrist_x := float(left_wrist.get("x", 0.0))
 	var right_wrist_x := float(right_wrist.get("x", 0.0))
 	var wrist_midpoint_x := (left_wrist_x + right_wrist_x) * 0.5
-	var calibration_width := _compute_calibration_grid_width(left_wrist, left_elbow, left_shoulder, right_shoulder, right_elbow, right_wrist)
-	var calibration_height := _compute_calibration_grid_height(left_wrist, left_elbow, left_shoulder, right_wrist, right_elbow, right_shoulder)
+	var calibration_width := _compute_calibration_grid_width(left_wrist, right_wrist)
+	var calibration_height := _compute_calibration_grid_height(calibration_width)
 	if shoulder_width <= 0.0 or torso_height <= 0.0 or calibration_width <= 0.0 or calibration_height <= 0.0 or nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty():
 		return
 	_baseline_accumulator["frames"] += 1
@@ -775,27 +775,11 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		_calibration_session["captured_sample_frames"] = frames
 		_calibration_session["failure_reason"] = ""
 
-func _compute_calibration_grid_width(left_wrist: Dictionary, left_elbow: Dictionary, left_shoulder: Dictionary, right_shoulder: Dictionary, right_elbow: Dictionary, right_wrist: Dictionary) -> float:
-	return (
-		_camera_space_axis_distance(left_wrist, left_elbow, "x")
-		+ _camera_space_axis_distance(left_elbow, left_shoulder, "x")
-		+ _camera_space_axis_distance(left_shoulder, right_shoulder, "x")
-		+ _camera_space_axis_distance(right_shoulder, right_elbow, "x")
-		+ _camera_space_axis_distance(right_elbow, right_wrist, "x")
-	)
+func _compute_calibration_grid_width(left_wrist: Dictionary, right_wrist: Dictionary) -> float:
+	return _camera_space_axis_distance(left_wrist, right_wrist, "x")
 
-func _compute_calibration_grid_height(left_wrist: Dictionary, left_elbow: Dictionary, left_shoulder: Dictionary, right_wrist: Dictionary, right_elbow: Dictionary, right_shoulder: Dictionary) -> float:
-	return (
-		_camera_space_distance_2d(left_wrist, left_elbow)
-		+ _camera_space_distance_2d(left_elbow, left_shoulder)
-		+ _camera_space_distance_2d(right_wrist, right_elbow)
-		+ _camera_space_distance_2d(right_elbow, right_shoulder)
-	)
-
-func _camera_space_distance_2d(a: Dictionary, b: Dictionary) -> float:
-	if a.is_empty() or b.is_empty():
-		return 0.0
-	return PoseMetrics.distance_2d(a, b)
+func _compute_calibration_grid_height(calibration_width: float) -> float:
+	return calibration_width
 
 func _camera_space_axis_distance(a: Dictionary, b: Dictionary, axis: String) -> float:
 	if a.is_empty() or b.is_empty():
@@ -871,8 +855,8 @@ func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: Strin
 		readiness["instruction_text"] = "Need nose, shoulders, elbows, and wrists visible before calibration capture can complete"
 		return readiness
 	readiness["required_landmarks_ready"] = true
-	var calibration_width := _compute_calibration_grid_width(left_wrist, left_elbow, left_shoulder, right_shoulder, right_elbow, right_wrist)
-	var calibration_height := _compute_calibration_grid_height(left_wrist, left_elbow, left_shoulder, right_wrist, right_elbow, right_shoulder)
+	var calibration_width := _compute_calibration_grid_width(left_wrist, right_wrist)
+	var calibration_height := _compute_calibration_grid_height(calibration_width)
 	if calibration_width <= 0.0 or calibration_height <= 0.0:
 		readiness["failure_reason"] = "invalid_joint_chain_sample"
 		readiness["instruction_key"] = "show_sample_landmarks"
@@ -2093,10 +2077,11 @@ func _get_flow_cell_width() -> float:
 	return grid_width / float(FLOW_GRID_COLUMNS)
 
 func _get_flow_cell_height(cell_width: float = -1.0) -> float:
-	var grid_height := float(_baseline.get("grid_height", 0.0))
-	if grid_height <= 0.0:
+	if cell_width <= 0.0:
+		cell_width = _get_flow_cell_width()
+	if cell_width <= 0.0:
 		return 0.0
-	return grid_height / float(FLOW_GRID_ROWS)
+	return cell_width
 
 func _get_flow_cell_size() -> float:
 	return _get_flow_cell_width()

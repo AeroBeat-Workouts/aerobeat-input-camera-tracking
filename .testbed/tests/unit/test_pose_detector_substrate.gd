@@ -1647,7 +1647,7 @@ func test_quantizes_flow_cells_from_calibrated_wrist_rect() -> void:
 	assert_true(fourth_cell <= third_cell)
 	assert_true(first_cell != fourth_cell)
 
-func test_calibration_stores_joint_chain_basis_for_flow_grid() -> void:
+func test_calibration_stores_wrist_span_basis_for_flow_grid() -> void:
 	for idx in range(5):
 		var state := substrate.process_landmarks(_make_pose_frame({
 			PoseLandmarkIds.NOSE: {"x": 0.56},
@@ -1659,10 +1659,10 @@ func test_calibration_stores_joint_chain_basis_for_flow_grid() -> void:
 	assert_true(is_equal_approx(float(baseline.get("left_wrist_x", 0.0)), 0.18))
 	assert_true(is_equal_approx(float(baseline.get("right_wrist_x", 0.0)), 0.62))
 	assert_true(is_equal_approx(float(baseline.get("wrist_midpoint_x", 0.0)), 0.40))
-	assert_true(is_equal_approx(float(baseline.get("grid_width", 0.0)), 0.52))
-	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), 0.454748475))
+	assert_true(is_equal_approx(float(baseline.get("grid_width", 0.0)), 0.44))
+	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), 0.44))
 	assert_true(is_equal_approx(float(baseline.get("horizontal_wrist_span", 0.0)), float(baseline.get("grid_width", 0.0))))
-	assert_true(float(baseline.get("grid_width", 0.0)) > float(baseline.get("wrist_span", 0.0)))
+	assert_true(float(baseline.get("grid_width", 0.0)) < float(baseline.get("wrist_span", 0.0)))
 
 func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 	_calibrate_stance()
@@ -1703,9 +1703,9 @@ func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
 	assert_true(is_equal_approx(float(grid_debug.get("left_boundary", 0.0)), 0.28))
 	assert_true(is_equal_approx(float(grid_debug.get("right_boundary", 0.0)), 0.72))
 	assert_true(is_equal_approx(float(grid_debug.get("cell_width", 0.0)), 0.11))
-	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.104640701))
+	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.11))
 	assert_true(is_equal_approx(float(grid_debug.get("grid_width", 0.0)), 0.44))
-	assert_true(is_equal_approx(float(grid_debug.get("grid_height", 0.0)), 0.313922103))
+	assert_true(is_equal_approx(float(grid_debug.get("grid_height", 0.0)), 0.44))
 	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
 	var nose_debug: Dictionary = tracked_landmarks.get("nose", {})
 	var left_wrist_debug: Dictionary = tracked_landmarks.get("left_wrist", {})

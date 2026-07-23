@@ -1746,7 +1746,7 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 		"is_calibrated": true,
 		"sample_frames": 5,
 		"grid_width": 0.520000,
-		"grid_height": 0.454748,
+		"grid_height": 0.520000,
 	}
 	provider.calibration_session = provider._make_session("succeeded", {
 		"result": "succeeded",
@@ -1763,17 +1763,17 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	assert_eq(String(status_label.text), "")
 	assert_false(status_label.visible)
 	var event_lines: Array = scene_root.get("_event_lines")
-	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.454748"))
+	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.520000"))
 
 func test_calibration_success_echoes_copy_paste_grid_line_to_console() -> void:
 	var harness: ConsoleCaptureHarness = _new_console_capture_harness()
 	harness._append_event_feed_lines("athlete_calibration_succeeded", {
 		"grid_width": 0.520000,
-		"grid_height": 0.454748,
+		"grid_height": 0.520000,
 	})
-	assert_eq_deep(harness.console_lines, ["calibrated_grid width=0.520000 height=0.454748"])
+	assert_eq_deep(harness.console_lines, ["calibrated_grid width=0.520000 height=0.520000"])
 	var event_lines: Array = harness.get("_event_lines")
-	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.454748"))
+	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.520000"))
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
