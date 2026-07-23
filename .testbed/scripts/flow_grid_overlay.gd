@@ -52,6 +52,12 @@ func get_overlay_snapshot() -> Dictionary:
 		"render_cell_height_px": float(render_snapshot.get("cell_height_px", 0.0)),
 		"render_width_px": float(render_snapshot.get("width_px", 0.0)),
 		"render_height_px": float(render_snapshot.get("height_px", 0.0)),
+		"visible_top_left": render_snapshot.get("visible_top_left", Vector2.ZERO),
+		"visible_bottom_right": render_snapshot.get("visible_bottom_right", Vector2.ZERO),
+		"visible_width_px": float(render_snapshot.get("visible_width_px", 0.0)),
+		"visible_height_px": float(render_snapshot.get("visible_height_px", 0.0)),
+		"visible_clipped": bool(render_snapshot.get("visible_clipped", false)),
+		"content_rect": render_snapshot.get("content_rect", Rect2()),
 	}
 
 func _draw() -> void:
@@ -89,22 +95,31 @@ func _build_render_snapshot() -> Dictionary:
 	var top_boundary := float(_grid_debug.get("top_boundary", 0.0))
 	if columns <= 0 or rows <= 0 or cell_width <= 0.000001 or cell_height <= 0.000001:
 		return {"draw_ready": false}
+	var content_rect := _resolve_preview_content_rect()
 	var top_left_normalized := _to_preview_coordinate_space(Vector2(left_boundary, top_boundary))
-	var top_left := _map_preview_space_point(top_left_normalized)
-	var next_column := _map_preview_space_point(top_left_normalized + Vector2(cell_width, 0.0))
-	var next_row := _map_preview_space_point(top_left_normalized + Vector2(0.0, cell_height))
+	var top_left := _map_preview_space_point(top_left_normalized, false, content_rect)
+	var next_column := _map_preview_space_point(top_left_normalized + Vector2(cell_width, 0.0), false, content_rect)
+	var next_row := _map_preview_space_point(top_left_normalized + Vector2(0.0, cell_height), false, content_rect)
 	var cell_width_px := absf(next_column.x - top_left.x)
 	var cell_height_px := absf(next_row.y - top_left.y)
+	var bottom_right := Vector2(top_left.x + cell_width_px * float(columns), top_left.y + cell_height_px * float(rows))
+	var visible_rect := _clip_rect_to_overlay(Rect2(top_left, bottom_right - top_left))
 	return {
-		"draw_ready": cell_width_px > 0.000001,
+		"draw_ready": cell_width_px > 0.000001 and cell_height_px > 0.000001,
 		"columns": columns,
 		"rows": rows,
 		"top_left": top_left,
-		"bottom_right": Vector2(top_left.x + cell_width_px * float(columns), top_left.y + cell_height_px * float(rows)),
+		"bottom_right": bottom_right,
 		"cell_width_px": cell_width_px,
 		"cell_height_px": cell_height_px,
 		"width_px": cell_width_px * float(columns),
 		"height_px": cell_height_px * float(rows),
+		"visible_top_left": visible_rect.position,
+		"visible_bottom_right": visible_rect.end,
+		"visible_width_px": visible_rect.size.x,
+		"visible_height_px": visible_rect.size.y,
+		"visible_clipped": not visible_rect.is_equal_approx(Rect2(top_left, bottom_right - top_left)),
+		"content_rect": content_rect,
 	}
 
 func _to_preview_coordinate_space(point: Vector2) -> Vector2:
@@ -113,10 +128,30 @@ func _to_preview_coordinate_space(point: Vector2) -> Vector2:
 		return Vector2(point.x, 1.0 - point.y)
 	return point
 
-func _map_preview_space_point(point: Vector2) -> Vector2:
-	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("map_landmark_to_preview_position"):
-		return _preview_presenter.map_landmark_to_preview_position({"x": point.x, "y": point.y})
-	return Vector2(point.x * size.x, point.y * size.y)
+func _resolve_preview_content_rect() -> Rect2:
+	if _preview_presenter != null and is_instance_valid(_preview_presenter) and _preview_presenter.has_method("get_content_rect"):
+		var presenter_rect: Variant = _preview_presenter.get_content_rect()
+		if presenter_rect is Rect2:
+			return presenter_rect
+	return Rect2(Vector2.ZERO, size)
+
+func _map_preview_space_point(point: Vector2, clamp_to_content: bool = true, content_rect_override: Variant = null) -> Vector2:
+	var content_rect: Rect2 = content_rect_override if content_rect_override is Rect2 else _resolve_preview_content_rect()
+	var mapped: Vector2 = point
+	if clamp_to_content:
+		mapped = Vector2(clampf(point.x, 0.0, 1.0), clampf(point.y, 0.0, 1.0))
+	return Vector2(
+		content_rect.position.x + mapped.x * content_rect.size.x,
+		content_rect.position.y + mapped.y * content_rect.size.y
+	)
+
+func _clip_rect_to_overlay(rect: Rect2) -> Rect2:
+	var overlay_rect := Rect2(Vector2.ZERO, size)
+	var normalized := rect.abs()
+	var clipped := normalized.intersection(overlay_rect)
+	if clipped.size.x < 0.0 or clipped.size.y < 0.0:
+		return Rect2(normalized.position, Vector2.ZERO)
+	return clipped
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:

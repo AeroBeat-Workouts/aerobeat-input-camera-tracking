@@ -48,6 +48,31 @@ class FakePreviewPresenter:
 	func map_landmark_to_preview_position(point: Dictionary) -> Vector2:
 		return Vector2(float(point.get("x", 0.0)) * size.x, float(point.get("y", 0.0)) * size.y)
 
+class FakeCoverPreviewPresenter:
+	extends Control
+
+	var overlay_layer: Control
+	var content_rect := Rect2(Vector2(-200.0, 0.0), Vector2(1000.0, 293.0))
+
+	func _init() -> void:
+		size = Vector2(520.0, 293.0)
+		overlay_layer = Control.new()
+		overlay_layer.name = "OverlayLayer"
+		overlay_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(overlay_layer)
+
+	func get_overlay_layer() -> Control:
+		return overlay_layer
+
+	func get_content_rect() -> Rect2:
+		return content_rect
+
+	func map_landmark_to_preview_position(point: Dictionary) -> Vector2:
+		return Vector2(
+			content_rect.position.x + clampf(float(point.get("x", 0.0)), 0.0, 1.0) * content_rect.size.x,
+			content_rect.position.y + clampf(float(point.get("y", 0.0)), 0.0, 1.0) * content_rect.size.y
+		)
+
 class PlaybackStateHarness:
 	extends ProvingHarnessScript
 
@@ -1590,6 +1615,39 @@ func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensi
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_height_px", 0.0)), 29.3))
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_width_px", 0.0)), 166.4))
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_height_px", 0.0)), 87.9))
+
+func test_flow_grid_overlay_preserves_unclamped_render_truth_when_cover_crops_the_preview() -> void:
+	var overlay := add_child_autoqfree(load("res://scripts/flow_grid_overlay.gd").new()) as Control
+	assert_not_null(overlay)
+	overlay.size = Vector2(520.0, 293.0)
+	var presenter := add_child_autoqfree(FakeCoverPreviewPresenter.new()) as FakeCoverPreviewPresenter
+	overlay.call("set_preview_presenter", presenter)
+	overlay.call("update_grid_debug", {
+		"is_calibrated": true,
+		"columns": 4,
+		"rows": 3,
+		"coordinate_space": "gameplay_bottom_left",
+		"cell_width": 0.13784825,
+		"cell_height": 0.16699933,
+		"width": 0.551393,
+		"height": 0.500998,
+		"left_boundary": 0.225,
+		"top_boundary": 1.0,
+		"right_boundary": 0.776393,
+		"bottom_boundary": 0.499002,
+	})
+	var snapshot: Dictionary = overlay.call("get_overlay_snapshot")
+	assert_true(is_equal_approx(float(snapshot.get("render_width_px", 0.0)), 551.393))
+	assert_true(is_equal_approx(float(snapshot.get("render_height_px", 0.0)), 146.792414))
+	assert_true(is_equal_approx(float(snapshot.get("visible_width_px", 0.0)), 495.0))
+	assert_true(is_equal_approx(float(snapshot.get("visible_height_px", 0.0)), 146.792414))
+	assert_eq(bool(snapshot.get("visible_clipped", false)), true)
+	var render_top_left: Vector2 = snapshot.get("render_top_left", Vector2.ZERO)
+	assert_true(is_equal_approx(render_top_left.x, 25.0))
+	assert_true(is_equal_approx(render_top_left.y, 0.0))
+	var visible_top_left: Vector2 = snapshot.get("visible_top_left", Vector2.ZERO)
+	assert_true(is_equal_approx(visible_top_left.x, 25.0))
+	assert_true(is_equal_approx(visible_top_left.y, 0.0))
 
 func test_flow_ring_chart_maps_runtime_cells_directly_into_athlete_space_visual_slots() -> void:
 	var chart := add_child_autoqfree(FlowRingChartScript.new()) as Control
