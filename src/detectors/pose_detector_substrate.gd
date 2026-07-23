@@ -1215,14 +1215,16 @@ func _build_flow_grid_debug() -> Dictionary:
 	if is_calibrated:
 		for row: int in range(rows):
 			for column: int in range(columns):
+				var cell_bottom := bottom_boundary + cell_height * float(row)
+				var cell_top := cell_bottom + cell_height
 				cell_rects.append({
 					"index": row * columns + column,
 					"column": column,
 					"row": row,
 					"left": left_boundary + cell_width * float(column),
 					"right": left_boundary + cell_width * float(column + 1),
-					"top": top_boundary - cell_height * float(row),
-					"bottom": top_boundary - cell_height * float(row + 1),
+					"top": cell_top,
+					"bottom": cell_bottom,
 				})
 	return {
 		"is_calibrated": is_calibrated,
@@ -2043,8 +2045,8 @@ func _flow_cell_index_from_position(position: Vector2) -> int:
 	var relative_x := position.x - left_boundary
 	if relative_x < 0.0 or relative_x >= cell_width * float(FLOW_GRID_COLUMNS):
 		return -1
-	var top_boundary := float(grid_rect.get("top_boundary", 0.0))
-	var relative_y := top_boundary - position.y
+	var bottom_boundary := float(grid_rect.get("bottom_boundary", 0.0))
+	var relative_y := position.y - bottom_boundary
 	if relative_y < 0.0 or relative_y >= cell_height * float(FLOW_GRID_ROWS):
 		return -1
 	var column := int(floor(relative_x / cell_width))
@@ -2691,8 +2693,8 @@ func _get_squat_config() -> Dictionary:
 		"enabled": true,
 		"obstacle": _normalize_grid_avoidance_obstacle({
 			"label": "top_row",
-			"occupied_rows": [0],
-			"occupied_cells": [0, 1, 2, 3],
+			"occupied_rows": [2],
+			"occupied_cells": [8, 9, 10, 11],
 		}),
 	}
 	if _config == null:

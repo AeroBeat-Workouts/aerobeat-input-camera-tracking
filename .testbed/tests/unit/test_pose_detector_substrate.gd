@@ -1872,8 +1872,8 @@ func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 			"grid_avoidance": {
 				"obstacle": {
 					"label": "top_row",
-					"occupied_rows": [0],
-					"occupied_cells": [0, 1, 2, 3],
+					"occupied_rows": [2],
+					"occupied_cells": [8, 9, 10, 11],
 				}
 			}
 		}
@@ -1888,8 +1888,8 @@ func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	var squat_debug: Dictionary = blocked_state.get("gesture_debug", {}).get("squat", {})
 	assert_eq(String(squat_debug.get("backend", "")), "grid_avoidance")
 	assert_false(bool(squat_debug.get("state", true)))
-	assert_eq(int(squat_debug.get("current_cell", -1)), 2)
-	assert_eq(squat_debug.get("occupied_cells", []), [0, 1, 2, 3])
+	assert_eq(int(squat_debug.get("current_cell", -1)), 10)
+	assert_eq(squat_debug.get("occupied_cells", []), [8, 9, 10, 11])
 	assert_true(bool(squat_debug.get("nose_in_blocked_region", false)))
 	assert_false(bool(squat_debug.get("avoidance_clear", true)))
 
