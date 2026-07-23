@@ -1262,16 +1262,18 @@ func _build_flow_grid_debug() -> Dictionary:
 	if is_calibrated:
 		for athlete_row: int in range(rows):
 			var gameplay_row := (rows - 1) - athlete_row
-			for column: int in range(columns):
+			for preview_column: int in range(columns):
+				var athlete_column := (columns - 1) - preview_column
 				var cell_bottom := bottom_boundary + cell_height * float(gameplay_row)
 				var cell_top := cell_bottom + cell_height
 				cell_rects.append({
-					"index": athlete_row * columns + column,
-					"column": column,
+					"index": athlete_row * columns + athlete_column,
+					"column": athlete_column,
+					"preview_column": preview_column,
 					"row": athlete_row,
 					"gameplay_row": gameplay_row,
-					"left": left_boundary + cell_width * float(column),
-					"right": left_boundary + cell_width * float(column + 1),
+					"left": left_boundary + cell_width * float(preview_column),
+					"right": left_boundary + cell_width * float(preview_column + 1),
 					"top": cell_top,
 					"bottom": cell_bottom,
 				})
@@ -2099,12 +2101,13 @@ func _flow_cell_index_from_position(position: Vector2) -> int:
 	var relative_y := position.y - bottom_boundary
 	if relative_y < 0.0 or relative_y >= cell_height * float(FLOW_GRID_ROWS):
 		return -1
-	var column := int(floor(relative_x / cell_width))
+	var preview_column := int(floor(relative_x / cell_width))
 	var gameplay_row := int(floor(relative_y / cell_height))
-	if column < 0 or column >= FLOW_GRID_COLUMNS or gameplay_row < 0 or gameplay_row >= FLOW_GRID_ROWS:
+	if preview_column < 0 or preview_column >= FLOW_GRID_COLUMNS or gameplay_row < 0 or gameplay_row >= FLOW_GRID_ROWS:
 		return -1
 	var athlete_row := (FLOW_GRID_ROWS - 1) - gameplay_row
-	return athlete_row * FLOW_GRID_COLUMNS + column
+	var athlete_column := (FLOW_GRID_COLUMNS - 1) - preview_column
+	return athlete_row * FLOW_GRID_COLUMNS + athlete_column
 
 func _flow_direction_index_from_vector(vector: Vector2) -> int:
 	if vector.length() <= 0.000001:
@@ -2762,12 +2765,12 @@ func _get_weave_config() -> Dictionary:
 		"left_obstacle": _normalize_grid_avoidance_obstacle({
 			"label": "left_columns",
 			"occupied_columns": [0, 1],
-			"occupied_cells": [0, 1, 4, 5, 8, 9],
+			"occupied_cells": [2, 3, 6, 7, 10, 11],
 		}),
 		"right_obstacle": _normalize_grid_avoidance_obstacle({
 			"label": "right_columns",
 			"occupied_columns": [2, 3],
-			"occupied_cells": [2, 3, 6, 7, 10, 11],
+			"occupied_cells": [0, 1, 4, 5, 8, 9],
 		}),
 	}
 	if _config == null:

@@ -1293,7 +1293,7 @@ func test_boxing_squat_hover_card_reports_grid_avoidance_truth() -> void:
 			"squat": {
 				"state": true,
 				"enabled": true,
-				"current_cell": 6,
+				"current_cell": 5,
 				"nose_tracked": true,
 				"occupied_rows": [0],
 				"occupied_cells": [0, 1, 2, 3],
@@ -1308,7 +1308,7 @@ func test_boxing_squat_hover_card_reports_grid_avoidance_truth() -> void:
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(model.get("title", "")), "Squat")
 	assert_eq(String(rows[1].get("current_text", "")), "active")
-	assert_eq(String(rows[2].get("current_text", "")), "cell 6 [r1 c2]")
+	assert_eq(String(rows[2].get("current_text", "")), "cell 5 [r1 c1]")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[5].get("current_text", "")), "0")
 	assert_eq(String(rows[6].get("current_text", "")), "0, 1, 2, 3")
@@ -1319,7 +1319,7 @@ func test_boxing_squat_hover_card_reports_grid_avoidance_truth() -> void:
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Current state - active")
 	assert_string_contains(body, "Blocked cells - 0, 1, 2, 3")
-	assert_string_contains(body, "Nose occupied cell - cell 6 [r1 c2]")
+	assert_string_contains(body, "Nose occupied cell - cell 5 [r1 c1]")
 	assert_string_contains(body, "Obstacle avoided - true")
 
 func test_boxing_weave_hover_card_reports_grid_avoidance_truth() -> void:
@@ -1329,16 +1329,16 @@ func test_boxing_weave_hover_card_reports_grid_avoidance_truth() -> void:
 			"weave": {
 				"state": "left",
 				"enabled": true,
-				"current_cell": 6,
+				"current_cell": 5,
 				"nose_tracked": true,
 				"left_obstacle": {
 					"occupied_columns": [0, 1],
-					"occupied_cells": [0, 1, 4, 5, 8, 9],
+					"occupied_cells": [2, 3, 6, 7, 10, 11],
 					"avoidance_clear": true,
 				},
 				"right_obstacle": {
 					"occupied_columns": [2, 3],
-					"occupied_cells": [2, 3, 6, 7, 10, 11],
+					"occupied_cells": [0, 1, 4, 5, 8, 9],
 					"avoidance_clear": false,
 				},
 				"left_candidate": true,
@@ -1352,13 +1352,13 @@ func test_boxing_weave_hover_card_reports_grid_avoidance_truth() -> void:
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(model.get("title", "")), "Weave")
 	assert_eq(String(rows[1].get("current_text", "")), "left")
-	assert_eq(String(rows[2].get("current_text", "")), "cell 6 [r1 c2]")
+	assert_eq(String(rows[2].get("current_text", "")), "cell 5 [r1 c1]")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[5].get("current_text", "")), "0, 1")
-	assert_eq(String(rows[6].get("current_text", "")), "0, 1, 4, 5, 8, 9")
+	assert_eq(String(rows[6].get("current_text", "")), "2, 3, 6, 7, 10, 11")
 	assert_eq(String(rows[7].get("current_text", "")), "true")
 	assert_eq(String(rows[9].get("current_text", "")), "2, 3")
-	assert_eq(String(rows[10].get("current_text", "")), "2, 3, 6, 7, 10, 11")
+	assert_eq(String(rows[10].get("current_text", "")), "0, 1, 4, 5, 8, 9")
 	assert_eq(String(rows[11].get("current_text", "")), "false")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "weave")
@@ -1514,12 +1514,12 @@ func _shared_flow_grid_truth_state(capture_source: String = "calibration_session
 					],
 				},
 				"tracked_landmarks": {
-					"nose": {"current_cell": 5, "current_direction": 2, "latest_confidence": 0.98},
-					"left_wrist": {"current_cell": 4, "current_direction": 0, "latest_confidence": 0.92},
-					"right_wrist": {"current_cell": 7, "current_direction": 3, "latest_confidence": 0.93},
+					"nose": {"current_cell": 6, "current_direction": 2, "latest_confidence": 0.98},
+					"left_wrist": {"current_cell": 7, "current_direction": 0, "latest_confidence": 0.92},
+					"right_wrist": {"current_cell": 4, "current_direction": 3, "latest_confidence": 0.93},
 				},
-				"left": {"current_cell": 4, "current_direction": 0},
-				"right": {"current_cell": 7, "current_direction": 3},
+				"left": {"current_cell": 7, "current_direction": 0},
+				"right": {"current_cell": 4, "current_direction": 3},
 			},
 		},
 	}
@@ -1554,9 +1554,9 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(overlay_snapshot.get("cell_count", 0)), 12)
 		assert_eq(float(overlay_snapshot.get("cell_width", 0.0)), 0.08)
 		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.10)
-		assert_eq(int(nose_chart.get("active_index")), 5)
-		assert_eq(int(left_chart.get("active_index")), 4)
-		assert_eq(int(right_chart.get("active_index")), 7)
+		assert_eq(int(nose_chart.get("active_index")), 6)
+		assert_eq(int(left_chart.get("active_index")), 7)
+		assert_eq(int(right_chart.get("active_index")), 4)
 		assert_eq(String(truth_label.text), "")
 
 func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensions_in_preview_space() -> void:

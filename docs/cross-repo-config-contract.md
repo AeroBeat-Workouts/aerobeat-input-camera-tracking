@@ -119,11 +119,11 @@ weave:
     left_obstacle:
       label: left_columns
       occupied_columns: [0, 1]
-      occupied_cells: [0, 1, 4, 5, 8, 9]
+      occupied_cells: [2, 3, 6, 7, 10, 11]
     right_obstacle:
       label: right_columns
       occupied_columns: [2, 3]
-      occupied_cells: [2, 3, 6, 7, 10, 11]
+      occupied_cells: [0, 1, 4, 5, 8, 9]
 straight_punch:
   backend: threshold
   threshold:

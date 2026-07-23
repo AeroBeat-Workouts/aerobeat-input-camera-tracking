@@ -1642,9 +1642,9 @@ func test_quantizes_flow_cells_from_calibrated_wrist_rect() -> void:
 	var third_cell := substrate._flow_cell_index_from_position(Vector2(0.50, 0.79))
 	var fourth_cell := substrate._flow_cell_index_from_position(Vector2(0.60, 0.79))
 	assert_true(first_cell >= 0)
-	assert_true(second_cell >= first_cell)
-	assert_true(third_cell >= second_cell)
-	assert_true(fourth_cell >= third_cell)
+	assert_true(second_cell <= first_cell)
+	assert_true(third_cell <= second_cell)
+	assert_true(fourth_cell <= third_cell)
 	assert_true(first_cell != fourth_cell)
 
 func test_calibration_stores_joint_chain_basis_for_flow_grid() -> void:
@@ -1675,14 +1675,14 @@ func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 	var flow_events := _flow_events(flow_state.get("events", []))
 	assert_eq(flow_events.size(), 1)
 	assert_eq(flow_events[0]["name"], "flow_left_cell_entered")
-	assert_eq(int(flow_events[0]["cell"]), 4)
+	assert_eq(int(flow_events[0]["cell"]), 7)
 	var emitted_direction := int(flow_events[0]["direction"])
 	assert_true(emitted_direction >= 0)
 	var left_flow: Dictionary = flow_state.get("gesture_debug", {}).get("flow", {}).get("left", {})
-	assert_eq(int(left_flow.get("current_cell", -1)), 4)
+	assert_eq(int(left_flow.get("current_cell", -1)), 7)
 	assert_true(int(left_flow.get("history_points", 0)) >= 2)
-	assert_eq(int(left_flow.get("cell_meta", {}).get("previous_cell", -1)), 5)
-	assert_eq(int(left_flow.get("cell_meta", {}).get("current_cell", -1)), 4)
+	assert_eq(int(left_flow.get("cell_meta", {}).get("previous_cell", -1)), 6)
+	assert_eq(int(left_flow.get("cell_meta", {}).get("current_cell", -1)), 7)
 	assert_eq(int(left_flow.get("cell_meta", {}).get("direction", -1)), emitted_direction)
 
 func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
@@ -1726,8 +1726,8 @@ func test_flow_debug_keeps_visible_wrist_tracking_when_other_wrist_drops_out() -
 	var tracked_landmarks: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
 	var left_wrist_debug: Dictionary = tracked_landmarks.get("left_wrist", {})
 	var right_wrist_debug: Dictionary = tracked_landmarks.get("right_wrist", {})
-	assert_eq(int(left_wrist_debug.get("current_cell", -1)), 4)
-	assert_eq(int(right_wrist_debug.get("current_cell", -1)), 7)
+	assert_eq(int(left_wrist_debug.get("current_cell", -1)), 7)
+	assert_eq(int(right_wrist_debug.get("current_cell", -1)), 4)
 
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.46, "y": 0.72},
@@ -1736,7 +1736,7 @@ func test_flow_debug_keeps_visible_wrist_tracking_when_other_wrist_drops_out() -
 	tracked_landmarks = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
 	left_wrist_debug = tracked_landmarks.get("left_wrist", {})
 	right_wrist_debug = tracked_landmarks.get("right_wrist", {})
-	assert_eq(int(left_wrist_debug.get("current_cell", -1)), 5)
+	assert_eq(int(left_wrist_debug.get("current_cell", -1)), 6)
 	assert_true(int(left_wrist_debug.get("history_points", 0)) >= 2)
 	assert_eq(int(right_wrist_debug.get("current_cell", -1)), -1)
 	assert_eq(int(right_wrist_debug.get("history_points", 0)), 0)
@@ -1750,7 +1750,7 @@ func test_flow_debug_keeps_visible_wrist_tracking_when_other_wrist_drops_out() -
 	right_wrist_debug = tracked_landmarks.get("right_wrist", {})
 	assert_eq(int(left_wrist_debug.get("current_cell", -1)), -1)
 	assert_eq(int(left_wrist_debug.get("history_points", 0)), 0)
-	assert_eq(int(right_wrist_debug.get("current_cell", -1)), 6)
+	assert_eq(int(right_wrist_debug.get("current_cell", -1)), 5)
 	assert_true(int(right_wrist_debug.get("history_points", 0)) >= 1)
 
 func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_landmark_disappears_from_frame() -> void:
@@ -1761,9 +1761,9 @@ func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_landmark_d
 		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.65, "y": 0.72},
 	}), 1200)
 	var tracked_landmarks: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
-	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 2)
-	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 4)
-	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), 7)
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 1)
+	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 7)
+	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), 4)
 
 	var missing_right_frame := _make_pose_frame({
 		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.79},
@@ -1776,8 +1776,8 @@ func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_landmark_d
 			missing_right_frame.remove_at(index)
 	state = substrate.process_landmarks(missing_right_frame, 1280)
 	tracked_landmarks = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
-	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 2)
-	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 5)
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 1)
+	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 6)
 	assert_true(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("history_points", 0)) >= 2)
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), -1)
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("history_points", 0)), 0)
@@ -1961,7 +1961,7 @@ func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	var squat_debug: Dictionary = blocked_state.get("gesture_debug", {}).get("squat", {})
 	assert_eq(String(squat_debug.get("backend", "")), "grid_avoidance")
 	assert_false(bool(squat_debug.get("state", true)))
-	assert_eq(int(squat_debug.get("current_cell", -1)), 2)
+	assert_eq(int(squat_debug.get("current_cell", -1)), 1)
 	assert_eq(squat_debug.get("occupied_cells", []), [0, 1, 2, 3])
 	assert_true(bool(squat_debug.get("nose_in_blocked_region", false)))
 	assert_false(bool(squat_debug.get("avoidance_clear", true)))
@@ -1972,7 +1972,7 @@ func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	assert_true(_event_names(clear_state.get("events", [])).has("squat_start"))
 	squat_debug = clear_state.get("gesture_debug", {}).get("squat", {})
 	assert_true(bool(squat_debug.get("state", false)))
-	assert_eq(int(squat_debug.get("current_cell", -1)), 6)
+	assert_eq(int(squat_debug.get("current_cell", -1)), 5)
 	assert_false(bool(squat_debug.get("nose_in_blocked_region", true)))
 	assert_true(bool(squat_debug.get("avoidance_clear", false)))
 
@@ -1984,12 +1984,12 @@ func test_weave_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 				"left_obstacle": {
 					"label": "left_columns",
 					"occupied_columns": [0, 1],
-					"occupied_cells": [0, 1, 4, 5, 8, 9],
+					"occupied_cells": [2, 3, 6, 7, 10, 11],
 				},
 				"right_obstacle": {
 					"label": "right_columns",
 					"occupied_columns": [2, 3],
-					"occupied_cells": [2, 3, 6, 7, 10, 11],
+					"occupied_cells": [0, 1, 4, 5, 8, 9],
 				},
 			}
 		}
@@ -2008,11 +2008,11 @@ func test_weave_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	var weave_debug: Dictionary = weave_left_state.get("gesture_debug", {}).get("weave", {})
 	assert_eq(String(weave_debug.get("backend", "")), "grid_avoidance")
 	assert_eq(String(weave_debug.get("state", "")), "left")
-	assert_eq(int(weave_debug.get("current_cell", -1)), 6)
+	assert_eq(int(weave_debug.get("current_cell", -1)), 5)
 	assert_true(bool(weave_debug.get("left_candidate", false)))
 	assert_false(bool(weave_debug.get("right_candidate", true)))
 	assert_false(bool(weave_debug.get("neutral_candidate", true)))
-	assert_eq(_weave_obstacle_cells(weave_debug, "left_obstacle"), [0, 1, 4, 5, 8, 9])
+	assert_eq(_weave_obstacle_cells(weave_debug, "left_obstacle"), [2, 3, 6, 7, 10, 11])
 	assert_true(bool(_weave_obstacle_debug(weave_debug, "left_obstacle").get("avoidance_clear", false)))
 	assert_true(bool(_weave_obstacle_debug(weave_debug, "right_obstacle").get("nose_in_blocked_region", false)))
 
