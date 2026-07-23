@@ -1782,6 +1782,35 @@ func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_landmark_d
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), -1)
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("history_points", 0)), 0)
 
+func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_dropout_degrades_global_tracking() -> void:
+	_calibrate_stance()
+	var upper_body_overrides := {
+		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.79},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.65, "y": 0.72},
+		PoseLandmarkIds.LEFT_HIP: {"v": 0.2},
+		PoseLandmarkIds.RIGHT_HIP: {"v": 0.2},
+	}
+	var state := substrate.process_landmarks(_make_pose_frame(upper_body_overrides), 1200)
+	assert_eq(String(state.get("tracking_state", "")), "tracking")
+	var tracked_landmarks: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 1)
+	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 7)
+	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), 4)
+
+	for timestamp_ms in [1280, 1360, 1440]:
+		var dropout_overrides := upper_body_overrides.duplicate(true)
+		dropout_overrides[PoseLandmarkIds.LEFT_WRIST] = {"x": 0.46, "y": 0.72}
+		dropout_overrides[PoseLandmarkIds.RIGHT_WRIST] = {"x": 0.65, "y": 0.72, "v": 0.0}
+		state = substrate.process_landmarks(_make_pose_frame(dropout_overrides), timestamp_ms)
+	tracked_landmarks = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
+	assert_eq(String(state.get("tracking_state", "")), "lost")
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 1)
+	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 6)
+	assert_true(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("history_points", 0)) >= 1)
+	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), -1)
+	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("history_points", 0)), 0)
+
 func test_request_athlete_recalibration_starts_shared_countdown_session() -> void:
 	_calibrate_stance()
 	substrate.request_athlete_recalibration()

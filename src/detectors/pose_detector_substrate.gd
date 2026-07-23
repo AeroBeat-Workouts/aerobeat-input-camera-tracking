@@ -352,6 +352,7 @@ func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: 
 	var calibration_readiness := _evaluate_calibration_readiness(metrics, tracking_state, smoothed_landmarks)
 	_update_calibration_session(runtime_timestamp_ms, calibration_readiness)
 	_update_baseline(metrics, tracking_state, smoothed_landmarks, runtime_timestamp_ms)
+	_update_flow_tracking_state(smoothed_landmarks, metrics, timestamp_ms)
 	metrics["tracking_state"] = tracking_state
 	metrics["runtime_timestamp_ms"] = runtime_timestamp_ms
 	metrics["baseline"] = _baseline.duplicate(true)
@@ -363,7 +364,7 @@ func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: 
 		if _should_evaluate_gestures_this_frame():
 			events = _detect_intent_events(smoothed_landmarks, metrics, timestamp_ms, tracking_frame)
 	else:
-		_clear_transient_gesture_state()
+		_clear_transient_gesture_state(true)
 	_latest_state = {
 		"frame_index": _frame_index,
 		"timestamp_ms": timestamp_ms,
@@ -1447,8 +1448,13 @@ func _should_evaluate_gestures_this_frame() -> bool:
 		interval = maxi(1, int(_config.gesture_eval_interval_frames))
 	return _frame_index % interval == 0
 
-func _clear_transient_gesture_state() -> void:
+func _clear_transient_gesture_state(preserve_flow: bool = false) -> void:
+	var flow_state: Dictionary = {}
+	if preserve_flow:
+		flow_state = (_gesture_state.get("flow", {}) as Dictionary).duplicate(true)
 	_reset_gesture_state()
+	if preserve_flow:
+		_gesture_state["flow"] = flow_state
 
 func _advance_session_runtime_timestamp(timestamp_ms: int, source_timestamp_rewound: bool) -> int:
 	if _session_runtime_timestamp_ms <= 0:
@@ -1483,8 +1489,6 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if not bool(_baseline.get("is_calibrated", false)):
 		return events
 	var shoulder_width := maxf(float(measurements.get("shoulder_width", float(_baseline.get("shoulder_width", 0.0)))), 0.000001)
-	var shoulder_center_vec: Vector3 = measurements.get("shoulder_center", Vector3(float(_baseline.get("shoulder_center_x", 0.0)), 0.0, 0.0))
-	var shoulder_center := Vector2(shoulder_center_vec.x, shoulder_center_vec.y)
 	var torso_height := maxf(float(measurements.get("torso_height", float(_baseline.get("torso_height", 0.0)))), 0.000001)
 	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
 	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
@@ -1501,14 +1505,8 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	var confidences: Dictionary = metrics.get("confidences", {})
 	var left_hand_velocity: Vector3 = velocities.get("left_hand", Vector3.ZERO)
 	var right_hand_velocity: Vector3 = velocities.get("right_hand", Vector3.ZERO)
-	var head_confidence := float(confidences.get("head", 0.0))
-	var left_hand_confidence := float(confidences.get("left_hand", 0.0))
-	var right_hand_confidence := float(confidences.get("right_hand", 0.0))
 	var torso_confidence := float(confidences.get("torso", 0.0))
 	var lower_body_confidence_gate := maxf(_get_min_visibility(), 0.5)
-	_update_flow_nose_history(nose, shoulder_center, head_confidence, timestamp_ms)
-	_update_flow_hand_history("left", left_wrist, left_shoulder, left_hand_confidence, timestamp_ms)
-	_update_flow_hand_history("right", right_wrist, right_shoulder, right_hand_confidence, timestamp_ms)
 
 	_process_guard(events, nose, left_shoulder, right_shoulder, left_elbow, right_elbow, left_wrist, right_wrist, shoulder_width)
 	if _supports_squat_surface() and torso_confidence >= lower_body_confidence_gate:
@@ -2004,6 +2002,22 @@ func _process_flow_cell_entry(events: Array, side: String, timestamp_ms: int) ->
 	flow_meta["avg_confidence"] = float(analysis.get("avg_confidence", 0.0))
 	_set_flow_meta(meta_name, flow_meta)
 	_emit_flow_cell_event(events, side, current_cell, direction)
+
+func _update_flow_tracking_state(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_ms: int) -> void:
+	if not bool(_baseline.get("is_calibrated", false)):
+		return
+	var measurements: Dictionary = metrics.get("measurements", {})
+	var shoulder_center_vec: Vector3 = measurements.get("shoulder_center", Vector3(float(_baseline.get("shoulder_center_x", 0.0)), 0.0, 0.0))
+	var shoulder_center := Vector2(shoulder_center_vec.x, shoulder_center_vec.y)
+	var confidences: Dictionary = metrics.get("confidences", {})
+	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
+	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
+	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
+	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
+	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
+	_update_flow_nose_history(nose, shoulder_center, float(confidences.get("head", 0.0)), timestamp_ms)
+	_update_flow_hand_history("left", left_wrist, left_shoulder, float(confidences.get("left_hand", 0.0)), timestamp_ms)
+	_update_flow_hand_history("right", right_wrist, right_shoulder, float(confidences.get("right_hand", 0.0)), timestamp_ms)
 
 func _update_flow_nose_history(nose: Dictionary, shoulder_center: Vector2, confidence: float, timestamp_ms: int) -> void:
 	_update_flow_landmark_history("nose", nose, shoulder_center, confidence, timestamp_ms)
