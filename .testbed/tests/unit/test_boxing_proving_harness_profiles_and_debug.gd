@@ -1580,21 +1580,22 @@ func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensi
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_width_px", 0.0)), 166.4))
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_height_px", 0.0)), 87.9))
 
-func test_flow_ring_chart_maps_gameplay_cells_into_live_view_rows() -> void:
+func test_flow_ring_chart_mirrors_gameplay_cells_horizontally_without_row_remap() -> void:
 	var chart := add_child_autoqfree(FlowRingChartScript.new()) as Control
 	assert_not_null(chart)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 8)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 11)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 4)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 0)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 3)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 3)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 0)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 7)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 3)), 4)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 11)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 8)
 
-func test_proving_harness_formats_flow_cells_in_live_view_row_order() -> void:
+func test_proving_harness_restores_flow_cell_numbering_contract() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)
-	assert_eq(String(scene_root.call("_fmt_flow_cell", 8)), "cell 8 [r0 c0]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 0)), "cell 0 [r0 c0]")
 	assert_eq(String(scene_root.call("_fmt_flow_cell", 4)), "cell 4 [r1 c0]")
-	assert_eq(String(scene_root.call("_fmt_flow_cell", 0)), "cell 0 [r2 c0]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 8)), "cell 8 [r2 c0]")
 
 func test_boxing_proving_scene_places_shared_grid_cards_inside_board_grid_with_boxing_shell_style() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

@@ -110,8 +110,8 @@ func _draw_placement_grid(chart_rect: Rect2, font: Font, font_size: int) -> void
 func _gameplay_cell_index_for_visual_slot(visual_row: int, column: int) -> int:
 	if visual_row < 0 or visual_row >= GRID_ROWS or column < 0 or column >= GRID_COLUMNS:
 		return -1
-	var gameplay_row := (GRID_ROWS - 1) - visual_row
-	return gameplay_row * GRID_COLUMNS + column
+	var mirrored_column := (GRID_COLUMNS - 1) - column
+	return visual_row * GRID_COLUMNS + mirrored_column
 
 func _draw_cell_label(font: Font, font_size: int, cell_rect: Rect2, label: String, _corner_radius: float) -> void:
 	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)

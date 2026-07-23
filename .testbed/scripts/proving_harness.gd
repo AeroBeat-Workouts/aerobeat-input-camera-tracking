@@ -2899,9 +2899,8 @@ func _fmt_flow_cell(value: int) -> String:
 	if value < 0:
 		return "-"
 	var row := int(floor(float(value) / 4.0))
-	var preview_row := 2 - row
 	var column := value % 4
-	return "cell %d [r%d c%d]" % [value, preview_row, column]
+	return "cell %d [r%d c%d]" % [value, row, column]
 
 func _fmt_flow_direction(value: int) -> String:
 	match value:
