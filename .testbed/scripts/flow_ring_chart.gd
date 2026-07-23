@@ -95,17 +95,23 @@ func _draw_placement_grid(chart_rect: Rect2, font: Font, font_size: int) -> void
 	var board_origin := chart_rect.position + (chart_rect.size - board_size) * 0.5
 	var corner_radius := maxf(cell_size * 0.12, 9.0)
 	var stroke_width := clampf(cell_size * 0.04, 1.3, 2.2)
-	for row: int in range(GRID_ROWS):
+	for visual_row: int in range(GRID_ROWS):
 		for column: int in range(GRID_COLUMNS):
-			var cell_index := row * GRID_COLUMNS + column
+			var cell_index := _gameplay_cell_index_for_visual_slot(visual_row, column)
 			var cell_rect := Rect2(
-				board_origin + Vector2(column * (cell_size + gap), row * (cell_size + gap)),
+				board_origin + Vector2(column * (cell_size + gap), visual_row * (cell_size + gap)),
 				Vector2(cell_size, cell_size)
 			)
 			var fill_color := active_fill_color if cell_index == active_index else inactive_fill_color
 			draw_rect(cell_rect, fill_color, true)
 			draw_rect(cell_rect, line_color, false, stroke_width)
 			_draw_cell_label(font, font_size, cell_rect, str(cell_index), corner_radius)
+
+func _gameplay_cell_index_for_visual_slot(visual_row: int, column: int) -> int:
+	if visual_row < 0 or visual_row >= GRID_ROWS or column < 0 or column >= GRID_COLUMNS:
+		return -1
+	var gameplay_row := (GRID_ROWS - 1) - visual_row
+	return gameplay_row * GRID_COLUMNS + column
 
 func _draw_cell_label(font: Font, font_size: int, cell_rect: Rect2, label: String, _corner_radius: float) -> void:
 	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)

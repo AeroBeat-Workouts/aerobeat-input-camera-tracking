@@ -776,20 +776,25 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 
 func _compute_calibration_grid_width(left_wrist: Dictionary, left_elbow: Dictionary, left_shoulder: Dictionary, right_shoulder: Dictionary, right_elbow: Dictionary, right_wrist: Dictionary) -> float:
 	return (
-		PoseMetrics.distance_2d(left_wrist, left_elbow)
-		+ PoseMetrics.distance_2d(left_elbow, left_shoulder)
-		+ PoseMetrics.distance_2d(left_shoulder, right_shoulder)
-		+ PoseMetrics.distance_2d(right_shoulder, right_elbow)
-		+ PoseMetrics.distance_2d(right_elbow, right_wrist)
+		_camera_space_axis_distance(left_wrist, left_elbow, "x")
+		+ _camera_space_axis_distance(left_elbow, left_shoulder, "x")
+		+ _camera_space_axis_distance(left_shoulder, right_shoulder, "x")
+		+ _camera_space_axis_distance(right_shoulder, right_elbow, "x")
+		+ _camera_space_axis_distance(right_elbow, right_wrist, "x")
 	)
 
 func _compute_calibration_grid_height(left_wrist: Dictionary, left_elbow: Dictionary, left_shoulder: Dictionary, right_wrist: Dictionary, right_elbow: Dictionary, right_shoulder: Dictionary) -> float:
 	return (
-		PoseMetrics.distance_2d(left_wrist, left_elbow)
-		+ PoseMetrics.distance_2d(left_elbow, left_shoulder)
-		+ PoseMetrics.distance_2d(right_wrist, right_elbow)
-		+ PoseMetrics.distance_2d(right_elbow, right_shoulder)
+		_camera_space_axis_distance(left_wrist, left_elbow, "y")
+		+ _camera_space_axis_distance(left_elbow, left_shoulder, "y")
+		+ _camera_space_axis_distance(right_wrist, right_elbow, "y")
+		+ _camera_space_axis_distance(right_elbow, right_shoulder, "y")
 	)
+
+func _camera_space_axis_distance(a: Dictionary, b: Dictionary, axis: String) -> float:
+	if a.is_empty() or b.is_empty():
+		return 0.0
+	return absf(float(a.get(axis, 0.0)) - float(b.get(axis, 0.0)))
 
 func _estimate_height_state(height_ratio: float, hip_center_delta_y: float) -> StringName:
 	if height_ratio <= 0.82 or hip_center_delta_y > 0.05:
