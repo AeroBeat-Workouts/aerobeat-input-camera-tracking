@@ -92,8 +92,9 @@ func _build_render_snapshot() -> Dictionary:
 	var top_left_normalized := _to_preview_coordinate_space(Vector2(left_boundary, top_boundary))
 	var top_left := _map_preview_space_point(top_left_normalized)
 	var next_column := _map_preview_space_point(top_left_normalized + Vector2(cell_width, 0.0))
+	var next_row := _map_preview_space_point(top_left_normalized + Vector2(0.0, cell_height))
 	var cell_width_px := absf(next_column.x - top_left.x)
-	var cell_height_px := cell_width_px
+	var cell_height_px := absf(next_row.y - top_left.y)
 	return {
 		"draw_ready": cell_width_px > 0.000001,
 		"columns": columns,

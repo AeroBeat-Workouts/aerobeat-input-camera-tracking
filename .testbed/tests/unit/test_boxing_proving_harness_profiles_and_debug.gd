@@ -111,7 +111,7 @@ class FakeAthleteRecalibrateProvider:
 				"required_landmarks_ready": false,
 			},
 			"instructions": {
-				"show_sample_landmarks": {"text": "Keep nose, left shoulder, and both wrists visible", "ready": false},
+				"show_sample_landmarks": {"text": "Keep nose, shoulders, elbows, and wrists visible", "ready": false},
 			},
 		}
 		for key: Variant in overrides.keys():
@@ -1499,13 +1499,13 @@ func _shared_flow_grid_truth_state(capture_source: String = "calibration_session
 					"coordinate_space": "gameplay_bottom_left",
 					"cell_size": 0.08,
 					"cell_width": 0.08,
-					"cell_height": 0.08,
+					"cell_height": 0.10,
 					"width": 0.32,
-					"height": 0.24,
+					"height": 0.30,
 					"left_boundary": 0.34,
 					"top_boundary": 0.84,
 					"right_boundary": 0.66,
-					"bottom_boundary": 0.60,
+					"bottom_boundary": 0.54,
 					"cell_rects": [
 						{"index": 0}, {"index": 1}, {"index": 2}, {"index": 3},
 						{"index": 4}, {"index": 5}, {"index": 6}, {"index": 7},
@@ -1552,13 +1552,13 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(overlay_snapshot.get("rows", 0)), 3)
 		assert_eq(int(overlay_snapshot.get("cell_count", 0)), 12)
 		assert_eq(float(overlay_snapshot.get("cell_width", 0.0)), 0.08)
-		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.08)
+		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.10)
 		assert_eq(int(nose_chart.get("active_index")), 5)
 		assert_eq(int(left_chart.get("active_index")), 4)
 		assert_eq(int(right_chart.get("active_index")), 7)
 		assert_eq(String(truth_label.text), "")
 
-func test_flow_grid_overlay_flips_gameplay_y_and_renders_square_cells_in_preview_space() -> void:
+func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensions_in_preview_space() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)
 	var presenter := add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
@@ -1575,9 +1575,9 @@ func test_flow_grid_overlay_flips_gameplay_y_and_renders_square_cells_in_preview
 	assert_true(is_equal_approx(render_top_left.x, 176.8))
 	assert_true(is_equal_approx(render_top_left.y, 46.88))
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_width_px", 0.0)), 41.6))
-	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_height_px", 0.0)), 41.6))
+	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_height_px", 0.0)), 29.3))
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_width_px", 0.0)), 166.4))
-	assert_true(is_equal_approx(float(overlay_snapshot.get("render_height_px", 0.0)), 124.8))
+	assert_true(is_equal_approx(float(overlay_snapshot.get("render_height_px", 0.0)), 87.9))
 
 func test_boxing_proving_scene_places_shared_grid_cards_inside_board_grid_with_boxing_shell_style() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

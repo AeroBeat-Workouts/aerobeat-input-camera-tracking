@@ -98,6 +98,8 @@ var _baseline_accumulator := {
 	"left_wrist_x": 0.0,
 	"right_wrist_x": 0.0,
 	"wrist_midpoint_x": 0.0,
+	"grid_width": 0.0,
+	"grid_height": 0.0,
 	"horizontal_wrist_span": 0.0,
 	"wrist_span": 0.0,
 	"left_knee_y": 0.0,
@@ -122,6 +124,8 @@ var _baseline: Dictionary = {
 	"left_wrist_x": 0.0,
 	"right_wrist_x": 0.0,
 	"wrist_midpoint_x": 0.0,
+	"grid_width": 0.0,
+	"grid_height": 0.0,
 	"horizontal_wrist_span": 0.0,
 	"wrist_span": 0.0,
 	"left_knee_y": 0.0,
@@ -240,7 +244,7 @@ func _build_default_calibration_readiness() -> Dictionary:
 		"ready": false,
 		"failure_reason": "required_sample_landmarks_unavailable",
 		"instruction_key": "show_sample_landmarks",
-		"instruction_text": "Need tracking/reacquiring plus nose, left shoulder, and both wrists visible",
+		"instruction_text": "Need tracking/reacquiring plus nose, shoulders, elbows, and wrists visible",
 	}
 
 func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
@@ -252,12 +256,12 @@ func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
 		},
 		"show_sample_landmarks": {
 			"key": "show_sample_landmarks",
-			"text": "Keep nose, left shoulder, and both wrists visible",
+			"text": "Keep nose, shoulders, elbows, and wrists visible",
 			"ready": bool(readiness.get("required_landmarks_ready", false)),
 		},
 		"capture_sample": {
 			"key": "capture_sample",
-			"text": "Countdown ends, then one live wrist sample is captured",
+			"text": "Countdown ends, then one live upper-body chain sample is captured",
 			"ready": bool(readiness.get("ready", false)),
 		},
 	}
@@ -298,6 +302,8 @@ func _reset_baseline_calibration() -> void:
 		"left_wrist_x": 0.0,
 		"right_wrist_x": 0.0,
 		"wrist_midpoint_x": 0.0,
+		"grid_width": 0.0,
+		"grid_height": 0.0,
 		"horizontal_wrist_span": 0.0,
 		"wrist_span": 0.0,
 		"left_knee_y": 0.0,
@@ -322,6 +328,8 @@ func _reset_baseline_calibration() -> void:
 		"left_wrist_x": 0.0,
 		"right_wrist_x": 0.0,
 		"wrist_midpoint_x": 0.0,
+		"grid_width": 0.0,
+		"grid_height": 0.0,
 		"horizontal_wrist_span": 0.0,
 		"wrist_span": 0.0,
 		"left_knee_y": 0.0,
@@ -688,14 +696,18 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var athlete_height := float(measurements.get("athlete_height", 0.0))
 	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
 	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
+	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
+	var left_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_ELBOW)
+	var right_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_ELBOW)
 	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
 	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
 	var wrist_span := PoseMetrics.distance_2d(left_wrist, right_wrist)
 	var left_wrist_x := float(left_wrist.get("x", 0.0))
 	var right_wrist_x := float(right_wrist.get("x", 0.0))
-	var horizontal_wrist_span := absf(right_wrist_x - left_wrist_x)
 	var wrist_midpoint_x := (left_wrist_x + right_wrist_x) * 0.5
-	if shoulder_width <= 0.0 or torso_height <= 0.0 or horizontal_wrist_span <= 0.0 or nose.is_empty() or left_shoulder.is_empty():
+	var calibration_width := _compute_calibration_grid_width(left_wrist, left_elbow, left_shoulder, right_shoulder, right_elbow, right_wrist)
+	var calibration_height := _compute_calibration_grid_height(left_wrist, left_elbow, left_shoulder, right_wrist, right_elbow, right_shoulder)
+	if shoulder_width <= 0.0 or torso_height <= 0.0 or calibration_width <= 0.0 or calibration_height <= 0.0 or nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty():
 		return
 	_baseline_accumulator["frames"] += 1
 	_baseline_accumulator["shoulder_width"] += shoulder_width
@@ -714,7 +726,9 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	_baseline_accumulator["left_wrist_x"] += left_wrist_x
 	_baseline_accumulator["right_wrist_x"] += right_wrist_x
 	_baseline_accumulator["wrist_midpoint_x"] += wrist_midpoint_x
-	_baseline_accumulator["horizontal_wrist_span"] += horizontal_wrist_span
+	_baseline_accumulator["grid_width"] += calibration_width
+	_baseline_accumulator["grid_height"] += calibration_height
+	_baseline_accumulator["horizontal_wrist_span"] += calibration_width
 	_baseline_accumulator["wrist_span"] += wrist_span
 	_baseline_accumulator["left_knee_y"] += float(PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_KNEE).get("y", 0.0))
 	_baseline_accumulator["right_knee_y"] += float(PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_KNEE).get("y", 0.0))
@@ -743,6 +757,8 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		"left_wrist_x": float(_baseline_accumulator["left_wrist_x"]) / float(frames),
 		"right_wrist_x": float(_baseline_accumulator["right_wrist_x"]) / float(frames),
 		"wrist_midpoint_x": float(_baseline_accumulator["wrist_midpoint_x"]) / float(frames),
+		"grid_width": float(_baseline_accumulator["grid_width"]) / float(frames),
+		"grid_height": float(_baseline_accumulator["grid_height"]) / float(frames),
 		"horizontal_wrist_span": float(_baseline_accumulator["horizontal_wrist_span"]) / float(frames),
 		"wrist_span": float(_baseline_accumulator["wrist_span"]) / float(frames),
 		"left_knee_y": float(_baseline_accumulator["left_knee_y"]) / float(frames),
@@ -757,6 +773,23 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		_calibration_session["captured_at_ms"] = timestamp_ms
 		_calibration_session["captured_sample_frames"] = frames
 		_calibration_session["failure_reason"] = ""
+
+func _compute_calibration_grid_width(left_wrist: Dictionary, left_elbow: Dictionary, left_shoulder: Dictionary, right_shoulder: Dictionary, right_elbow: Dictionary, right_wrist: Dictionary) -> float:
+	return (
+		PoseMetrics.distance_2d(left_wrist, left_elbow)
+		+ PoseMetrics.distance_2d(left_elbow, left_shoulder)
+		+ PoseMetrics.distance_2d(left_shoulder, right_shoulder)
+		+ PoseMetrics.distance_2d(right_shoulder, right_elbow)
+		+ PoseMetrics.distance_2d(right_elbow, right_wrist)
+	)
+
+func _compute_calibration_grid_height(left_wrist: Dictionary, left_elbow: Dictionary, left_shoulder: Dictionary, right_wrist: Dictionary, right_elbow: Dictionary, right_shoulder: Dictionary) -> float:
+	return (
+		PoseMetrics.distance_2d(left_wrist, left_elbow)
+		+ PoseMetrics.distance_2d(left_elbow, left_shoulder)
+		+ PoseMetrics.distance_2d(right_wrist, right_elbow)
+		+ PoseMetrics.distance_2d(right_elbow, right_shoulder)
+	)
 
 func _estimate_height_state(height_ratio: float, hip_center_delta_y: float) -> StringName:
 	if height_ratio <= 0.82 or hip_center_delta_y > 0.05:
@@ -816,24 +849,28 @@ func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: Strin
 	readiness["tracking_ready"] = true
 	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
 	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
+	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
+	var left_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_ELBOW)
+	var right_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_ELBOW)
 	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
 	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
-	if nose.is_empty() or left_shoulder.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
+	if nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
 		readiness["failure_reason"] = "required_sample_landmarks_unavailable"
 		readiness["instruction_key"] = "show_sample_landmarks"
-		readiness["instruction_text"] = "Need nose, left shoulder, and both wrists visible before calibration capture can complete"
+		readiness["instruction_text"] = "Need nose, shoulders, elbows, and wrists visible before calibration capture can complete"
 		return readiness
 	readiness["required_landmarks_ready"] = true
-	var horizontal_wrist_span := absf(float(right_wrist.get("x", 0.0)) - float(left_wrist.get("x", 0.0)))
-	if horizontal_wrist_span <= 0.0:
-		readiness["failure_reason"] = "invalid_wrist_span"
+	var calibration_width := _compute_calibration_grid_width(left_wrist, left_elbow, left_shoulder, right_shoulder, right_elbow, right_wrist)
+	var calibration_height := _compute_calibration_grid_height(left_wrist, left_elbow, left_shoulder, right_wrist, right_elbow, right_shoulder)
+	if calibration_width <= 0.0 or calibration_height <= 0.0:
+		readiness["failure_reason"] = "invalid_joint_chain_sample"
 		readiness["instruction_key"] = "show_sample_landmarks"
-		readiness["instruction_text"] = "Move wrists apart so the calibration sample has non-zero width"
+		readiness["instruction_text"] = "Move naturally so the shoulder-elbow-wrist chains produce a measurable calibration sample"
 		return readiness
 	readiness["ready"] = true
 	readiness["failure_reason"] = ""
 	readiness["instruction_key"] = "capture_sample"
-	readiness["instruction_text"] = "Countdown complete — capturing one wrist-width sample now"
+	readiness["instruction_text"] = "Countdown complete — capturing one upper-body chain sample now"
 	return readiness
 
 func _average_x(points: Array) -> float:
@@ -1242,6 +1279,8 @@ func _build_flow_grid_debug() -> Dictionary:
 		"anchor_y": anchor_y,
 		"left_wrist_x": float(_baseline.get("left_wrist_x", 0.0)),
 		"right_wrist_x": float(_baseline.get("right_wrist_x", 0.0)),
+		"grid_width": float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0))),
+		"grid_height": float(_baseline.get("grid_height", 0.0)),
 		"horizontal_wrist_span": float(_baseline.get("horizontal_wrist_span", 0.0)),
 		"left_boundary": left_boundary,
 		"top_boundary": top_boundary,
@@ -1253,7 +1292,7 @@ func _build_flow_grid_debug() -> Dictionary:
 func _get_flow_grid_rect() -> Dictionary:
 	var cell_width := _get_flow_cell_width()
 	var cell_height := _get_flow_cell_height(cell_width)
-	var grid_width := float(_baseline.get("horizontal_wrist_span", 0.0))
+	var grid_width := float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0)))
 	var anchor_x := float(_baseline.get("nose_x", 0.0))
 	var left_boundary := anchor_x - grid_width * 0.5
 	var right_boundary := anchor_x + grid_width * 0.5
@@ -2019,18 +2058,16 @@ func _analyze_flow_landmark_motion(history_name: String, max_window_ms: int) -> 
 	}
 
 func _get_flow_cell_width() -> float:
-	var horizontal_wrist_span := float(_baseline.get("horizontal_wrist_span", 0.0))
-	if horizontal_wrist_span <= 0.0:
+	var grid_width := float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0)))
+	if grid_width <= 0.0:
 		return 0.0
-	return horizontal_wrist_span / float(FLOW_GRID_COLUMNS)
+	return grid_width / float(FLOW_GRID_COLUMNS)
 
 func _get_flow_cell_height(cell_width: float = -1.0) -> float:
-	var resolved_cell_width := cell_width
-	if resolved_cell_width < 0.0:
-		resolved_cell_width = _get_flow_cell_width()
-	if resolved_cell_width <= 0.0:
+	var grid_height := float(_baseline.get("grid_height", 0.0))
+	if grid_height <= 0.0:
 		return 0.0
-	return resolved_cell_width
+	return grid_height / float(FLOW_GRID_ROWS)
 
 func _get_flow_cell_size() -> float:
 	return _get_flow_cell_width()

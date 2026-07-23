@@ -1647,7 +1647,7 @@ func test_quantizes_flow_cells_from_calibrated_wrist_rect() -> void:
 	assert_true(fourth_cell >= third_cell)
 	assert_true(first_cell != fourth_cell)
 
-func test_calibration_stores_horizontal_wrist_basis_for_flow_grid() -> void:
+func test_calibration_stores_joint_chain_basis_for_flow_grid() -> void:
 	for idx in range(5):
 		var state := substrate.process_landmarks(_make_pose_frame({
 			PoseLandmarkIds.NOSE: {"x": 0.56},
@@ -1659,8 +1659,10 @@ func test_calibration_stores_horizontal_wrist_basis_for_flow_grid() -> void:
 	assert_true(is_equal_approx(float(baseline.get("left_wrist_x", 0.0)), 0.18))
 	assert_true(is_equal_approx(float(baseline.get("right_wrist_x", 0.0)), 0.62))
 	assert_true(is_equal_approx(float(baseline.get("wrist_midpoint_x", 0.0)), 0.40))
-	assert_true(is_equal_approx(float(baseline.get("horizontal_wrist_span", 0.0)), 0.44))
-	assert_true(float(baseline.get("wrist_span", 0.0)) > float(baseline.get("horizontal_wrist_span", 0.0)))
+	assert_true(is_equal_approx(float(baseline.get("grid_width", 0.0)), 0.6547484738))
+	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), 0.4547484738))
+	assert_true(is_equal_approx(float(baseline.get("horizontal_wrist_span", 0.0)), float(baseline.get("grid_width", 0.0))))
+	assert_true(float(baseline.get("grid_width", 0.0)) > float(baseline.get("wrist_span", 0.0)))
 
 func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 	_calibrate_stance()
@@ -1668,7 +1670,7 @@ func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.48, "y": 0.72},
 	}), 1100)
 	var flow_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.39, "y": 0.72},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.72},
 	}), 1200)
 	var flow_events := _flow_events(flow_state.get("events", []))
 	assert_eq(flow_events.size(), 1)
@@ -1698,10 +1700,12 @@ func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
 	assert_eq((grid_debug.get("cell_rects", []) as Array).size(), 12)
 	assert_true(is_equal_approx(float(grid_debug.get("anchor_x", 0.0)), 0.50))
 	assert_true(is_equal_approx(float(grid_debug.get("anchor_y", 0.0)), 0.70))
-	assert_true(is_equal_approx(float(grid_debug.get("left_boundary", 0.0)), 0.28))
-	assert_true(is_equal_approx(float(grid_debug.get("right_boundary", 0.0)), 0.72))
-	assert_true(is_equal_approx(float(grid_debug.get("cell_width", 0.0)), 0.11))
-	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.11))
+	assert_true(is_equal_approx(float(grid_debug.get("left_boundary", 0.0)), 0.2430361607))
+	assert_true(is_equal_approx(float(grid_debug.get("right_boundary", 0.0)), 0.7569638393))
+	assert_true(is_equal_approx(float(grid_debug.get("cell_width", 0.0)), 0.1284819196))
+	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.1046425595))
+	assert_true(is_equal_approx(float(grid_debug.get("grid_width", 0.0)), 0.5139276785))
+	assert_true(is_equal_approx(float(grid_debug.get("grid_height", 0.0)), 0.3139276785))
 	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
 	var nose_debug: Dictionary = tracked_landmarks.get("nose", {})
 	var left_wrist_debug: Dictionary = tracked_landmarks.get("left_wrist", {})
@@ -1723,9 +1727,9 @@ func test_request_athlete_recalibration_starts_shared_countdown_session() -> voi
 	assert_eq(int(session.get("seconds_remaining", 0)), 10)
 	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
 	assert_true(state.get("metrics", {}).has("calibration_session"))
-	assert_eq(String(session.get("readiness", {}).get("instruction_text", "")), "Need tracking/reacquiring plus nose, left shoulder, and both wrists visible")
-	assert_eq(String(session.get("instructions", {}).get("show_sample_landmarks", {}).get("text", "")), "Keep nose, left shoulder, and both wrists visible")
-	assert_eq(String(session.get("instructions", {}).get("capture_sample", {}).get("text", "")), "Countdown ends, then one live wrist sample is captured")
+	assert_eq(String(session.get("readiness", {}).get("instruction_text", "")), "Need tracking/reacquiring plus nose, shoulders, elbows, and wrists visible")
+	assert_eq(String(session.get("instructions", {}).get("show_sample_landmarks", {}).get("text", "")), "Keep nose, shoulders, elbows, and wrists visible")
+	assert_eq(String(session.get("instructions", {}).get("capture_sample", {}).get("text", "")), "Countdown ends, then one live upper-body chain sample is captured")
 
 func test_calibration_readiness_requires_sample_landmarks_before_capture() -> void:
 	_calibrate_stance()
@@ -1735,21 +1739,25 @@ func test_calibration_readiness_requires_sample_landmarks_before_capture() -> vo
 	var readiness: Dictionary = session.get("readiness", {})
 	assert_eq(String(session.get("state", "")), "succeeded")
 	assert_true(bool(readiness.get("ready", false)))
-	assert_eq(String(readiness.get("instruction_text", "")), "Countdown complete — capturing one wrist-width sample now")
+	assert_eq(String(readiness.get("instruction_text", "")), "Countdown complete — capturing one upper-body chain sample now")
 
 	var missing_landmark_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), {})
 	assert_false(bool(missing_landmark_readiness.get("ready", true)))
 	assert_eq(String(missing_landmark_readiness.get("failure_reason", "")), "required_sample_landmarks_unavailable")
-	assert_eq(String(missing_landmark_readiness.get("instruction_text", "")), "Need nose, left shoulder, and both wrists visible before calibration capture can complete")
+	assert_eq(String(missing_landmark_readiness.get("instruction_text", "")), "Need nose, shoulders, elbows, and wrists visible before calibration capture can complete")
 
-	var zero_span_frame := _make_calibration_pose_frame({
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.10, "y": 0.70, "z": 0.0, "v": 0.99},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.10, "y": 0.70, "z": 0.0, "v": 0.99},
+	var collapsed_chain_frame := _make_calibration_pose_frame({
+		PoseLandmarkIds.LEFT_SHOULDER: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_SHOULDER: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
 	})
-	var zero_span_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), _landmarks_by_id(zero_span_frame))
-	assert_false(bool(zero_span_readiness.get("ready", true)))
-	assert_eq(String(zero_span_readiness.get("failure_reason", "")), "invalid_wrist_span")
-	assert_eq(String(zero_span_readiness.get("instruction_text", "")), "Move wrists apart so the calibration sample has non-zero width")
+	var collapsed_chain_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), _landmarks_by_id(collapsed_chain_frame))
+	assert_false(bool(collapsed_chain_readiness.get("ready", true)))
+	assert_eq(String(collapsed_chain_readiness.get("failure_reason", "")), "invalid_joint_chain_sample")
+	assert_eq(String(collapsed_chain_readiness.get("instruction_text", "")), "Move naturally so the shoulder-elbow-wrist chains produce a measurable calibration sample")
 
 	var missing_tracking_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("lost"), {})
 	assert_false(bool(missing_tracking_readiness.get("ready", true)))
