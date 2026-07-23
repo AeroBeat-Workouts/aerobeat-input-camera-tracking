@@ -14,8 +14,8 @@ squat:
   grid_avoidance:
     obstacle:
       label: top_row
-      occupied_rows: [2]
-      occupied_cells: [8, 9, 10, 11]
+      occupied_rows: [0]
+      occupied_cells: [0, 1, 2, 3]
 
 weave:
   backend: grid_avoidance

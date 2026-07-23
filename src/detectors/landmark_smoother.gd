@@ -18,6 +18,7 @@ func clear() -> void:
 	_smoothed_samples_by_id.clear()
 
 func push_landmarks(landmarks: Array) -> Dictionary:
+	var seen_ids := {}
 	for landmark: Variant in landmarks:
 		if not landmark is Dictionary:
 			continue
@@ -25,8 +26,23 @@ func push_landmarks(landmarks: Array) -> Dictionary:
 		var landmark_id: int = int(landmark_dict.get("id", -1))
 		if landmark_id < 0:
 			continue
+		seen_ids[landmark_id] = true
 		var history: Array = _samples_by_id.get(landmark_id, [])
 		history.append(landmark_dict)
+		while history.size() > _window_size:
+			history.pop_front()
+		_samples_by_id[landmark_id] = history
+		_smoothed_samples_by_id[landmark_id] = _smooth_history_moving_average(history)
+	for landmark_id_variant: Variant in _samples_by_id.keys():
+		var landmark_id := int(landmark_id_variant)
+		if seen_ids.has(landmark_id):
+			continue
+		var history: Array = _samples_by_id.get(landmark_id, [])
+		if history.is_empty():
+			continue
+		var missing_sample: Dictionary = (history[history.size() - 1] as Dictionary).duplicate(true)
+		missing_sample["v"] = 0.0
+		history.append(missing_sample)
 		while history.size() > _window_size:
 			history.pop_front()
 		_samples_by_id[landmark_id] = history

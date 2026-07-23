@@ -1260,14 +1260,16 @@ func _build_flow_grid_debug() -> Dictionary:
 	var anchor_y := float(grid_rect.get("anchor_y", 0.0))
 	var cell_rects: Array = []
 	if is_calibrated:
-		for row: int in range(rows):
+		for athlete_row: int in range(rows):
+			var gameplay_row := (rows - 1) - athlete_row
 			for column: int in range(columns):
-				var cell_bottom := bottom_boundary + cell_height * float(row)
+				var cell_bottom := bottom_boundary + cell_height * float(gameplay_row)
 				var cell_top := cell_bottom + cell_height
 				cell_rects.append({
-					"index": row * columns + column,
+					"index": athlete_row * columns + column,
 					"column": column,
-					"row": row,
+					"row": athlete_row,
+					"gameplay_row": gameplay_row,
 					"left": left_boundary + cell_width * float(column),
 					"right": left_boundary + cell_width * float(column + 1),
 					"top": cell_top,
@@ -1277,6 +1279,7 @@ func _build_flow_grid_debug() -> Dictionary:
 		"is_calibrated": is_calibrated,
 		"columns": columns,
 		"rows": rows,
+		"cell_index_contract": "athlete_space_top_left",
 		"coordinate_space": "gameplay_bottom_left",
 		"anchor": Vector2(anchor_x, anchor_y),
 		"cell_size": cell_width,
@@ -2097,10 +2100,11 @@ func _flow_cell_index_from_position(position: Vector2) -> int:
 	if relative_y < 0.0 or relative_y >= cell_height * float(FLOW_GRID_ROWS):
 		return -1
 	var column := int(floor(relative_x / cell_width))
-	var row := int(floor(relative_y / cell_height))
-	if column < 0 or column >= FLOW_GRID_COLUMNS or row < 0 or row >= FLOW_GRID_ROWS:
+	var gameplay_row := int(floor(relative_y / cell_height))
+	if column < 0 or column >= FLOW_GRID_COLUMNS or gameplay_row < 0 or gameplay_row >= FLOW_GRID_ROWS:
 		return -1
-	return row * FLOW_GRID_COLUMNS + column
+	var athlete_row := (FLOW_GRID_ROWS - 1) - gameplay_row
+	return athlete_row * FLOW_GRID_COLUMNS + column
 
 func _flow_direction_index_from_vector(vector: Vector2) -> int:
 	if vector.length() <= 0.000001:
@@ -2740,8 +2744,8 @@ func _get_squat_config() -> Dictionary:
 		"enabled": true,
 		"obstacle": _normalize_grid_avoidance_obstacle({
 			"label": "top_row",
-			"occupied_rows": [2],
-			"occupied_cells": [8, 9, 10, 11],
+			"occupied_rows": [0],
+			"occupied_cells": [0, 1, 2, 3],
 		}),
 	}
 	if _config == null:

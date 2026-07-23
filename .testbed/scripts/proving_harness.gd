@@ -2898,11 +2898,9 @@ func _flow_label_from_event_name(event_name: String) -> String:
 func _fmt_flow_cell(value: int) -> String:
 	if value < 0:
 		return "-"
-	var gameplay_row := int(floor(float(value) / 4.0))
+	var athlete_space_row := int(floor(float(value) / 4.0))
 	var column := value % 4
-	var athlete_space_row := 2 - gameplay_row
-	var athlete_space_cell := athlete_space_row * 4 + column
-	return "cell %d [r%d c%d]" % [athlete_space_cell, athlete_space_row, column]
+	return "cell %d [r%d c%d]" % [value, athlete_space_row, column]
 
 func _fmt_flow_direction(value: int) -> String:
 	match value:

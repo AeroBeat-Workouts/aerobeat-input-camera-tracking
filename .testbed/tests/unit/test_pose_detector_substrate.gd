@@ -1753,6 +1753,35 @@ func test_flow_debug_keeps_visible_wrist_tracking_when_other_wrist_drops_out() -
 	assert_eq(int(right_wrist_debug.get("current_cell", -1)), 6)
 	assert_true(int(right_wrist_debug.get("history_points", 0)) >= 1)
 
+func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_landmark_disappears_from_frame() -> void:
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.79},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.65, "y": 0.72},
+	}), 1200)
+	var tracked_landmarks: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 2)
+	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 4)
+	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), 7)
+
+	var missing_right_frame := _make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.58, "y": 0.79},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.46, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.65, "y": 0.72},
+	})
+	for index: int in range(missing_right_frame.size() - 1, -1, -1):
+		var landmark: Dictionary = missing_right_frame[index]
+		if int(landmark.get("id", -1)) == PoseLandmarkIds.RIGHT_WRIST:
+			missing_right_frame.remove_at(index)
+	state = substrate.process_landmarks(missing_right_frame, 1280)
+	tracked_landmarks = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 2)
+	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 5)
+	assert_true(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("history_points", 0)) >= 2)
+	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), -1)
+	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("history_points", 0)), 0)
+
 func test_request_athlete_recalibration_starts_shared_countdown_session() -> void:
 	_calibrate_stance()
 	substrate.request_athlete_recalibration()
@@ -1916,8 +1945,8 @@ func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 			"grid_avoidance": {
 				"obstacle": {
 					"label": "top_row",
-					"occupied_rows": [2],
-					"occupied_cells": [8, 9, 10, 11],
+					"occupied_rows": [0],
+					"occupied_cells": [0, 1, 2, 3],
 				}
 			}
 		}
@@ -1932,8 +1961,8 @@ func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	var squat_debug: Dictionary = blocked_state.get("gesture_debug", {}).get("squat", {})
 	assert_eq(String(squat_debug.get("backend", "")), "grid_avoidance")
 	assert_false(bool(squat_debug.get("state", true)))
-	assert_eq(int(squat_debug.get("current_cell", -1)), 10)
-	assert_eq(squat_debug.get("occupied_cells", []), [8, 9, 10, 11])
+	assert_eq(int(squat_debug.get("current_cell", -1)), 2)
+	assert_eq(squat_debug.get("occupied_cells", []), [0, 1, 2, 3])
 	assert_true(bool(squat_debug.get("nose_in_blocked_region", false)))
 	assert_false(bool(squat_debug.get("avoidance_clear", true)))
 

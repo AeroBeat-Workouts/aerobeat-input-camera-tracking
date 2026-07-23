@@ -111,8 +111,7 @@ func _draw_placement_grid(chart_rect: Rect2, font: Font, font_size: int) -> void
 func _gameplay_cell_index_for_visual_slot(visual_row: int, column: int) -> int:
 	if visual_row < 0 or visual_row >= GRID_ROWS or column < 0 or column >= GRID_COLUMNS:
 		return -1
-	var gameplay_row := (GRID_ROWS - 1) - visual_row
-	return gameplay_row * GRID_COLUMNS + column
+	return visual_row * GRID_COLUMNS + column
 
 func _athlete_space_cell_index_for_visual_slot(visual_row: int, column: int) -> int:
 	if visual_row < 0 or visual_row >= GRID_ROWS or column < 0 or column >= GRID_COLUMNS:
