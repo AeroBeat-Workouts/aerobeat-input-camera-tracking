@@ -1673,7 +1673,12 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	assert_eq(String(status_label.text), "")
 	assert_false(status_label.visible)
 
-	provider.baseline = {"is_calibrated": true, "sample_frames": 5}
+	provider.baseline = {
+		"is_calibrated": true,
+		"sample_frames": 5,
+		"grid_width": 0.520000,
+		"grid_height": 0.454748,
+	}
 	provider.calibration_session = provider._make_session("succeeded", {
 		"result": "succeeded",
 		"captured_sample_frames": 5,
@@ -1688,6 +1693,8 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	assert_false(instruction_label.visible)
 	assert_eq(String(status_label.text), "")
 	assert_false(status_label.visible)
+	var event_lines: Array = scene_root.get("_event_lines")
+	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.454748"))
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

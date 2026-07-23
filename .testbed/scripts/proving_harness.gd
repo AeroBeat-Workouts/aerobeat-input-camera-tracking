@@ -494,6 +494,10 @@ func _resolve_calibration_session() -> Dictionary:
 		return tracking_singleton.get_calibration_session()
 	return {}
 
+func _resolve_baseline_state() -> Dictionary:
+	var baseline: Dictionary = _latest_state.get("baseline", {}) if _latest_state.get("baseline", {}) is Dictionary else {}
+	return baseline.duplicate(true)
+
 func _start_athlete_calibration_request() -> bool:
 	if provider != null:
 		if provider.has_method("start_athlete_calibration"):
@@ -576,13 +580,19 @@ func _apply_calibration_session_transition(state_name: String, session: Dictiona
 			event_name = "athlete_calibration_cancelled"
 	if event_name.is_empty():
 		return
-	_record_event(event_name, {
+	var event_payload := {
 		"mode": _mode_name(),
 		"state": state_name,
 		"failure_reason": String(session.get("failure_reason", "")),
 		"captured_sample_frames": int(session.get("captured_sample_frames", 0)),
 		"seconds_remaining": int(session.get("seconds_remaining", 0)),
-	})
+	}
+	if state_name == "succeeded":
+		var baseline := _resolve_baseline_state()
+		if bool(baseline.get("is_calibrated", false)):
+			event_payload["grid_width"] = float(baseline.get("grid_width", baseline.get("horizontal_wrist_span", 0.0)))
+			event_payload["grid_height"] = float(baseline.get("grid_height", 0.0))
+	_record_event(event_name, event_payload)
 	_record_fixture_state_snapshot(event_name)
 
 
@@ -2852,7 +2862,13 @@ func _build_event_feed_lines(event_name: String, payload: Dictionary) -> Array[S
 			_fmt_flow_cell(int(payload.get("cell", -1))),
 			_fmt_flow_direction(int(payload.get("direction", -1))),
 		]]
-	return [event_name + _format_event_payload(payload)]
+	var lines: Array[String] = [event_name + _format_event_payload(payload)]
+	if event_name == "athlete_calibration_succeeded" and payload.has("grid_width") and payload.has("grid_height"):
+		lines.append("calibrated_grid width=%.6f height=%.6f" % [
+			float(payload.get("grid_width", 0.0)),
+			float(payload.get("grid_height", 0.0)),
+		])
+	return lines
 
 func _format_event_payload(payload: Dictionary) -> String:
 	if payload.is_empty():
