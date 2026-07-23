@@ -785,11 +785,16 @@ func _compute_calibration_grid_width(left_wrist: Dictionary, left_elbow: Diction
 
 func _compute_calibration_grid_height(left_wrist: Dictionary, left_elbow: Dictionary, left_shoulder: Dictionary, right_wrist: Dictionary, right_elbow: Dictionary, right_shoulder: Dictionary) -> float:
 	return (
-		_camera_space_axis_distance(left_wrist, left_elbow, "y")
-		+ _camera_space_axis_distance(left_elbow, left_shoulder, "y")
-		+ _camera_space_axis_distance(right_wrist, right_elbow, "y")
-		+ _camera_space_axis_distance(right_elbow, right_shoulder, "y")
+		_camera_space_distance_2d(left_wrist, left_elbow)
+		+ _camera_space_distance_2d(left_elbow, left_shoulder)
+		+ _camera_space_distance_2d(right_wrist, right_elbow)
+		+ _camera_space_distance_2d(right_elbow, right_shoulder)
 	)
+
+func _camera_space_distance_2d(a: Dictionary, b: Dictionary) -> float:
+	if a.is_empty() or b.is_empty():
+		return 0.0
+	return PoseMetrics.distance_2d(a, b)
 
 func _camera_space_axis_distance(a: Dictionary, b: Dictionary, axis: String) -> float:
 	if a.is_empty() or b.is_empty():

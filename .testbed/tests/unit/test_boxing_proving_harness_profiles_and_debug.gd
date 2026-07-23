@@ -1308,7 +1308,7 @@ func test_boxing_squat_hover_card_reports_grid_avoidance_truth() -> void:
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(model.get("title", "")), "Squat")
 	assert_eq(String(rows[1].get("current_text", "")), "active")
-	assert_eq(String(rows[2].get("current_text", "")), "cell 6 [r1 c2]")
+	assert_eq(String(rows[2].get("current_text", "")), "cell 6 [r1 c1]")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[5].get("current_text", "")), "0")
 	assert_eq(String(rows[6].get("current_text", "")), "0, 1, 2, 3")
@@ -1319,7 +1319,7 @@ func test_boxing_squat_hover_card_reports_grid_avoidance_truth() -> void:
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Current state - active")
 	assert_string_contains(body, "Blocked cells - 0, 1, 2, 3")
-	assert_string_contains(body, "Nose occupied cell - cell 6 [r1 c2]")
+	assert_string_contains(body, "Nose occupied cell - cell 6 [r1 c1]")
 	assert_string_contains(body, "Obstacle avoided - true")
 
 func test_boxing_weave_hover_card_reports_grid_avoidance_truth() -> void:
@@ -1352,7 +1352,7 @@ func test_boxing_weave_hover_card_reports_grid_avoidance_truth() -> void:
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(model.get("title", "")), "Weave")
 	assert_eq(String(rows[1].get("current_text", "")), "left")
-	assert_eq(String(rows[2].get("current_text", "")), "cell 6 [r1 c2]")
+	assert_eq(String(rows[2].get("current_text", "")), "cell 6 [r1 c1]")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[5].get("current_text", "")), "0, 1")
 	assert_eq(String(rows[6].get("current_text", "")), "0, 1, 4, 5, 8, 9")
@@ -1580,22 +1580,22 @@ func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensi
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_width_px", 0.0)), 166.4))
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_height_px", 0.0)), 87.9))
 
-func test_flow_ring_chart_mirrors_gameplay_cells_horizontally_without_row_remap() -> void:
+func test_flow_ring_chart_maps_gameplay_cells_into_athlete_space_visual_slots() -> void:
 	var chart := add_child_autoqfree(FlowRingChartScript.new()) as Control
 	assert_not_null(chart)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 3)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 0)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 11)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 8)
 	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 7)
 	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 3)), 4)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 11)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 8)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 3)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 0)
 
-func test_proving_harness_restores_flow_cell_numbering_contract() -> void:
+func test_proving_harness_formats_flow_cells_in_athlete_space_row_and_column_order() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)
-	assert_eq(String(scene_root.call("_fmt_flow_cell", 0)), "cell 0 [r0 c0]")
-	assert_eq(String(scene_root.call("_fmt_flow_cell", 4)), "cell 4 [r1 c0]")
-	assert_eq(String(scene_root.call("_fmt_flow_cell", 8)), "cell 8 [r2 c0]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 0)), "cell 0 [r2 c3]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 4)), "cell 4 [r1 c3]")
+	assert_eq(String(scene_root.call("_fmt_flow_cell", 8)), "cell 8 [r0 c3]")
 
 func test_boxing_proving_scene_places_shared_grid_cards_inside_board_grid_with_boxing_shell_style() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
