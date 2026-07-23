@@ -68,6 +68,14 @@ class LiveCalibrationHarness:
 	func _get_effective_camera_source() -> String:
 		return "/dev/video0"
 
+class ConsoleCaptureHarness:
+	extends ProvingHarnessScript
+
+	var console_lines: Array[String] = []
+
+	func _emit_console_log_line(line: String) -> void:
+		console_lines.append(line)
+
 class FakeAthleteRecalibrateProvider:
 	extends Node
 
@@ -140,6 +148,9 @@ func _new_playback_harness() -> Variant:
 
 func _new_live_calibration_harness() -> Variant:
 	return add_child_autoqfree(LiveCalibrationHarness.new())
+
+func _new_console_capture_harness() -> Variant:
+	return add_child_autoqfree(ConsoleCaptureHarness.new())
 
 func _depth_runtime_debug_payload(summary: String, artifact_path: String, backend_id: String, family_id: String, runtime_status: String, runtime_stage: String, failure_code: String = "", failure_message: String = "") -> Dictionary:
 	return {
@@ -1694,6 +1705,16 @@ func test_proving_harness_surfaces_shared_calibration_success_and_failure_truthf
 	assert_eq(String(status_label.text), "")
 	assert_false(status_label.visible)
 	var event_lines: Array = scene_root.get("_event_lines")
+	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.454748"))
+
+func test_calibration_success_echoes_copy_paste_grid_line_to_console() -> void:
+	var harness: ConsoleCaptureHarness = _new_console_capture_harness()
+	harness._append_event_feed_lines("athlete_calibration_succeeded", {
+		"grid_width": 0.520000,
+		"grid_height": 0.454748,
+	})
+	assert_eq_deep(harness.console_lines, ["calibrated_grid width=0.520000 height=0.454748"])
+	var event_lines: Array = harness.get("_event_lines")
 	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.454748"))
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:

@@ -2854,6 +2854,17 @@ func _append_event_feed_lines(event_name: String, payload: Dictionary) -> void:
 		_event_lines.append("%04d: %s" % [_event_sequence, line])
 	while _event_lines.size() > MAX_EVENT_LINES:
 		_event_lines.remove_at(0)
+	_echo_console_event_feed_lines(event_name, lines)
+
+func _echo_console_event_feed_lines(event_name: String, lines: Array[String]) -> void:
+	if event_name != "athlete_calibration_succeeded":
+		return
+	for line: String in lines:
+		if line.begins_with("calibrated_grid "):
+			_emit_console_log_line(line)
+
+func _emit_console_log_line(line: String) -> void:
+	print(line)
 
 func _build_event_feed_lines(event_name: String, payload: Dictionary) -> Array[String]:
 	if harness_mode == HarnessMode.FLOW and payload.has("cell") and payload.has("direction"):
