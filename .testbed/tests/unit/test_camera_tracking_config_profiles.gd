@@ -54,6 +54,10 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(String(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("backend", "")), "threshold")
 	assert_eq(String(bundle.get("gesture_detection", {}).get("hook", {}).get("backend", "")), "threshold")
 	assert_eq(String(bundle.get("gesture_detection", {}).get("uppercut", {}).get("backend", "")), "threshold")
+	assert_eq(int(bundle.get("gesture_detection", {}).get("hook", {}).get("grid_detection", {}).get("evaluation", {}).get("min_cell_delta", -1)), 1)
+	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("hook", {}).get("grid_detection", {}).get("evaluation", {}).get("direction_dominance_ratio", -1.0)), 0.55))
+	assert_eq(int(bundle.get("gesture_detection", {}).get("uppercut", {}).get("grid_detection", {}).get("evaluation", {}).get("min_cell_delta", -1)), 1)
+	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("uppercut", {}).get("grid_detection", {}).get("evaluation", {}).get("direction_dominance_ratio", -1.0)), 0.55))
 	assert_eq(int(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("threshold", {}).get("evaluation", {}).get("window_ms", -1)), 250)
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("threshold", {}).get("evaluation", {}).has("wrist_velocity_window_ms"))
 	assert_false(bundle.get("gesture_detection", {}).get("straight_punch", {}).get("threshold", {}).get("evaluation", {}).has("bbox_area_growth_window_ms"))
@@ -145,3 +149,31 @@ func test_profile_config_loader_rejects_tab_indented_yaml() -> void:
 	)
 	assert_false(bool(result.get("ok", true)))
 	assert_eq(String(result.get("error_code", "")), "config_tab_indentation")
+
+func test_profile_config_loader_normalizes_grid_detection_backend_for_hook_and_uppercut() -> void:
+	var loader = ProfileConfigLoaderScript.new()
+	var result: Dictionary = loader.validate_profile_document({
+		"schema": ProfileConfigLoaderScript.GESTURE_DETECTION_SCHEMA,
+		"version": ProfileConfigLoaderScript.CONFIG_VERSION,
+		"profile": "boxing",
+		"hook": {
+			"backend": "grid-detection",
+			"grid_detection": {
+				"evaluation": {
+					"min_cell_delta": 1,
+				}
+			}
+		},
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"min_cell_delta": 1,
+				}
+			}
+		}
+	}, ProfileConfigLoaderScript.GESTURE_DETECTION_SCHEMA, ProfileConfigLoaderScript.CONFIG_VERSION, "boxing")
+	assert_true(bool(result.get("ok", false)))
+	var document: Dictionary = result.get("document", {})
+	assert_eq(String(document.get("hook", {}).get("backend", "")), "grid_detection")
+	assert_eq(String(document.get("uppercut", {}).get("backend", "")), "grid_detection")

@@ -1972,12 +1972,12 @@ func test_weave_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 				"left_obstacle": {
 					"label": "left_columns",
 					"occupied_columns": [0, 1],
-					"occupied_cells": [2, 3, 6, 7, 10, 11],
+					"occupied_cells": [0, 1, 4, 5, 8, 9],
 				},
 				"right_obstacle": {
 					"label": "right_columns",
 					"occupied_columns": [2, 3],
-					"occupied_cells": [0, 1, 4, 5, 8, 9],
+					"occupied_cells": [2, 3, 6, 7, 10, 11],
 				},
 			}
 		}
@@ -2000,9 +2000,12 @@ func test_weave_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	assert_true(bool(weave_debug.get("left_candidate", false)))
 	assert_false(bool(weave_debug.get("right_candidate", true)))
 	assert_false(bool(weave_debug.get("neutral_candidate", true)))
-	assert_eq(_weave_obstacle_cells(weave_debug, "left_obstacle"), [2, 3, 6, 7, 10, 11])
-	assert_true(bool(_weave_obstacle_debug(weave_debug, "left_obstacle").get("avoidance_clear", false)))
-	assert_true(bool(_weave_obstacle_debug(weave_debug, "right_obstacle").get("nose_in_blocked_region", false)))
+	assert_eq(int(weave_debug.get("current_column", -1)), 1)
+	assert_true(bool(weave_debug.get("nose_inside_grid", false)))
+	assert_eq(_weave_obstacle_cells(weave_debug, "left_obstacle"), [0, 1, 4, 5, 8, 9])
+	assert_true(bool(_weave_obstacle_debug(weave_debug, "left_obstacle").get("nose_in_blocked_region", false)))
+	assert_false(bool(_weave_obstacle_debug(weave_debug, "left_obstacle").get("avoidance_clear", true)))
+	assert_false(bool(_weave_obstacle_debug(weave_debug, "right_obstacle").get("nose_in_blocked_region", true)))
 
 	var weave_end_state := substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.NOSE: {"x": 0.45, "y": 0.72},
@@ -2069,6 +2072,134 @@ func test_weave_remains_active_only_while_nose_stays_outside_the_blocked_columns
 		PoseLandmarkIds.NOSE: {"x": 0.45, "y": 0.72},
 	}), 1400)
 	assert_true(_event_names(weave_end_state.get("events", [])).has("weave_left_end"))
+
+func test_weave_ends_only_when_nose_leaves_the_grid() -> void:
+	_calibrate_stance()
+	substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.45, "y": 0.72},
+	}), 1100)
+	var start_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.56, "y": 0.72},
+	}), 1200)
+	assert_true(_event_names(start_state.get("events", [])).has("weave_left_start"))
+	var switch_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.45, "y": 0.72},
+	}), 1300)
+	assert_true(_event_names(switch_state.get("events", [])).has("weave_left_end"))
+	var switch_debug: Dictionary = switch_state.get("gesture_debug", {}).get("weave", {})
+	assert_eq(String(switch_debug.get("state", "")), "right")
+	assert_true(bool(switch_debug.get("right_candidate", false)))
+	var leave_grid_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.NOSE: {"x": 0.15, "y": 0.72},
+	}), 1400)
+	var weave_debug: Dictionary = leave_grid_state.get("gesture_debug", {}).get("weave", {})
+	assert_false(bool(weave_debug.get("nose_inside_grid", true)))
+	assert_true(bool(weave_debug.get("neutral_candidate", false)))
+
+func test_hook_grid_detection_uses_athlete_space_outward_column_transitions() -> void:
+	config.gesture_profile_document = {
+		"hook": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 1,
+					"direction_dominance_ratio": 0.55,
+				},
+				"timing": {
+					"triggered_grace_ms": 500,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 50,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.48, "y": 0.72},
+	}), 1100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+	}), 1160)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+	}), 1320)
+	assert_true(_event_names(state.get("events", [])).has("hook_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
+	assert_eq(String(left_debug.get("backend", "")), "grid_detection")
+	assert_eq(String(left_debug.get("direction_reference_frame", "")), "athlete_space_columns")
+	assert_eq(String(left_debug.get("required_direction_label", "")), "athlete_left")
+	assert_eq(int(left_debug.get("grid_previous_cell", -1)), 5)
+	assert_eq(int(left_debug.get("grid_current_cell", -1)), 4)
+	assert_eq(int(left_debug.get("grid_column_delta", 0)), -1)
+	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
+	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
+
+func test_uppercut_grid_detection_uses_athlete_space_upward_row_transitions() -> void:
+	config.gesture_profile_document = {
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 1,
+					"direction_dominance_ratio": 0.55,
+				},
+				"timing": {
+					"triggered_grace_ms": 500,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 50,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2160)
+	assert_true(["tracking_lost", "ready"].has(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", ""))))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2320)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(String(left_debug.get("backend", "")), "grid_detection")
+	assert_eq(String(left_debug.get("direction_reference_frame", "")), "athlete_space_rows")
+	assert_true(int(left_debug.get("grid_row_delta", 0)) < 0)
+	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
+	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
+
+func test_hook_threshold_backend_remains_available_as_fallback() -> void:
+	config.gesture_profile_document = {
+		"hook": {
+			"backend": "threshold",
+			"threshold": _default_hook_threshold_block(),
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 3000)
+	state = substrate.process_landmarks(_make_pose_frame(), 3160)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.43, "y": 0.70},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.31, "y": 0.73},
+	}), 3320)
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("backend", "")), "threshold")
+	assert_true(_event_names(state.get("events", [])).has("hook_left"))
 
 func test_straight_same_family_trigger_exposes_threshold_blocking_truth_while_blocking_side_is_not_ready() -> void:
 	_calibrate_stance()

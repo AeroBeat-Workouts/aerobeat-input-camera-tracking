@@ -6,6 +6,7 @@ const DepthSharedRuntimePoolScript = preload("res://addons/aerobeat-input-camera
 const BACKEND_DISABLED := "disabled"
 const BACKEND_THRESHOLD := "threshold"
 const BACKEND_GRID_AVOIDANCE := "grid_avoidance"
+const BACKEND_GRID_DETECTION := "grid_detection"
 const PUNCH_FAMILIES := ["straight_punch", "hook", "uppercut"]
 const PUNCH_FAMILY_EVENT_NAMES := {
 	"straight_punch": ["punch_left", "punch_right"],
@@ -50,6 +51,8 @@ const POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS := STRAIGHT_PUNCH_DEFAULT_REACQUIR
 const HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG := 25.0
 
 const UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG := 25.0
+const GRID_DETECTION_DEFAULT_MIN_CELL_DELTA := 1
+const GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO := 0.55
 
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_X := 0.20
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y := 0.12
@@ -1291,6 +1294,19 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"depth_active_model_summary": String(depth_runtime_debug.get("active_model_summary", "")),
 		"depth_artifact_path": String(depth_runtime_debug.get("artifact_path_res", "")),
 		"depth_sample_metrics": (depth_runtime_debug.get("last_sample_metrics", {}) as Dictionary).duplicate(true),
+		"grid_transition_available": bool(state.get("grid_transition_available", false)),
+		"grid_transition_fresh": bool(state.get("grid_transition_fresh", false)),
+		"grid_previous_cell": int(state.get("grid_previous_cell", -1)),
+		"grid_current_cell": int(state.get("grid_current_cell", -1)),
+		"grid_previous_column": int(state.get("grid_previous_column", -1)),
+		"grid_current_column": int(state.get("grid_current_column", -1)),
+		"grid_previous_row": int(state.get("grid_previous_row", -1)),
+		"grid_current_row": int(state.get("grid_current_row", -1)),
+		"grid_column_delta": int(state.get("grid_column_delta", 0)),
+		"grid_row_delta": int(state.get("grid_row_delta", 0)),
+		"grid_direction_dominance_ratio": float(state.get("grid_direction_dominance_ratio", 0.0)),
+		"grid_direction_gate_passed": bool(state.get("grid_direction_gate_passed", false)),
+		"grid_cell_delta_gate_passed": bool(state.get("grid_cell_delta_gate_passed", false)),
 	}
 	if family == "hook":
 		debug["outward_velocity"] = float(state.get("outward_velocity", 0.0))
@@ -1300,16 +1316,24 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["wrist_horizontal_angle_gate_passed"] = bool(state.get("wrist_horizontal_angle_gate_passed", false))
 		debug["wrist_on_required_hook_side"] = bool(state.get("wrist_on_required_hook_side", false))
 		debug["required_hook_side_label"] = _required_hook_side_label(side)
-		debug["required_direction_label"] = "rightward" if side == "left" else "leftward"
-		debug["direction_reference_frame"] = "preview_space_horizontal"
+		if String(config.get("backend", BACKEND_THRESHOLD)) == BACKEND_GRID_DETECTION:
+			debug["required_direction_label"] = "athlete_left" if side == "left" else "athlete_right"
+			debug["direction_reference_frame"] = "athlete_space_columns"
+		else:
+			debug["required_direction_label"] = "rightward" if side == "left" else "leftward"
+			debug["direction_reference_frame"] = "preview_space_horizontal"
 	else:
 		debug["upward_velocity"] = float(state.get("upward_velocity", 0.0))
 		debug["wrist_angle_from_elbow_vertical_deg"] = float(state.get("wrist_angle_from_elbow_vertical_deg", 0.0))
 		debug["max_wrist_angle_from_elbow_vertical_deg"] = float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))
 		debug["wrist_vertical_angle_gate_passed"] = bool(state.get("wrist_vertical_angle_gate_passed", false))
 		debug["wrist_above_elbow_gate_passed"] = bool(state.get("wrist_above_elbow_gate_passed", false))
-		debug["required_direction_label"] = "upward"
-		debug["direction_reference_frame"] = "preview_space_vertical"
+		if String(config.get("backend", BACKEND_THRESHOLD)) == BACKEND_GRID_DETECTION:
+			debug["required_direction_label"] = "athlete_up"
+			debug["direction_reference_frame"] = "athlete_space_rows"
+		else:
+			debug["required_direction_label"] = "upward"
+			debug["direction_reference_frame"] = "preview_space_vertical"
 	return debug
 
 func _build_flow_debug_state(_metrics: Dictionary = {}) -> Dictionary:
@@ -1630,10 +1654,10 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if _get_punch_backend_for_family("straight_punch") == BACKEND_THRESHOLD:
 		_process_straight_punch(events, "left", left_shoulder, left_elbow, left_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
 		_process_straight_punch(events, "right", right_shoulder, right_elbow, right_wrist, measurements, shoulder_width, timestamp_ms, tracking_frame)
-	if _get_punch_backend_for_family("hook") == BACKEND_THRESHOLD:
+	if _get_punch_backend_for_family("hook") != BACKEND_DISABLED:
 		_process_hook(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
 		_process_hook(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
-	if _get_punch_backend_for_family("uppercut") == BACKEND_THRESHOLD:
+	if _get_punch_backend_for_family("uppercut") != BACKEND_DISABLED:
 		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
 		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
 	if not _has_any_event(events, ["punch_left", "hook_left", "uppercut_left"]):
@@ -1925,6 +1949,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		return
 	var state := _get_pose_strike_state(family, side)
 	_clear_same_family_block(state)
+	var backend_name := String(config.get("backend", BACKEND_THRESHOLD))
 	var pose_reference_shoulder_width := _resolve_pose_reference_shoulder_width(shoulder_width)
 	var pose_tracking_valid := _is_pose_valid_for_pose_strike(shoulder, elbow, wrist, pose_reference_shoulder_width)
 	var fresh_sample := pose_tracking_valid
@@ -1948,6 +1973,17 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var wrist_angle_from_elbow_vertical_deg := _compute_wrist_angle_from_elbow_vertical_deg(elbow, wrist)
 	var wrist_on_required_hook_side := _is_wrist_on_required_hook_side(side, elbow, wrist)
 	var wrist_above_elbow_gate_passed := _is_wrist_above_elbow_in_camera_space(elbow, wrist)
+	var grid_transition := _build_pose_strike_grid_transition(side, timestamp_ms)
+	var grid_transition_available := not grid_transition.is_empty()
+	var grid_previous_cell := int(grid_transition.get("previous_cell", -1))
+	var grid_current_cell := int(grid_transition.get("current_cell", -1))
+	var grid_previous_column := int(grid_transition.get("previous_column", -1))
+	var grid_current_column := int(grid_transition.get("current_column", -1))
+	var grid_previous_row := int(grid_transition.get("previous_row", -1))
+	var grid_current_row := int(grid_transition.get("current_row", -1))
+	var grid_column_delta := int(grid_transition.get("column_delta", 0))
+	var grid_row_delta := int(grid_transition.get("row_delta", 0))
+	var grid_direction_dominance_ratio := _compute_direction_dominance_ratio(lateral_speed, vertical_speed) if family == "hook" else _compute_direction_dominance_ratio(vertical_speed, lateral_speed)
 	state["last_wrist_velocity"] = speed
 	state["last_wrist_velocity_vector"] = motion_window.get("averaged_velocity_vector", velocity_vector)
 	state["last_lateral_velocity"] = lateral_speed
@@ -1972,6 +2008,19 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["wrist_angle_from_elbow_vertical_deg"] = wrist_angle_from_elbow_vertical_deg
 	state["wrist_on_required_hook_side"] = wrist_on_required_hook_side
 	state["wrist_above_elbow_gate_passed"] = wrist_above_elbow_gate_passed
+	state["grid_transition_available"] = grid_transition_available
+	state["grid_transition_fresh"] = grid_transition_available
+	state["grid_previous_cell"] = grid_previous_cell
+	state["grid_current_cell"] = grid_current_cell
+	state["grid_previous_column"] = grid_previous_column
+	state["grid_current_column"] = grid_current_column
+	state["grid_previous_row"] = grid_previous_row
+	state["grid_current_row"] = grid_current_row
+	state["grid_column_delta"] = grid_column_delta
+	state["grid_row_delta"] = grid_row_delta
+	state["grid_direction_dominance_ratio"] = grid_direction_dominance_ratio
+	state["grid_direction_gate_passed"] = false
+	state["grid_cell_delta_gate_passed"] = false
 	if family == "hook":
 		var current_max_hook_angle_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
 		state["wrist_horizontal_angle_gate_passed"] = wrist_angle_from_elbow_horizontal_deg <= current_max_hook_angle_deg + 0.000001
@@ -2029,19 +2078,31 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		return
 	if phase == POSE_STRIKE_STATE_READY:
 		var ready_to_trigger := false
-		var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
-		if family == "hook":
-			var max_wrist_angle_from_elbow_horizontal_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
-			var wrist_horizontal_angle_gate_passed := wrist_angle_from_elbow_horizontal_deg <= max_wrist_angle_from_elbow_horizontal_deg + 0.000001
-			state["wrist_horizontal_angle_gate_passed"] = wrist_horizontal_angle_gate_passed
-			ready_to_trigger = speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side
+		if backend_name == BACKEND_GRID_DETECTION:
+			var min_cell_delta := max(1, int(config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))
+			var dominance_requirement := clampf(float(config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO)), 0.0, 1.0)
+			state["grid_cell_delta_gate_passed"] = absi(grid_column_delta if family == "hook" else grid_row_delta) >= min_cell_delta
+			state["grid_direction_gate_passed"] = grid_direction_dominance_ratio >= dominance_requirement
+			if family == "hook":
+				var direction_ok := grid_column_delta < 0 if side == "left" else grid_column_delta > 0
+				ready_to_trigger = grid_transition_available and state["grid_cell_delta_gate_passed"] and state["grid_direction_gate_passed"] and direction_ok
+			else:
+				var direction_ok := grid_row_delta < 0
+				ready_to_trigger = grid_transition_available and state["grid_cell_delta_gate_passed"] and state["grid_direction_gate_passed"] and direction_ok
 		else:
-			var max_wrist_angle_from_elbow_vertical_deg := clampf(float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0, 90.0)
-			var wrist_vertical_angle_gate_passed := wrist_angle_from_elbow_vertical_deg <= max_wrist_angle_from_elbow_vertical_deg + 0.000001
-			state["wrist_vertical_angle_gate_passed"] = wrist_vertical_angle_gate_passed
-			ready_to_trigger = speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed
-		if bool(depth_analysis.get("gate_applied", false)):
-			ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
+			var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
+			if family == "hook":
+				var max_wrist_angle_from_elbow_horizontal_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
+				var wrist_horizontal_angle_gate_passed := wrist_angle_from_elbow_horizontal_deg <= max_wrist_angle_from_elbow_horizontal_deg + 0.000001
+				state["wrist_horizontal_angle_gate_passed"] = wrist_horizontal_angle_gate_passed
+				ready_to_trigger = speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side
+			else:
+				var max_wrist_angle_from_elbow_vertical_deg := clampf(float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0, 90.0)
+				var wrist_vertical_angle_gate_passed := wrist_angle_from_elbow_vertical_deg <= max_wrist_angle_from_elbow_vertical_deg + 0.000001
+				state["wrist_vertical_angle_gate_passed"] = wrist_vertical_angle_gate_passed
+				ready_to_trigger = speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed
+			if bool(depth_analysis.get("gate_applied", false)):
+				ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
 		if ready_to_trigger:
 			var blocking_state := _get_same_family_threshold_blocking_state(family, side, timestamp_ms)
 			if not blocking_state.is_empty():
@@ -2365,8 +2426,11 @@ func _process_weave(events: Array, nose: Dictionary) -> void:
 	var weave_config := _get_weave_config()
 	var left_debug := _build_grid_avoidance_debug_payload(nose, weave_config.get("left_obstacle", {}), "left")
 	var right_debug := _build_grid_avoidance_debug_payload(nose, weave_config.get("right_obstacle", {}), "right")
-	var weaving_left := bool(left_debug.get("avoidance_clear", false))
-	var weaving_right := bool(right_debug.get("avoidance_clear", false))
+	var current_cell := int(left_debug.get("current_cell", -1))
+	var current_column := _flow_cell_column(current_cell)
+	var nose_inside_grid := bool(left_debug.get("nose_tracked", false)) and bool(left_debug.get("grid_ready", false)) and current_column >= 0
+	var weaving_left := nose_inside_grid and current_column <= 1
+	var weaving_right := nose_inside_grid and current_column >= 2
 	var weave_state := "inactive"
 	if weaving_left:
 		weave_state = "left"
@@ -2375,19 +2439,21 @@ func _process_weave(events: Array, nose: Dictionary) -> void:
 	_gesture_state["weave_debug"] = {
 		"state": weave_state,
 		"enabled": bool(weave_config.get("enabled", true)),
-		"current_cell": int(left_debug.get("current_cell", -1)),
+		"current_cell": current_cell,
+		"current_column": current_column,
 		"current_direction": int(left_debug.get("current_direction", -1)),
 		"nose_position": left_debug.get("nose_position", Vector2.ZERO),
 		"nose_tracked": bool(left_debug.get("nose_tracked", false)),
+		"nose_inside_grid": nose_inside_grid,
 		"grid_ready": bool(left_debug.get("grid_ready", false)),
 		"calibration_ready": bool(left_debug.get("calibration_ready", false)),
 		"left_obstacle": left_debug,
 		"right_obstacle": right_debug,
 		"left_candidate": weaving_left,
 		"right_candidate": weaving_right,
-		"neutral_candidate": not weaving_left and not weaving_right,
-		"left_avoidance_clear": weaving_left,
-		"right_avoidance_clear": weaving_right,
+		"neutral_candidate": not nose_inside_grid,
+		"left_avoidance_clear": bool(left_debug.get("avoidance_clear", false)),
+		"right_avoidance_clear": bool(right_debug.get("avoidance_clear", false)),
 	}
 	if not bool(weave_config.get("enabled", true)):
 		_set_state_toggle(events, "weave_left", false)
@@ -2715,6 +2781,19 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"depth_runtime_failure_code": "",
 		"depth_runtime_failure_message": "",
 		"depth_sample_metrics": {},
+		"grid_transition_available": false,
+		"grid_transition_fresh": false,
+		"grid_previous_cell": -1,
+		"grid_current_cell": -1,
+		"grid_previous_column": -1,
+		"grid_current_column": -1,
+		"grid_previous_row": -1,
+		"grid_current_row": -1,
+		"grid_column_delta": 0,
+		"grid_row_delta": 0,
+		"grid_direction_dominance_ratio": 0.0,
+		"grid_direction_gate_passed": false,
+		"grid_cell_delta_gate_passed": false,
 	}
 
 func _get_straight_punch_state(side: String) -> Dictionary:
@@ -2824,14 +2903,14 @@ func _get_non_punch_backend_for_family(family: String) -> String:
 func _threshold_gates_enabled() -> bool:
 	return _any_punch_family_uses_backend(BACKEND_THRESHOLD)
 
+func _selected_punch_detection_backend_enabled() -> bool:
+	return _any_punch_family_uses_backend(BACKEND_THRESHOLD) or _any_punch_family_uses_backend(BACKEND_GRID_DETECTION)
+
 func _any_punch_family_uses_backend(backend_name: String) -> bool:
 	for family in PUNCH_FAMILIES:
 		if _get_punch_backend_for_family(String(family)) == backend_name:
 			return true
 	return false
-
-func _selected_punch_detection_backend_enabled() -> bool:
-	return _threshold_gates_enabled()
 
 func _get_active_punch_detection_backend() -> String:
 	return "per_family" if _selected_punch_detection_backend_enabled() else "none"
@@ -2840,11 +2919,13 @@ func _get_punch_backend_resolution_reason() -> String:
 	return "per_family_active" if _selected_punch_detection_backend_enabled() else "no_active_family_backend"
 
 func _normalize_punch_backend_name(backend_name: String) -> String:
-	match backend_name.strip_edges().to_lower():
+	match backend_name.strip_edges().to_lower().replace("-", "_"):
 		BACKEND_DISABLED:
 			return BACKEND_DISABLED
 		BACKEND_THRESHOLD:
 			return BACKEND_THRESHOLD
+		BACKEND_GRID_DETECTION:
+			return BACKEND_GRID_DETECTION
 		_:
 			return BACKEND_THRESHOLD
 
@@ -2899,12 +2980,12 @@ func _get_weave_config() -> Dictionary:
 		"left_obstacle": _normalize_grid_avoidance_obstacle({
 			"label": "left_columns",
 			"occupied_columns": [0, 1],
-			"occupied_cells": [2, 3, 6, 7, 10, 11],
+			"occupied_cells": [0, 1, 4, 5, 8, 9],
 		}),
 		"right_obstacle": _normalize_grid_avoidance_obstacle({
 			"label": "right_columns",
 			"occupied_columns": [2, 3],
-			"occupied_cells": [0, 1, 4, 5, 8, 9],
+			"occupied_cells": [2, 3, 6, 7, 10, 11],
 		}),
 	}
 	if _config == null:
@@ -2991,6 +3072,53 @@ func _build_grid_avoidance_debug_payload(nose: Dictionary, obstacle: Dictionary,
 		"nose_in_blocked_region": nose_in_blocked_region,
 		"avoidance_clear": not nose.is_empty() and bool(grid.get("is_calibrated", false)) and not nose_in_blocked_region,
 	}
+
+func _flow_cell_row(cell: int) -> int:
+	if cell < 0 or cell >= FLOW_GRID_COLUMNS * FLOW_GRID_ROWS:
+		return -1
+	return int(floor(cell / FLOW_GRID_COLUMNS))
+
+func _flow_cell_column(cell: int) -> int:
+	if cell < 0 or cell >= FLOW_GRID_COLUMNS * FLOW_GRID_ROWS:
+		return -1
+	return cell % FLOW_GRID_COLUMNS
+
+func _build_pose_strike_grid_transition(side: String, timestamp_ms: int) -> Dictionary:
+	var history: Array = _get_flow_history("%s_hand" % side)
+	if history.size() < 2:
+		return {}
+	var latest: Dictionary = history[history.size() - 1]
+	if int(latest.get("timestamp_ms", -1)) != timestamp_ms:
+		return {}
+	var previous: Dictionary = history[history.size() - 2]
+	var previous_cell := int(previous.get("cell", -1))
+	var current_cell := int(latest.get("cell", -1))
+	if previous_cell < 0 or current_cell < 0 or previous_cell == current_cell:
+		return {}
+	var previous_column := _flow_cell_column(previous_cell)
+	var current_column := _flow_cell_column(current_cell)
+	var previous_row := _flow_cell_row(previous_cell)
+	var current_row := _flow_cell_row(current_cell)
+	if previous_column < 0 or current_column < 0 or previous_row < 0 or current_row < 0:
+		return {}
+	return {
+		"previous_cell": previous_cell,
+		"current_cell": current_cell,
+		"previous_column": previous_column,
+		"current_column": current_column,
+		"previous_row": previous_row,
+		"current_row": current_row,
+		"column_delta": current_column - previous_column,
+		"row_delta": current_row - previous_row,
+	}
+
+func _compute_direction_dominance_ratio(dominant_axis: float, other_axis: float) -> float:
+	var dominant := absf(dominant_axis)
+	var other := absf(other_axis)
+	var total := dominant + other
+	if total <= 0.000001:
+		return 0.0
+	return dominant / total
 
 func _get_straight_punch_config() -> Dictionary:
 	var config := {
@@ -3089,6 +3217,19 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"depth_runtime_failure_code": "",
 		"depth_runtime_failure_message": "",
 		"depth_sample_metrics": {},
+		"grid_transition_available": false,
+		"grid_transition_fresh": false,
+		"grid_previous_cell": -1,
+		"grid_current_cell": -1,
+		"grid_previous_column": -1,
+		"grid_current_column": -1,
+		"grid_previous_row": -1,
+		"grid_current_row": -1,
+		"grid_column_delta": 0,
+		"grid_row_delta": 0,
+		"grid_direction_dominance_ratio": 0.0,
+		"grid_direction_gate_passed": false,
+		"grid_cell_delta_gate_passed": false,
 	}
 
 func _get_pose_strike_state(family: String, side: String) -> Dictionary:
@@ -3107,25 +3248,32 @@ func _get_pose_strike_config(family: String) -> Dictionary:
 func _get_hook_config() -> Dictionary:
 	var config := {
 		"enabled": true,
+		"backend": BACKEND_THRESHOLD,
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"max_wrist_angle_from_elbow_horizontal_deg": HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG,
+		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
+		"direction_dominance_ratio": GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
 	}
 	if _config == null:
 		return config
-	var hook: Dictionary = _get_family_backend_document("hook", BACKEND_THRESHOLD)
+	var backend_name := _get_punch_backend_for_family("hook")
+	var hook: Dictionary = _get_family_backend_document("hook", backend_name)
 	var evaluation: Dictionary = hook.get("evaluation", {}) if hook.get("evaluation", {}) is Dictionary else {}
 	var thresholds: Dictionary = hook.get("thresholds", {}) if hook.get("thresholds", {}) is Dictionary else {}
 	var timing: Dictionary = hook.get("timing", {}) if hook.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = hook.get("rearm", {}) if hook.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = hook.get("state_machine", {}) if hook.get("state_machine", {}) is Dictionary else {}
-	config["enabled"] = _get_punch_backend_for_family("hook") == BACKEND_THRESHOLD
+	config["enabled"] = backend_name != BACKEND_DISABLED
+	config["backend"] = backend_name
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["max_wrist_angle_from_elbow_horizontal_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))), 0.0, 90.0)
+	config["min_cell_delta"] = max(1, int(evaluation.get("min_cell_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))
+	config["direction_dominance_ratio"] = clampf(float(evaluation.get("direction_dominance_ratio", config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO))), 0.0, 1.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -3134,25 +3282,32 @@ func _get_hook_config() -> Dictionary:
 func _get_uppercut_config() -> Dictionary:
 	var config := {
 		"enabled": true,
+		"backend": BACKEND_THRESHOLD,
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"max_wrist_angle_from_elbow_vertical_deg": UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG,
+		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
+		"direction_dominance_ratio": GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
 	}
 	if _config == null:
 		return config
-	var uppercut: Dictionary = _get_family_backend_document("uppercut", BACKEND_THRESHOLD)
+	var backend_name := _get_punch_backend_for_family("uppercut")
+	var uppercut: Dictionary = _get_family_backend_document("uppercut", backend_name)
 	var evaluation: Dictionary = uppercut.get("evaluation", {}) if uppercut.get("evaluation", {}) is Dictionary else {}
 	var thresholds: Dictionary = uppercut.get("thresholds", {}) if uppercut.get("thresholds", {}) is Dictionary else {}
 	var timing: Dictionary = uppercut.get("timing", {}) if uppercut.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = uppercut.get("rearm", {}) if uppercut.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = uppercut.get("state_machine", {}) if uppercut.get("state_machine", {}) is Dictionary else {}
-	config["enabled"] = _get_punch_backend_for_family("uppercut") == BACKEND_THRESHOLD
+	config["enabled"] = backend_name != BACKEND_DISABLED
+	config["backend"] = backend_name
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["max_wrist_angle_from_elbow_vertical_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_vertical_deg", config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))), 0.0, 90.0)
+	config["min_cell_delta"] = max(1, int(evaluation.get("min_cell_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))
+	config["direction_dominance_ratio"] = clampf(float(evaluation.get("direction_dominance_ratio", config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO))), 0.0, 1.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))

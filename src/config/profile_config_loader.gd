@@ -127,11 +127,13 @@ func _sanitize_gesture_detection_document(document: Dictionary) -> Dictionary:
 			
 		family.erase("prototype")
 		family.erase("classifier")
-		var backend := String(family.get("backend", "threshold")).strip_edges().to_lower()
+		var backend := String(family.get("backend", "threshold")).strip_edges().to_lower().replace("-", "_")
 		if backend == "disabled":
 			family["backend"] = "disabled"
 		elif family_name == "squat" or family_name == "weave":
 			family["backend"] = "grid_avoidance" if backend == "grid_avoidance" else "threshold"
+		elif family_name == "hook" or family_name == "uppercut":
+			family["backend"] = "grid_detection" if backend == "grid_detection" else "threshold"
 		else:
 			family["backend"] = "threshold"
 		sanitized[family_name] = family
