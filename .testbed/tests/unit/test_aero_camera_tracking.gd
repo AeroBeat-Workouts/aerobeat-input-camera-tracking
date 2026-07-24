@@ -537,6 +537,25 @@ func test_aero_camera_tracking_stop_does_not_free_external_tracking_session() ->
 	assert_true(singleton.start_live_camera("/dev/video3", {}))
 	assert_eq(String(tracker.get_active_config().get("source", {}).get("camera_id", "")), "/dev/video3")
 
+func test_aero_camera_tracking_shutdown_runtime_releases_wrapper_owned_tracking_session() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var tracker = singleton.get_tracking_session()
+	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+
+	assert_true(singleton.start_live_camera("/dev/video7", {}))
+	var provider = singleton.get_provider()
+	assert_same(provider.get_parent(), singleton)
+	assert_same(tracker.get_parent(), singleton)
+
+	singleton.shutdown_runtime()
+	await get_tree().process_frame
+
+	assert_null(singleton.get_tracking_session_if_ready())
+	assert_null(singleton.get_node_or_null("CameraTracking"))
+	assert_null(singleton.get_node_or_null("CameraTrackingProvider"))
+	assert_false(is_instance_valid(provider))
+	assert_false(is_instance_valid(tracker))
+
 func test_aero_camera_tracking_scene_teardown_stops_and_releases_wrapper_owned_tracking_session() -> void:
 	var singleton = add_child_autoqfree(OwnedSessionAeroCameraTracking.new())
 	var tracker = singleton.get_tracking_session() as TeardownTrackingSession

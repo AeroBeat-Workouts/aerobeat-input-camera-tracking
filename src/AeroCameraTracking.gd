@@ -104,6 +104,9 @@ func start(config_variant: Variant = null) -> bool:
 func stop() -> void:
 	_stop_runtime(true)
 
+func shutdown_runtime() -> void:
+	_stop_runtime(true, true)
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_EXIT_TREE or what == NOTIFICATION_PREDELETE:
 		_stop_runtime(true, true)

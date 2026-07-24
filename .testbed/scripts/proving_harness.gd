@@ -327,109 +327,15 @@ func _ready() -> void:
 	_refresh_debug_panels()
 
 func _ensure_calibration_flow_ui() -> void:
-	if athlete_calibration_panel == null:
-		athlete_calibration_panel = find_child("AthleteCalibrationPanel", true, false) as Control
-	if athlete_calibration_panel == null:
-		athlete_calibration_panel = PanelContainer.new()
-		athlete_calibration_panel.name = "AthleteCalibrationPanel"
-		add_child(athlete_calibration_panel)
-		var margin := MarginContainer.new()
-		margin.name = "Margin"
-		margin.add_theme_constant_override("margin_left", 10)
-		margin.add_theme_constant_override("margin_top", 10)
-		margin.add_theme_constant_override("margin_right", 10)
-		margin.add_theme_constant_override("margin_bottom", 10)
-		athlete_calibration_panel.add_child(margin)
-		var column := VBoxContainer.new()
-		column.name = "Column"
-		column.add_theme_constant_override("separation", 6)
-		margin.add_child(column)
-		athlete_calibration_title_label = Label.new()
-		athlete_calibration_title_label.name = "CalibrationTitleLabel"
-		column.add_child(athlete_calibration_title_label)
-		athlete_calibration_countdown_label = Label.new()
-		athlete_calibration_countdown_label.name = "CalibrationCountdownLabel"
-		column.add_child(athlete_calibration_countdown_label)
-		athlete_calibration_instruction_label = Label.new()
-		athlete_calibration_instruction_label.name = "CalibrationInstructionLabel"
-		column.add_child(athlete_calibration_instruction_label)
-		athlete_calibration_status_label = Label.new()
-		athlete_calibration_status_label.name = "CalibrationStatusLabel"
-		column.add_child(athlete_calibration_status_label)
-		var calibration_button_row := HBoxContainer.new()
-		calibration_button_row.name = "Buttons"
-		column.add_child(calibration_button_row)
-		_athlete_recalibrate_button = Button.new()
-		_athlete_recalibrate_button.name = "AthleteRecalibrateButton"
-		calibration_button_row.add_child(_athlete_recalibrate_button)
-		_athlete_calibration_secondary_button = Button.new()
-		_athlete_calibration_secondary_button.name = "AthleteCalibrationSecondaryButton"
-		calibration_button_row.add_child(_athlete_calibration_secondary_button)
-	else:
-		_athlete_recalibrate_button = athlete_calibration_panel.find_child("AthleteRecalibrateButton", true, false) as Button
-		_athlete_calibration_secondary_button = athlete_calibration_panel.find_child("AthleteCalibrationSecondaryButton", true, false) as Button
-		athlete_calibration_title_label = athlete_calibration_panel.find_child("CalibrationTitleLabel", true, false) as Label
-		athlete_calibration_countdown_label = athlete_calibration_panel.find_child("CalibrationCountdownLabel", true, false) as Label
-		athlete_calibration_instruction_label = athlete_calibration_panel.find_child("CalibrationInstructionLabel", true, false) as Label
-		athlete_calibration_status_label = athlete_calibration_panel.find_child("CalibrationStatusLabel", true, false) as Label
-
-	var button_row := _athlete_recalibrate_button.get_parent() as HBoxContainer if _athlete_recalibrate_button != null else null
-	var button_column := button_row.get_parent() as VBoxContainer if button_row != null else null
-	if button_column != null:
-		athlete_calibration_title_label = _ensure_calibration_panel_label(athlete_calibration_title_label, "CalibrationTitleLabel", button_column)
-		athlete_calibration_countdown_label = _ensure_calibration_panel_label(athlete_calibration_countdown_label, "CalibrationCountdownLabel", button_column)
-		athlete_calibration_instruction_label = _ensure_calibration_panel_label(athlete_calibration_instruction_label, "CalibrationInstructionLabel", button_column)
-		athlete_calibration_status_label = _ensure_calibration_panel_label(athlete_calibration_status_label, "CalibrationStatusLabel", button_column)
-
-	_sync_calibration_overlay_parent()
-	athlete_calibration_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	athlete_calibration_panel.custom_minimum_size = Vector2(CALIBRATION_PANEL_FALLBACK_WIDTH, CALIBRATION_PANEL_MIN_HEIGHT)
-	athlete_calibration_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	athlete_calibration_panel.offset_left = -CALIBRATION_PANEL_FALLBACK_WIDTH - RECALIBRATE_BUTTON_RIGHT_MARGIN
-	athlete_calibration_panel.offset_top = RECALIBRATE_BUTTON_TOP_MARGIN
-	athlete_calibration_panel.offset_right = -RECALIBRATE_BUTTON_RIGHT_MARGIN
-	athlete_calibration_panel.offset_bottom = 0.0
-	athlete_calibration_panel.size_flags_horizontal = 0
-	athlete_calibration_panel.size_flags_vertical = 0
-	athlete_calibration_panel.z_as_relative = true
-	athlete_calibration_panel.z_index = LANDMARK_DRAWER_Z_INDEX + 2
-	_apply_panel_style(athlete_calibration_panel as PanelContainer, Color(0.0, 0.0, 0.0, 0.76), Color(1.0, 1.0, 1.0, 0.12), 16, 1, 0)
-
-	button_row = _athlete_recalibrate_button.get_parent() as HBoxContainer if _athlete_recalibrate_button != null else null
-	if button_row != null:
-		button_row.alignment = BoxContainer.ALIGNMENT_END
-		button_row.add_theme_constant_override("separation", 8)
-		button_column = button_row.get_parent() as VBoxContainer
-		if button_column != null:
-			button_column.move_child(button_row, 0)
-	if _athlete_recalibrate_button != null:
-		_athlete_recalibrate_button.custom_minimum_size = CALIBRATION_BUTTON_MIN_SIZE
-	if _athlete_calibration_secondary_button != null:
-		_athlete_calibration_secondary_button.custom_minimum_size = Vector2(88, CALIBRATION_BUTTON_MIN_SIZE.y)
-	if athlete_calibration_title_label != null:
-		athlete_calibration_title_label.visible = false
-	if athlete_calibration_countdown_label != null:
-		athlete_calibration_countdown_label.text = ""
-		athlete_calibration_countdown_label.visible = false
-		athlete_calibration_countdown_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		athlete_calibration_countdown_label.add_theme_color_override("font_color", Color(0.87, 0.93, 1.0, 1.0))
-	if athlete_calibration_instruction_label != null:
-		athlete_calibration_instruction_label.text = ""
-		athlete_calibration_instruction_label.visible = false
-		athlete_calibration_instruction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		athlete_calibration_instruction_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		athlete_calibration_instruction_label.add_theme_color_override("font_color", Color(0.72, 0.90, 1.0, 0.92))
-	if athlete_calibration_status_label != null:
-		athlete_calibration_status_label.text = ""
-		athlete_calibration_status_label.visible = false
-		athlete_calibration_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		athlete_calibration_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		athlete_calibration_status_label.add_theme_color_override("font_color", Color(0.88, 0.94, 1.0, 0.94))
-
-	if _athlete_recalibrate_button != null and not _athlete_recalibrate_button.pressed.is_connected(_on_athlete_recalibrate_pressed):
-		_athlete_recalibrate_button.pressed.connect(_on_athlete_recalibrate_pressed)
-	if _athlete_calibration_secondary_button != null and not _athlete_calibration_secondary_button.pressed.is_connected(_on_athlete_calibration_secondary_pressed):
-		_athlete_calibration_secondary_button.pressed.connect(_on_athlete_calibration_secondary_pressed)
+	if athlete_calibration_panel != null and is_instance_valid(athlete_calibration_panel):
+		athlete_calibration_panel.queue_free()
+	athlete_calibration_panel = null
+	athlete_calibration_title_label = null
+	athlete_calibration_countdown_label = null
+	athlete_calibration_instruction_label = null
+	athlete_calibration_status_label = null
+	_athlete_recalibrate_button = null
+	_athlete_calibration_secondary_button = null
 	_refresh_calibration_flow_ui()
 
 func _resolve_calibration_overlay_parent() -> Node:
@@ -446,16 +352,6 @@ func _sync_calibration_overlay_parent() -> void:
 	var overlay_parent := _resolve_calibration_overlay_parent()
 	if overlay_parent != null and athlete_calibration_panel.get_parent() != overlay_parent:
 		athlete_calibration_panel.reparent(overlay_parent)
-
-func _ensure_calibration_panel_label(existing: Label, label_name: String, parent_column: VBoxContainer) -> Label:
-	if existing != null:
-		return existing
-	var label := Label.new()
-	label.name = label_name
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	parent_column.add_child(label)
-	return label
 
 func _on_athlete_recalibrate_pressed() -> void:
 	if _start_athlete_calibration_request():
@@ -605,7 +501,7 @@ func _calibration_instruction_text(state_name: String, session: Dictionary) -> S
 		return "T-pose auto-calibration is live. Hold the pose again after cooldown to re-sample."
 	return "Show nose, shoulders, elbows, and wrists, then hold a straight-arm T-pose."
 
-func _calibration_status_text(state_name: String, session: Dictionary, has_baseline: bool) -> String:
+func _calibration_status_text(state_name: String, _session: Dictionary, has_baseline: bool) -> String:
 	match state_name:
 		"holding":
 			return "T-pose qualified. Keep both arms level and extended until the hold completes."
@@ -1188,15 +1084,24 @@ func _clear_live_camera_runtime_visual_state() -> void:
 
 func _clear_live_camera_runtime_state() -> void:
 	_clear_live_camera_runtime_visual_state()
+	if _preview_presenter != null and is_instance_valid(_preview_presenter):
+		if _preview_presenter.has_method("disconnect_tracking_session"):
+			_preview_presenter.disconnect_tracking_session()
+		_preview_presenter.queue_free()
+	_preview_presenter = null
 	if provider != null:
 		_disconnect_provider_signals(provider)
-		provider.stop()
 		var tracking_singleton := _resolve_camera_tracking_singleton()
+		if provider == tracking_singleton and tracking_singleton != null and tracking_singleton.has_method("shutdown_runtime"):
+			tracking_singleton.shutdown_runtime()
+		elif provider.has_method("stop"):
+			provider.stop()
 		if is_instance_valid(provider) and provider != tracking_singleton:
 			provider.queue_free()
 		provider = null
 	if camera_view != null and camera_view.has_method("is_streaming") and camera_view.is_streaming():
 		camera_view.stop_stream()
+	camera_view = null
 
 func _await_live_camera_runtime_ready(timeout_ms: int = 8000) -> bool:
 	var deadline_ms := Time.get_ticks_msec() + timeout_ms
@@ -1208,7 +1113,7 @@ func _await_live_camera_runtime_ready(timeout_ms: int = 8000) -> bool:
 
 func _is_live_camera_runtime_ready() -> bool:
 	if _uses_camera_tracking_contract_path():
-		return provider != null and _resolve_camera_tracking_singleton() != null
+		return _is_contract_preview_ready()
 	if startup_mode == StartupMode.GODOT_ONLY_DEBUG:
 		return true
 	if not _server_ready:
@@ -1366,6 +1271,7 @@ func _start_provider() -> void:
 		return
 	provider = tracking_singleton
 	if _uses_camera_tracking_contract_path():
+		_ensure_contract_tracking_session()
 		_ensure_contract_preview_surface()
 	elif provider.has_method("attach_preview_surface") and camera_display != null:
 		provider.attach_preview_surface(camera_display)
@@ -1531,6 +1437,40 @@ func _resolve_camera_tracking_session() -> Node:
 		if tracking_session != null:
 			return tracking_session
 	return null
+
+func _ensure_contract_tracking_session() -> Node:
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	if tracking_singleton == null:
+		return null
+	if tracking_singleton.has_method("get_tracking_session"):
+		var tracking_session: Variant = tracking_singleton.get_tracking_session()
+		if tracking_session is Node:
+			return tracking_session
+	return _resolve_camera_tracking_session()
+
+func _is_contract_preview_ready() -> bool:
+	var tracking_singleton := _resolve_camera_tracking_singleton()
+	var tracking_session := _resolve_camera_tracking_session()
+	if provider == null or tracking_singleton == null or tracking_session == null:
+		return false
+	if _preview_presenter == null or not is_instance_valid(_preview_presenter):
+		return false
+	if _preview_presenter.has_method("get_tracking_session") and _preview_presenter.get_tracking_session() != tracking_session:
+		return false
+	var preview_descriptor := {}
+	if tracking_singleton.has_method("get_current_preview_descriptor"):
+		var descriptor_variant: Variant = tracking_singleton.get_current_preview_descriptor()
+		if descriptor_variant is Dictionary:
+			preview_descriptor = descriptor_variant
+	if preview_descriptor.is_empty() and _preview_presenter.has_method("get_preview_descriptor_snapshot"):
+		var presenter_descriptor: Variant = _preview_presenter.get_preview_descriptor_snapshot()
+		if presenter_descriptor is Dictionary:
+			preview_descriptor = presenter_descriptor
+	if bool(preview_descriptor.get("attached", false)):
+		return true
+	if camera_view != null and camera_view.texture != null:
+		return true
+	return false
 
 func _uses_camera_tracking_contract_path() -> bool:
 	return _resolve_camera_tracking_singleton() != null
@@ -3461,20 +3401,6 @@ func _stop_everything(_reason: String = "unknown") -> void:
 	_playback_autoplay_pending = false
 	_playback_autoplay_base_url = ""
 	_playback_pause_hold = false
-	if camera_view and camera_view.has_method("is_streaming") and camera_view.is_streaming():
-		camera_view.stop_stream()
-	if camera_view and is_instance_valid(camera_view):
-		camera_view.queue_free()
-	camera_view = null
-
-	if provider:
-		_disconnect_provider_signals(provider)
-		if provider.has_method("stop"):
-			provider.stop()
-		var tracking_singleton := _resolve_camera_tracking_singleton()
-		if is_instance_valid(provider) and provider != tracking_singleton:
-			provider.queue_free()
-		provider = null
-
+	_clear_live_camera_runtime_state()
 	auto_start_manager = null
 	_server_ready = false
