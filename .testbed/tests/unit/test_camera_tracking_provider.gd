@@ -526,8 +526,8 @@ func _normalized_hand_payload(side: String, bbox_area: float, tracking_state: St
 
 func test_camera_tracking_provider_exposes_shared_calibration_session_wrappers() -> void:
 	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
-	assert_eq(String(provider.get_calibration_session().get("state", "")), "idle")
+	assert_eq(String(provider.get_calibration_session().get("state", "")), "waiting")
 	assert_true(provider.start_athlete_calibration())
-	assert_eq(String(provider.get_calibration_session().get("state", "")), "countdown")
+	assert_eq(String(provider.get_calibration_session().get("state", "")), "waiting")
 	assert_true(provider.cancel_athlete_calibration())
 	assert_eq(String(provider.get_calibration_session().get("state", "")), "cancelled")

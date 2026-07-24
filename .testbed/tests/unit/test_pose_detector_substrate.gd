@@ -1830,60 +1830,55 @@ func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_dropout_de
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), -1)
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("history_points", 0)), 0)
 
-func test_request_athlete_recalibration_starts_shared_countdown_session() -> void:
+func test_request_athlete_recalibration_resets_into_waiting_t_pose_auto_session() -> void:
 	_calibrate_stance()
 	substrate.request_athlete_recalibration()
 	var state := substrate.get_latest_state()
 	var session: Dictionary = state.get("calibration_session", {})
-	assert_eq(String(session.get("state", "")), "countdown")
+	assert_eq(String(session.get("state", "")), "waiting")
 	assert_true(bool(session.get("is_active", false)))
-	assert_eq(int(session.get("seconds_remaining", 0)), 10)
+	assert_eq(int(session.get("hold_ms", 0)), 750)
+	assert_eq(int(session.get("cooldown_ms", 0)), 1000)
 	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
-	assert_true(state.get("metrics", {}).has("calibration_session"))
-	assert_eq(String(session.get("readiness", {}).get("instruction_text", "")), "Need tracking/reacquiring plus nose, shoulders, elbows, and wrists visible")
-	assert_eq(String(session.get("instructions", {}).get("show_sample_landmarks", {}).get("text", "")), "Keep nose, shoulders, elbows, and wrists visible")
-	assert_eq(String(session.get("instructions", {}).get("capture_sample", {}).get("text", "")), "Countdown ends, then one live upper-body chain sample is captured")
+	assert_eq(String(session.get("instruction_text", "")), "Hold a straight-arm T-pose to auto-calibrate")
+	assert_eq(String(session.get("instructions", {}).get("align_arms_horizontal", {}).get("text", "")), "Keep both arms level with the shoulders")
 
-func test_calibration_readiness_requires_sample_landmarks_before_capture() -> void:
-	_calibrate_stance()
-	substrate.request_athlete_recalibration()
-	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 11100)
-	var session: Dictionary = state.get("calibration_session", {})
-	var readiness: Dictionary = session.get("readiness", {})
-	assert_eq(String(session.get("state", "")), "succeeded")
-	assert_true(bool(readiness.get("ready", false)))
-	assert_eq(String(readiness.get("instruction_text", "")), "Countdown complete — capturing one upper-body chain sample now")
-
+func test_calibration_readiness_requires_visibility_horizontal_alignment_and_arm_extension() -> void:
 	var missing_landmark_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), {})
 	assert_false(bool(missing_landmark_readiness.get("ready", true)))
 	assert_eq(String(missing_landmark_readiness.get("failure_reason", "")), "required_sample_landmarks_unavailable")
-	assert_eq(String(missing_landmark_readiness.get("instruction_text", "")), "Need nose, shoulders, elbows, and wrists visible before calibration capture can complete")
 
-	var collapsed_chain_frame := _make_calibration_pose_frame({
-		PoseLandmarkIds.LEFT_SHOULDER: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
-		PoseLandmarkIds.RIGHT_SHOULDER: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.50, "y": 0.70, "z": 0.0, "v": 0.99},
+	var not_level_frame := _make_calibration_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.22, "y": 0.56, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.78, "y": 0.56, "z": 0.0, "v": 0.99},
 	})
-	var collapsed_chain_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), _landmarks_by_id(collapsed_chain_frame))
-	assert_false(bool(collapsed_chain_readiness.get("ready", true)))
-	assert_eq(String(collapsed_chain_readiness.get("failure_reason", "")), "invalid_joint_chain_sample")
-	assert_eq(String(collapsed_chain_readiness.get("instruction_text", "")), "Move naturally so the shoulder-elbow-wrist chains produce a measurable calibration sample")
+	var not_level_metrics: Dictionary = substrate.call("_build_metrics", _landmarks_by_id(not_level_frame), 0)
+	var not_level_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", not_level_metrics, StringName("tracking"), _landmarks_by_id(not_level_frame))
+	assert_false(bool(not_level_readiness.get("ready", true)))
+	assert_eq(String(not_level_readiness.get("failure_reason", "")), "arms_not_horizontal")
 
-	var missing_tracking_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("lost"), {})
-	assert_false(bool(missing_tracking_readiness.get("ready", true)))
-	assert_eq(String(missing_tracking_readiness.get("failure_reason", "")), "tracking_lost")
-	assert_eq(String(missing_tracking_readiness.get("instruction_text", "")), "Need tracking or reacquiring before calibration capture can start")
+	var bent_arms_frame := _make_calibration_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.66, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.40, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.60, "y": 0.70, "z": 0.0, "v": 0.99},
+	})
+	var bent_arms_metrics: Dictionary = substrate.call("_build_metrics", _landmarks_by_id(bent_arms_frame), 0)
+	var bent_arms_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", bent_arms_metrics, StringName("tracking"), _landmarks_by_id(bent_arms_frame))
+	assert_false(bool(bent_arms_readiness.get("ready", true)))
+	assert_eq(String(bent_arms_readiness.get("failure_reason", "")), "arms_not_extended")
 
-func test_calibration_session_commits_baseline_after_10_second_countdown_with_one_sample() -> void:
-	_calibrate_stance()
-	substrate.request_athlete_recalibration()
-	var countdown_state := substrate.process_landmarks(_make_calibration_pose_frame(), 10999)
-	assert_eq(String(countdown_state.get("calibration_session", {}).get("state", "")), "countdown")
-	assert_eq(int(countdown_state.get("calibration_session", {}).get("seconds_remaining", 0)), 1)
-	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 11064)
+func test_calibration_session_auto_fires_after_t_pose_hold_and_commits_baseline() -> void:
+	var t_pose_frame := _make_calibration_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.22, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.78, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.08, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.92, "y": 0.70, "z": 0.0, "v": 0.99},
+	})
+	var holding_state := substrate.process_landmarks(t_pose_frame, 500)
+	assert_eq(String(holding_state.get("calibration_session", {}).get("state", "")), "holding")
+	assert_false(bool(holding_state.get("baseline", {}).get("is_calibrated", false)))
+	var state := substrate.process_landmarks(t_pose_frame, 1300)
 	var baseline: Dictionary = state.get("baseline", {})
 	var session: Dictionary = state.get("calibration_session", {})
 	assert_true(bool(baseline.get("is_calibrated", false)))
@@ -1892,89 +1887,34 @@ func test_calibration_session_commits_baseline_after_10_second_countdown_with_on
 	assert_eq(String(session.get("state", "")), "succeeded")
 	assert_eq(int(session.get("captured_sample_frames", 0)), 1)
 
-func test_calibration_session_waits_through_missing_landmarks_then_succeeds_on_retry_frame() -> void:
-	_calibrate_stance()
-	substrate.request_athlete_recalibration()
-	substrate.call("_update_calibration_session", 11100, {
-		"ready": false,
-		"failure_reason": "required_sample_landmarks_unavailable",
+func test_calibration_session_uses_monotonic_runtime_time_and_can_refire_after_cooldown_without_pose_break() -> void:
+	var t_pose_frame := _make_calibration_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.22, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.78, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.08, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.92, "y": 0.70, "z": 0.0, "v": 0.99},
 	})
-	var session: Dictionary = substrate.get_calibration_session()
-	assert_eq(String(session.get("state", "")), "capture_pending")
-	assert_true(bool(session.get("is_active", false)))
-	assert_eq(String(session.get("failure_reason", "")), "required_sample_landmarks_unavailable")
-	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 11064)
-	var baseline: Dictionary = state.get("baseline", {})
-	session = state.get("calibration_session", {})
-	assert_true(bool(baseline.get("is_calibrated", false)))
-	assert_eq(String(session.get("state", "")), "succeeded")
+	var state := substrate.process_landmarks(t_pose_frame, 9500)
+	state = substrate.process_landmarks(t_pose_frame, 10300)
+	var first_session: Dictionary = state.get("calibration_session", {})
+	var first_capture_ms := int(first_session.get("captured_at_ms", 0))
+	assert_true(first_capture_ms > 0)
+	var first_runtime_ms := int(state.get("runtime_timestamp_ms", 0))
+	assert_true(first_runtime_ms > 0)
 
-func test_calibration_session_tolerates_brief_live_capture_dropout_within_retry_window() -> void:
-	_calibrate_stance()
-	substrate.request_athlete_recalibration()
-	substrate.call("_update_calibration_session", 11100, {
-		"ready": false,
-		"failure_reason": "required_sample_landmarks_unavailable",
-	})
-	var pending_session: Dictionary = substrate.get_calibration_session()
-	assert_eq(String(pending_session.get("state", "")), "capture_pending")
-	assert_true(bool(pending_session.get("is_active", false)))
-	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 11116)
-	var baseline: Dictionary = state.get("baseline", {})
-	var session: Dictionary = state.get("calibration_session", {})
-	assert_true(bool(baseline.get("is_calibrated", false)))
-	assert_eq(String(session.get("state", "")), "succeeded")
+	state = substrate.process_landmarks(t_pose_frame, 100)
+	var cooldown_session: Dictionary = state.get("calibration_session", {})
+	var rewind_runtime_ms := int(state.get("runtime_timestamp_ms", 0))
+	assert_eq(String(cooldown_session.get("state", "")), "cooldown")
+	assert_true(rewind_runtime_ms > first_runtime_ms)
 
-func test_calibration_session_uses_monotonic_runtime_time_across_replay_timestamp_rewind() -> void:
-	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_calibration_pose_frame(), 9500)
-	substrate.request_athlete_recalibration()
-	var session := substrate.get_calibration_session()
-	assert_eq(String(session.get("state", "")), "countdown")
-	assert_eq(int(session.get("seconds_remaining", 0)), 10)
-	assert_eq(int(substrate.get_latest_state().get("runtime_timestamp_ms", 0)), 9500)
-
-	state = substrate.process_landmarks(_make_calibration_pose_frame(), 9600)
-	var pre_rewind_session: Dictionary = state.get("calibration_session", {})
-	assert_eq(int(pre_rewind_session.get("seconds_remaining", 0)), 10)
-	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 9600)
-
-	state = substrate.process_landmarks(_make_calibration_pose_frame(), 100)
-	var rewind_session: Dictionary = state.get("calibration_session", {})
-	assert_eq(String(rewind_session.get("state", "")), "countdown")
-	assert_true(int(rewind_session.get("seconds_remaining", 0)) <= int(pre_rewind_session.get("seconds_remaining", 0)))
-	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 9700)
-
-	for idx in range(98):
-		state = substrate.process_landmarks(_make_calibration_pose_frame(), 200 + idx * 100)
+	for idx in range(20):
+		state = substrate.process_landmarks(t_pose_frame, 200 + idx * 100)
+	state = substrate.process_landmarks(t_pose_frame, 5000)
 	var final_session: Dictionary = state.get("calibration_session", {})
-	var baseline_after_rewind: Dictionary = state.get("baseline", {})
-	assert_true(bool(baseline_after_rewind.get("is_calibrated", false)))
-	assert_eq(String(baseline_after_rewind.get("capture_source", "")), "calibration_session")
-	assert_eq(int(baseline_after_rewind.get("sample_frames", 0)), 1)
 	assert_eq(String(final_session.get("state", "")), "succeeded")
-	assert_eq(int(state.get("runtime_timestamp_ms", 0)), 19500)
-
-func test_calibration_session_fails_when_countdown_finishes_without_required_sample_landmarks() -> void:
-	_calibrate_stance()
-	substrate.request_athlete_recalibration()
-	substrate.call("_update_calibration_session", 11100, {
-		"ready": false,
-		"failure_reason": "required_sample_landmarks_unavailable",
-	})
-	var session: Dictionary = substrate.get_calibration_session()
-	var state := substrate.get_latest_state()
-	assert_eq(String(session.get("state", "")), "capture_pending")
-	assert_true(bool(session.get("is_active", false)))
-	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
-	assert_eq(String(session.get("failure_reason", "")), "required_sample_landmarks_unavailable")
-	substrate.call("_update_calibration_session", 12101, {
-		"ready": false,
-		"failure_reason": "required_sample_landmarks_unavailable",
-	})
-	session = substrate.get_calibration_session()
-	assert_eq(String(session.get("state", "")), "failed")
-	assert_eq(String(session.get("failure_reason", "")), "required_sample_landmarks_unavailable")
+	assert_true(int(final_session.get("captured_at_ms", 0)) > first_capture_ms)
+	assert_true(int(state.get("runtime_timestamp_ms", 0)) > rewind_runtime_ms)
 
 func test_cancel_athlete_recalibration_keeps_runtime_uncalibrated_until_retry() -> void:
 	_calibrate_stance()
@@ -1982,7 +1922,7 @@ func test_cancel_athlete_recalibration_keeps_runtime_uncalibrated_until_retry() 
 	substrate.cancel_athlete_recalibration()
 	var state := substrate.get_latest_state()
 	assert_eq(String(state.get("calibration_session", {}).get("state", "")), "cancelled")
-	for idx in range(5):
+	for idx in range(2):
 		state = substrate.process_landmarks(_make_calibration_pose_frame(), 6100 + idx * 16)
 	assert_false(bool(state.get("baseline", {}).get("is_calibrated", true)))
 

@@ -193,6 +193,7 @@ var show_trails := true
 @onready var metrics_label: RichTextLabel = find_child("Metrics", true, false) as RichTextLabel
 @onready var events_label: RichTextLabel = find_child("Events", true, false) as RichTextLabel
 @onready var nose_placement_chart: Control = find_child("NosePlacementChart", true, false) as Control
+@onready var nose_direction_chart: Control = find_child("NoseDirectionChart", true, false) as Control
 @onready var left_placement_chart: Control = find_child("LeftPlacementChart", true, false) as Control
 @onready var right_placement_chart: Control = find_child("RightPlacementChart", true, false) as Control
 @onready var left_direction_chart: Control = find_child("LeftDirectionChart", true, false) as Control
@@ -522,63 +523,46 @@ func _cancel_athlete_calibration_request() -> bool:
 	return false
 
 func _refresh_calibration_flow_ui() -> void:
-	if _athlete_recalibrate_button == null:
-		return
 	var session := _resolve_calibration_session()
 	var state_name := String(session.get("state", "idle"))
-	var is_active := bool(session.get("is_active", false))
-	var start_supported := provider_has_start_calibration()
-	var cancel_supported := provider_has_cancel_calibration()
+	var has_baseline := bool(_resolve_baseline_state().get("is_calibrated", false))
 	_apply_calibration_session_transition(state_name, session)
 
 	if _athlete_recalibrate_button != null:
-		_athlete_recalibrate_button.disabled = is_active or not start_supported
-		_athlete_recalibrate_button.tooltip_text = "Capture a shared athlete baseline from the visible pose feed."
-		if state_name == "failed":
-			_athlete_recalibrate_button.text = "Try Again"
-		elif state_name == "countdown":
-			_athlete_recalibrate_button.text = "Calibrating · %ds" % maxi(int(session.get("seconds_remaining", 0)), 0)
-		elif state_name == "capture_pending" or state_name == "capturing":
-			_athlete_recalibrate_button.text = "Sampling…"
-		else:
-			_athlete_recalibrate_button.text = RECALIBRATE_BUTTON_TEXT
+		_athlete_recalibrate_button.visible = false
+		_athlete_recalibrate_button.disabled = true
 	if _athlete_calibration_secondary_button != null:
-		_athlete_calibration_secondary_button.visible = is_active and cancel_supported
-		_athlete_calibration_secondary_button.disabled = not (is_active and cancel_supported)
-		_athlete_calibration_secondary_button.text = "Cancel"
+		_athlete_calibration_secondary_button.visible = false
+		_athlete_calibration_secondary_button.disabled = true
 	if athlete_calibration_countdown_label != null:
-		athlete_calibration_countdown_label.text = ""
-		athlete_calibration_countdown_label.visible = false
+		athlete_calibration_countdown_label.text = _calibration_countdown_text(state_name, session)
+		athlete_calibration_countdown_label.visible = not athlete_calibration_countdown_label.text.is_empty()
 	if athlete_calibration_instruction_label != null:
-		athlete_calibration_instruction_label.text = ""
-		athlete_calibration_instruction_label.visible = false
+		athlete_calibration_instruction_label.text = _calibration_instruction_text(state_name, session)
+		athlete_calibration_instruction_label.visible = not athlete_calibration_instruction_label.text.is_empty()
 	if athlete_calibration_status_label != null:
-		athlete_calibration_status_label.text = ""
-		athlete_calibration_status_label.visible = false
+		athlete_calibration_status_label.text = _calibration_status_text(state_name, session, has_baseline)
+		athlete_calibration_status_label.visible = not athlete_calibration_status_label.text.is_empty()
 
 func _apply_calibration_session_transition(state_name: String, session: Dictionary) -> void:
 	if state_name.is_empty():
 		state_name = "idle"
-	if _last_reported_calibration_session_state.is_empty():
-		_last_reported_calibration_session_state = state_name
+	var baseline := _resolve_baseline_state()
+	var captured_at_ms := int(session.get("captured_at_ms", 0))
+	var transition_key := "%s:%d" % [state_name, captured_at_ms]
+	if _last_reported_calibration_session_state == transition_key:
 		return
-	if state_name == _last_reported_calibration_session_state:
-		return
-	_last_reported_calibration_session_state = state_name
 	var event_name := ""
 	match state_name:
-		"countdown":
+		"holding":
 			event_name = "athlete_calibration_started"
-		"capture_pending":
-			event_name = "athlete_calibration_countdown_complete"
-		"capturing":
+		"cooldown":
 			event_name = "athlete_calibration_capturing"
 		"succeeded":
 			event_name = "athlete_calibration_succeeded"
-		"failed":
-			event_name = "athlete_calibration_failed"
 		"cancelled":
 			event_name = "athlete_calibration_cancelled"
+	_last_reported_calibration_session_state = transition_key
 	if event_name.is_empty():
 		return
 	var event_payload := {
@@ -586,97 +570,72 @@ func _apply_calibration_session_transition(state_name: String, session: Dictiona
 		"state": state_name,
 		"failure_reason": String(session.get("failure_reason", "")),
 		"captured_sample_frames": int(session.get("captured_sample_frames", 0)),
-		"seconds_remaining": int(session.get("seconds_remaining", 0)),
+		"hold_progress_ms": int(session.get("hold_progress_ms", 0)),
+		"cooldown_remaining_ms": int(session.get("cooldown_remaining_ms", 0)),
 	}
-	if state_name == "succeeded":
-		var baseline := _resolve_baseline_state()
-		if bool(baseline.get("is_calibrated", false)):
-			event_payload["grid_width"] = float(baseline.get("grid_width", baseline.get("horizontal_wrist_span", 0.0)))
-			event_payload["grid_height"] = float(baseline.get("grid_height", 0.0))
+	if state_name == "succeeded" and bool(baseline.get("is_calibrated", false)):
+		event_payload["grid_width"] = float(baseline.get("grid_width", baseline.get("horizontal_wrist_span", 0.0)))
+		event_payload["grid_height"] = float(baseline.get("grid_height", 0.0))
 	_record_event(event_name, event_payload)
 	_record_fixture_state_snapshot(event_name)
 
 
 func _calibration_countdown_text(state_name: String, session: Dictionary) -> String:
-	var captured_frames := int(session.get("captured_sample_frames", 0))
-	var required_frames := maxi(int(session.get("required_capture_frames", 0)), 1)
+	var hold_progress_ms := int(session.get("hold_progress_ms", 0))
+	var hold_ms := maxi(int(session.get("hold_ms", 0)), 1)
+	var cooldown_remaining_ms := int(session.get("cooldown_remaining_ms", 0))
 	match state_name:
-		"countdown":
-			return "Countdown: %ds · previous baseline cleared" % maxi(int(session.get("seconds_remaining", 0)), 0)
-		"capture_pending":
-			return "Countdown complete: waiting for one live upper-body chain sample"
-		"capturing":
-			return "Capturing upper-body chain sample: %d/%d" % [captured_frames, required_frames]
+		"holding":
+			return "Holding T-pose: %d / %d ms" % [hold_progress_ms, hold_ms]
+		"cooldown":
+			return "Cooldown: %d ms until auto-calibration can re-fire" % cooldown_remaining_ms
 		"succeeded":
-			return "Captured upper-body chain sample: %d/%d" % [captured_frames, required_frames]
-		"failed":
-			return "Calibration sample failed after %d/%d captures" % [captured_frames, required_frames]
+			return "Auto-calibration captured from held T-pose"
 		"cancelled":
-			return "Calibration cancelled before a new baseline was captured"
+			return "Auto-calibration reset — hold a fresh T-pose to capture again"
 		_:
-			return "10-second countdown, then one live upper-body chain sample"
+			return "Auto-calibration watches for a held T-pose"
 
 func _calibration_instruction_text(state_name: String, session: Dictionary) -> String:
 	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
-	var instruction_text := String(readiness.get("instruction_text", "")).strip_edges()
-	match state_name:
-		"countdown":
-			return "Countdown first. When it ends, keep nose, shoulders, elbows, and wrists visible for the sample."
-		"capture_pending":
-			if bool(readiness.get("ready", false)):
-				return "Countdown is done. Waiting for the live upper-body chain sample frame now."
-			if not instruction_text.is_empty():
-				return instruction_text
-			return "Need tracking/reacquiring plus nose, shoulders, elbows, and wrists visible before the sample can complete."
-		"capturing":
-			return "Sampling the current pose to set wrist-span grid width, square-cell height, and anchor."
-		"failed":
-			if not instruction_text.is_empty():
-				return "Retry requirement: %s" % instruction_text
-			return "Retry requirement: keep tracking live with nose, shoulders, elbows, and wrists visible when the countdown ends."
-		"cancelled":
-			return "Start again to clear the baseline and rerun the 10-second countdown."
-		_:
-			return ""
+	var instruction_text := String(session.get("instruction_text", readiness.get("instruction_text", ""))).strip_edges()
+	if not instruction_text.is_empty():
+		return instruction_text
+	if state_name == "succeeded":
+		return "T-pose auto-calibration is live. Hold the pose again after cooldown to re-sample."
+	return "Show nose, shoulders, elbows, and wrists, then hold a straight-arm T-pose."
 
 func _calibration_status_text(state_name: String, session: Dictionary, has_baseline: bool) -> String:
-	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
-	var captured_frames := int(session.get("captured_sample_frames", 0))
-	var required_frames := maxi(int(session.get("required_capture_frames", 0)), 1)
 	match state_name:
-		"countdown":
-			return "Calibration in progress. The old shared baseline is intentionally gone until the new sample finishes."
-		"capture_pending":
-			if bool(readiness.get("ready", false)):
-				return "Countdown is complete. Waiting for the live frame that will set the new wrist-span grid width, square-cell height, and anchor: %d/%d samples so far." % [captured_frames, required_frames]
-			return "Countdown is complete, but the sample cannot finish yet: %s." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_sample_landmarks_unavailable")))
-		"capturing":
-			return "Sampling the current pose to set the new shared athlete baseline."
+		"holding":
+			return "T-pose qualified. Keep both arms level and extended until the hold completes."
+		"cooldown":
+			return "Auto-calibration is cooling down. Keep the T-pose held if you want it to re-fire as soon as the cooldown ends."
 		"succeeded":
-			return "Calibration complete. Boxing and Flow are now using the sampled wrist-span grid width, square-cell height, and nose/left-shoulder anchor."
-		"failed":
-			return "Calibration failed: %s. No new shared baseline was committed." % _humanize_calibration_failure_reason(String(session.get("failure_reason", "required_sample_landmarks_unavailable")))
+			return "Auto-calibration complete. Boxing and Flow are using the latest held T-pose wrist-span baseline."
 		"cancelled":
-			return "Calibration cancelled. No shared baseline is active until you try again."
+			return "Auto-calibration was reset. No shared baseline is active until a held T-pose captures again."
 		_:
 			if has_baseline:
-				return "Calibration ready."
-			return "No shared baseline captured yet."
+				return "Baseline active. Auto-calibration will re-fire from a qualifying held T-pose after cooldown."
+			return "Waiting for a qualifying T-pose to capture the first shared baseline."
 
 func _humanize_calibration_failure_reason(reason: String) -> String:
 	match reason:
 		"required_sample_landmarks_unavailable", "required_wrist_data_unavailable":
-			return "nose, shoulders, elbows, and wrists must stay visible when the sample runs"
-		"missing_wrist_landmarks":
-			return "both wrists must stay visible when the sample runs"
+			return "nose, shoulders, elbows, and wrists must stay visible"
 		"tracking_lost":
-			return "tracking must be in tracking or reacquiring when the sample runs"
+			return "tracking must stay in tracking or reacquiring"
 		"invalid_joint_chain_sample":
-			return "the shoulder-elbow-wrist chains must produce measurable width and height when the sample runs"
-		"capture_window_expired":
-			return "the live sample did not complete before the retry window expired"
+			return "the visible wrist span must stay measurable"
+		"arms_not_horizontal":
+			return "both arms must stay level with the shoulders"
+		"arms_not_extended":
+			return "both arms must stay straight and extended"
+		"cooldown_active":
+			return "the auto-calibration cooldown has not finished yet"
 		"cancelled":
-			return "the session was cancelled"
+			return "the auto-calibration status was reset"
 		_:
 			return reason.replace("_", " ")
 
@@ -2555,6 +2514,7 @@ func _refresh_shared_flow_grid_charts() -> void:
 	var left_debug: Dictionary = tracked_landmarks.get("left_wrist", flow_debug.get("left", {})) if tracked_landmarks.get("left_wrist", flow_debug.get("left", {})) is Dictionary else {}
 	var right_debug: Dictionary = tracked_landmarks.get("right_wrist", flow_debug.get("right", {})) if tracked_landmarks.get("right_wrist", flow_debug.get("right", {})) is Dictionary else {}
 	_set_flow_chart_active_index(nose_placement_chart, int(nose_debug.get("current_cell", -1)))
+	_set_flow_chart_active_index(nose_direction_chart, int(nose_debug.get("current_direction", -1)))
 	_set_flow_chart_active_index(left_placement_chart, int(left_debug.get("current_cell", -1)))
 	_set_flow_chart_active_index(right_placement_chart, int(right_debug.get("current_cell", -1)))
 	_set_flow_chart_active_index(left_direction_chart, int(left_debug.get("current_direction", -1)))

@@ -1,6 +1,23 @@
 schema: aerobeat/gesture_detection_config
 version: 1
 profile: boxing
+calibration:
+  # Auto-capture the shared athlete baseline from a held T-pose. input/runtime.
+  mode: t_pose_auto
+  t_pose:
+    # Fire calibration immediately when this continuous hold duration is satisfied. input/runtime.
+    hold_ms: 750
+    # Allow re-firing from the same held T-pose after this cooldown elapses. input/runtime.
+    cooldown_ms: 1000
+    thresholds:
+      # Keep both wrists roughly level with the shoulders during the T-pose. input/runtime.
+      max_wrist_shoulder_y_ratio: 0.18
+      # Keep both elbows roughly level with the shoulders during the T-pose. input/runtime.
+      max_elbow_shoulder_y_ratio: 0.18
+      # Require genuinely extended arms, not just wide hands. input/runtime.
+      min_arm_extension_ratio: 0.92
+      # Require near-straight elbows before auto-calibration can fire. input/runtime.
+      min_elbow_angle_deg: 160.0
 guard:
   backend: threshold
   threshold:

@@ -71,15 +71,18 @@ const FLOW_GRID_ROWS := 3
 const FLOW_GRID_SOURCE_ASPECT_RATIO := 16.0 / 9.0
 
 const CALIBRATION_SESSION_IDLE := "idle"
-const CALIBRATION_SESSION_COUNTDOWN := "countdown"
-const CALIBRATION_SESSION_CAPTURE_PENDING := "capture_pending"
-const CALIBRATION_SESSION_CAPTURING := "capturing"
+const CALIBRATION_SESSION_WAITING := "waiting"
+const CALIBRATION_SESSION_HOLDING := "holding"
+const CALIBRATION_SESSION_COOLDOWN := "cooldown"
 const CALIBRATION_SESSION_SUCCEEDED := "succeeded"
-const CALIBRATION_SESSION_FAILED := "failed"
 const CALIBRATION_SESSION_CANCELLED := "cancelled"
-const CALIBRATION_COUNTDOWN_MS := 10000
-const CALIBRATION_CAPTURE_WINDOW_MS := 1000
-const CALIBRATION_CAPTURE_SAMPLE_FRAMES := 1
+const CALIBRATION_MODE_T_POSE_AUTO := "t_pose_auto"
+const CALIBRATION_DEFAULT_HOLD_MS := 750
+const CALIBRATION_DEFAULT_COOLDOWN_MS := 1000
+const CALIBRATION_DEFAULT_MAX_WRIST_SHOULDER_Y_RATIO := 0.18
+const CALIBRATION_DEFAULT_MAX_ELBOW_SHOULDER_Y_RATIO := 0.18
+const CALIBRATION_DEFAULT_MIN_ARM_EXTENSION_RATIO := 0.92
+const CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG := 160.0
 
 var _config = null
 var _smoother: LandmarkSmoother = LandmarkSmoother.new()
@@ -180,61 +183,50 @@ func reset() -> void:
 	_configure_depth_runtime_managers()
 
 func request_athlete_recalibration() -> void:
-	var session_started_at_ms := int(_latest_state.get("runtime_timestamp_ms", _session_runtime_timestamp_ms))
-	if session_started_at_ms <= 0:
-		session_started_at_ms = Time.get_ticks_msec()
 	_reset_baseline_calibration()
 	_clear_transient_gesture_state()
-	_start_calibration_session(session_started_at_ms)
+	_reset_calibration_session()
 	if _latest_state.is_empty():
 		_latest_state = _build_empty_state()
 		return
 	_sync_calibration_state_into_latest_state()
 
 func cancel_athlete_recalibration() -> void:
-	var state_name := String(_calibration_session.get("state", CALIBRATION_SESSION_IDLE))
-	if not _is_calibration_session_active_state(state_name):
-		return
 	_clear_transient_gesture_state()
 	_reset_baseline_calibration()
-	_calibration_session["is_active"] = false
-	_calibration_session["state"] = CALIBRATION_SESSION_CANCELLED
-	_calibration_session["result"] = CALIBRATION_SESSION_CANCELLED
+	_calibration_session = _build_calibration_session(CALIBRATION_SESSION_CANCELLED)
 	_calibration_session["failure_reason"] = "cancelled"
-	_calibration_session["seconds_remaining"] = 0
-	_calibration_session["captured_sample_frames"] = 0
+	_calibration_session["instruction_key"] = "hold_t_pose"
+	_calibration_session["instruction_text"] = "Auto-calibration reset. Hold a T-pose again to capture a new baseline"
 	_sync_calibration_state_into_latest_state()
 
 func get_calibration_session() -> Dictionary:
 	return _calibration_session.duplicate(true)
 
-func _start_calibration_session(started_at_ms: int) -> void:
-	_calibration_session = _build_calibration_session(CALIBRATION_SESSION_COUNTDOWN)
-	_calibration_session["is_active"] = true
-	_calibration_session["result"] = "pending"
-	_calibration_session["countdown_started_at_ms"] = started_at_ms
-	_calibration_session["countdown_ends_at_ms"] = started_at_ms + CALIBRATION_COUNTDOWN_MS
-	_calibration_session["seconds_remaining"] = int(ceil(float(CALIBRATION_COUNTDOWN_MS) / 1000.0))
-
 func _reset_calibration_session() -> void:
-	_calibration_session = _build_calibration_session(CALIBRATION_SESSION_IDLE)
+	var initial_state := CALIBRATION_SESSION_WAITING if _get_calibration_mode() == CALIBRATION_MODE_T_POSE_AUTO else CALIBRATION_SESSION_IDLE
+	_calibration_session = _build_calibration_session(initial_state)
 
 func _build_calibration_session(state_name: String) -> Dictionary:
 	return {
 		"state": state_name,
 		"is_active": _is_calibration_session_active_state(state_name),
 		"result": state_name if state_name != CALIBRATION_SESSION_IDLE else "idle",
-		"countdown_duration_ms": CALIBRATION_COUNTDOWN_MS,
-		"capture_window_ms": CALIBRATION_CAPTURE_WINDOW_MS,
-		"required_capture_frames": CALIBRATION_CAPTURE_SAMPLE_FRAMES,
-		"countdown_started_at_ms": 0,
-		"countdown_ends_at_ms": 0,
-		"capture_started_at_ms": 0,
-		"capture_deadline_at_ms": 0,
+		"mode": _get_calibration_mode(),
+		"hold_ms": _get_calibration_hold_ms(),
+		"cooldown_ms": _get_calibration_cooldown_ms(),
+		"hold_started_at_ms": 0,
+		"hold_progress_ms": 0,
+		"hold_progress_ratio": 0.0,
+		"last_fired_at_ms": 0,
+		"next_fire_at_ms": 0,
+		"cooldown_remaining_ms": 0,
 		"captured_at_ms": 0,
-		"seconds_remaining": 0,
 		"captured_sample_frames": 0,
+		"required_capture_frames": 1,
 		"failure_reason": "",
+		"instruction_key": "hold_t_pose",
+		"instruction_text": "Hold a straight-arm T-pose to auto-calibrate",
 		"readiness": _build_default_calibration_readiness(),
 		"instructions": _build_calibration_instructions(_build_default_calibration_readiness()),
 	}
@@ -243,7 +235,16 @@ func _build_default_calibration_readiness() -> Dictionary:
 	return {
 		"tracking_ready": false,
 		"required_landmarks_ready": false,
+		"horizontal_alignment_ready": false,
+		"arm_extension_ready": false,
+		"qualified": false,
+		"hold_ready": false,
 		"ready": false,
+		"hold_ms": _get_calibration_hold_ms(),
+		"hold_progress_ms": 0,
+		"hold_progress_ratio": 0.0,
+		"cooldown_ms": _get_calibration_cooldown_ms(),
+		"cooldown_remaining_ms": 0,
 		"failure_reason": "required_sample_landmarks_unavailable",
 		"instruction_key": "show_sample_landmarks",
 		"instruction_text": "Need tracking/reacquiring plus nose, shoulders, elbows, and wrists visible",
@@ -261,15 +262,54 @@ func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
 			"text": "Keep nose, shoulders, elbows, and wrists visible",
 			"ready": bool(readiness.get("required_landmarks_ready", false)),
 		},
-		"capture_sample": {
-			"key": "capture_sample",
-			"text": "Countdown ends, then one live upper-body chain sample is captured",
-			"ready": bool(readiness.get("ready", false)),
+		"align_arms_horizontal": {
+			"key": "align_arms_horizontal",
+			"text": "Keep both arms level with the shoulders",
+			"ready": bool(readiness.get("horizontal_alignment_ready", false)),
+		},
+		"extend_arms": {
+			"key": "extend_arms",
+			"text": "Straighten and fully extend both arms",
+			"ready": bool(readiness.get("arm_extension_ready", false)),
+		},
+		"hold_t_pose": {
+			"key": "hold_t_pose",
+			"text": "Hold the T-pose until auto-calibration fires",
+			"ready": bool(readiness.get("hold_ready", false)),
 		},
 	}
 
 func _is_calibration_session_active_state(state_name: String) -> bool:
-	return state_name == CALIBRATION_SESSION_COUNTDOWN or state_name == CALIBRATION_SESSION_CAPTURE_PENDING or state_name == CALIBRATION_SESSION_CAPTURING
+	return state_name == CALIBRATION_SESSION_WAITING or state_name == CALIBRATION_SESSION_HOLDING or state_name == CALIBRATION_SESSION_COOLDOWN
+
+func _get_calibration_document() -> Dictionary:
+	var gesture_profile_document := _get_gesture_profile_document()
+	return gesture_profile_document.get("calibration", {}) if gesture_profile_document.get("calibration", {}) is Dictionary else {}
+
+func _get_calibration_t_pose_document() -> Dictionary:
+	var calibration_document := _get_calibration_document()
+	return calibration_document.get("t_pose", {}) if calibration_document.get("t_pose", {}) is Dictionary else {}
+
+func _get_calibration_thresholds_document() -> Dictionary:
+	var t_pose_document := _get_calibration_t_pose_document()
+	return t_pose_document.get("thresholds", {}) if t_pose_document.get("thresholds", {}) is Dictionary else {}
+
+func _get_calibration_mode() -> String:
+	var calibration_document := _get_calibration_document()
+	var mode := String(calibration_document.get("mode", CALIBRATION_MODE_T_POSE_AUTO)).strip_edges().to_lower()
+	return CALIBRATION_MODE_T_POSE_AUTO if mode.is_empty() else mode
+
+func _get_calibration_hold_ms() -> int:
+	var t_pose_document := _get_calibration_t_pose_document()
+	return maxi(int(t_pose_document.get("hold_ms", CALIBRATION_DEFAULT_HOLD_MS)), 0)
+
+func _get_calibration_cooldown_ms() -> int:
+	var t_pose_document := _get_calibration_t_pose_document()
+	return maxi(int(t_pose_document.get("cooldown_ms", CALIBRATION_DEFAULT_COOLDOWN_MS)), 0)
+
+func _get_calibration_threshold(key: String, fallback: float) -> float:
+	var thresholds := _get_calibration_thresholds_document()
+	return float(thresholds.get(key, fallback))
 
 func _sync_calibration_state_into_latest_state() -> void:
 	if _latest_state.is_empty():
@@ -679,17 +719,8 @@ func _update_tracking_state(landmarks_by_id: Dictionary) -> StringName:
 	return TRACKING_DEGRADED
 
 func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary, timestamp_ms: int, tracking_frame: Dictionary = {}) -> void:
-	if bool(_baseline.get("is_calibrated", false)) and not _calibration_session.get("is_active", false):
-		return
-	var session_state := String(_calibration_session.get("state", CALIBRATION_SESSION_IDLE))
-	if not _is_calibration_session_active_state(session_state) and session_state != CALIBRATION_SESSION_IDLE and session_state != CALIBRATION_SESSION_SUCCEEDED:
-		return
-	if _is_calibration_session_active_state(session_state):
-		if session_state == CALIBRATION_SESSION_COUNTDOWN:
-			return
-		if not bool((_calibration_session.get("readiness", {}) as Dictionary).get("ready", false)):
-			return
-	elif bool(_baseline.get("is_calibrated", false)):
+	var calibration_ready := bool((_calibration_session.get("readiness", {}) as Dictionary).get("ready", false))
+	if bool(_baseline.get("is_calibrated", false)) and not calibration_ready:
 		return
 	if tracking_state != TRACKING_TRACKING and tracking_state != TRACKING_REACQUIRING:
 		return
@@ -715,6 +746,8 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var calibration_height := _compute_calibration_grid_height(calibration_width, grid_content_aspect_ratio)
 	if shoulder_width <= 0.0 or torso_height <= 0.0 or calibration_width <= 0.0 or calibration_height <= 0.0 or nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty():
 		return
+	if calibration_ready:
+		_reset_baseline_calibration()
 	_baseline_accumulator["frames"] += 1
 	_baseline_accumulator["shoulder_width"] += shoulder_width
 	_baseline_accumulator["torso_height"] += torso_height
@@ -742,11 +775,11 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	_baseline_accumulator["left_ankle_y"] += float(PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_ANKLE).get("y", 0.0))
 	_baseline_accumulator["right_ankle_y"] += float(PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_ANKLE).get("y", 0.0))
 	var frames: int = int(_baseline_accumulator["frames"])
-	var required_frames := CALIBRATION_CAPTURE_SAMPLE_FRAMES if _is_calibration_session_active_state(session_state) else 5
+	var required_frames := 1 if calibration_ready else 5
 	if frames < required_frames:
-		_calibration_session["captured_sample_frames"] = frames
+		_calibration_session["captured_sample_frames"] = frames if calibration_ready else int(_calibration_session.get("captured_sample_frames", 0))
 		return
-	var capture_source := "calibration_session" if _is_calibration_session_active_state(session_state) else "auto_bootstrap"
+	var capture_source := "calibration_session" if calibration_ready else "auto_bootstrap"
 	_baseline = {
 		"is_calibrated": true,
 		"sample_frames": frames,
@@ -774,13 +807,17 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		"left_ankle_y": float(_baseline_accumulator["left_ankle_y"]) / float(frames),
 		"right_ankle_y": float(_baseline_accumulator["right_ankle_y"]) / float(frames),
 	}
-	if _is_calibration_session_active_state(session_state):
-		_calibration_session["is_active"] = false
+	if calibration_ready:
 		_calibration_session["state"] = CALIBRATION_SESSION_SUCCEEDED
 		_calibration_session["result"] = CALIBRATION_SESSION_SUCCEEDED
 		_calibration_session["captured_at_ms"] = timestamp_ms
 		_calibration_session["captured_sample_frames"] = frames
+		_calibration_session["last_fired_at_ms"] = timestamp_ms
+		_calibration_session["next_fire_at_ms"] = timestamp_ms + _get_calibration_cooldown_ms()
+		_calibration_session["cooldown_remaining_ms"] = _get_calibration_cooldown_ms()
 		_calibration_session["failure_reason"] = ""
+		_calibration_session["instruction_key"] = "hold_t_pose"
+		_calibration_session["instruction_text"] = "Auto-calibration captured. Hold the T-pose to re-fire after cooldown"
 
 func _compute_calibration_grid_width(left_wrist: Dictionary, right_wrist: Dictionary) -> float:
 	return _camera_space_axis_distance(left_wrist, right_wrist, "x")
@@ -836,50 +873,55 @@ func _estimate_height_state(height_ratio: float, hip_center_delta_y: float) -> S
 func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> void:
 	if _calibration_session.is_empty():
 		_reset_calibration_session()
+	_calibration_session["mode"] = _get_calibration_mode()
+	_calibration_session["hold_ms"] = _get_calibration_hold_ms()
+	_calibration_session["cooldown_ms"] = _get_calibration_cooldown_ms()
 	_calibration_session["readiness"] = readiness.duplicate(true)
 	_calibration_session["instructions"] = _build_calibration_instructions(readiness)
-	var state_name := String(_calibration_session.get("state", CALIBRATION_SESSION_IDLE))
-	_calibration_session["is_active"] = _is_calibration_session_active_state(state_name)
-	if state_name == CALIBRATION_SESSION_IDLE or state_name == CALIBRATION_SESSION_SUCCEEDED or state_name == CALIBRATION_SESSION_FAILED or state_name == CALIBRATION_SESSION_CANCELLED:
+	_calibration_session["is_active"] = _get_calibration_mode() == CALIBRATION_MODE_T_POSE_AUTO
+	_calibration_session["hold_progress_ms"] = int(readiness.get("hold_progress_ms", 0))
+	_calibration_session["hold_progress_ratio"] = float(readiness.get("hold_progress_ratio", 0.0))
+	_calibration_session["cooldown_remaining_ms"] = int(readiness.get("cooldown_remaining_ms", 0))
+	_calibration_session["instruction_key"] = String(readiness.get("instruction_key", "hold_t_pose"))
+	_calibration_session["instruction_text"] = String(readiness.get("instruction_text", "Hold a straight-arm T-pose to auto-calibrate"))
+	var hold_started_at_ms := int(readiness.get("hold_started_at_ms", 0))
+	_calibration_session["hold_started_at_ms"] = hold_started_at_ms
+	if _get_calibration_mode() != CALIBRATION_MODE_T_POSE_AUTO:
+		_calibration_session["state"] = CALIBRATION_SESSION_IDLE
+		_calibration_session["result"] = CALIBRATION_SESSION_IDLE
 		return
-	if state_name == CALIBRATION_SESSION_COUNTDOWN:
-		var countdown_end_ms := int(_calibration_session.get("countdown_ends_at_ms", timestamp_ms))
-		var remaining_ms := maxi(countdown_end_ms - timestamp_ms, 0)
-		_calibration_session["seconds_remaining"] = int(floor(float(remaining_ms) / 1000.0)) + 1 if remaining_ms > 0 else 0
-		if remaining_ms > 0:
-			return
-		_calibration_session["state"] = CALIBRATION_SESSION_CAPTURE_PENDING
-		state_name = CALIBRATION_SESSION_CAPTURE_PENDING
-		_calibration_session["capture_started_at_ms"] = timestamp_ms
-		_calibration_session["capture_deadline_at_ms"] = timestamp_ms + CALIBRATION_CAPTURE_WINDOW_MS
-		_calibration_session["captured_sample_frames"] = 0
+	if bool(readiness.get("ready", false)):
+		_calibration_session["state"] = CALIBRATION_SESSION_HOLDING
+		_calibration_session["result"] = "pending"
 		_calibration_session["failure_reason"] = ""
-	if state_name == CALIBRATION_SESSION_CAPTURE_PENDING or state_name == CALIBRATION_SESSION_CAPTURING:
-		var deadline_ms := int(_calibration_session.get("capture_deadline_at_ms", 0))
-		if bool(readiness.get("ready", false)):
-			_calibration_session["state"] = CALIBRATION_SESSION_CAPTURING
-			_calibration_session["failure_reason"] = ""
-		else:
-			_calibration_session["state"] = CALIBRATION_SESSION_CAPTURE_PENDING
-			_calibration_session["failure_reason"] = String(readiness.get("failure_reason", "required_sample_landmarks_unavailable"))
-		if deadline_ms > 0 and timestamp_ms > deadline_ms:
-			_calibration_session["is_active"] = false
-			_calibration_session["state"] = CALIBRATION_SESSION_FAILED
-			_calibration_session["result"] = CALIBRATION_SESSION_FAILED
-			var failure_reason := String(readiness.get("failure_reason", "")).strip_edges()
-			if failure_reason.is_empty():
-				failure_reason = String(_calibration_session.get("failure_reason", "capture_window_expired")).strip_edges()
-			if failure_reason.is_empty():
-				failure_reason = "capture_window_expired"
-			_calibration_session["failure_reason"] = failure_reason
-			return
+		return
+	var cooldown_remaining_ms := int(readiness.get("cooldown_remaining_ms", 0))
+	if cooldown_remaining_ms > 0 and bool(readiness.get("qualified", false)):
+		_calibration_session["state"] = CALIBRATION_SESSION_COOLDOWN
+		_calibration_session["result"] = "pending"
+		_calibration_session["failure_reason"] = "cooldown_active"
+		_calibration_session["next_fire_at_ms"] = timestamp_ms + cooldown_remaining_ms
+		return
+	if bool(readiness.get("qualified", false)):
+		_calibration_session["state"] = CALIBRATION_SESSION_HOLDING
+		_calibration_session["result"] = "pending"
+		_calibration_session["failure_reason"] = ""
+		return
+	_calibration_session["state"] = CALIBRATION_SESSION_WAITING
+	_calibration_session["result"] = "pending"
+	_calibration_session["failure_reason"] = String(readiness.get("failure_reason", "required_sample_landmarks_unavailable"))
 
-func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
+func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
 	var readiness := _build_default_calibration_readiness()
+	var hold_ms := _get_calibration_hold_ms()
+	var cooldown_ms := _get_calibration_cooldown_ms()
+	readiness["hold_ms"] = hold_ms
+	readiness["cooldown_ms"] = cooldown_ms
+	var runtime_timestamp_ms := int(_session_runtime_timestamp_ms)
 	if tracking_state != TRACKING_TRACKING and tracking_state != TRACKING_REACQUIRING:
 		readiness["failure_reason"] = "tracking_lost"
 		readiness["instruction_key"] = "tracking_ready"
-		readiness["instruction_text"] = "Need tracking or reacquiring before calibration capture can start"
+		readiness["instruction_text"] = "Need tracking or reacquiring before T-pose auto-calibration can run"
 		return readiness
 	readiness["tracking_ready"] = true
 	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
@@ -892,20 +934,68 @@ func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: Strin
 	if nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
 		readiness["failure_reason"] = "required_sample_landmarks_unavailable"
 		readiness["instruction_key"] = "show_sample_landmarks"
-		readiness["instruction_text"] = "Need nose, shoulders, elbows, and wrists visible before calibration capture can complete"
+		readiness["instruction_text"] = "Need nose, shoulders, elbows, and wrists visible before T-pose auto-calibration can run"
 		return readiness
 	readiness["required_landmarks_ready"] = true
+	var measurements: Dictionary = metrics.get("measurements", {})
+	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
+	var max_wrist_ratio := _get_calibration_threshold("max_wrist_shoulder_y_ratio", CALIBRATION_DEFAULT_MAX_WRIST_SHOULDER_Y_RATIO)
+	var max_elbow_ratio := _get_calibration_threshold("max_elbow_shoulder_y_ratio", CALIBRATION_DEFAULT_MAX_ELBOW_SHOULDER_Y_RATIO)
+	var left_wrist_shoulder_y_ratio := absf(float(left_wrist.get("y", 0.0)) - float(left_shoulder.get("y", 0.0))) / shoulder_width
+	var right_wrist_shoulder_y_ratio := absf(float(right_wrist.get("y", 0.0)) - float(right_shoulder.get("y", 0.0))) / shoulder_width
+	var left_elbow_shoulder_y_ratio := absf(float(left_elbow.get("y", 0.0)) - float(left_shoulder.get("y", 0.0))) / shoulder_width
+	var right_elbow_shoulder_y_ratio := absf(float(right_elbow.get("y", 0.0)) - float(right_shoulder.get("y", 0.0))) / shoulder_width
+	var horizontal_ready := left_wrist_shoulder_y_ratio <= max_wrist_ratio and right_wrist_shoulder_y_ratio <= max_wrist_ratio and left_elbow_shoulder_y_ratio <= max_elbow_ratio and right_elbow_shoulder_y_ratio <= max_elbow_ratio
+	readiness["horizontal_alignment_ready"] = horizontal_ready
+	if not horizontal_ready:
+		readiness["failure_reason"] = "arms_not_horizontal"
+		readiness["instruction_key"] = "align_arms_horizontal"
+		readiness["instruction_text"] = "Raise and level both arms into a T-pose"
+		return readiness
+	var min_arm_extension_ratio := _get_calibration_threshold("min_arm_extension_ratio", CALIBRATION_DEFAULT_MIN_ARM_EXTENSION_RATIO)
+	var min_elbow_angle_deg := _get_calibration_threshold("min_elbow_angle_deg", CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG)
+	var left_arm_extension := float(measurements.get("left_arm_extension", 0.0))
+	var right_arm_extension := float(measurements.get("right_arm_extension", 0.0))
+	var left_elbow_bend_deg := float(measurements.get("left_elbow_bend_deg", 0.0))
+	var right_elbow_bend_deg := float(measurements.get("right_elbow_bend_deg", 0.0))
+	var extension_ready := left_arm_extension >= min_arm_extension_ratio and right_arm_extension >= min_arm_extension_ratio and left_elbow_bend_deg >= min_elbow_angle_deg and right_elbow_bend_deg >= min_elbow_angle_deg
+	readiness["arm_extension_ready"] = extension_ready
+	if not extension_ready:
+		readiness["failure_reason"] = "arms_not_extended"
+		readiness["instruction_key"] = "extend_arms"
+		readiness["instruction_text"] = "Straighten and fully extend both arms in the T-pose"
+		return readiness
+	readiness["qualified"] = true
+	var hold_started_at_ms := int(_calibration_session.get("hold_started_at_ms", 0))
+	if hold_started_at_ms <= 0:
+		hold_started_at_ms = runtime_timestamp_ms
+	var hold_progress_ms := maxi(runtime_timestamp_ms - hold_started_at_ms, 0)
+	readiness["hold_started_at_ms"] = hold_started_at_ms
+	readiness["hold_progress_ms"] = hold_progress_ms
+	readiness["hold_progress_ratio"] = clampf(float(hold_progress_ms) / maxf(float(hold_ms), 1.0), 0.0, 1.0)
+	readiness["hold_ready"] = hold_progress_ms >= hold_ms
+	if not bool(readiness.get("hold_ready", false)):
+		readiness["instruction_key"] = "hold_t_pose"
+		readiness["instruction_text"] = "Hold the T-pose steady to finish auto-calibration"
+		return readiness
+	var last_fired_at_ms := int(_calibration_session.get("last_fired_at_ms", 0))
+	var cooldown_remaining_ms := maxi((last_fired_at_ms + cooldown_ms) - runtime_timestamp_ms, 0) if last_fired_at_ms > 0 else 0
+	readiness["cooldown_remaining_ms"] = cooldown_remaining_ms
+	if cooldown_remaining_ms > 0:
+		readiness["instruction_key"] = "hold_t_pose"
+		readiness["instruction_text"] = "Hold the T-pose — auto-calibration can re-fire after cooldown"
+		return readiness
 	var calibration_width := _compute_calibration_grid_width(left_wrist, right_wrist)
 	var calibration_height := _compute_calibration_grid_height(calibration_width, _resolve_flow_grid_content_aspect_ratio())
 	if calibration_width <= 0.0 or calibration_height <= 0.0:
 		readiness["failure_reason"] = "invalid_joint_chain_sample"
 		readiness["instruction_key"] = "show_sample_landmarks"
-		readiness["instruction_text"] = "Move naturally so the shoulder-elbow-wrist chains produce a measurable calibration sample"
+		readiness["instruction_text"] = "Keep the full T-pose visible so the wrist span sample is measurable"
 		return readiness
 	readiness["ready"] = true
 	readiness["failure_reason"] = ""
-	readiness["instruction_key"] = "capture_sample"
-	readiness["instruction_text"] = "Countdown complete — capturing one upper-body chain sample now"
+	readiness["instruction_key"] = "hold_t_pose"
+	readiness["instruction_text"] = "T-pose hold satisfied — firing auto-calibration now"
 	return readiness
 
 func _average_x(points: Array) -> float:

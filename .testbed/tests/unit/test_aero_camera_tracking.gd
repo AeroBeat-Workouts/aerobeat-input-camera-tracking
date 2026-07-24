@@ -555,8 +555,8 @@ func test_aero_camera_tracking_scene_teardown_stops_and_releases_wrapper_owned_t
 func test_aero_camera_tracking_exposes_shared_calibration_session_wrappers() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
 	await get_tree().process_frame
-	assert_eq(String(singleton.get_calibration_session().get("state", "")), "idle")
+	assert_eq(String(singleton.get_calibration_session().get("state", "")), "waiting")
 	assert_true(singleton.start_athlete_calibration())
-	assert_eq(String(singleton.get_calibration_session().get("state", "")), "countdown")
+	assert_eq(String(singleton.get_calibration_session().get("state", "")), "waiting")
 	assert_true(singleton.cancel_athlete_calibration())
 	assert_eq(String(singleton.get_calibration_session().get("state", "")), "cancelled")

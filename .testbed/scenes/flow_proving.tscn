@@ -312,6 +312,20 @@ size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
 chart_title = "Right Wrist Cell"
 
+[node name="NoseDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=1888742917]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("2_cell_style")
+
+[node name="NoseDirectionChart" type="Control" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid/NoseDirectionCard" unique_id=244939237]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("5_flow_ring_chart")
+chart_title = "Nose Direction"
+chart_mode = 1
+
 [node name="LeftDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=442721612]
 layout_mode = 2
 size_flags_horizontal = 3
