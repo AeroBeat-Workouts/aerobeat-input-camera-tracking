@@ -100,6 +100,7 @@ var _baseline_accumulator := {
 	"wrist_midpoint_x": 0.0,
 	"grid_width": 0.0,
 	"grid_height": 0.0,
+	"grid_content_aspect_ratio": 0.0,
 	"horizontal_wrist_span": 0.0,
 	"wrist_span": 0.0,
 	"left_knee_y": 0.0,
@@ -126,6 +127,7 @@ var _baseline: Dictionary = {
 	"wrist_midpoint_x": 0.0,
 	"grid_width": 0.0,
 	"grid_height": 0.0,
+	"grid_content_aspect_ratio": FLOW_GRID_SOURCE_ASPECT_RATIO,
 	"horizontal_wrist_span": 0.0,
 	"wrist_span": 0.0,
 	"left_knee_y": 0.0,
@@ -304,6 +306,7 @@ func _reset_baseline_calibration() -> void:
 		"wrist_midpoint_x": 0.0,
 		"grid_width": 0.0,
 		"grid_height": 0.0,
+		"grid_content_aspect_ratio": 0.0,
 		"horizontal_wrist_span": 0.0,
 		"wrist_span": 0.0,
 		"left_knee_y": 0.0,
@@ -330,6 +333,7 @@ func _reset_baseline_calibration() -> void:
 		"wrist_midpoint_x": 0.0,
 		"grid_width": 0.0,
 		"grid_height": 0.0,
+		"grid_content_aspect_ratio": FLOW_GRID_SOURCE_ASPECT_RATIO,
 		"horizontal_wrist_span": 0.0,
 		"wrist_span": 0.0,
 		"left_knee_y": 0.0,
@@ -351,7 +355,7 @@ func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: 
 	var tracking_state: StringName = _update_tracking_state(smoothed_landmarks)
 	var calibration_readiness := _evaluate_calibration_readiness(metrics, tracking_state, smoothed_landmarks)
 	_update_calibration_session(runtime_timestamp_ms, calibration_readiness)
-	_update_baseline(metrics, tracking_state, smoothed_landmarks, runtime_timestamp_ms)
+	_update_baseline(metrics, tracking_state, smoothed_landmarks, runtime_timestamp_ms, tracking_frame)
 	_update_flow_tracking_state(smoothed_landmarks, metrics, timestamp_ms)
 	metrics["tracking_state"] = tracking_state
 	metrics["runtime_timestamp_ms"] = runtime_timestamp_ms
@@ -674,7 +678,7 @@ func _update_tracking_state(landmarks_by_id: Dictionary) -> StringName:
 		return TRACKING_LOST
 	return TRACKING_DEGRADED
 
-func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary, timestamp_ms: int) -> void:
+func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary, timestamp_ms: int, tracking_frame: Dictionary = {}) -> void:
 	if bool(_baseline.get("is_calibrated", false)) and not _calibration_session.get("is_active", false):
 		return
 	var session_state := String(_calibration_session.get("state", CALIBRATION_SESSION_IDLE))
@@ -707,7 +711,8 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var right_wrist_x := float(right_wrist.get("x", 0.0))
 	var wrist_midpoint_x := (left_wrist_x + right_wrist_x) * 0.5
 	var calibration_width := _compute_calibration_grid_width(left_wrist, right_wrist)
-	var calibration_height := _compute_calibration_grid_height(calibration_width)
+	var grid_content_aspect_ratio := _resolve_flow_grid_content_aspect_ratio(tracking_frame)
+	var calibration_height := _compute_calibration_grid_height(calibration_width, grid_content_aspect_ratio)
 	if shoulder_width <= 0.0 or torso_height <= 0.0 or calibration_width <= 0.0 or calibration_height <= 0.0 or nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty():
 		return
 	_baseline_accumulator["frames"] += 1
@@ -729,6 +734,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	_baseline_accumulator["wrist_midpoint_x"] += wrist_midpoint_x
 	_baseline_accumulator["grid_width"] += calibration_width
 	_baseline_accumulator["grid_height"] += calibration_height
+	_baseline_accumulator["grid_content_aspect_ratio"] += grid_content_aspect_ratio
 	_baseline_accumulator["horizontal_wrist_span"] += calibration_width
 	_baseline_accumulator["wrist_span"] += wrist_span
 	_baseline_accumulator["left_knee_y"] += float(PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_KNEE).get("y", 0.0))
@@ -760,6 +766,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		"wrist_midpoint_x": float(_baseline_accumulator["wrist_midpoint_x"]) / float(frames),
 		"grid_width": float(_baseline_accumulator["grid_width"]) / float(frames),
 		"grid_height": float(_baseline_accumulator["grid_height"]) / float(frames),
+		"grid_content_aspect_ratio": float(_baseline_accumulator["grid_content_aspect_ratio"]) / float(frames),
 		"horizontal_wrist_span": float(_baseline_accumulator["horizontal_wrist_span"]) / float(frames),
 		"wrist_span": float(_baseline_accumulator["wrist_span"]) / float(frames),
 		"left_knee_y": float(_baseline_accumulator["left_knee_y"]) / float(frames),
@@ -778,13 +785,46 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 func _compute_calibration_grid_width(left_wrist: Dictionary, right_wrist: Dictionary) -> float:
 	return _camera_space_axis_distance(left_wrist, right_wrist, "x")
 
-func _compute_calibration_grid_height(calibration_width: float) -> float:
-	return calibration_width
+func _compute_calibration_grid_height(calibration_width: float, grid_content_aspect_ratio: float = FLOW_GRID_SOURCE_ASPECT_RATIO) -> float:
+	if calibration_width <= 0.0:
+		return 0.0
+	return calibration_width * _sanitize_flow_grid_content_aspect_ratio(grid_content_aspect_ratio) * float(FLOW_GRID_ROWS) / float(FLOW_GRID_COLUMNS)
 
 func _camera_space_axis_distance(a: Dictionary, b: Dictionary, axis: String) -> float:
 	if a.is_empty() or b.is_empty():
 		return 0.0
 	return absf(float(a.get(axis, 0.0)) - float(b.get(axis, 0.0)))
+
+func _sanitize_flow_grid_content_aspect_ratio(value: float) -> float:
+	return value if value > 0.000001 else FLOW_GRID_SOURCE_ASPECT_RATIO
+
+func _resolve_flow_grid_content_aspect_ratio(tracking_frame: Dictionary = {}) -> float:
+	var preview_descriptor: Dictionary = tracking_frame.get("preview_descriptor", {}) if tracking_frame.get("preview_descriptor", {}) is Dictionary else {}
+	var aspect_ratio := _aspect_ratio_from_preview_descriptor(preview_descriptor)
+	if aspect_ratio > 0.000001:
+		return aspect_ratio
+	var frame_size: Dictionary = tracking_frame.get("frame_size", {}) if tracking_frame.get("frame_size", {}) is Dictionary else {}
+	aspect_ratio = _aspect_ratio_from_size(float(frame_size.get("x", 0.0)), float(frame_size.get("y", 0.0)))
+	if aspect_ratio > 0.000001:
+		return aspect_ratio
+	return FLOW_GRID_SOURCE_ASPECT_RATIO
+
+func _aspect_ratio_from_preview_descriptor(preview_descriptor: Dictionary) -> float:
+	if preview_descriptor.is_empty():
+		return 0.0
+	var image_width := float(preview_descriptor.get("image_width", 0.0))
+	var image_height := float(preview_descriptor.get("image_height", 0.0))
+	var aspect_ratio := _aspect_ratio_from_size(image_width, image_height)
+	if aspect_ratio > 0.000001:
+		return aspect_ratio
+	var preview_width := float(preview_descriptor.get("width", 0.0))
+	var preview_height := float(preview_descriptor.get("height", 0.0))
+	return _aspect_ratio_from_size(preview_width, preview_height)
+
+func _aspect_ratio_from_size(width: float, height: float) -> float:
+	if width <= 0.000001 or height <= 0.000001:
+		return 0.0
+	return width / height
 
 func _estimate_height_state(height_ratio: float, hip_center_delta_y: float) -> StringName:
 	if height_ratio <= 0.82 or hip_center_delta_y > 0.05:
@@ -856,7 +896,7 @@ func _evaluate_calibration_readiness(_metrics: Dictionary, tracking_state: Strin
 		return readiness
 	readiness["required_landmarks_ready"] = true
 	var calibration_width := _compute_calibration_grid_width(left_wrist, right_wrist)
-	var calibration_height := _compute_calibration_grid_height(calibration_width)
+	var calibration_height := _compute_calibration_grid_height(calibration_width, _resolve_flow_grid_content_aspect_ratio())
 	if calibration_width <= 0.0 or calibration_height <= 0.0:
 		readiness["failure_reason"] = "invalid_joint_chain_sample"
 		readiness["instruction_key"] = "show_sample_landmarks"
@@ -1281,6 +1321,7 @@ func _build_flow_grid_debug() -> Dictionary:
 		"right_wrist_x": float(_baseline.get("right_wrist_x", 0.0)),
 		"grid_width": float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0))),
 		"grid_height": float(_baseline.get("grid_height", 0.0)),
+		"grid_content_aspect_ratio": float(_baseline.get("grid_content_aspect_ratio", FLOW_GRID_SOURCE_ASPECT_RATIO)),
 		"horizontal_wrist_span": float(_baseline.get("horizontal_wrist_span", 0.0)),
 		"left_boundary": left_boundary,
 		"top_boundary": top_boundary,
@@ -2081,7 +2122,11 @@ func _get_flow_cell_height(cell_width: float = -1.0) -> float:
 		cell_width = _get_flow_cell_width()
 	if cell_width <= 0.0:
 		return 0.0
-	return cell_width
+	var stored_grid_height := float(_baseline.get("grid_height", 0.0))
+	if stored_grid_height > 0.0:
+		return stored_grid_height / float(FLOW_GRID_ROWS)
+	var grid_content_aspect_ratio := float(_baseline.get("grid_content_aspect_ratio", FLOW_GRID_SOURCE_ASPECT_RATIO))
+	return cell_width * _sanitize_flow_grid_content_aspect_ratio(grid_content_aspect_ratio)
 
 func _get_flow_cell_size() -> float:
 	return _get_flow_cell_width()

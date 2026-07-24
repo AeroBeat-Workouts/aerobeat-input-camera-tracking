@@ -1536,13 +1536,13 @@ func _shared_flow_grid_truth_state(capture_source: String = "calibration_session
 					"coordinate_space": "gameplay_bottom_left",
 					"cell_size": 0.08,
 					"cell_width": 0.08,
-					"cell_height": 0.10,
+					"cell_height": 0.14197952218430035,
 					"width": 0.32,
-					"height": 0.30,
+					"height": 0.42593856655290104,
 					"left_boundary": 0.34,
 					"top_boundary": 0.84,
 					"right_boundary": 0.66,
-					"bottom_boundary": 0.54,
+					"bottom_boundary": 0.414061433447099,
 					"cell_rects": [
 						{"index": 0}, {"index": 1}, {"index": 2}, {"index": 3},
 						{"index": 4}, {"index": 5}, {"index": 6}, {"index": 7},
@@ -1589,7 +1589,7 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(overlay_snapshot.get("rows", 0)), 3)
 		assert_eq(int(overlay_snapshot.get("cell_count", 0)), 12)
 		assert_eq(float(overlay_snapshot.get("cell_width", 0.0)), 0.08)
-		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.10)
+		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.14197952218430035)
 		assert_eq(int(nose_chart.get("active_index")), 6)
 		assert_eq(int(left_chart.get("active_index")), 7)
 		assert_eq(int(right_chart.get("active_index")), 4)
@@ -1612,9 +1612,9 @@ func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensi
 	assert_true(is_equal_approx(render_top_left.x, 176.8))
 	assert_true(is_equal_approx(render_top_left.y, 46.88))
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_width_px", 0.0)), 41.6))
-	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_height_px", 0.0)), 29.3))
+	assert_true(is_equal_approx(float(overlay_snapshot.get("render_cell_height_px", 0.0)), 41.6))
 	assert_true(is_equal_approx(float(overlay_snapshot.get("render_width_px", 0.0)), 166.4))
-	assert_true(is_equal_approx(float(overlay_snapshot.get("render_height_px", 0.0)), 87.9))
+	assert_true(is_equal_approx(float(overlay_snapshot.get("render_height_px", 0.0)), 124.8))
 
 func test_flow_grid_overlay_preserves_unclamped_render_truth_when_cover_crops_the_preview() -> void:
 	var overlay := add_child_autoqfree(load("res://scripts/flow_grid_overlay.gd").new()) as Control

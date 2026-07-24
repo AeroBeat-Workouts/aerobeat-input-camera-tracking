@@ -1660,9 +1660,27 @@ func test_calibration_stores_wrist_span_basis_for_flow_grid() -> void:
 	assert_true(is_equal_approx(float(baseline.get("right_wrist_x", 0.0)), 0.62))
 	assert_true(is_equal_approx(float(baseline.get("wrist_midpoint_x", 0.0)), 0.40))
 	assert_true(is_equal_approx(float(baseline.get("grid_width", 0.0)), 0.44))
-	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), 0.44))
+	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), 0.44 * (16.0 / 9.0) * 3.0 / 4.0))
+	assert_true(is_equal_approx(float(baseline.get("grid_content_aspect_ratio", 0.0)), 16.0 / 9.0))
 	assert_true(is_equal_approx(float(baseline.get("horizontal_wrist_span", 0.0)), float(baseline.get("grid_width", 0.0))))
 	assert_true(float(baseline.get("grid_width", 0.0)) < float(baseline.get("wrist_span", 0.0)))
+
+func test_calibration_uses_preview_descriptor_aspect_ratio_for_grid_height() -> void:
+	for idx in range(5):
+		var state := substrate.process_landmarks(
+			_make_pose_frame({
+				PoseLandmarkIds.NOSE: {"x": 0.56},
+				PoseLandmarkIds.LEFT_WRIST: {"x": 0.18, "y": 0.62},
+				PoseLandmarkIds.RIGHT_WRIST: {"x": 0.62, "y": 0.80},
+			}),
+			1000 + idx * 16,
+			{"preview_descriptor": {"width": 900, "height": 600}}
+		)
+		assert_eq(String(state["tracking_state"]), "tracking")
+	var baseline: Dictionary = substrate.get_latest_state().get("baseline", {})
+	assert_true(is_equal_approx(float(baseline.get("grid_width", 0.0)), 0.44))
+	assert_true(is_equal_approx(float(baseline.get("grid_content_aspect_ratio", 0.0)), 1.5))
+	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), 0.44 * 1.5 * 3.0 / 4.0))
 
 func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 	_calibrate_stance()
@@ -1703,9 +1721,10 @@ func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
 	assert_true(is_equal_approx(float(grid_debug.get("left_boundary", 0.0)), 0.28))
 	assert_true(is_equal_approx(float(grid_debug.get("right_boundary", 0.0)), 0.72))
 	assert_true(is_equal_approx(float(grid_debug.get("cell_width", 0.0)), 0.11))
-	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.11))
+	assert_true(is_equal_approx(float(grid_debug.get("cell_height", 0.0)), 0.11 * (16.0 / 9.0)))
 	assert_true(is_equal_approx(float(grid_debug.get("grid_width", 0.0)), 0.44))
-	assert_true(is_equal_approx(float(grid_debug.get("grid_height", 0.0)), 0.44))
+	assert_true(is_equal_approx(float(grid_debug.get("grid_height", 0.0)), 0.44 * (16.0 / 9.0) * 3.0 / 4.0))
+	assert_true(is_equal_approx(float(grid_debug.get("grid_content_aspect_ratio", 0.0)), 16.0 / 9.0))
 	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
 	var nose_debug: Dictionary = tracked_landmarks.get("nose", {})
 	var left_wrist_debug: Dictionary = tracked_landmarks.get("left_wrist", {})
@@ -1761,7 +1780,7 @@ func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_landmark_d
 		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.65, "y": 0.72},
 	}), 1200)
 	var tracked_landmarks: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
-	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 1)
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 5)
 	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 7)
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), 4)
 
@@ -1776,7 +1795,7 @@ func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_landmark_d
 			missing_right_frame.remove_at(index)
 	state = substrate.process_landmarks(missing_right_frame, 1280)
 	tracked_landmarks = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
-	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 1)
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 5)
 	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 6)
 	assert_true(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("history_points", 0)) >= 2)
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), -1)
@@ -1794,7 +1813,7 @@ func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_dropout_de
 	var state := substrate.process_landmarks(_make_pose_frame(upper_body_overrides), 1200)
 	assert_eq(String(state.get("tracking_state", "")), "tracking")
 	var tracked_landmarks: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
-	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 1)
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 5)
 	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 7)
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), 4)
 
@@ -1805,7 +1824,7 @@ func test_flow_debug_keeps_visible_landmarks_tracked_when_right_wrist_dropout_de
 		state = substrate.process_landmarks(_make_pose_frame(dropout_overrides), timestamp_ms)
 	tracked_landmarks = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {})
 	assert_eq(String(state.get("tracking_state", "")), "lost")
-	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 1)
+	assert_eq(int((tracked_landmarks.get("nose", {}) as Dictionary).get("current_cell", -1)), 5)
 	assert_eq(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("current_cell", -1)), 6)
 	assert_true(int((tracked_landmarks.get("left_wrist", {}) as Dictionary).get("history_points", 0)) >= 1)
 	assert_eq(int((tracked_landmarks.get("right_wrist", {}) as Dictionary).get("current_cell", -1)), -1)
@@ -1984,7 +2003,7 @@ func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	_calibrate_stance()
 
 	var blocked_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.50, "y": 0.79},
+		PoseLandmarkIds.NOSE: {"x": 0.50, "y": 0.87},
 	}), 1200)
 	assert_false(_event_names(blocked_state.get("events", [])).has("squat_start"))
 	var squat_debug: Dictionary = blocked_state.get("gesture_debug", {}).get("squat", {})
