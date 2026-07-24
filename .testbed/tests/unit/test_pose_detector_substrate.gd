@@ -22,6 +22,27 @@ func test_builds_session_baseline_after_stable_frames() -> void:
 	assert_true(is_equal_approx(float(baseline.get("shoulder_width", 0.0)), 0.20))
 	assert_true(is_equal_approx(float(baseline.get("torso_height", 0.0)), 0.30))
 
+func test_reduced_anchor_boundary_keeps_local_gameplay_helper_separate_from_full_runtime_contract() -> void:
+	assert_eq(PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS, [
+		PoseLandmarkIds.NOSE,
+		PoseLandmarkIds.LEFT_SHOULDER,
+		PoseLandmarkIds.RIGHT_SHOULDER,
+		PoseLandmarkIds.LEFT_ELBOW,
+		PoseLandmarkIds.RIGHT_ELBOW,
+		PoseLandmarkIds.LEFT_WRIST,
+		PoseLandmarkIds.RIGHT_WRIST,
+	])
+	assert_false(PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS.has(PoseLandmarkIds.LEFT_HIP))
+	assert_false(PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS.has(PoseLandmarkIds.RIGHT_HIP))
+	assert_false(PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS.has(PoseLandmarkIds.LEFT_KNEE))
+	assert_false(PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS.has(PoseLandmarkIds.RIGHT_KNEE))
+	assert_false(PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS.has(PoseLandmarkIds.LEFT_ANKLE))
+	assert_false(PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS.has(PoseLandmarkIds.RIGHT_ANKLE))
+	assert_true(PoseLandmarkIds.TRACKING_KEY_LANDMARKS.has(PoseLandmarkIds.LEFT_HIP))
+	assert_true(PoseLandmarkIds.TRACKING_KEY_LANDMARKS.has(PoseLandmarkIds.RIGHT_HIP))
+	assert_true(PoseLandmarkIds.BASELINE_KEY_LANDMARKS.has(PoseLandmarkIds.LEFT_ANKLE))
+	assert_true(PoseLandmarkIds.BASELINE_KEY_LANDMARKS.has(PoseLandmarkIds.RIGHT_ANKLE))
+
 func test_boxing_profile_bundle_keeps_guard_threshold_and_grid_avoidance_surfaces_active() -> void:
 	var bundle: Dictionary = config.get_selected_profile_bundle()
 	assert_true(bool(bundle.get("ok", false)))

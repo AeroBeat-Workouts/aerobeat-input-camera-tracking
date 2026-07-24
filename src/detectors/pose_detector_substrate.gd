@@ -667,6 +667,18 @@ func _build_metrics(landmarks_by_id: Dictionary, timestamp_ms: int) -> Dictionar
 		"measurements": measurements,
 	}
 
+func _get_landmark_subset(landmarks_by_id: Dictionary, landmark_ids: Array) -> Dictionary:
+	var subset := {}
+	for landmark_id_variant: Variant in landmark_ids:
+		var landmark_id := int(landmark_id_variant)
+		subset[landmark_id] = PoseMetrics.get_landmark(landmarks_by_id, landmark_id)
+	return subset
+
+func _get_gameplay_anchor_landmarks(landmarks_by_id: Dictionary) -> Dictionary:
+	# Narrow local reuse helper for gameplay-only logic paths; full-frame ingestion and
+	# lower-body-dependent runtime/public state remain unchanged in this repo.
+	return _get_landmark_subset(landmarks_by_id, PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS)
+
 func _compute_velocities(timestamp_ms: int, tracked_landmarks: Dictionary) -> Dictionary:
 	var velocities: Dictionary = {}
 	for body_part_variant: Variant in tracked_landmarks.keys():
@@ -733,13 +745,14 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 	var shoulder_width := float(measurements.get("shoulder_width", 0.0))
 	var torso_height := float(measurements.get("torso_height", 0.0))
 	var athlete_height := float(measurements.get("athlete_height", 0.0))
-	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
-	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
-	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
-	var left_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_ELBOW)
-	var right_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_ELBOW)
-	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
-	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
+	var gameplay_anchors := _get_gameplay_anchor_landmarks(landmarks_by_id)
+	var nose: Dictionary = gameplay_anchors.get(PoseLandmarkIds.NOSE, {})
+	var left_shoulder: Dictionary = gameplay_anchors.get(PoseLandmarkIds.LEFT_SHOULDER, {})
+	var right_shoulder: Dictionary = gameplay_anchors.get(PoseLandmarkIds.RIGHT_SHOULDER, {})
+	var left_elbow: Dictionary = gameplay_anchors.get(PoseLandmarkIds.LEFT_ELBOW, {})
+	var right_elbow: Dictionary = gameplay_anchors.get(PoseLandmarkIds.RIGHT_ELBOW, {})
+	var left_wrist: Dictionary = gameplay_anchors.get(PoseLandmarkIds.LEFT_WRIST, {})
+	var right_wrist: Dictionary = gameplay_anchors.get(PoseLandmarkIds.RIGHT_WRIST, {})
 	var wrist_span := PoseMetrics.distance_2d(left_wrist, right_wrist)
 	var left_wrist_x := float(left_wrist.get("x", 0.0))
 	var right_wrist_x := float(right_wrist.get("x", 0.0))
@@ -927,13 +940,14 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 		readiness["instruction_text"] = "Need tracking or reacquiring before T-pose auto-calibration can run"
 		return readiness
 	readiness["tracking_ready"] = true
-	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)
-	var left_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_SHOULDER)
-	var right_shoulder := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_SHOULDER)
-	var left_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_ELBOW)
-	var right_elbow := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_ELBOW)
-	var left_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.LEFT_WRIST)
-	var right_wrist := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.RIGHT_WRIST)
+	var gameplay_anchors := _get_gameplay_anchor_landmarks(landmarks_by_id)
+	var nose: Dictionary = gameplay_anchors.get(PoseLandmarkIds.NOSE, {})
+	var left_shoulder: Dictionary = gameplay_anchors.get(PoseLandmarkIds.LEFT_SHOULDER, {})
+	var right_shoulder: Dictionary = gameplay_anchors.get(PoseLandmarkIds.RIGHT_SHOULDER, {})
+	var left_elbow: Dictionary = gameplay_anchors.get(PoseLandmarkIds.LEFT_ELBOW, {})
+	var right_elbow: Dictionary = gameplay_anchors.get(PoseLandmarkIds.RIGHT_ELBOW, {})
+	var left_wrist: Dictionary = gameplay_anchors.get(PoseLandmarkIds.LEFT_WRIST, {})
+	var right_wrist: Dictionary = gameplay_anchors.get(PoseLandmarkIds.RIGHT_WRIST, {})
 	if nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
 		readiness["failure_reason"] = "required_sample_landmarks_unavailable"
 		readiness["instruction_key"] = "show_sample_landmarks"

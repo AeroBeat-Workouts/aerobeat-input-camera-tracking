@@ -40,6 +40,14 @@ New sharable files at the repo root:
 
 This keeps the existing detector truth mostly intact while reducing how much this repo must know about vendor/runtime details.
 
+## Reduced-anchor investigation boundary
+
+The current runtime still ingests the full upstream pose frame and still publishes lower-body-dependent tracking/baseline/debug state.
+
+- A local gameplay-anchor subset (`nose`, shoulders, elbows, wrists) is safe only for narrowly scoped helper reuse inside the newer T-pose and wrist-grid logic paths.
+- That subset does **not** shrink this repo's current provider/runtime contract, because tracking validity, baseline capture, height state, and published lower-body metrics still depend on hips, knees, and ankles.
+- Meaningful landmark-count performance reduction belongs upstream in `aerobeat-tool-camera-tracking` (or deeper vendor/tooling layers) where inference output can actually be reduced, not here after the full landmark set has already been produced.
+
 ## Repo layout
 
 - `src/input_provider.gd` — current assembly-facing addon entrypoint

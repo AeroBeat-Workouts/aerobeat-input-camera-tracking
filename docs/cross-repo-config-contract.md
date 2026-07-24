@@ -200,4 +200,6 @@ refresh:
 
 - `preview.overlays.pose_skeleton_visible` is the only committed overlay intent still carried in profile config.
 - Boxing guard + punch families remain threshold-driven, but Boxing squat/weave now use calibrated nose-grid obstacle avoidance (`grid_avoidance`) instead of body-mechanics threshold tuning. Flow still exposes the calibrated 4x3 cell occupancy + direction contract under the `flow` family rather than a `squat` gesture surface.
+- A local gameplay-anchor helper (`nose`, shoulders, elbows, wrists) is allowed for input-repo-owned gesture logic, but it does **not** change the current cross-repo frame contract: this repo still depends on upstream full-pose landmarks for tracking validity, baseline capture, lower-body metrics, and published debug state.
+- Any meaningful landmark-count performance reduction therefore belongs upstream in `aerobeat-tool-camera-tracking` (or the underlying vendor/runtime layer) where inference output can actually be reduced.
 - If depth proving or hand-tracking debug ever returns, it should land as a new explicitly approved contract slice rather than lingering as undocumented legacy fields.
