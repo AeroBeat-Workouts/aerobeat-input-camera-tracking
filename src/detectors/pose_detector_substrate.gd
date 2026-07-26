@@ -84,7 +84,6 @@ const CALIBRATION_DEFAULT_HOLD_MS := 750
 const CALIBRATION_DEFAULT_COOLDOWN_MS := 1000
 const CALIBRATION_DEFAULT_MAX_WRIST_SHOULDER_Y_RATIO := 0.18
 const CALIBRATION_DEFAULT_MAX_ELBOW_SHOULDER_Y_RATIO := 0.18
-const CALIBRATION_DEFAULT_MIN_ARM_EXTENSION_RATIO := 0.92
 const CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG := 160.0
 
 var _config = null
@@ -263,7 +262,6 @@ func _build_default_calibration_readiness() -> Dictionary:
 		"thresholds": {
 			"max_wrist_shoulder_y_ratio": _get_calibration_threshold("max_wrist_shoulder_y_ratio", CALIBRATION_DEFAULT_MAX_WRIST_SHOULDER_Y_RATIO),
 			"max_elbow_shoulder_y_ratio": _get_calibration_threshold("max_elbow_shoulder_y_ratio", CALIBRATION_DEFAULT_MAX_ELBOW_SHOULDER_Y_RATIO),
-			"min_arm_extension_ratio": _get_calibration_threshold("min_arm_extension_ratio", CALIBRATION_DEFAULT_MIN_ARM_EXTENSION_RATIO),
 			"min_elbow_angle_deg": _get_calibration_threshold("min_elbow_angle_deg", CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG),
 		},
 		"measurements": {
@@ -998,7 +996,6 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 	readiness["thresholds"] = {
 		"max_wrist_shoulder_y_ratio": max_wrist_ratio,
 		"max_elbow_shoulder_y_ratio": max_elbow_ratio,
-		"min_arm_extension_ratio": _get_calibration_threshold("min_arm_extension_ratio", CALIBRATION_DEFAULT_MIN_ARM_EXTENSION_RATIO),
 		"min_elbow_angle_deg": _get_calibration_threshold("min_elbow_angle_deg", CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG),
 	}
 	var left_wrist_shoulder_y_ratio := absf(float(left_wrist.get("y", 0.0)) - float(left_shoulder.get("y", 0.0))) / shoulder_width
@@ -1025,18 +1022,17 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 		readiness["instruction_key"] = "align_arms_horizontal"
 		readiness["instruction_text"] = "Raise and level both arms into a T-pose"
 		return readiness
-	var min_arm_extension_ratio := _get_calibration_threshold("min_arm_extension_ratio", CALIBRATION_DEFAULT_MIN_ARM_EXTENSION_RATIO)
 	var min_elbow_angle_deg := _get_calibration_threshold("min_elbow_angle_deg", CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG)
 	var left_arm_extension := float(measurements.get("left_arm_extension", 0.0))
 	var right_arm_extension := float(measurements.get("right_arm_extension", 0.0))
 	var left_elbow_bend_deg := float(measurements.get("left_elbow_bend_deg", 0.0))
 	var right_elbow_bend_deg := float(measurements.get("right_elbow_bend_deg", 0.0))
-	var extension_ready := left_arm_extension >= min_arm_extension_ratio and right_arm_extension >= min_arm_extension_ratio and left_elbow_bend_deg >= min_elbow_angle_deg and right_elbow_bend_deg >= min_elbow_angle_deg
+	var extension_ready := left_elbow_bend_deg >= min_elbow_angle_deg and right_elbow_bend_deg >= min_elbow_angle_deg
 	readiness["arm_extension_ready"] = extension_ready
 	if not extension_ready:
 		readiness["failure_reason"] = "arms_not_extended"
 		readiness["instruction_key"] = "extend_arms"
-		readiness["instruction_text"] = "Straighten and fully extend both arms in the T-pose"
+		readiness["instruction_text"] = "Straighten both elbows in the T-pose"
 		return readiness
 	readiness["qualified"] = true
 	var hold_started_at_ms := int(_calibration_session.get("hold_started_at_ms", 0))

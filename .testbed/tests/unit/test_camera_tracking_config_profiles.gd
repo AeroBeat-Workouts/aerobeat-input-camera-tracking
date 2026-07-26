@@ -46,7 +46,7 @@ func test_camera_tracking_config_loads_boxing_profile_bundle_from_canonical_path
 	assert_eq(String(bundle.get("gesture_detection", {}).get("calibration", {}).get("mode", "")), "t_pose_auto")
 	assert_eq(int(bundle.get("gesture_detection", {}).get("calibration", {}).get("t_pose", {}).get("hold_ms", -1)), 750)
 	assert_eq(int(bundle.get("gesture_detection", {}).get("calibration", {}).get("t_pose", {}).get("cooldown_ms", -1)), 1000)
-	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("calibration", {}).get("t_pose", {}).get("thresholds", {}).get("min_arm_extension_ratio", -1.0)), 0.92))
+	assert_false(bool(bundle.get("gesture_detection", {}).get("calibration", {}).get("t_pose", {}).get("thresholds", {}).has("min_arm_extension_ratio")))
 	assert_true(is_equal_approx(float(bundle.get("gesture_detection", {}).get("calibration", {}).get("t_pose", {}).get("thresholds", {}).get("min_elbow_angle_deg", -1.0)), 160.0))
 	assert_eq(String(bundle.get("gesture_detection", {}).get("guard", {}).get("backend", "")), "threshold")
 	assert_eq(String(bundle.get("gesture_detection", {}).get("squat", {}).get("backend", "")), "grid_avoidance")

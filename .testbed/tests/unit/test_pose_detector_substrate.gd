@@ -1864,12 +1864,12 @@ func test_request_athlete_recalibration_resets_into_waiting_t_pose_auto_session(
 	assert_eq(String(session.get("instruction_text", "")), "Hold a straight-arm T-pose to auto-calibrate")
 	assert_eq(String(session.get("instructions", {}).get("align_arms_horizontal", {}).get("text", "")), "Keep both arms level with the shoulders")
 
-func test_calibration_readiness_requires_visibility_horizontal_alignment_and_arm_extension() -> void:
+func test_calibration_readiness_requires_visibility_horizontal_alignment_and_elbow_straightness() -> void:
 	var missing_landmark_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), {})
 	assert_false(bool(missing_landmark_readiness.get("ready", true)))
 	assert_eq(String(missing_landmark_readiness.get("failure_reason", "")), "required_sample_landmarks_unavailable")
 	assert_false(bool((missing_landmark_readiness.get("required_landmarks", {}) as Dictionary).get("nose", true)))
-	assert_eq(float((missing_landmark_readiness.get("thresholds", {}) as Dictionary).get("min_arm_extension_ratio", 0.0)), 0.92)
+	assert_false(bool((missing_landmark_readiness.get("thresholds", {}) as Dictionary).has("min_arm_extension_ratio")))
 
 	var not_level_frame := _make_calibration_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.22, "y": 0.56, "z": 0.0, "v": 0.99},
@@ -1891,6 +1891,36 @@ func test_calibration_readiness_requires_visibility_horizontal_alignment_and_arm
 	var bent_arms_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", bent_arms_metrics, StringName("tracking"), _landmarks_by_id(bent_arms_frame))
 	assert_false(bool(bent_arms_readiness.get("ready", true)))
 	assert_eq(String(bent_arms_readiness.get("failure_reason", "")), "arms_not_extended")
+
+func test_calibration_readiness_ignores_min_arm_extension_ratio_config_and_uses_elbow_angle_gate() -> void:
+	config.gesture_profile_document = {
+		"calibration": {
+			"mode": "t_pose_auto",
+			"t_pose": {
+				"hold_ms": 0,
+				"cooldown_ms": 0,
+				"thresholds": {
+					"max_wrist_shoulder_y_ratio": 0.18,
+					"max_elbow_shoulder_y_ratio": 0.18,
+					"min_arm_extension_ratio": 999.0,
+					"min_elbow_angle_deg": 160.0,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	var t_pose_frame := _make_calibration_pose_frame({
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.22, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.78, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.08, "y": 0.70, "z": 0.0, "v": 0.99},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.92, "y": 0.70, "z": 0.0, "v": 0.99},
+	})
+	var readiness_metrics: Dictionary = substrate.call("_build_metrics", _landmarks_by_id(t_pose_frame), 0)
+	var readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", readiness_metrics, StringName("tracking"), _landmarks_by_id(t_pose_frame))
+	assert_true(bool(readiness.get("ready", false)))
+	assert_true(bool(readiness.get("arm_extension_ready", false)))
+	assert_false(bool((readiness.get("thresholds", {}) as Dictionary).has("min_arm_extension_ratio")))
+
 
 func test_calibration_session_auto_fires_after_t_pose_hold_and_commits_baseline() -> void:
 	var t_pose_frame := _make_calibration_pose_frame({

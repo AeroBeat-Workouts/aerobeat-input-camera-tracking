@@ -2116,10 +2116,7 @@ func _build_t_pose_calibration_inspector_model() -> Dictionary:
 		_fmt_inspector_float(measurements.get("right_elbow_shoulder_y_ratio", 0.0)),
 		_fmt_inspector_float(thresholds.get("max_elbow_shoulder_y_ratio", 0.0)),
 	]))
-	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("arm_extension_ready", false)), "Arms are extended enough", "extension %s / %s ≥ %s, elbow angle %s / %s ≥ %s°" % [
-		_fmt_inspector_float(measurements.get("left_arm_extension", 0.0)),
-		_fmt_inspector_float(measurements.get("right_arm_extension", 0.0)),
-		_fmt_inspector_float(thresholds.get("min_arm_extension_ratio", 0.0)),
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("arm_extension_ready", false)), "Elbows are straight enough", "elbow angle %s / %s ≥ %s°" % [
 		_fmt_inspector_float(measurements.get("left_elbow_bend_deg", 0.0)),
 		_fmt_inspector_float(measurements.get("right_elbow_bend_deg", 0.0)),
 		_fmt_inspector_float(thresholds.get("min_elbow_angle_deg", 0.0)),

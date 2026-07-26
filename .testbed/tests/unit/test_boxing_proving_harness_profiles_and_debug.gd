@@ -181,7 +181,6 @@ class FakeAthleteRecalibrateProvider:
 				"thresholds": {
 					"max_wrist_shoulder_y_ratio": 0.12,
 					"max_elbow_shoulder_y_ratio": 0.10,
-					"min_arm_extension_ratio": 0.92,
 					"min_elbow_angle_deg": 165.0,
 				},
 				"measurements": {
@@ -1812,7 +1811,6 @@ func test_proving_scenes_mount_t_pose_badge_in_preview_overlay_and_show_live_hol
 					"thresholds": {
 						"max_wrist_shoulder_y_ratio": 0.12,
 						"max_elbow_shoulder_y_ratio": 0.10,
-						"min_arm_extension_ratio": 0.92,
 						"min_elbow_angle_deg": 165.0,
 					},
 					"measurements": {
@@ -1894,7 +1892,6 @@ func test_clicking_t_pose_badge_opens_live_calibration_inspector_truth() -> void
 				"thresholds": {
 					"max_wrist_shoulder_y_ratio": 0.12,
 					"max_elbow_shoulder_y_ratio": 0.10,
-					"min_arm_extension_ratio": 0.92,
 					"min_elbow_angle_deg": 165.0,
 				},
 				"measurements": {
@@ -1926,7 +1923,8 @@ func test_clicking_t_pose_badge_opens_live_calibration_inspector_truth() -> void
 	assert_not_null(body_label)
 	assert_string_contains(body_label.text, "Requirement truth")
 	assert_string_contains(body_label.text, "[ ] Arms are horizontal enough")
-	assert_string_contains(body_label.text, "left shoulder")
+	assert_string_contains(body_label.text, "Elbows are straight enough")
+	assert_false(body_label.text.contains("min_arm_extension_ratio"))
 	assert_string_contains(body_label.text, "current=375 ms, needed=750 ms")
 	assert_false(body_label.text.contains("T-pose auto-calibration live truth"))
 	assert_false(body_label.text.contains("Hold progress:"))
