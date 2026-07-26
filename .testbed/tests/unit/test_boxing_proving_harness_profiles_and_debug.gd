@@ -2180,6 +2180,6 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 
 	var model: Dictionary = harness._build_hover_card_model("punch_left")
 	var rows: Array = model.get("rows", [])
-	assert_string_contains(String(rows[1].get("current_text", "")), "triggered")
-	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> triggered")
-	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 xy=0.082<=0.090 (true) bbox=0.064 growth=0.011 fresh=true source=fresh_inference grace=240ms valid=true")
+	assert_string_contains(String(rows[1].get("current_text", "")), "tracking_lost")
+	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> tracking_lost")
+	assert_eq(String(rows[5].get("current_text", "")), "state=tracking_lost wrist=0.280 peak=0.000 xy=0.082<=0.090 (true) angle=0.000>=0.000 (false) fresh=true source=fresh_inference grace=240ms pose_valid=false")

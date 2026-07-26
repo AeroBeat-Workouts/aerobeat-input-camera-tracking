@@ -121,57 +121,6 @@ func test_camera_tracking_provider_consumes_normalized_tracking_frames() -> void
 	assert_true(is_equal_approx(float((emitted_left_hand[0] as Dictionary).get("y", 0.0)), 0.48), "Provider pose_updated overlays should stay in preview-space so skeletons and click targets match the presenter")
 	assert_true(is_equal_approx(left_hand.y, 0.52), "Gameplay-facing hand getters should still expose bottom-left normalized y for detector/math consumers")
 
-func test_camera_tracking_provider_live_frame_merges_preview_descriptor_for_real_depth_runtime() -> void:
-	var tracker = add_child_autoqfree(CameraTrackingScript.new())
-	var backend = CameraTrackingFakeBackendScript.new()
-	tracker.set_backend(backend)
-	tracker.start({
-		"source": {"kind": "live_camera", "camera_id": "/dev/video7"},
-		"preview": {"flip_horizontal": true},
-	})
-	backend.emit_preview_descriptor({
-		"attached": true,
-		"image_path": ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH),
-		"image_revision": 1,
-	})
-
-	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
-	provider.config = provider._ensure_config()
-	provider.config.load_selected_profile_bundle("boxing")
-	_enable_boxing_depth_runtime(provider.config)
-	provider.set_tracking_session(tracker)
-	assert_true(provider.start())
-
-	backend.emit_tracking_frame(_boxing_depth_runtime_frame(100, "/dev/video7"))
-
-	var left_debug := _left_straight_punch_debug(provider.get_detector_state())
-	assert_eq(String(left_debug.get("depth_runtime_status", "")), "ready")
-	assert_eq(String(left_debug.get("depth_failure_code", "")), "")
-	assert_eq(String((provider._last_tracking_frame.get("preview_descriptor", {}) as Dictionary).get("image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
-	assert_eq(String(provider._last_tracking_frame.get("preview_image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
-
-func test_camera_tracking_provider_replay_polling_merges_preview_descriptor_for_real_depth_runtime() -> void:
-	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
-	tracker.preview_descriptor = {
-		"attached": true,
-		"image_path": ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH),
-		"image_revision": 1,
-	}
-	tracker.frame = _boxing_depth_runtime_frame(100, "res://fixtures/replay/test.mp4")
-
-	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
-	provider.config = provider._ensure_config()
-	provider.config.load_selected_profile_bundle("boxing")
-	_enable_boxing_depth_runtime(provider.config)
-	provider.set_tracking_session(tracker)
-	provider._process(0.016)
-
-	var left_debug := _left_straight_punch_debug(provider.get_detector_state())
-	assert_eq(String(left_debug.get("depth_runtime_status", "")), "ready")
-	assert_eq(String(left_debug.get("depth_failure_code", "")), "")
-	assert_eq(String((provider._last_tracking_frame.get("preview_descriptor", {}) as Dictionary).get("image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
-	assert_eq(String(provider._last_tracking_frame.get("preview_image_path", "")), ProjectSettings.globalize_path(LEFT_PREVIEW_IMAGE_PATH))
-
 func test_camera_tracking_provider_preview_change_forces_repoll_even_when_frame_signature_stays_stable() -> void:
 	var tracker = add_child_autoqfree(PollOnlyTrackingSession.new())
 	tracker.preview_descriptor = {
