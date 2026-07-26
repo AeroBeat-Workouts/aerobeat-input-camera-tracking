@@ -1924,11 +1924,13 @@ func test_clicking_t_pose_badge_opens_live_calibration_inspector_truth() -> void
 	assert_eq(String(scene_root.get("_shared_inspector_target_key")), "t_pose_auto")
 	var body_label := scene_root.get("_shared_inspector_body_label") as RichTextLabel
 	assert_not_null(body_label)
-	assert_string_contains(body_label.text, "T-pose auto-calibration")
+	assert_string_contains(body_label.text, "Requirement truth")
 	assert_string_contains(body_label.text, "[ ] Arms are horizontal enough")
 	assert_string_contains(body_label.text, "left shoulder")
-	assert_string_contains(body_label.text, "max_wrist_shoulder_y_ratio=0.120")
-	assert_string_contains(body_label.text, "Hold progress: 375 / 750 ms")
+	assert_string_contains(body_label.text, "current=375 ms, needed=750 ms")
+	assert_false(body_label.text.contains("T-pose auto-calibration live truth"))
+	assert_false(body_label.text.contains("Hold progress:"))
+	assert_false(body_label.text.contains("max_wrist_shoulder_y_ratio=0.120"))
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

@@ -285,7 +285,7 @@ var _playback_autoplay_base_url := ""
 var _playback_pause_hold := false
 var _athlete_recalibrate_button: Button = null
 var _athlete_calibration_secondary_button: Button = null
-var _t_pose_calibration_badge = null
+var _t_pose_calibration_badge: TPoseCalibrationBadgeScript = null
 var _last_reported_calibration_session_state := ""
 var _last_logged_flow_grid_overlay_truth_signature := ""
 
@@ -2104,28 +2104,7 @@ func _build_t_pose_calibration_inspector_model() -> Dictionary:
 	var thresholds: Dictionary = readiness.get("thresholds", {}) if readiness.get("thresholds", {}) is Dictionary else {}
 	var measurements: Dictionary = readiness.get("measurements", {}) if readiness.get("measurements", {}) is Dictionary else {}
 	var required_landmarks: Dictionary = readiness.get("required_landmarks", {}) if readiness.get("required_landmarks", {}) is Dictionary else {}
-	var bundle := _current_profile_bundle()
-	var state_name := String(session.get("state", "idle"))
-	var failure_reason := String(session.get("failure_reason", readiness.get("failure_reason", "")))
 	var lines: Array[String] = []
-	lines.append("T-pose auto-calibration live truth")
-	lines.append("")
-	lines.append("Session")
-	lines.append("• State: %s" % state_name)
-	lines.append("• Tracking state: %s" % _tracking_status_text(_latest_state))
-	lines.append("• Instruction: %s" % String(session.get("instruction_text", readiness.get("instruction_text", ""))))
-	if not failure_reason.is_empty():
-		lines.append("• Failure reason: %s" % _humanize_calibration_failure_reason(failure_reason))
-	lines.append("• Hold progress: %d / %d ms (%s)" % [
-		int(session.get("hold_progress_ms", readiness.get("hold_progress_ms", 0))),
-		int(session.get("hold_ms", readiness.get("hold_ms", 0))),
-		_fmt_percent(session.get("hold_progress_ratio", readiness.get("hold_progress_ratio", 0.0))),
-	])
-	lines.append("• Hold started at runtime ms: %d" % int(session.get("hold_started_at_ms", readiness.get("hold_started_at_ms", 0))))
-	lines.append("• Cooldown remaining: %d ms" % int(session.get("cooldown_remaining_ms", readiness.get("cooldown_remaining_ms", 0))))
-	lines.append("• Last fired at runtime ms: %d" % int(session.get("last_fired_at_ms", 0)))
-	lines.append("• Next fire at runtime ms: %d" % int(session.get("next_fire_at_ms", 0)))
-	lines.append("")
 	lines.append("Requirement truth")
 	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("tracking_ready", false)), "Tracking state is tracking/reacquiring", "current=%s" % _tracking_status_text(_latest_state)))
 	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("required_landmarks_ready", false)), "Required landmarks are connected", _fmt_required_calibration_landmarks(required_landmarks)))
@@ -2145,40 +2124,15 @@ func _build_t_pose_calibration_inspector_model() -> Dictionary:
 		_fmt_inspector_float(measurements.get("right_elbow_bend_deg", 0.0)),
 		_fmt_inspector_float(thresholds.get("min_elbow_angle_deg", 0.0)),
 	]))
-	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("qualified", false)), "All T-pose qualifiers currently pass", "qualified=%s" % str(bool(readiness.get("qualified", false)))))
-	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("hold_ready", false)), "Hold timer is complete", "runtime hold=%d ms, target=%d ms" % [int(readiness.get("hold_progress_ms", 0)), int(readiness.get("hold_ms", 0))]))
-	lines.append(_fmt_calibration_requirement_line(int(readiness.get("cooldown_remaining_ms", 0)) <= 0, "Cooldown has cleared", "%d ms remaining" % int(readiness.get("cooldown_remaining_ms", 0))))
-	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("ready", false)), "Calibration can fire right now", "ready=%s" % str(bool(readiness.get("ready", false)))))
-	lines.append("")
-	lines.append("Thresholds + live vars")
-	lines.append("• Shoulder width: %s" % _fmt_inspector_float(measurements.get("shoulder_width", 0.0)))
-	lines.append("• Grid sample width/height: %s / %s" % [
-		_fmt_inspector_float(measurements.get("calibration_width", 0.0)),
-		_fmt_inspector_float(measurements.get("calibration_height", 0.0)),
-	])
-	lines.append("• hold_ms=%d  cooldown_ms=%d" % [int(readiness.get("hold_ms", session.get("hold_ms", 0))), int(readiness.get("cooldown_ms", session.get("cooldown_ms", 0)))])
-	lines.append("• max_wrist_shoulder_y_ratio=%s  max_elbow_shoulder_y_ratio=%s" % [
-		_fmt_inspector_float(thresholds.get("max_wrist_shoulder_y_ratio", 0.0)),
-		_fmt_inspector_float(thresholds.get("max_elbow_shoulder_y_ratio", 0.0)),
-	])
-	lines.append("• min_arm_extension_ratio=%s  min_elbow_angle_deg=%s" % [
-		_fmt_inspector_float(thresholds.get("min_arm_extension_ratio", 0.0)),
-		_fmt_inspector_float(thresholds.get("min_elbow_angle_deg", 0.0)),
-	])
-	var baseline := _resolve_baseline_state()
-	lines.append("")
-	lines.append("Baseline + config")
-	lines.append("• Baseline active: %s" % str(bool(baseline.get("is_calibrated", false))))
-	lines.append("• Capture source: %s" % String(baseline.get("capture_source", "")))
-	lines.append("• Sample frames: %d" % int(baseline.get("sample_frames", 0)))
-	lines.append("• Profile: %s" % String(bundle.get("profile", _profile_id_for_harness_mode())))
-	lines.append("• Gesture YAML: %s" % _pretty_resource_path(String(bundle.get("gesture_detection_path", ""))))
-	var footer := "Live calibration truth refreshes about every %.2fs for readability. %s" % [float(maxi(1, inspector_live_refresh_interval_ms)) / 1000.0, INSPECTOR_FOOTER_TEXT]
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("qualified", false)), "All T-pose qualifiers currently pass", "current=%s, needed=true" % str(bool(readiness.get("qualified", false)))))
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("hold_ready", false)), "Hold timer is complete", "current=%d ms, needed=%d ms" % [int(readiness.get("hold_progress_ms", 0)), int(readiness.get("hold_ms", 0))]))
+	lines.append(_fmt_calibration_requirement_line(int(readiness.get("cooldown_remaining_ms", 0)) <= 0, "Cooldown has cleared", "current=%d ms remaining, needed=0 ms" % int(readiness.get("cooldown_remaining_ms", 0))))
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("ready", false)), "Calibration can fire right now", "current=%s, needed=true" % str(bool(readiness.get("ready", false)))))
 	return {
 		"title": "Calibration Inspector",
-		"subtitle": "T-pose auto-calibration",
+		"subtitle": "",
 		"body": "\n".join(lines),
-		"footer": footer,
+		"footer": "",
 	}
 
 func _fmt_calibration_requirement_line(passed: bool, label: String, detail: String = "") -> String:
