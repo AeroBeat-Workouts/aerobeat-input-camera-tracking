@@ -1868,6 +1868,8 @@ func test_calibration_readiness_requires_visibility_horizontal_alignment_and_arm
 	var missing_landmark_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", {}, StringName("tracking"), {})
 	assert_false(bool(missing_landmark_readiness.get("ready", true)))
 	assert_eq(String(missing_landmark_readiness.get("failure_reason", "")), "required_sample_landmarks_unavailable")
+	assert_false(bool((missing_landmark_readiness.get("required_landmarks", {}) as Dictionary).get("nose", true)))
+	assert_eq(float((missing_landmark_readiness.get("thresholds", {}) as Dictionary).get("min_arm_extension_ratio", 0.0)), 0.92)
 
 	var not_level_frame := _make_calibration_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.22, "y": 0.56, "z": 0.0, "v": 0.99},
@@ -1877,6 +1879,7 @@ func test_calibration_readiness_requires_visibility_horizontal_alignment_and_arm
 	var not_level_readiness: Dictionary = substrate.call("_evaluate_calibration_readiness", not_level_metrics, StringName("tracking"), _landmarks_by_id(not_level_frame))
 	assert_false(bool(not_level_readiness.get("ready", true)))
 	assert_eq(String(not_level_readiness.get("failure_reason", "")), "arms_not_horizontal")
+	assert_true(float((not_level_readiness.get("measurements", {}) as Dictionary).get("left_wrist_shoulder_y_ratio", 0.0)) > float((not_level_readiness.get("thresholds", {}) as Dictionary).get("max_wrist_shoulder_y_ratio", 1.0)))
 
 	var bent_arms_frame := _make_calibration_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.70, "z": 0.0, "v": 0.99},

@@ -145,14 +145,58 @@ class FakeAthleteRecalibrateProvider:
 			"result": "pending" if state_name == "waiting" or state_name == "holding" or state_name == "cooldown" else state_name,
 			"hold_ms": 750,
 			"hold_progress_ms": 0,
+			"hold_progress_ratio": 0.0,
+			"hold_started_at_ms": 0,
+			"last_fired_at_ms": 0,
+			"next_fire_at_ms": 0,
+			"cooldown_ms": 1000,
 			"cooldown_remaining_ms": 0,
 			"captured_sample_frames": 0,
 			"required_capture_frames": 1,
 			"failure_reason": "required_sample_landmarks_unavailable",
 			"instruction_text": "Show nose, shoulders, elbows, and wrists, then hold a straight-arm T-pose.",
 			"readiness": {
+				"tracking_ready": false,
 				"required_landmarks_ready": false,
+				"horizontal_alignment_ready": false,
+				"arm_extension_ready": false,
+				"qualified": false,
+				"hold_ready": false,
+				"ready": false,
+				"hold_ms": 750,
+				"hold_progress_ms": 0,
+				"hold_progress_ratio": 0.0,
+				"cooldown_ms": 1000,
+				"cooldown_remaining_ms": 0,
 				"instruction_text": "Show nose, shoulders, elbows, and wrists, then hold a straight-arm T-pose.",
+				"required_landmarks": {
+					"nose": false,
+					"left_shoulder": false,
+					"right_shoulder": false,
+					"left_elbow": false,
+					"right_elbow": false,
+					"left_wrist": false,
+					"right_wrist": false,
+				},
+				"thresholds": {
+					"max_wrist_shoulder_y_ratio": 0.12,
+					"max_elbow_shoulder_y_ratio": 0.10,
+					"min_arm_extension_ratio": 0.92,
+					"min_elbow_angle_deg": 165.0,
+				},
+				"measurements": {
+					"shoulder_width": 0.36,
+					"left_wrist_shoulder_y_ratio": 0.0,
+					"right_wrist_shoulder_y_ratio": 0.0,
+					"left_elbow_shoulder_y_ratio": 0.0,
+					"right_elbow_shoulder_y_ratio": 0.0,
+					"left_arm_extension": 0.0,
+					"right_arm_extension": 0.0,
+					"left_elbow_bend_deg": 0.0,
+					"right_elbow_bend_deg": 0.0,
+					"calibration_width": 0.0,
+					"calibration_height": 0.0,
+				},
 			},
 			"instructions": {
 				"show_sample_landmarks": {"text": "Keep nose, shoulders, elbows, and wrists visible", "ready": false},
@@ -198,6 +242,12 @@ func _install_root_camera_tracking_singleton() -> Variant:
 
 func _new_console_capture_harness() -> Variant:
 	return add_child_autoqfree(ConsoleCaptureHarness.new())
+
+func _make_test_calibration_session(state_name: String, overrides: Dictionary = {}) -> Dictionary:
+	var provider := FakeAthleteRecalibrateProvider.new()
+	var session := provider._make_session(state_name, overrides)
+	provider.free()
+	return session
 
 func _depth_runtime_debug_payload(summary: String, artifact_path: String, backend_id: String, family_id: String, runtime_status: String, runtime_stage: String, failure_code: String = "", failure_message: String = "") -> Dictionary:
 	return {
@@ -1722,6 +1772,163 @@ func test_calibration_success_echoes_copy_paste_grid_line_to_console() -> void:
 	assert_eq_deep(harness.console_lines, ["calibrated_grid width=0.520000 height=0.520000"])
 	var event_lines: Array = harness.get("_event_lines")
 	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.520000"))
+
+func test_proving_scenes_mount_t_pose_badge_in_preview_overlay_and_show_live_hold_progress() -> void:
+	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
+		var packed_scene := packed_scene_variant as PackedScene
+		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
+		assert_not_null(scene_root)
+		var presenter := add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+		scene_root.set("_preview_presenter", presenter)
+		scene_root.call("_sync_overlay_drawers_to_preview_presenter")
+		scene_root.set("_latest_state", {
+			"baseline": {"is_calibrated": true, "capture_source": "calibration_session", "sample_frames": 1},
+			"calibration_session": _make_test_calibration_session("holding", {
+				"hold_progress_ms": 375,
+				"hold_progress_ratio": 0.5,
+				"hold_started_at_ms": 2222,
+				"readiness": {
+					"tracking_ready": true,
+					"required_landmarks_ready": true,
+					"horizontal_alignment_ready": true,
+					"arm_extension_ready": true,
+					"qualified": true,
+					"hold_ready": false,
+					"ready": false,
+					"hold_ms": 750,
+					"hold_progress_ms": 375,
+					"hold_progress_ratio": 0.5,
+					"cooldown_ms": 1000,
+					"cooldown_remaining_ms": 0,
+					"required_landmarks": {
+						"nose": true,
+						"left_shoulder": true,
+						"right_shoulder": true,
+						"left_elbow": true,
+						"right_elbow": true,
+						"left_wrist": true,
+						"right_wrist": true,
+					},
+					"thresholds": {
+						"max_wrist_shoulder_y_ratio": 0.12,
+						"max_elbow_shoulder_y_ratio": 0.10,
+						"min_arm_extension_ratio": 0.92,
+						"min_elbow_angle_deg": 165.0,
+					},
+					"measurements": {
+						"shoulder_width": 0.36,
+						"left_wrist_shoulder_y_ratio": 0.04,
+						"right_wrist_shoulder_y_ratio": 0.03,
+						"left_elbow_shoulder_y_ratio": 0.02,
+						"right_elbow_shoulder_y_ratio": 0.02,
+						"left_arm_extension": 0.98,
+						"right_arm_extension": 0.97,
+						"left_elbow_bend_deg": 176.0,
+						"right_elbow_bend_deg": 174.0,
+						"calibration_width": 0.52,
+						"calibration_height": 0.52,
+					},
+				},
+			}),
+		})
+		scene_root.call("_refresh_calibration_flow_ui")
+		var badge := presenter.get_overlay_layer().get_node_or_null("TPoseCalibrationBadge") as Control
+		assert_not_null(badge)
+		assert_same(badge.get_parent(), presenter.get_overlay_layer())
+		var badge_snapshot: Dictionary = scene_root.call("get_t_pose_badge_snapshot")
+		assert_true(bool(badge_snapshot.get("progress_active", false)))
+		assert_true(is_equal_approx(float(badge_snapshot.get("fill_ratio", 0.0)), 0.5))
+		assert_eq(badge.custom_minimum_size, Vector2(75.0, 75.0))
+
+		scene_root.set("_latest_state", {
+			"baseline": {"is_calibrated": true, "capture_source": "calibration_session", "sample_frames": 1},
+			"calibration_session": _make_test_calibration_session("succeeded", {
+				"hold_progress_ms": 750,
+				"hold_progress_ratio": 1.0,
+				"captured_sample_frames": 1,
+				"instruction_text": "Auto-calibration captured. Hold the T-pose to re-fire after cooldown",
+			}),
+		})
+		scene_root.call("_refresh_calibration_flow_ui")
+		badge_snapshot = scene_root.call("get_t_pose_badge_snapshot")
+		assert_false(bool(badge_snapshot.get("progress_active", true)))
+		assert_true(is_equal_approx(float(badge_snapshot.get("fill_ratio", 1.0)), 0.0))
+
+func test_clicking_t_pose_badge_opens_live_calibration_inspector_truth() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	assert_not_null(scene_root)
+	var presenter := add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
+	scene_root.set("_preview_presenter", presenter)
+	scene_root.call("_sync_overlay_drawers_to_preview_presenter")
+	scene_root.set("_latest_state", {
+		"tracking_state": "tracking",
+		"baseline": {"is_calibrated": true, "capture_source": "calibration_session", "sample_frames": 1},
+		"calibration_session": _make_test_calibration_session("holding", {
+			"hold_progress_ms": 375,
+			"hold_progress_ratio": 0.5,
+			"hold_started_at_ms": 2222,
+			"instruction_text": "Hold the T-pose steady to finish auto-calibration",
+			"readiness": {
+				"tracking_ready": true,
+				"required_landmarks_ready": true,
+				"horizontal_alignment_ready": false,
+				"arm_extension_ready": true,
+				"qualified": false,
+				"hold_ready": false,
+				"ready": false,
+				"hold_ms": 750,
+				"hold_progress_ms": 375,
+				"hold_progress_ratio": 0.5,
+				"cooldown_ms": 1000,
+				"cooldown_remaining_ms": 0,
+				"failure_reason": "arms_not_horizontal",
+				"required_landmarks": {
+					"nose": true,
+					"left_shoulder": true,
+					"right_shoulder": true,
+					"left_elbow": true,
+					"right_elbow": true,
+					"left_wrist": true,
+					"right_wrist": true,
+				},
+				"thresholds": {
+					"max_wrist_shoulder_y_ratio": 0.12,
+					"max_elbow_shoulder_y_ratio": 0.10,
+					"min_arm_extension_ratio": 0.92,
+					"min_elbow_angle_deg": 165.0,
+				},
+				"measurements": {
+					"shoulder_width": 0.36,
+					"left_wrist_shoulder_y_ratio": 0.18,
+					"right_wrist_shoulder_y_ratio": 0.03,
+					"left_elbow_shoulder_y_ratio": 0.11,
+					"right_elbow_shoulder_y_ratio": 0.02,
+					"left_arm_extension": 0.98,
+					"right_arm_extension": 0.97,
+					"left_elbow_bend_deg": 176.0,
+					"right_elbow_bend_deg": 174.0,
+					"calibration_width": 0.52,
+					"calibration_height": 0.52,
+				},
+			},
+		}),
+	})
+	scene_root.call("_refresh_calibration_flow_ui")
+	var badge := presenter.get_overlay_layer().get_node_or_null("TPoseCalibrationBadge") as Control
+	assert_not_null(badge)
+	badge.emit_signal("pressed")
+	var inspector := scene_root.get("_shared_inspector_panel") as Control
+	assert_not_null(inspector)
+	assert_true(bool(inspector.visible))
+	assert_eq(String(scene_root.get("_shared_inspector_target_type")), "calibration")
+	assert_eq(String(scene_root.get("_shared_inspector_target_key")), "t_pose_auto")
+	var body_label := scene_root.get("_shared_inspector_body_label") as RichTextLabel
+	assert_not_null(body_label)
+	assert_string_contains(body_label.text, "T-pose auto-calibration")
+	assert_string_contains(body_label.text, "[ ] Arms are horizontal enough")
+	assert_string_contains(body_label.text, "left shoulder")
+	assert_string_contains(body_label.text, "max_wrist_shoulder_y_ratio=0.120")
+	assert_string_contains(body_label.text, "Hold progress: 375 / 750 ms")
 
 func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

@@ -3,6 +3,8 @@ extends Control
 
 const CameraTrackingConfigScript = preload("res://addons/aerobeat-input-camera-tracking/src/config/camera_tracking_config.gd")
 const FlowGridOverlayScript = preload("res://scripts/flow_grid_overlay.gd")
+const TPoseCalibrationBadgeScript = preload("res://scripts/t_pose_calibration_badge.gd")
+const T_POSE_BADGE_ICON_PATH := "res://assets/icons/boxing-tpose-1.svg"
 const PROFILE_BOXING := "boxing"
 const PROFILE_FLOW := "flow"
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
@@ -15,6 +17,11 @@ const VENDOR_MODEL_FULL := "models/pose_landmarker_full.task"
 const VENDOR_MODEL_HEAVY := "models/pose_landmarker_heavy.task"
 const DEFAULT_TRACKING_OVERLAY_MODE := "optimized"
 
+const NOSE_ID := 0
+const LEFT_SHOULDER_ID := 11
+const RIGHT_SHOULDER_ID := 12
+const LEFT_ELBOW_ID := 13
+const RIGHT_ELBOW_ID := 14
 const LEFT_WRIST_ID := 15
 const RIGHT_WRIST_ID := 16
 const LEFT_PINKY_ID := 17
@@ -53,6 +60,9 @@ const INSPECTOR_PANEL_WIDTH := 520.0
 const INSPECTOR_PANEL_MARGIN := 20.0
 const INSPECTOR_CLOSE_BUTTON_WIDTH := 32.0
 const INSPECTOR_FOOTER_TEXT := "Click away to close"
+const T_POSE_BADGE_SIZE := Vector2(75.0, 75.0)
+const T_POSE_BADGE_TOP_MARGIN := 12.0
+const T_POSE_BADGE_RIGHT_MARGIN := 12.0
 const RECALIBRATE_BUTTON_TEXT := "Calibrate Athlete"
 const RECALIBRATE_BUTTON_RIGHT_MARGIN := 16.0
 const RECALIBRATE_BUTTON_TOP_MARGIN := 16.0
@@ -275,6 +285,7 @@ var _playback_autoplay_base_url := ""
 var _playback_pause_hold := false
 var _athlete_recalibrate_button: Button = null
 var _athlete_calibration_secondary_button: Button = null
+var _t_pose_calibration_badge = null
 var _last_reported_calibration_session_state := ""
 var _last_logged_flow_grid_overlay_truth_signature := ""
 
@@ -336,6 +347,7 @@ func _ensure_calibration_flow_ui() -> void:
 	athlete_calibration_status_label = null
 	_athlete_recalibrate_button = null
 	_athlete_calibration_secondary_button = null
+	_ensure_t_pose_calibration_badge_ui()
 	_refresh_calibration_flow_ui()
 
 func _resolve_calibration_overlay_parent() -> Node:
@@ -346,12 +358,56 @@ func _resolve_calibration_overlay_parent() -> Node:
 		return camera_display
 	return self
 
-func _sync_calibration_overlay_parent() -> void:
-	if athlete_calibration_panel == null:
+func _ensure_t_pose_calibration_badge_ui() -> void:
+	if _t_pose_calibration_badge != null and is_instance_valid(_t_pose_calibration_badge):
 		return
+	_t_pose_calibration_badge = TPoseCalibrationBadgeScript.new()
+	_t_pose_calibration_badge.name = "TPoseCalibrationBadge"
+	_t_pose_calibration_badge.custom_minimum_size = T_POSE_BADGE_SIZE
+	_t_pose_calibration_badge.size = T_POSE_BADGE_SIZE
+	_t_pose_calibration_badge.visible = true
+	_t_pose_calibration_badge.set_icon(_load_t_pose_badge_icon_texture())
+	if not _t_pose_calibration_badge.pressed.is_connected(_on_t_pose_calibration_badge_pressed):
+		_t_pose_calibration_badge.pressed.connect(_on_t_pose_calibration_badge_pressed)
 	var overlay_parent := _resolve_calibration_overlay_parent()
-	if overlay_parent != null and athlete_calibration_panel.get_parent() != overlay_parent:
+	if overlay_parent == null:
+		overlay_parent = self
+	overlay_parent.add_child(_t_pose_calibration_badge)
+	_position_t_pose_calibration_badge()
+
+func _load_t_pose_badge_icon_texture() -> Texture2D:
+	var svg_text := FileAccess.get_file_as_string(T_POSE_BADGE_ICON_PATH)
+	if svg_text.is_empty():
+		return null
+	var image := Image.new()
+	var load_error := image.load_svg_from_string(svg_text)
+	if load_error != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+func _position_t_pose_calibration_badge() -> void:
+	if _t_pose_calibration_badge == null or not is_instance_valid(_t_pose_calibration_badge):
+		return
+	_t_pose_calibration_badge.anchor_left = 1.0
+	_t_pose_calibration_badge.anchor_top = 0.0
+	_t_pose_calibration_badge.anchor_right = 1.0
+	_t_pose_calibration_badge.anchor_bottom = 0.0
+	_t_pose_calibration_badge.offset_left = -T_POSE_BADGE_RIGHT_MARGIN - T_POSE_BADGE_SIZE.x
+	_t_pose_calibration_badge.offset_top = T_POSE_BADGE_TOP_MARGIN
+	_t_pose_calibration_badge.offset_right = -T_POSE_BADGE_RIGHT_MARGIN
+	_t_pose_calibration_badge.offset_bottom = T_POSE_BADGE_TOP_MARGIN + T_POSE_BADGE_SIZE.y
+	_t_pose_calibration_badge.size = T_POSE_BADGE_SIZE
+
+func _sync_calibration_overlay_parent() -> void:
+	var overlay_parent := _resolve_calibration_overlay_parent()
+	if overlay_parent == null:
+		return
+	if athlete_calibration_panel != null and athlete_calibration_panel.get_parent() != overlay_parent:
 		athlete_calibration_panel.reparent(overlay_parent)
+	if _t_pose_calibration_badge != null and is_instance_valid(_t_pose_calibration_badge):
+		if _t_pose_calibration_badge.get_parent() != overlay_parent:
+			_t_pose_calibration_badge.reparent(overlay_parent)
+		_position_t_pose_calibration_badge()
 
 func _on_athlete_recalibrate_pressed() -> void:
 	if _start_athlete_calibration_request():
@@ -439,6 +495,20 @@ func _refresh_calibration_flow_ui() -> void:
 	if athlete_calibration_status_label != null:
 		athlete_calibration_status_label.text = _calibration_status_text(state_name, session, has_baseline)
 		athlete_calibration_status_label.visible = not athlete_calibration_status_label.text.is_empty()
+	_refresh_t_pose_calibration_badge(session)
+
+func _refresh_t_pose_calibration_badge(session: Dictionary) -> void:
+	if _t_pose_calibration_badge == null or not is_instance_valid(_t_pose_calibration_badge):
+		return
+	var state_name := String(session.get("state", "idle"))
+	var fill_ratio := clampf(float(session.get("hold_progress_ratio", 0.0)), 0.0, 1.0)
+	var progress_active := state_name == "holding" and fill_ratio > 0.0 and fill_ratio < 1.0
+	_t_pose_calibration_badge.visible = true
+	_t_pose_calibration_badge.set_progress(progress_active, fill_ratio if progress_active else 0.0)
+	_position_t_pose_calibration_badge()
+
+func _on_t_pose_calibration_badge_pressed() -> void:
+	_open_shared_inspector("calibration", "t_pose_auto")
 
 func _apply_calibration_session_transition(state_name: String, session: Dictionary) -> void:
 	if state_name.is_empty():
@@ -1973,7 +2043,9 @@ func _build_shared_inspector_model(target_type: String, target_key: String) -> D
 		return _build_landmark_inspector_model(int(target_key.to_int()))
 	return _build_custom_inspector_model(target_type, target_key)
 
-func _build_custom_inspector_model(_target_type: String, _target_key: String) -> Dictionary:
+func _build_custom_inspector_model(target_type: String, target_key: String) -> Dictionary:
+	if target_type == "calibration" and target_key == "t_pose_auto":
+		return _build_t_pose_calibration_inspector_model()
 	return {}
 
 func _build_landmark_inspector_model(landmark_id: int) -> Dictionary:
@@ -2025,6 +2097,111 @@ func _build_landmark_inspector_model(landmark_id: int) -> Dictionary:
 		"body": "\n".join(lines),
 		"footer": footer,
 	}
+
+func _build_t_pose_calibration_inspector_model() -> Dictionary:
+	var session := _resolve_calibration_session()
+	var readiness: Dictionary = session.get("readiness", {}) if session.get("readiness", {}) is Dictionary else {}
+	var thresholds: Dictionary = readiness.get("thresholds", {}) if readiness.get("thresholds", {}) is Dictionary else {}
+	var measurements: Dictionary = readiness.get("measurements", {}) if readiness.get("measurements", {}) is Dictionary else {}
+	var required_landmarks: Dictionary = readiness.get("required_landmarks", {}) if readiness.get("required_landmarks", {}) is Dictionary else {}
+	var bundle := _current_profile_bundle()
+	var state_name := String(session.get("state", "idle"))
+	var failure_reason := String(session.get("failure_reason", readiness.get("failure_reason", "")))
+	var lines: Array[String] = []
+	lines.append("T-pose auto-calibration live truth")
+	lines.append("")
+	lines.append("Session")
+	lines.append("• State: %s" % state_name)
+	lines.append("• Tracking state: %s" % _tracking_status_text(_latest_state))
+	lines.append("• Instruction: %s" % String(session.get("instruction_text", readiness.get("instruction_text", ""))))
+	if not failure_reason.is_empty():
+		lines.append("• Failure reason: %s" % _humanize_calibration_failure_reason(failure_reason))
+	lines.append("• Hold progress: %d / %d ms (%s)" % [
+		int(session.get("hold_progress_ms", readiness.get("hold_progress_ms", 0))),
+		int(session.get("hold_ms", readiness.get("hold_ms", 0))),
+		_fmt_percent(session.get("hold_progress_ratio", readiness.get("hold_progress_ratio", 0.0))),
+	])
+	lines.append("• Hold started at runtime ms: %d" % int(session.get("hold_started_at_ms", readiness.get("hold_started_at_ms", 0))))
+	lines.append("• Cooldown remaining: %d ms" % int(session.get("cooldown_remaining_ms", readiness.get("cooldown_remaining_ms", 0))))
+	lines.append("• Last fired at runtime ms: %d" % int(session.get("last_fired_at_ms", 0)))
+	lines.append("• Next fire at runtime ms: %d" % int(session.get("next_fire_at_ms", 0)))
+	lines.append("")
+	lines.append("Requirement truth")
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("tracking_ready", false)), "Tracking state is tracking/reacquiring", "current=%s" % _tracking_status_text(_latest_state)))
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("required_landmarks_ready", false)), "Required landmarks are connected", _fmt_required_calibration_landmarks(required_landmarks)))
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("horizontal_alignment_ready", false)), "Arms are horizontal enough", "wrists %s / %s ≤ %s, elbows %s / %s ≤ %s" % [
+		_fmt_inspector_float(measurements.get("left_wrist_shoulder_y_ratio", 0.0)),
+		_fmt_inspector_float(measurements.get("right_wrist_shoulder_y_ratio", 0.0)),
+		_fmt_inspector_float(thresholds.get("max_wrist_shoulder_y_ratio", 0.0)),
+		_fmt_inspector_float(measurements.get("left_elbow_shoulder_y_ratio", 0.0)),
+		_fmt_inspector_float(measurements.get("right_elbow_shoulder_y_ratio", 0.0)),
+		_fmt_inspector_float(thresholds.get("max_elbow_shoulder_y_ratio", 0.0)),
+	]))
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("arm_extension_ready", false)), "Arms are extended enough", "extension %s / %s ≥ %s, elbow angle %s / %s ≥ %s°" % [
+		_fmt_inspector_float(measurements.get("left_arm_extension", 0.0)),
+		_fmt_inspector_float(measurements.get("right_arm_extension", 0.0)),
+		_fmt_inspector_float(thresholds.get("min_arm_extension_ratio", 0.0)),
+		_fmt_inspector_float(measurements.get("left_elbow_bend_deg", 0.0)),
+		_fmt_inspector_float(measurements.get("right_elbow_bend_deg", 0.0)),
+		_fmt_inspector_float(thresholds.get("min_elbow_angle_deg", 0.0)),
+	]))
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("qualified", false)), "All T-pose qualifiers currently pass", "qualified=%s" % str(bool(readiness.get("qualified", false)))))
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("hold_ready", false)), "Hold timer is complete", "runtime hold=%d ms, target=%d ms" % [int(readiness.get("hold_progress_ms", 0)), int(readiness.get("hold_ms", 0))]))
+	lines.append(_fmt_calibration_requirement_line(int(readiness.get("cooldown_remaining_ms", 0)) <= 0, "Cooldown has cleared", "%d ms remaining" % int(readiness.get("cooldown_remaining_ms", 0))))
+	lines.append(_fmt_calibration_requirement_line(bool(readiness.get("ready", false)), "Calibration can fire right now", "ready=%s" % str(bool(readiness.get("ready", false)))))
+	lines.append("")
+	lines.append("Thresholds + live vars")
+	lines.append("• Shoulder width: %s" % _fmt_inspector_float(measurements.get("shoulder_width", 0.0)))
+	lines.append("• Grid sample width/height: %s / %s" % [
+		_fmt_inspector_float(measurements.get("calibration_width", 0.0)),
+		_fmt_inspector_float(measurements.get("calibration_height", 0.0)),
+	])
+	lines.append("• hold_ms=%d  cooldown_ms=%d" % [int(readiness.get("hold_ms", session.get("hold_ms", 0))), int(readiness.get("cooldown_ms", session.get("cooldown_ms", 0)))])
+	lines.append("• max_wrist_shoulder_y_ratio=%s  max_elbow_shoulder_y_ratio=%s" % [
+		_fmt_inspector_float(thresholds.get("max_wrist_shoulder_y_ratio", 0.0)),
+		_fmt_inspector_float(thresholds.get("max_elbow_shoulder_y_ratio", 0.0)),
+	])
+	lines.append("• min_arm_extension_ratio=%s  min_elbow_angle_deg=%s" % [
+		_fmt_inspector_float(thresholds.get("min_arm_extension_ratio", 0.0)),
+		_fmt_inspector_float(thresholds.get("min_elbow_angle_deg", 0.0)),
+	])
+	var baseline := _resolve_baseline_state()
+	lines.append("")
+	lines.append("Baseline + config")
+	lines.append("• Baseline active: %s" % str(bool(baseline.get("is_calibrated", false))))
+	lines.append("• Capture source: %s" % String(baseline.get("capture_source", "")))
+	lines.append("• Sample frames: %d" % int(baseline.get("sample_frames", 0)))
+	lines.append("• Profile: %s" % String(bundle.get("profile", _profile_id_for_harness_mode())))
+	lines.append("• Gesture YAML: %s" % _pretty_resource_path(String(bundle.get("gesture_detection_path", ""))))
+	var footer := "Live calibration truth refreshes about every %.2fs for readability. %s" % [float(maxi(1, inspector_live_refresh_interval_ms)) / 1000.0, INSPECTOR_FOOTER_TEXT]
+	return {
+		"title": "Calibration Inspector",
+		"subtitle": "T-pose auto-calibration",
+		"body": "\n".join(lines),
+		"footer": footer,
+	}
+
+func _fmt_calibration_requirement_line(passed: bool, label: String, detail: String = "") -> String:
+	var line := "[%s] %s" % ["x" if passed else " ", label]
+	if not detail.is_empty():
+		line += " — %s" % detail
+	return line
+
+func _fmt_required_calibration_landmarks(required_landmarks: Dictionary) -> String:
+	var labels := {
+		"nose": "nose",
+		"left_shoulder": "left shoulder",
+		"right_shoulder": "right shoulder",
+		"left_elbow": "left elbow",
+		"right_elbow": "right elbow",
+		"left_wrist": "left wrist",
+		"right_wrist": "right wrist",
+	}
+	var segments: Array[String] = []
+	for key_variant: Variant in ["nose", "left_shoulder", "right_shoulder", "left_elbow", "right_elbow", "left_wrist", "right_wrist"]:
+		var key := String(key_variant)
+		segments.append("%s=%s" % [String(labels.get(key, key)), "yes" if bool(required_landmarks.get(key, false)) else "no"])
+	return ", ".join(segments)
 
 func _capture_landmark_snapshot(landmark_id: int) -> Dictionary:
 	var state: Dictionary = _latest_state
@@ -2465,6 +2642,14 @@ func get_shared_flow_grid_truth_refs() -> Dictionary:
 		"flow_grid_overlay": flow_grid_overlay,
 		"grid_truth_label": grid_truth_label,
 	}
+
+func get_t_pose_badge_snapshot() -> Dictionary:
+	if _t_pose_calibration_badge == null or not is_instance_valid(_t_pose_calibration_badge):
+		return {}
+	var snapshot: Dictionary = _t_pose_calibration_badge.get_badge_snapshot() if _t_pose_calibration_badge.has_method("get_badge_snapshot") else {}
+	snapshot["parent"] = _t_pose_calibration_badge.get_parent()
+	snapshot["global_position"] = _t_pose_calibration_badge.global_position
+	return snapshot
 
 func _build_live_status_text() -> String:
 	var state: Dictionary = _latest_state
@@ -3300,18 +3485,31 @@ func _tracking_status_text(state: Dictionary) -> String:
 		return "invalid" if not _preview_only_invalid_reason.is_empty() else "preview_only"
 	return String(state.get("tracking_state", &"lost"))
 
-func _resolved_pose_smoothing_style() -> String:
-	var bundle := {}
+func _current_profile_bundle() -> Dictionary:
 	var tracking_singleton := _resolve_camera_tracking_singleton()
 	if tracking_singleton != null and tracking_singleton.has_method("get_selected_profile_bundle"):
 		var runtime_bundle: Variant = tracking_singleton.get_selected_profile_bundle()
 		if runtime_bundle is Dictionary and bool(runtime_bundle.get("ok", false)):
-			bundle = (runtime_bundle as Dictionary).duplicate(true)
-	if bundle.is_empty():
-		var config := CameraTrackingConfigScript.new()
-		var fallback_bundle: Variant = config.load_selected_profile_bundle(_profile_id_for_harness_mode())
-		if fallback_bundle is Dictionary and bool(fallback_bundle.get("ok", false)):
-			bundle = (fallback_bundle as Dictionary).duplicate(true)
+			var runtime_profile := String(runtime_bundle.get("profile", "")).strip_edges().to_lower()
+			var expected_profile := _profile_id_for_harness_mode()
+			if runtime_profile.is_empty() or runtime_profile == expected_profile:
+				return (runtime_bundle as Dictionary).duplicate(true)
+	var config := CameraTrackingConfigScript.new()
+	var bundle: Variant = config.load_selected_profile_bundle(_profile_id_for_harness_mode())
+	if bundle is Dictionary and bool(bundle.get("ok", false)):
+		return (bundle as Dictionary).duplicate(true)
+	return {
+		"ok": false,
+		"profile": _profile_id_for_harness_mode(),
+	}
+
+func _pretty_resource_path(path: String) -> String:
+	if path.begins_with("res://addons/aerobeat-input-camera-tracking/"):
+		return path.replace("res://addons/aerobeat-input-camera-tracking/", "res://")
+	return path
+
+func _resolved_pose_smoothing_style() -> String:
+	var bundle := _current_profile_bundle()
 	var tracker_document: Dictionary = bundle.get("camera_tracking", {}) if bundle.get("camera_tracking", {}) is Dictionary else {}
 	var tracking: Dictionary = tracker_document.get("tracking", {}) if tracker_document.get("tracking", {}) is Dictionary else {}
 	var pose_config: Dictionary = tracking.get("pose", {}) if tracking.get("pose", {}) is Dictionary else {}

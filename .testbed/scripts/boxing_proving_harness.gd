@@ -1400,7 +1400,7 @@ func _on_inspector_target_gui_input(event: InputEvent, card_key: String) -> void
 
 func _build_custom_inspector_model(target_type: String, target_key: String) -> Dictionary:
 	if target_type != "gesture":
-		return {}
+		return super._build_custom_inspector_model(target_type, target_key)
 	var hover_model := _build_hover_card_model(target_key)
 	return {
 		"title": HOVER_CARD_TITLE,

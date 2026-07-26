@@ -251,6 +251,34 @@ func _build_default_calibration_readiness() -> Dictionary:
 		"failure_reason": "required_sample_landmarks_unavailable",
 		"instruction_key": "show_sample_landmarks",
 		"instruction_text": "Need tracking/reacquiring plus nose, shoulders, elbows, and wrists visible",
+		"required_landmarks": {
+			"nose": false,
+			"left_shoulder": false,
+			"right_shoulder": false,
+			"left_elbow": false,
+			"right_elbow": false,
+			"left_wrist": false,
+			"right_wrist": false,
+		},
+		"thresholds": {
+			"max_wrist_shoulder_y_ratio": _get_calibration_threshold("max_wrist_shoulder_y_ratio", CALIBRATION_DEFAULT_MAX_WRIST_SHOULDER_Y_RATIO),
+			"max_elbow_shoulder_y_ratio": _get_calibration_threshold("max_elbow_shoulder_y_ratio", CALIBRATION_DEFAULT_MAX_ELBOW_SHOULDER_Y_RATIO),
+			"min_arm_extension_ratio": _get_calibration_threshold("min_arm_extension_ratio", CALIBRATION_DEFAULT_MIN_ARM_EXTENSION_RATIO),
+			"min_elbow_angle_deg": _get_calibration_threshold("min_elbow_angle_deg", CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG),
+		},
+		"measurements": {
+			"shoulder_width": 0.0,
+			"left_wrist_shoulder_y_ratio": 0.0,
+			"right_wrist_shoulder_y_ratio": 0.0,
+			"left_elbow_shoulder_y_ratio": 0.0,
+			"right_elbow_shoulder_y_ratio": 0.0,
+			"left_arm_extension": 0.0,
+			"right_arm_extension": 0.0,
+			"left_elbow_bend_deg": 0.0,
+			"right_elbow_bend_deg": 0.0,
+			"calibration_width": 0.0,
+			"calibration_height": 0.0,
+		},
 	}
 
 func _build_calibration_instructions(readiness: Dictionary) -> Dictionary:
@@ -948,6 +976,15 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 	var right_elbow: Dictionary = gameplay_anchors.get(PoseLandmarkIds.RIGHT_ELBOW, {})
 	var left_wrist: Dictionary = gameplay_anchors.get(PoseLandmarkIds.LEFT_WRIST, {})
 	var right_wrist: Dictionary = gameplay_anchors.get(PoseLandmarkIds.RIGHT_WRIST, {})
+	readiness["required_landmarks"] = {
+		"nose": not nose.is_empty(),
+		"left_shoulder": not left_shoulder.is_empty(),
+		"right_shoulder": not right_shoulder.is_empty(),
+		"left_elbow": not left_elbow.is_empty(),
+		"right_elbow": not right_elbow.is_empty(),
+		"left_wrist": not left_wrist.is_empty(),
+		"right_wrist": not right_wrist.is_empty(),
+	}
 	if nose.is_empty() or left_shoulder.is_empty() or right_shoulder.is_empty() or left_elbow.is_empty() or right_elbow.is_empty() or left_wrist.is_empty() or right_wrist.is_empty():
 		readiness["failure_reason"] = "required_sample_landmarks_unavailable"
 		readiness["instruction_key"] = "show_sample_landmarks"
@@ -958,10 +995,29 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 	var shoulder_width := maxf(float(measurements.get("shoulder_width", 0.0)), 0.000001)
 	var max_wrist_ratio := _get_calibration_threshold("max_wrist_shoulder_y_ratio", CALIBRATION_DEFAULT_MAX_WRIST_SHOULDER_Y_RATIO)
 	var max_elbow_ratio := _get_calibration_threshold("max_elbow_shoulder_y_ratio", CALIBRATION_DEFAULT_MAX_ELBOW_SHOULDER_Y_RATIO)
+	readiness["thresholds"] = {
+		"max_wrist_shoulder_y_ratio": max_wrist_ratio,
+		"max_elbow_shoulder_y_ratio": max_elbow_ratio,
+		"min_arm_extension_ratio": _get_calibration_threshold("min_arm_extension_ratio", CALIBRATION_DEFAULT_MIN_ARM_EXTENSION_RATIO),
+		"min_elbow_angle_deg": _get_calibration_threshold("min_elbow_angle_deg", CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG),
+	}
 	var left_wrist_shoulder_y_ratio := absf(float(left_wrist.get("y", 0.0)) - float(left_shoulder.get("y", 0.0))) / shoulder_width
 	var right_wrist_shoulder_y_ratio := absf(float(right_wrist.get("y", 0.0)) - float(right_shoulder.get("y", 0.0))) / shoulder_width
 	var left_elbow_shoulder_y_ratio := absf(float(left_elbow.get("y", 0.0)) - float(left_shoulder.get("y", 0.0))) / shoulder_width
 	var right_elbow_shoulder_y_ratio := absf(float(right_elbow.get("y", 0.0)) - float(right_shoulder.get("y", 0.0))) / shoulder_width
+	readiness["measurements"] = {
+		"shoulder_width": shoulder_width,
+		"left_wrist_shoulder_y_ratio": left_wrist_shoulder_y_ratio,
+		"right_wrist_shoulder_y_ratio": right_wrist_shoulder_y_ratio,
+		"left_elbow_shoulder_y_ratio": left_elbow_shoulder_y_ratio,
+		"right_elbow_shoulder_y_ratio": right_elbow_shoulder_y_ratio,
+		"left_arm_extension": float(measurements.get("left_arm_extension", 0.0)),
+		"right_arm_extension": float(measurements.get("right_arm_extension", 0.0)),
+		"left_elbow_bend_deg": float(measurements.get("left_elbow_bend_deg", 0.0)),
+		"right_elbow_bend_deg": float(measurements.get("right_elbow_bend_deg", 0.0)),
+		"calibration_width": 0.0,
+		"calibration_height": 0.0,
+	}
 	var horizontal_ready := left_wrist_shoulder_y_ratio <= max_wrist_ratio and right_wrist_shoulder_y_ratio <= max_wrist_ratio and left_elbow_shoulder_y_ratio <= max_elbow_ratio and right_elbow_shoulder_y_ratio <= max_elbow_ratio
 	readiness["horizontal_alignment_ready"] = horizontal_ready
 	if not horizontal_ready:
@@ -1004,6 +1060,10 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 		return readiness
 	var calibration_width := _compute_calibration_grid_width(left_wrist, right_wrist)
 	var calibration_height := _compute_calibration_grid_height(calibration_width, _resolve_flow_grid_content_aspect_ratio())
+	var measurement_debug: Dictionary = readiness.get("measurements", {}) if readiness.get("measurements", {}) is Dictionary else {}
+	measurement_debug["calibration_width"] = calibration_width
+	measurement_debug["calibration_height"] = calibration_height
+	readiness["measurements"] = measurement_debug
 	if calibration_width <= 0.0 or calibration_height <= 0.0:
 		readiness["failure_reason"] = "invalid_joint_chain_sample"
 		readiness["instruction_key"] = "show_sample_landmarks"
