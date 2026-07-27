@@ -284,17 +284,22 @@ const SQUAT_REQUIREMENT_ROWS := [
 	},
 	{
 		"id": "obstacle_section",
-		"label": "Top-row obstacle",
+		"label": "Top-origin threshold",
 		"row_kind": "section",
 	},
 	{
-		"id": "occupied_rows",
-		"label": "Blocked rows",
+		"id": "blocked_from_edge",
+		"label": "Blocked from edge",
 		"row_kind": "info",
 	},
 	{
-		"id": "occupied_cells",
-		"label": "Blocked cells",
+		"id": "blocked_height_ratio",
+		"label": "Blocked height ratio",
+		"row_kind": "info",
+	},
+	{
+		"id": "threshold_line_y",
+		"label": "Threshold line Y",
 		"row_kind": "info",
 	},
 	{
@@ -1598,12 +1603,19 @@ func _build_squat_requirement_row(row_spec: Dictionary, squat_debug: Dictionary)
 		"nose_tracked":
 			passed = bool(squat_debug.get("nose_tracked", false))
 			current_text = _fmt_bool(passed)
-		"occupied_rows":
-			current_text = _fmt_int_list(squat_debug.get("occupied_rows", []))
-			passed = true
-		"occupied_cells":
-			current_text = _fmt_int_list(squat_debug.get("occupied_cells", []))
-			passed = true
+		"blocked_from_edge":
+			current_text = String(squat_debug.get("blocked_from_edge", "top"))
+			passed = not current_text.is_empty()
+		"blocked_height_ratio":
+			current_text = _fmt_float(squat_debug.get("blocked_height_ratio", 0.0))
+			passed = bool(squat_debug.get("threshold_line_active", false))
+		"threshold_line_y":
+			if bool(squat_debug.get("threshold_line_active", false)):
+				current_text = _fmt_float(squat_debug.get("threshold_line_y", 0.0))
+				passed = true
+			else:
+				current_text = "-"
+				passed = false
 		"nose_in_blocked_region":
 			passed = not bool(squat_debug.get("nose_in_blocked_region", false))
 			current_text = _fmt_bool(bool(squat_debug.get("nose_in_blocked_region", false)))
@@ -1727,6 +1739,17 @@ func _fmt_int_list(values_variant: Variant) -> String:
 	for value_variant: Variant in (values_variant as Array):
 		parts.append(str(int(value_variant)))
 	return ", ".join(parts)
+
+func _fmt_signed_int(value: int) -> String:
+	return "+%d" % value if value > 0 else str(value)
+
+func _pose_strike_grid_variant_summary(side_debug: Dictionary) -> String:
+	var grid_variant := String(side_debug.get("grid_variant", "base_grid"))
+	var grid_columns := int(side_debug.get("grid_columns", 0))
+	var grid_rows := int(side_debug.get("grid_rows", 0))
+	if grid_columns > 0 and grid_rows > 0:
+		return "%s (%dx%d)" % [grid_variant, grid_columns, grid_rows]
+	return grid_variant
 
 func _fmt_matcher_class_scores(class_scores: Dictionary) -> String:
 	if class_scores.is_empty():
@@ -1937,6 +1960,8 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 	var passed := false
 	var current_text := ""
 	var threshold_text := ""
+	var backend := String(side_debug.get("backend", "threshold"))
+	var using_grid_detection := backend == "grid_detection"
 	var state_name := String(side_debug.get("state", side_debug.get("phase", "tracking_lost")))
 	var tracking_state := String(side_debug.get("tracking_state", "pose_missing"))
 	var pose_tracking_valid := bool(side_debug.get("pose_tracking_valid", false))
@@ -1969,14 +1994,36 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 			current_text = "pose_valid=%s, tracking=%s, source=%s" % [_fmt_bool(pose_tracking_valid), tracking_state, sample_source]
 			passed = pose_tracking_valid
 		"velocity_window":
-			current_text = "%dms configured, %dms averaged span" % [window_ms, window_span_ms]
+			if using_grid_detection:
+				current_text = "%dms configured, %dms sampled span, %s, %s -> %s" % [
+					window_ms,
+					window_span_ms,
+					_pose_strike_grid_variant_summary(side_debug),
+					_fmt_flow_cell(int(side_debug.get("grid_previous_cell", -1))),
+					_fmt_flow_cell(int(side_debug.get("grid_current_cell", -1))),
+				]
+			else:
+				current_text = "%dms configured, %dms averaged span" % [window_ms, window_span_ms]
 			passed = window_ms > 0
 		"averaged_velocity":
-			threshold_text = _fmt_float(min_velocity)
-			current_text = _fmt_float(averaged_velocity)
-			passed = averaged_velocity >= min_velocity
+			if using_grid_detection:
+				var min_axis_delta := int(side_debug.get("min_column_delta", side_debug.get("min_row_delta", side_debug.get("min_cell_delta", 0))))
+				var axis_delta := int(side_debug.get("grid_column_delta", 0)) if family == "hook" else int(side_debug.get("grid_row_delta", 0))
+				threshold_text = str(min_axis_delta)
+				current_text = _fmt_signed_int(axis_delta)
+				passed = bool(side_debug.get("grid_cell_delta_gate_passed", false))
+				label = "Absolute %s delta >= {threshold} subcells" % ["column" if family == "hook" else "row"]
+			else:
+				threshold_text = _fmt_float(min_velocity)
+				current_text = _fmt_float(averaged_velocity)
+				passed = averaged_velocity >= min_velocity
 		"dominance_ratio":
-			if family == "hook":
+			if using_grid_detection:
+				threshold_text = _fmt_float(side_debug.get("required_direction_dominance_ratio", 0.0))
+				current_text = _fmt_float(side_debug.get("grid_direction_dominance_ratio", 0.0))
+				passed = bool(side_debug.get("grid_direction_gate_passed", false))
+				label = "Axis dominance ratio >= {threshold}"
+			elif family == "hook":
 				threshold_text = _fmt_float(hook_max_alignment_angle)
 				current_text = _fmt_float(hook_alignment_angle)
 				passed = bool(side_debug.get("wrist_horizontal_angle_gate_passed", false))
@@ -1988,7 +2035,12 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 				label = "Wrist angle from elbow vertical ray <= {threshold}°"
 		"directionality_ratio":
 			threshold_text = _fmt_bool(true)
-			if family == "hook":
+			if using_grid_detection:
+				var required_direction_label := String(side_debug.get("required_direction_label", ""))
+				current_text = "%s via %s" % [_fmt_bool(bool(side_debug.get("grid_direction_gate_passed", false))), String(side_debug.get("direction_reference_frame", "athlete_space"))]
+				passed = bool(side_debug.get("grid_direction_gate_passed", false))
+				label = "Required grid direction" if required_direction_label.is_empty() else "Required grid direction (%s)" % required_direction_label
+			elif family == "hook":
 				var required_hook_side_label := String(side_debug.get("required_hook_side_label", ""))
 				current_text = _fmt_bool(hook_side_gate_passed)
 				if not required_hook_side_label.is_empty():
@@ -2316,7 +2368,8 @@ func _build_boxing_event_feed_text() -> String:
 	var straight_state_machine: Dictionary = straight_config.get("state_machine", {}) if straight_config.get("state_machine", {}) is Dictionary else {}
 	var straight_depth: Dictionary = straight_config.get("depth", {}) if straight_config.get("depth", {}) is Dictionary else {}
 	var hook_family: Dictionary = _gesture_family_document(gesture_document, "hook")
-	var hook_config: Dictionary = _gesture_family_backend_document(gesture_document, "hook", "threshold")
+	var hook_backend := String(hook_family.get("backend", "threshold")).strip_edges().to_lower()
+	var hook_config: Dictionary = _gesture_family_backend_document(gesture_document, "hook", hook_backend)
 	var hook_eval: Dictionary = hook_config.get("evaluation", {}) if hook_config.get("evaluation", {}) is Dictionary else {}
 	var hook_thresholds: Dictionary = hook_config.get("thresholds", {}) if hook_config.get("thresholds", {}) is Dictionary else {}
 	var hook_timing: Dictionary = hook_config.get("timing", {}) if hook_config.get("timing", {}) is Dictionary else {}
@@ -2324,7 +2377,8 @@ func _build_boxing_event_feed_text() -> String:
 	var hook_state_machine: Dictionary = hook_config.get("state_machine", {}) if hook_config.get("state_machine", {}) is Dictionary else {}
 	var hook_depth: Dictionary = hook_config.get("depth", {}) if hook_config.get("depth", {}) is Dictionary else {}
 	var uppercut_family: Dictionary = _gesture_family_document(gesture_document, "uppercut")
-	var uppercut_config: Dictionary = _gesture_family_backend_document(gesture_document, "uppercut", "threshold")
+	var uppercut_backend := String(uppercut_family.get("backend", "threshold")).strip_edges().to_lower()
+	var uppercut_config: Dictionary = _gesture_family_backend_document(gesture_document, "uppercut", uppercut_backend)
 	var uppercut_eval: Dictionary = uppercut_config.get("evaluation", {}) if uppercut_config.get("evaluation", {}) is Dictionary else {}
 	var uppercut_thresholds: Dictionary = uppercut_config.get("thresholds", {}) if uppercut_config.get("thresholds", {}) is Dictionary else {}
 	var uppercut_timing: Dictionary = uppercut_config.get("timing", {}) if uppercut_config.get("timing", {}) is Dictionary else {}
@@ -2369,11 +2423,22 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("")
 	lines.append("Hook tuning")
 	lines.append("-----------")
-	lines.append("Threshold backend selected: %s" % _fmt_bool(String(hook_family.get("backend", "threshold")).strip_edges().to_lower() == "threshold"))
+	lines.append("Backend: %s" % hook_backend)
 	lines.append("Motion window: %dms" % int(hook_eval.get("window_ms", 0)))
-	lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
-	lines.append("Max wrist angle from elbow horizontal ray: %s" % _fmt_float(hook_thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
-	lines.append("Hook wrist must stay on mirrored preview-space side of elbow: left hook = left_of_elbow, right hook = right_of_elbow")
+	if hook_backend == "grid_detection":
+		var strike_subgrid: Dictionary = gesture_document.get("grid_detection", {}).get("strike_subgrid", {}) if gesture_document.get("grid_detection", {}) is Dictionary and gesture_document.get("grid_detection", {}).get("strike_subgrid", {}) is Dictionary else {}
+		lines.append("Grid variant: %s" % String(hook_eval.get("grid_variant", "strike_subgrid")))
+		lines.append("Strike subgrid: %dx%d inside the calibrated 4x3 bounds" % [
+			4 * int(strike_subgrid.get("columns_multiplier", 2)),
+			3 * int(strike_subgrid.get("rows_multiplier", 2)),
+		])
+		lines.append("Minimum outward column travel: %d subcells" % int(hook_eval.get("min_column_delta", hook_eval.get("min_cell_delta", 0))))
+		lines.append("Axis dominance ratio: %s" % _fmt_float(hook_eval.get("direction_dominance_ratio", 0.0)))
+		lines.append("Hook direction reference: athlete-space outward columns (left hook = athlete_left, right hook = athlete_right)")
+	else:
+		lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
+		lines.append("Max wrist angle from elbow horizontal ray: %s" % _fmt_float(hook_thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
+		lines.append("Hook wrist must stay on mirrored preview-space side of elbow: left hook = left_of_elbow, right hook = right_of_elbow")
 	lines.append("Hook grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(hook_timing.get("triggered_grace_ms", 0)),
 		int(hook_rearm.get("pose_only_rearm_ms", 0)),
@@ -2384,11 +2449,22 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("")
 	lines.append("Uppercut tuning")
 	lines.append("---------------")
-	lines.append("Threshold backend selected: %s" % _fmt_bool(String(uppercut_family.get("backend", "threshold")).strip_edges().to_lower() == "threshold"))
+	lines.append("Backend: %s" % uppercut_backend)
 	lines.append("Motion window: %dms" % int(uppercut_eval.get("window_ms", 0)))
-	lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
-	lines.append("Max wrist angle from elbow vertical ray: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_angle_from_elbow_vertical_deg", 0.0)))
-	lines.append("Uppercut wrist must stay above elbow in preview space: yes")
+	if uppercut_backend == "grid_detection":
+		var strike_subgrid: Dictionary = gesture_document.get("grid_detection", {}).get("strike_subgrid", {}) if gesture_document.get("grid_detection", {}) is Dictionary and gesture_document.get("grid_detection", {}).get("strike_subgrid", {}) is Dictionary else {}
+		lines.append("Grid variant: %s" % String(uppercut_eval.get("grid_variant", "strike_subgrid")))
+		lines.append("Strike subgrid: %dx%d inside the calibrated 4x3 bounds" % [
+			4 * int(strike_subgrid.get("columns_multiplier", 2)),
+			3 * int(strike_subgrid.get("rows_multiplier", 2)),
+		])
+		lines.append("Minimum upward row travel: %d subcells" % int(uppercut_eval.get("min_row_delta", uppercut_eval.get("min_cell_delta", 0))))
+		lines.append("Axis dominance ratio: %s" % _fmt_float(uppercut_eval.get("direction_dominance_ratio", 0.0)))
+		lines.append("Uppercut direction reference: athlete-space upward rows")
+	else:
+		lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
+		lines.append("Max wrist angle from elbow vertical ray: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_angle_from_elbow_vertical_deg", 0.0)))
+		lines.append("Uppercut wrist must stay above elbow in preview space: yes")
 	lines.append("Uppercut grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(uppercut_timing.get("triggered_grace_ms", 0)),
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),
@@ -2420,10 +2496,11 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("---------------")
 	lines.append("Enabled: %s" % _fmt_bool(bool(squat_config.get("enabled", true))))
 	lines.append("Backend: %s" % String(squat_debug.get("backend", squat_config.get("backend", "grid_avoidance"))))
-	lines.append("Blocked rows: %s" % _fmt_int_list(squat_obstacle.get("occupied_rows", squat_debug.get("occupied_rows", []))))
-	lines.append("Blocked cells: %s" % _fmt_int_list(squat_obstacle.get("occupied_cells", squat_debug.get("occupied_cells", []))))
+	lines.append("Blocked from edge: %s" % String(squat_obstacle.get("blocked_from_edge", squat_debug.get("blocked_from_edge", "top"))))
+	lines.append("Blocked height ratio: %s" % _fmt_float(squat_obstacle.get("blocked_height_ratio", squat_debug.get("blocked_height_ratio", 0.0))))
 	lines.append("Current state: %s" % ("active" if bool(squat_debug.get("state", false)) else "inactive"))
 	lines.append("Nose cell: %s" % _fmt_flow_cell(int(squat_debug.get("current_cell", -1))))
+	lines.append("Threshold line Y: %s" % _fmt_float(squat_debug.get("threshold_line_y", 0.0)))
 	lines.append("Nose in blocked region: %s" % _fmt_bool(bool(squat_debug.get("nose_in_blocked_region", false))))
 	lines.append("Obstacle avoided: %s" % _fmt_bool(bool(squat_debug.get("avoidance_clear", false))))
 

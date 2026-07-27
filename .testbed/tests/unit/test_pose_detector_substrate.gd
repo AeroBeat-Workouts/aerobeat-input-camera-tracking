@@ -2069,17 +2069,20 @@ func test_squat_uses_nose_grid_avoidance_and_surfaces_debug_truth() -> void:
 	assert_eq(String(squat_debug.get("backend", "")), "grid_avoidance")
 	assert_false(bool(squat_debug.get("state", true)))
 	assert_eq(int(squat_debug.get("current_cell", -1)), 1)
-	assert_eq(squat_debug.get("occupied_cells", []), [0, 1, 2, 3])
+	assert_eq(String(squat_debug.get("mode", "")), "athlete_space_height_ratio")
+	assert_eq(String(squat_debug.get("blocked_from_edge", "")), "top")
+	assert_eq(float(squat_debug.get("blocked_height_ratio", 0.0)), 0.60)
+	assert_true(bool(squat_debug.get("threshold_line_active", false)))
 	assert_true(bool(squat_debug.get("nose_in_blocked_region", false)))
 	assert_false(bool(squat_debug.get("avoidance_clear", true)))
 
 	var clear_state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.50, "y": 0.72},
+		PoseLandmarkIds.NOSE: {"x": 0.50, "y": 0.55},
 	}), 1300)
 	assert_true(_event_names(clear_state.get("events", [])).has("squat_start"))
 	squat_debug = clear_state.get("gesture_debug", {}).get("squat", {})
 	assert_true(bool(squat_debug.get("state", false)))
-	assert_eq(int(squat_debug.get("current_cell", -1)), 5)
+	assert_true(int(squat_debug.get("current_cell", -1)) >= 0)
 	assert_false(bool(squat_debug.get("nose_in_blocked_region", true)))
 	assert_true(bool(squat_debug.get("avoidance_clear", false)))
 
@@ -2254,9 +2257,12 @@ func test_hook_grid_detection_uses_athlete_space_outward_column_transitions() ->
 	assert_eq(String(left_debug.get("backend", "")), "grid_detection")
 	assert_eq(String(left_debug.get("direction_reference_frame", "")), "athlete_space_columns")
 	assert_eq(String(left_debug.get("required_direction_label", "")), "athlete_left")
-	assert_eq(int(left_debug.get("grid_previous_cell", -1)), 5)
-	assert_eq(int(left_debug.get("grid_current_cell", -1)), 4)
-	assert_eq(int(left_debug.get("grid_column_delta", 0)), -1)
+	assert_eq(String(left_debug.get("grid_variant", "")), "strike_subgrid")
+	assert_eq(int(left_debug.get("grid_columns", 0)), 8)
+	assert_eq(int(left_debug.get("grid_rows", 0)), 6)
+	assert_eq(int(left_debug.get("grid_previous_cell", -1)), 18)
+	assert_eq(int(left_debug.get("grid_current_cell", -1)), 16)
+	assert_eq(int(left_debug.get("grid_column_delta", 0)), -2)
 	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
 

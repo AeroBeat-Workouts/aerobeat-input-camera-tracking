@@ -32,9 +32,21 @@ squat:
   backend: grid_avoidance
   grid_avoidance:
     obstacle:
-      label: top_row
-      occupied_rows: [0]
-      occupied_cells: [0, 1, 2, 3]
+      label: squat_height_band
+      mode: athlete_space_height_ratio
+      blocked_from_edge: top
+      # Height percentage of the calibrated 4x3 grid to keep blocked from the top edge downward.
+      # Smaller values move the line upward and make squat activation easier.
+      # Larger values move the line lower and require a deeper squat before the nose clears the blocked band.
+      blocked_height_ratio: 0.60
+
+grid_detection:
+  strike_subgrid:
+    enabled: true
+    columns_multiplier: 2
+    rows_multiplier: 2
+    visual:
+      draw_dashed_overlay: true
 
 weave:
   backend: grid_avoidance
@@ -67,7 +79,7 @@ straight_punch:
       lost_tracking_reacquire_stable_ms: 40
 
 hook:
-  backend: threshold
+  backend: grid_detection
   threshold:
     evaluation:
       window_ms: 250
@@ -83,7 +95,8 @@ hook:
   grid_detection:
     evaluation:
       window_ms: 250
-      min_cell_delta: 1
+      grid_variant: strike_subgrid
+      min_column_delta: 1
       direction_dominance_ratio: 0.55
     timing:
       triggered_grace_ms: 500
@@ -93,7 +106,7 @@ hook:
       lost_tracking_reacquire_stable_ms: 40
 
 uppercut:
-  backend: threshold
+  backend: grid_detection
   threshold:
     evaluation:
       window_ms: 250
@@ -109,7 +122,8 @@ uppercut:
   grid_detection:
     evaluation:
       window_ms: 250
-      min_cell_delta: 1
+      grid_variant: strike_subgrid
+      min_row_delta: 1
       direction_dominance_ratio: 0.55
     timing:
       triggered_grace_ms: 500

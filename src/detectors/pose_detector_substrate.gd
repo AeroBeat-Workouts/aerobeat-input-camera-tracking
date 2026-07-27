@@ -53,6 +53,14 @@ const HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG := 25.0
 const UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG := 25.0
 const GRID_DETECTION_DEFAULT_MIN_CELL_DELTA := 1
 const GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO := 0.55
+const GRID_VARIANT_BASE_GRID := "base_grid"
+const GRID_VARIANT_STRIKE_SUBGRID := "strike_subgrid"
+const STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER := 2
+const STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER := 2
+const GRID_AVOIDANCE_MODE_DISCRETE_CELLS := "discrete_cells"
+const GRID_AVOIDANCE_MODE_ATHLETE_SPACE_HEIGHT_RATIO := "athlete_space_height_ratio"
+const GRID_AVOIDANCE_BLOCKED_FROM_TOP := "top"
+const SQUAT_DEFAULT_BLOCKED_HEIGHT_RATIO := 0.60
 
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_X := 0.20
 const GUARD_DEFAULT_MAX_WRIST_SEPARATION_Y := 0.12
@@ -1388,6 +1396,7 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"depth_active_model_summary": String(depth_runtime_debug.get("active_model_summary", "")),
 		"depth_artifact_path": String(depth_runtime_debug.get("artifact_path_res", "")),
 		"depth_sample_metrics": (depth_runtime_debug.get("last_sample_metrics", {}) as Dictionary).duplicate(true),
+		"grid_variant": String(config.get("grid_variant", GRID_VARIANT_BASE_GRID)),
 		"grid_transition_available": bool(state.get("grid_transition_available", false)),
 		"grid_transition_fresh": bool(state.get("grid_transition_fresh", false)),
 		"grid_previous_cell": int(state.get("grid_previous_cell", -1)),
@@ -1398,6 +1407,9 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"grid_current_row": int(state.get("grid_current_row", -1)),
 		"grid_column_delta": int(state.get("grid_column_delta", 0)),
 		"grid_row_delta": int(state.get("grid_row_delta", 0)),
+		"grid_columns": int(_resolve_grid_variant_spec(String(config.get("grid_variant", GRID_VARIANT_BASE_GRID))).get("columns", FLOW_GRID_COLUMNS)),
+		"grid_rows": int(_resolve_grid_variant_spec(String(config.get("grid_variant", GRID_VARIANT_BASE_GRID))).get("rows", FLOW_GRID_ROWS)),
+		"required_direction_dominance_ratio": float(config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO)),
 		"grid_direction_dominance_ratio": float(state.get("grid_direction_dominance_ratio", 0.0)),
 		"grid_direction_gate_passed": bool(state.get("grid_direction_gate_passed", false)),
 		"grid_cell_delta_gate_passed": bool(state.get("grid_cell_delta_gate_passed", false)),
@@ -1407,6 +1419,7 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["outward_distance"] = float(state.get("outward_distance", 0.0))
 		debug["wrist_angle_from_elbow_horizontal_deg"] = float(state.get("wrist_angle_from_elbow_horizontal_deg", 0.0))
 		debug["max_wrist_angle_from_elbow_horizontal_deg"] = float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))
+		debug["min_column_delta"] = int(config.get("min_column_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))
 		debug["wrist_horizontal_angle_gate_passed"] = bool(state.get("wrist_horizontal_angle_gate_passed", false))
 		debug["wrist_on_required_hook_side"] = bool(state.get("wrist_on_required_hook_side", false))
 		debug["required_hook_side_label"] = _required_hook_side_label(side)
@@ -1420,6 +1433,7 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["upward_velocity"] = float(state.get("upward_velocity", 0.0))
 		debug["wrist_angle_from_elbow_vertical_deg"] = float(state.get("wrist_angle_from_elbow_vertical_deg", 0.0))
 		debug["max_wrist_angle_from_elbow_vertical_deg"] = float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))
+		debug["min_row_delta"] = int(config.get("min_row_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))
 		debug["wrist_vertical_angle_gate_passed"] = bool(state.get("wrist_vertical_angle_gate_passed", false))
 		debug["wrist_above_elbow_gate_passed"] = bool(state.get("wrist_above_elbow_gate_passed", false))
 		if String(config.get("backend", BACKEND_THRESHOLD)) == BACKEND_GRID_DETECTION:
@@ -1510,7 +1524,7 @@ func _build_flow_grid_debug() -> Dictionary:
 					"top": cell_top,
 					"bottom": cell_bottom,
 				})
-	return {
+	var grid_debug := {
 		"is_calibrated": is_calibrated,
 		"columns": columns,
 		"rows": rows,
@@ -1537,6 +1551,10 @@ func _build_flow_grid_debug() -> Dictionary:
 		"bottom_boundary": bottom_boundary,
 		"cell_rects": cell_rects,
 	}
+	var strike_subgrid := _build_strike_subgrid_debug(grid_rect, is_calibrated)
+	if not strike_subgrid.is_empty():
+		grid_debug["strike_subgrid"] = strike_subgrid
+	return grid_debug
 
 func _get_flow_grid_rect() -> Dictionary:
 	var cell_width := _get_flow_cell_width()
@@ -2067,7 +2085,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var wrist_angle_from_elbow_vertical_deg := _compute_wrist_angle_from_elbow_vertical_deg(elbow, wrist)
 	var wrist_on_required_hook_side := _is_wrist_on_required_hook_side(side, elbow, wrist)
 	var wrist_above_elbow_gate_passed := _is_wrist_above_elbow_in_camera_space(elbow, wrist)
-	var grid_transition := _build_pose_strike_grid_transition(side, timestamp_ms)
+	var grid_transition := _build_pose_strike_grid_transition(side, timestamp_ms, String(config.get("grid_variant", GRID_VARIANT_BASE_GRID)))
 	var grid_transition_available := not grid_transition.is_empty()
 	var grid_previous_cell := int(grid_transition.get("previous_cell", -1))
 	var grid_current_cell := int(grid_transition.get("current_cell", -1))
@@ -2173,9 +2191,9 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	if phase == POSE_STRIKE_STATE_READY:
 		var ready_to_trigger := false
 		if backend_name == BACKEND_GRID_DETECTION:
-			var min_cell_delta := max(1, int(config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))
+			var min_axis_delta := max(1, int(config.get("min_column_delta", config.get("min_row_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))) if family == "hook" else max(1, int(config.get("min_row_delta", config.get("min_column_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 			var dominance_requirement := clampf(float(config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO)), 0.0, 1.0)
-			state["grid_cell_delta_gate_passed"] = absi(grid_column_delta if family == "hook" else grid_row_delta) >= min_cell_delta
+			state["grid_cell_delta_gate_passed"] = absi(grid_column_delta if family == "hook" else grid_row_delta) >= min_axis_delta
 			state["grid_direction_gate_passed"] = grid_direction_dominance_ratio >= dominance_requirement
 			if family == "hook":
 				var direction_ok := grid_column_delta < 0 if side == "left" else grid_column_delta > 0
@@ -2377,26 +2395,31 @@ func _get_flow_cell_size() -> float:
 	return _get_flow_cell_width()
 
 func _flow_cell_index_from_position(position: Vector2) -> int:
+	return _grid_cell_index_from_position(position, FLOW_GRID_COLUMNS, FLOW_GRID_ROWS)
+
+func _grid_cell_index_from_position(position: Vector2, columns: int, rows: int) -> int:
 	var grid_rect := _get_flow_grid_rect()
-	var cell_width := float(grid_rect.get("cell_width", 0.0))
-	var cell_height := float(grid_rect.get("cell_height", 0.0))
-	if cell_width <= 0.000001 or cell_height <= 0.000001:
+	var base_cell_width := float(grid_rect.get("cell_width", 0.0))
+	var base_cell_height := float(grid_rect.get("cell_height", 0.0))
+	if columns <= 0 or rows <= 0 or base_cell_width <= 0.000001 or base_cell_height <= 0.000001:
 		return -1
+	var cell_width := (base_cell_width * float(FLOW_GRID_COLUMNS)) / float(columns)
+	var cell_height := (base_cell_height * float(FLOW_GRID_ROWS)) / float(rows)
 	var left_boundary := float(grid_rect.get("left_boundary", 0.0))
 	var relative_x := position.x - left_boundary
-	if relative_x < 0.0 or relative_x >= cell_width * float(FLOW_GRID_COLUMNS):
+	if relative_x < 0.0 or relative_x >= cell_width * float(columns):
 		return -1
 	var bottom_boundary := float(grid_rect.get("bottom_boundary", 0.0))
 	var relative_y := position.y - bottom_boundary
-	if relative_y < 0.0 or relative_y >= cell_height * float(FLOW_GRID_ROWS):
+	if relative_y < 0.0 or relative_y >= cell_height * float(rows):
 		return -1
 	var preview_column := int(floor(relative_x / cell_width))
 	var gameplay_row := int(floor(relative_y / cell_height))
-	if preview_column < 0 or preview_column >= FLOW_GRID_COLUMNS or gameplay_row < 0 or gameplay_row >= FLOW_GRID_ROWS:
+	if preview_column < 0 or preview_column >= columns or gameplay_row < 0 or gameplay_row >= rows:
 		return -1
-	var athlete_row := (FLOW_GRID_ROWS - 1) - gameplay_row
-	var athlete_column := (FLOW_GRID_COLUMNS - 1) - preview_column
-	return athlete_row * FLOW_GRID_COLUMNS + athlete_column
+	var athlete_row := (rows - 1) - gameplay_row
+	var athlete_column := (columns - 1) - preview_column
+	return athlete_row * columns + athlete_column
 
 func _flow_direction_index_from_vector(vector: Vector2) -> int:
 	if vector.length() <= 0.000001:
@@ -2961,6 +2984,77 @@ func _get_family_backend_document(family: String, backend_name: String) -> Dicti
 		return backend_document
 	return family_document
 
+func _get_grid_detection_document() -> Dictionary:
+	var gesture_profile_document := _get_gesture_profile_document()
+	return gesture_profile_document.get("grid_detection", {}) if gesture_profile_document.get("grid_detection", {}) is Dictionary else {}
+
+func _get_strike_subgrid_config() -> Dictionary:
+	var config := {
+		"enabled": true,
+		"columns_multiplier": STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER,
+		"rows_multiplier": STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER,
+		"draw_dashed_overlay": true,
+	}
+	var grid_detection_document := _get_grid_detection_document()
+	var strike_subgrid: Dictionary = grid_detection_document.get("strike_subgrid", {}) if grid_detection_document.get("strike_subgrid", {}) is Dictionary else {}
+	var visual: Dictionary = strike_subgrid.get("visual", {}) if strike_subgrid.get("visual", {}) is Dictionary else {}
+	config["enabled"] = bool(strike_subgrid.get("enabled", config.get("enabled", true)))
+	config["columns_multiplier"] = max(1, int(strike_subgrid.get("columns_multiplier", config.get("columns_multiplier", STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))))
+	config["rows_multiplier"] = max(1, int(strike_subgrid.get("rows_multiplier", config.get("rows_multiplier", STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER))))
+	config["draw_dashed_overlay"] = bool(visual.get("draw_dashed_overlay", config.get("draw_dashed_overlay", true)))
+	return config
+
+func _normalize_grid_variant_name(grid_variant: String) -> String:
+	var normalized := grid_variant.strip_edges().to_lower()
+	if normalized == GRID_VARIANT_STRIKE_SUBGRID:
+		return GRID_VARIANT_STRIKE_SUBGRID
+	return GRID_VARIANT_BASE_GRID
+
+func _resolve_grid_variant_spec(grid_variant: String) -> Dictionary:
+	var normalized := _normalize_grid_variant_name(grid_variant)
+	if normalized == GRID_VARIANT_STRIKE_SUBGRID:
+		var strike_subgrid := _get_strike_subgrid_config()
+		if bool(strike_subgrid.get("enabled", true)):
+			return {
+				"variant": GRID_VARIANT_STRIKE_SUBGRID,
+				"columns": FLOW_GRID_COLUMNS * max(1, int(strike_subgrid.get("columns_multiplier", STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))),
+				"rows": FLOW_GRID_ROWS * max(1, int(strike_subgrid.get("rows_multiplier", STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER))),
+				"columns_multiplier": max(1, int(strike_subgrid.get("columns_multiplier", STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))),
+				"rows_multiplier": max(1, int(strike_subgrid.get("rows_multiplier", STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER))),
+				"draw_dashed_overlay": bool(strike_subgrid.get("draw_dashed_overlay", true)),
+			}
+	return {
+		"variant": GRID_VARIANT_BASE_GRID,
+		"columns": FLOW_GRID_COLUMNS,
+		"rows": FLOW_GRID_ROWS,
+		"columns_multiplier": 1,
+		"rows_multiplier": 1,
+		"draw_dashed_overlay": false,
+	}
+
+func _build_strike_subgrid_debug(grid_rect: Dictionary, is_calibrated: bool) -> Dictionary:
+	var spec := _resolve_grid_variant_spec(GRID_VARIANT_STRIKE_SUBGRID)
+	if not bool(spec.get("draw_dashed_overlay", false)):
+		return {}
+	var columns_multiplier := max(1, int(spec.get("columns_multiplier", 1)))
+	var rows_multiplier := max(1, int(spec.get("rows_multiplier", 1)))
+	return {
+		"enabled": String(spec.get("variant", GRID_VARIANT_BASE_GRID)) == GRID_VARIANT_STRIKE_SUBGRID,
+		"variant": GRID_VARIANT_STRIKE_SUBGRID,
+		"columns": int(spec.get("columns", FLOW_GRID_COLUMNS)),
+		"rows": int(spec.get("rows", FLOW_GRID_ROWS)),
+		"columns_multiplier": columns_multiplier,
+		"rows_multiplier": rows_multiplier,
+		"draw_dashed_overlay": bool(spec.get("draw_dashed_overlay", false)),
+		"cell_width": float(grid_rect.get("cell_width", 0.0)) / float(columns_multiplier),
+		"cell_height": float(grid_rect.get("cell_height", 0.0)) / float(rows_multiplier),
+		"left_boundary": float(grid_rect.get("left_boundary", 0.0)),
+		"right_boundary": float(grid_rect.get("right_boundary", 0.0)),
+		"top_boundary": float(grid_rect.get("top_boundary", 0.0)),
+		"bottom_boundary": float(grid_rect.get("bottom_boundary", 0.0)),
+		"is_calibrated": is_calibrated,
+	}
+
 func _get_punch_backend_for_family(family: String) -> String:
 	var family_document := _get_family_document(family)
 	var backend := String(family_document.get("backend", "")).strip_edges()
@@ -3055,9 +3149,10 @@ func _get_squat_config() -> Dictionary:
 	var config := {
 		"enabled": true,
 		"obstacle": _normalize_grid_avoidance_obstacle({
-			"label": "top_row",
-			"occupied_rows": [0],
-			"occupied_cells": [0, 1, 2, 3],
+			"label": "squat_height_band",
+			"mode": GRID_AVOIDANCE_MODE_ATHLETE_SPACE_HEIGHT_RATIO,
+			"blocked_from_edge": GRID_AVOIDANCE_BLOCKED_FROM_TOP,
+			"blocked_height_ratio": SQUAT_DEFAULT_BLOCKED_HEIGHT_RATIO,
 		}),
 	}
 	if _config == null:
@@ -3096,10 +3191,13 @@ func _normalize_grid_avoidance_obstacle(obstacle: Dictionary, fallback: Dictiona
 	var merged: Dictionary = fallback.duplicate(true)
 	for key_variant: Variant in obstacle.keys():
 		merged[key_variant] = obstacle[key_variant]
+	var mode := String(merged.get("mode", GRID_AVOIDANCE_MODE_DISCRETE_CELLS)).strip_edges().to_lower()
+	var blocked_from_edge := String(merged.get("blocked_from_edge", GRID_AVOIDANCE_BLOCKED_FROM_TOP)).strip_edges().to_lower()
+	var blocked_height_ratio := clampf(float(merged.get("blocked_height_ratio", SQUAT_DEFAULT_BLOCKED_HEIGHT_RATIO)), 0.0, 1.0)
 	var columns := _unique_sorted_int_array(merged.get("occupied_columns", []))
 	var rows := _unique_sorted_int_array(merged.get("occupied_rows", []))
 	var cells := _unique_sorted_int_array(merged.get("occupied_cells", []))
-	if cells.is_empty():
+	if mode != GRID_AVOIDANCE_MODE_ATHLETE_SPACE_HEIGHT_RATIO and cells.is_empty():
 		for row: int in rows:
 			for column: int in range(FLOW_GRID_COLUMNS):
 				if row >= 0 and row < FLOW_GRID_ROWS:
@@ -3111,6 +3209,9 @@ func _normalize_grid_avoidance_obstacle(obstacle: Dictionary, fallback: Dictiona
 				cells.append(row * FLOW_GRID_COLUMNS + column)
 		cells = _unique_sorted_int_array(cells)
 	merged["label"] = String(merged.get("label", "grid_obstacle"))
+	merged["mode"] = mode
+	merged["blocked_from_edge"] = blocked_from_edge
+	merged["blocked_height_ratio"] = blocked_height_ratio
 	merged["occupied_columns"] = columns
 	merged["occupied_rows"] = rows
 	merged["occupied_cells"] = cells
@@ -3136,24 +3237,45 @@ func _build_grid_avoidance_debug_payload(nose: Dictionary, obstacle: Dictionary,
 	var blocked_cells: Array[int] = _unique_sorted_int_array(obstacle.get("occupied_cells", []))
 	var blocked_columns: Array[int] = _unique_sorted_int_array(obstacle.get("occupied_columns", []))
 	var blocked_rows: Array[int] = _unique_sorted_int_array(obstacle.get("occupied_rows", []))
+	var mode := String(obstacle.get("mode", GRID_AVOIDANCE_MODE_DISCRETE_CELLS)).strip_edges().to_lower()
+	var blocked_from_edge := String(obstacle.get("blocked_from_edge", GRID_AVOIDANCE_BLOCKED_FROM_TOP)).strip_edges().to_lower()
+	var blocked_height_ratio := clampf(float(obstacle.get("blocked_height_ratio", SQUAT_DEFAULT_BLOCKED_HEIGHT_RATIO)), 0.0, 1.0)
 	var nose_in_blocked_region := false
-	var cell_rects_variant: Variant = grid.get("cell_rects", [])
-	if cell_rects_variant is Array and not nose.is_empty():
-		for rect_variant: Variant in cell_rects_variant:
-			var rect: Dictionary = rect_variant as Dictionary
-			if not blocked_cells.has(int(rect.get("index", -1))):
-				continue
-			var left := float(rect.get("left", 0.0))
-			var right := float(rect.get("right", 0.0))
-			var top := float(rect.get("top", 0.0))
-			var bottom := float(rect.get("bottom", 0.0))
-			if nose_position.x >= left and nose_position.x < right and nose_position.y <= top and nose_position.y > bottom:
-				nose_in_blocked_region = true
-				break
+	var threshold_line_y := 0.0
+	var threshold_line_active := false
+	var left_boundary := float(grid.get("left_boundary", 0.0))
+	var right_boundary := float(grid.get("right_boundary", 0.0))
+	var top_boundary := float(grid.get("top_boundary", 0.0))
+	var bottom_boundary := float(grid.get("bottom_boundary", 0.0))
+	if mode == GRID_AVOIDANCE_MODE_ATHLETE_SPACE_HEIGHT_RATIO and bool(grid.get("is_calibrated", false)):
+		threshold_line_y = top_boundary - float(grid.get("height", 0.0)) * blocked_height_ratio
+		threshold_line_active = blocked_from_edge == GRID_AVOIDANCE_BLOCKED_FROM_TOP
+		if threshold_line_active and not nose.is_empty():
+			var inside_grid := nose_position.x >= left_boundary and nose_position.x < right_boundary and nose_position.y <= top_boundary and nose_position.y > bottom_boundary
+			nose_in_blocked_region = inside_grid and nose_position.y > threshold_line_y
+	else:
+		var cell_rects_variant: Variant = grid.get("cell_rects", [])
+		if cell_rects_variant is Array and not nose.is_empty():
+			for rect_variant: Variant in cell_rects_variant:
+				var rect: Dictionary = rect_variant as Dictionary
+				if not blocked_cells.has(int(rect.get("index", -1))):
+					continue
+				var left := float(rect.get("left", 0.0))
+				var right := float(rect.get("right", 0.0))
+				var top := float(rect.get("top", 0.0))
+				var bottom := float(rect.get("bottom", 0.0))
+				if nose_position.x >= left and nose_position.x < right and nose_position.y <= top and nose_position.y > bottom:
+					nose_in_blocked_region = true
+					break
 	return {
 		"backend": BACKEND_GRID_AVOIDANCE,
 		"state_label": state_label,
 		"label": String(obstacle.get("label", state_label)),
+		"mode": mode,
+		"blocked_from_edge": blocked_from_edge,
+		"blocked_height_ratio": blocked_height_ratio,
+		"threshold_line_active": threshold_line_active,
+		"threshold_line_y": threshold_line_y,
 		"occupied_columns": blocked_columns,
 		"occupied_rows": blocked_rows,
 		"occupied_cells": blocked_cells,
@@ -3168,16 +3290,22 @@ func _build_grid_avoidance_debug_payload(nose: Dictionary, obstacle: Dictionary,
 	}
 
 func _flow_cell_row(cell: int) -> int:
-	if cell < 0 or cell >= FLOW_GRID_COLUMNS * FLOW_GRID_ROWS:
-		return -1
-	return int(floor(cell / FLOW_GRID_COLUMNS))
+	return _grid_cell_row(cell, FLOW_GRID_COLUMNS, FLOW_GRID_ROWS)
 
 func _flow_cell_column(cell: int) -> int:
-	if cell < 0 or cell >= FLOW_GRID_COLUMNS * FLOW_GRID_ROWS:
-		return -1
-	return cell % FLOW_GRID_COLUMNS
+	return _grid_cell_column(cell, FLOW_GRID_COLUMNS, FLOW_GRID_ROWS)
 
-func _build_pose_strike_grid_transition(side: String, timestamp_ms: int) -> Dictionary:
+func _grid_cell_row(cell: int, columns: int, rows: int) -> int:
+	if columns <= 0 or rows <= 0 or cell < 0 or cell >= columns * rows:
+		return -1
+	return int(floor(cell / columns))
+
+func _grid_cell_column(cell: int, columns: int, rows: int) -> int:
+	if columns <= 0 or rows <= 0 or cell < 0 or cell >= columns * rows:
+		return -1
+	return cell % columns
+
+func _build_pose_strike_grid_transition(side: String, timestamp_ms: int, grid_variant: String = GRID_VARIANT_BASE_GRID) -> Dictionary:
 	var history: Array = _get_flow_history("%s_hand" % side)
 	if history.size() < 2:
 		return {}
@@ -3185,17 +3313,28 @@ func _build_pose_strike_grid_transition(side: String, timestamp_ms: int) -> Dict
 	if int(latest.get("timestamp_ms", -1)) != timestamp_ms:
 		return {}
 	var previous: Dictionary = history[history.size() - 2]
+	var variant := _resolve_grid_variant_spec(grid_variant)
 	var previous_cell := int(previous.get("cell", -1))
 	var current_cell := int(latest.get("cell", -1))
+	if String(variant.get("variant", GRID_VARIANT_BASE_GRID)) == GRID_VARIANT_STRIKE_SUBGRID:
+		var previous_position: Vector2 = previous.get("position", Vector2.ZERO)
+		var current_position: Vector2 = latest.get("position", Vector2.ZERO)
+		previous_cell = _grid_cell_index_from_position(previous_position, int(variant.get("columns", FLOW_GRID_COLUMNS)), int(variant.get("rows", FLOW_GRID_ROWS)))
+		current_cell = _grid_cell_index_from_position(current_position, int(variant.get("columns", FLOW_GRID_COLUMNS)), int(variant.get("rows", FLOW_GRID_ROWS)))
 	if previous_cell < 0 or current_cell < 0 or previous_cell == current_cell:
 		return {}
-	var previous_column := _flow_cell_column(previous_cell)
-	var current_column := _flow_cell_column(current_cell)
-	var previous_row := _flow_cell_row(previous_cell)
-	var current_row := _flow_cell_row(current_cell)
+	var columns := int(variant.get("columns", FLOW_GRID_COLUMNS))
+	var rows := int(variant.get("rows", FLOW_GRID_ROWS))
+	var previous_column := _grid_cell_column(previous_cell, columns, rows)
+	var current_column := _grid_cell_column(current_cell, columns, rows)
+	var previous_row := _grid_cell_row(previous_cell, columns, rows)
+	var current_row := _grid_cell_row(current_cell, columns, rows)
 	if previous_column < 0 or current_column < 0 or previous_row < 0 or current_row < 0:
 		return {}
 	return {
+		"grid_variant": String(variant.get("variant", GRID_VARIANT_BASE_GRID)),
+		"columns": columns,
+		"rows": rows,
 		"previous_cell": previous_cell,
 		"current_cell": current_cell,
 		"previous_column": previous_column,
@@ -3346,6 +3485,8 @@ func _get_hook_config() -> Dictionary:
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"max_wrist_angle_from_elbow_horizontal_deg": HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG,
+		"grid_variant": GRID_VARIANT_STRIKE_SUBGRID,
+		"min_column_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"direction_dominance_ratio": GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
@@ -3366,7 +3507,9 @@ func _get_hook_config() -> Dictionary:
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["max_wrist_angle_from_elbow_horizontal_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))), 0.0, 90.0)
-	config["min_cell_delta"] = max(1, int(evaluation.get("min_cell_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))
+	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_STRIKE_SUBGRID))))
+	config["min_column_delta"] = max(1, int(evaluation.get("min_column_delta", evaluation.get("min_cell_delta", config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
+	config["min_cell_delta"] = int(config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
 	config["direction_dominance_ratio"] = clampf(float(evaluation.get("direction_dominance_ratio", config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO))), 0.0, 1.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
@@ -3380,6 +3523,8 @@ func _get_uppercut_config() -> Dictionary:
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"max_wrist_angle_from_elbow_vertical_deg": UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG,
+		"grid_variant": GRID_VARIANT_STRIKE_SUBGRID,
+		"min_row_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"direction_dominance_ratio": GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
@@ -3400,7 +3545,9 @@ func _get_uppercut_config() -> Dictionary:
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["max_wrist_angle_from_elbow_vertical_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_vertical_deg", config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))), 0.0, 90.0)
-	config["min_cell_delta"] = max(1, int(evaluation.get("min_cell_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))
+	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_STRIKE_SUBGRID))))
+	config["min_row_delta"] = max(1, int(evaluation.get("min_row_delta", evaluation.get("min_cell_delta", config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
+	config["min_cell_delta"] = int(config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
 	config["direction_dominance_ratio"] = clampf(float(evaluation.get("direction_dominance_ratio", config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO))), 0.0, 1.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))

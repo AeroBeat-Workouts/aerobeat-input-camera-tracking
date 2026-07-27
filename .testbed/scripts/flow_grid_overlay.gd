@@ -5,6 +5,10 @@ const GRID_STROKE_COLOR := Color(0.89, 0.97, 1.0, 0.76)
 const GRID_STROKE_WIDTH := 1.3
 const GRID_BORDER_COLOR := Color(0.42, 0.86, 1.0, 0.94)
 const GRID_BORDER_WIDTH := 1.7
+const SUBGRID_DASH_COLOR := Color(0.60, 0.90, 1.0, 0.52)
+const SUBGRID_DASH_WIDTH := 1.0
+const SUBGRID_DASH_LENGTH_PX := 8.0
+const SUBGRID_DASH_GAP_PX := 6.0
 const GRID_COORDINATE_SPACE_GAMEPLAY_BOTTOM_LEFT := "gameplay_bottom_left"
 
 var _preview_presenter: Node = null
@@ -30,6 +34,7 @@ func clear_grid_debug() -> void:
 func get_overlay_snapshot() -> Dictionary:
 	var cell_rects: Array = _grid_debug.get("cell_rects", []) as Array
 	var render_snapshot := _build_render_snapshot()
+	var strike_subgrid: Dictionary = _grid_debug.get("strike_subgrid", {}) if _grid_debug.get("strike_subgrid", {}) is Dictionary else {}
 	return {
 		"is_calibrated": bool(_grid_debug.get("is_calibrated", false)),
 		"columns": int(_grid_debug.get("columns", 0)),
@@ -41,11 +46,13 @@ func get_overlay_snapshot() -> Dictionary:
 		"width": float(_grid_debug.get("width", 0.0)),
 		"height": float(_grid_debug.get("height", 0.0)),
 		"line_count": maxi(0, int(_grid_debug.get("columns", 0)) + 1) + maxi(0, int(_grid_debug.get("rows", 0)) + 1),
+		"dashed_line_count": maxi(0, int(strike_subgrid.get("columns", 0)) - 1 - (int(_grid_debug.get("columns", 0)) - 1)) + maxi(0, int(strike_subgrid.get("rows", 0)) - 1 - (int(_grid_debug.get("rows", 0)) - 1)),
 		"cell_count": cell_rects.size(),
 		"left_boundary": float(_grid_debug.get("left_boundary", 0.0)),
 		"top_boundary": float(_grid_debug.get("top_boundary", 0.0)),
 		"right_boundary": float(_grid_debug.get("right_boundary", 0.0)),
 		"bottom_boundary": float(_grid_debug.get("bottom_boundary", 0.0)),
+		"strike_subgrid": strike_subgrid.duplicate(true),
 		"render_top_left": render_snapshot.get("top_left", Vector2.ZERO),
 		"render_bottom_right": render_snapshot.get("bottom_right", Vector2.ZERO),
 		"render_cell_width_px": float(render_snapshot.get("cell_width_px", 0.0)),
@@ -83,6 +90,43 @@ func _draw() -> void:
 		var width := GRID_BORDER_WIDTH if row == 0 or row == rows else GRID_STROKE_WIDTH
 		var color := GRID_BORDER_COLOR if row == 0 or row == rows else GRID_STROKE_COLOR
 		draw_line(start, finish, color, width, true)
+	_draw_strike_subgrid_dashes(render_snapshot)
+
+
+func _draw_strike_subgrid_dashes(render_snapshot: Dictionary) -> void:
+	var strike_subgrid: Dictionary = _grid_debug.get("strike_subgrid", {}) if _grid_debug.get("strike_subgrid", {}) is Dictionary else {}
+	if strike_subgrid.is_empty() or not bool(strike_subgrid.get("draw_dashed_overlay", false)):
+		return
+	var columns_multiplier: int = max(1, int(strike_subgrid.get("columns_multiplier", 1)))
+	var rows_multiplier: int = max(1, int(strike_subgrid.get("rows_multiplier", 1)))
+	if columns_multiplier <= 1 and rows_multiplier <= 1:
+		return
+	var columns := int(render_snapshot.get("columns", 0))
+	var rows := int(render_snapshot.get("rows", 0))
+	var top_left: Vector2 = render_snapshot.get("top_left", Vector2.ZERO)
+	var cell_width_px := float(render_snapshot.get("cell_width_px", 0.0))
+	var cell_height_px := float(render_snapshot.get("cell_height_px", 0.0))
+	for column_step: int in range(1, columns * columns_multiplier):
+		if column_step % columns_multiplier == 0:
+			continue
+		var x := top_left.x + cell_width_px * (float(column_step) / float(columns_multiplier))
+		_draw_dashed_line(Vector2(x, top_left.y), Vector2(x, top_left.y + cell_height_px * float(rows)), SUBGRID_DASH_COLOR, SUBGRID_DASH_WIDTH)
+	for row_step: int in range(1, rows * rows_multiplier):
+		if row_step % rows_multiplier == 0:
+			continue
+		var y := top_left.y + cell_height_px * (float(row_step) / float(rows_multiplier))
+		_draw_dashed_line(Vector2(top_left.x, y), Vector2(top_left.x + cell_width_px * float(columns), y), SUBGRID_DASH_COLOR, SUBGRID_DASH_WIDTH)
+
+func _draw_dashed_line(start: Vector2, finish: Vector2, color: Color, width: float) -> void:
+	var total_length := start.distance_to(finish)
+	if total_length <= 0.000001:
+		return
+	var direction := (finish - start) / total_length
+	var drawn := 0.0
+	while drawn < total_length:
+		var dash_end := minf(drawn + SUBGRID_DASH_LENGTH_PX, total_length)
+		draw_line(start + direction * drawn, start + direction * dash_end, color, width, true)
+		drawn += SUBGRID_DASH_LENGTH_PX + SUBGRID_DASH_GAP_PX
 
 func _build_render_snapshot() -> Dictionary:
 	if _grid_debug.is_empty() or not bool(_grid_debug.get("is_calibrated", false)):

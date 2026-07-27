@@ -1249,9 +1249,9 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	})
 	var text_body := String(harness._build_boxing_event_feed_text())
 	assert_string_contains(text_body, "Hook tuning")
-	assert_string_contains(text_body, "Min velocity")
-	assert_string_contains(text_body, "Max wrist angle from elbow horizontal ray")
-	assert_string_contains(text_body, "Hook wrist must stay on mirrored preview-space side of elbow")
+	assert_string_contains(text_body, "Grid variant: strike_subgrid")
+	assert_string_contains(text_body, "Minimum outward column travel: 1 subcells")
+	assert_string_contains(text_body, "Hook direction reference: athlete-space outward columns")
 	assert_string_contains(text_body, "Depth loader truth: enabled; artifact resolved to FastDepth/ONNX but adapter is still staged")
 	assert_string_contains(text_body, "Depth runtime status / stage: blocked / adapter_load")
 	assert_string_contains(text_body, "Depth artifact path: res://assets/depth_models/fastdepth/fastdepth_224.onnx")
@@ -1260,8 +1260,8 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	assert_string_contains(text_body, "Depth live metrics (L): available=true, fresh=true, source=placeholder, closeness=0.020")
 	assert_string_contains(text_body, "Depth thresholds: max_closeness_delta=0.030, max_peak_closeness=0.060")
 	assert_string_contains(text_body, "Uppercut tuning")
-	assert_string_contains(text_body, "Max wrist angle from elbow vertical ray")
-	assert_string_contains(text_body, "Uppercut wrist must stay above elbow in preview space")
+	assert_string_contains(text_body, "Minimum upward row travel: 1 subcells")
+	assert_string_contains(text_body, "Uppercut direction reference: athlete-space upward rows")
 	assert_string_contains(text_body, "Depth artifact path: res://assets/depth_models/midas/openvino_midas_v21_small_256/")
 	assert_string_contains(text_body, "Depth backend/family: openvino / midas_openvino_v21_small_256")
 	assert_string_contains(text_body, "Guard tuning")
@@ -1479,8 +1479,10 @@ func test_boxing_squat_hover_card_reports_grid_avoidance_truth() -> void:
 				"enabled": true,
 				"current_cell": 5,
 				"nose_tracked": true,
-				"occupied_rows": [0],
-				"occupied_cells": [0, 1, 2, 3],
+				"blocked_from_edge": "top",
+				"blocked_height_ratio": 0.60,
+				"threshold_line_active": true,
+				"threshold_line_y": 0.58,
 				"nose_in_blocked_region": false,
 				"avoidance_clear": true,
 				"calibration_ready": true,
@@ -1494,15 +1496,17 @@ func test_boxing_squat_hover_card_reports_grid_avoidance_truth() -> void:
 	assert_eq(String(rows[1].get("current_text", "")), "active")
 	assert_eq(String(rows[2].get("current_text", "")), "cell 5 [r1 c1]")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
-	assert_eq(String(rows[5].get("current_text", "")), "0")
-	assert_eq(String(rows[6].get("current_text", "")), "0, 1, 2, 3")
-	assert_eq(String(rows[7].get("current_text", "")), "false")
-	assert_eq(String(rows[9].get("current_text", "")), "true")
+	assert_eq(String(rows[5].get("current_text", "")), "top")
+	assert_eq(String(rows[6].get("current_text", "")), "0.600")
+	assert_eq(String(rows[7].get("current_text", "")), "0.580")
+	assert_eq(String(rows[8].get("current_text", "")), "false")
+	assert_eq(String(rows[10].get("current_text", "")), "true")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "squat")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Current state - active")
-	assert_string_contains(body, "Blocked cells - 0, 1, 2, 3")
+	assert_string_contains(body, "Blocked height ratio - 0.600")
+	assert_string_contains(body, "Threshold line Y - 0.580")
 	assert_string_contains(body, "Nose occupied cell - cell 5 [r1 c1]")
 	assert_string_contains(body, "Obstacle avoided - true")
 
@@ -1618,6 +1622,15 @@ func _shared_flow_grid_truth_state(capture_source: String = "calibration_session
 					"top_boundary": 0.84,
 					"right_boundary": 0.66,
 					"bottom_boundary": 0.414061433447099,
+					"strike_subgrid": {
+						"enabled": true,
+						"variant": "strike_subgrid",
+						"columns": 8,
+						"rows": 6,
+						"columns_multiplier": 2,
+						"rows_multiplier": 2,
+						"draw_dashed_overlay": true,
+					},
 					"cell_rects": [
 						{"index": 0}, {"index": 1}, {"index": 2}, {"index": 3},
 						{"index": 4}, {"index": 5}, {"index": 6}, {"index": 7},
@@ -1668,6 +1681,9 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(overlay_snapshot.get("cell_count", 0)), 12)
 		assert_eq(float(overlay_snapshot.get("cell_width", 0.0)), 0.08)
 		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.14197952218430035)
+		assert_eq(int(overlay_snapshot.get("dashed_line_count", 0)), 7)
+		assert_eq(int(overlay_snapshot.get("strike_subgrid", {}).get("columns", 0)), 8)
+		assert_eq(int(overlay_snapshot.get("strike_subgrid", {}).get("rows", 0)), 6)
 		assert_eq(int(nose_chart.get("active_index")), 6)
 		if packed_scene == FlowProvingScene:
 			assert_eq(int(nose_direction_chart.get("active_index")), 2)
