@@ -205,6 +205,24 @@ class FakeAthleteRecalibrateProvider:
 			session[key] = overrides[key]
 		return session
 
+class DetectorStateViewProvider:
+	extends Node
+
+	var get_detector_state_calls := 0
+	var get_detector_state_view_calls := 0
+	var shared_nested := {"value": 7}
+
+	func get_detector_state() -> Dictionary:
+		get_detector_state_calls += 1
+		return {"tracking_state": "deep_copy_path", "nested": {"value": -1}}
+
+	func get_detector_state_view() -> Dictionary:
+		get_detector_state_view_calls += 1
+		return {
+			"tracking_state": "view_path",
+			"nested": shared_nested,
+		}
+
 class AllDepthDisabledHarness:
 	extends "res://scripts/boxing_proving_harness.gd"
 
@@ -503,6 +521,19 @@ func _has_editor_exposed_property(subject: Object, property_name: String) -> boo
 		return (int(property_info.get("usage", 0)) & PROPERTY_USAGE_EDITOR) != 0
 	return false
 
+
+func test_sync_latest_detector_state_prefers_shallow_view_export_when_available() -> void:
+	var harness: Variant = _new_base_harness()
+	var provider := DetectorStateViewProvider.new()
+	add_child_autoqfree(provider)
+	harness.provider = provider
+
+	harness._sync_latest_detector_state()
+
+	assert_eq(provider.get_detector_state_view_calls, 1)
+	assert_eq(provider.get_detector_state_calls, 0)
+	assert_eq(harness.get("_latest_state").get("tracking_state", ""), "view_path")
+	assert_true(harness.get("_latest_state").get("nested") == provider.shared_nested)
 
 
 func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() -> void:

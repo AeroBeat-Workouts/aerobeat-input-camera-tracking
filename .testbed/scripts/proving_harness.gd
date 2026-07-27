@@ -433,12 +433,20 @@ func _on_athlete_calibration_secondary_pressed() -> void:
 	_update_status("Athlete calibration cancel unavailable", Color(1.0, 0.75, 0.44, 1.0))
 
 func _sync_latest_detector_state() -> void:
-	if provider != null and provider.has_method("get_detector_state"):
-		_latest_state = provider.get_detector_state()
-		return
+	if provider != null:
+		if provider.has_method("get_detector_state_view"):
+			_latest_state = provider.get_detector_state_view()
+			return
+		if provider.has_method("get_detector_state"):
+			_latest_state = provider.get_detector_state()
+			return
 	var tracking_singleton := _resolve_camera_tracking_singleton()
-	if tracking_singleton != null and tracking_singleton.has_method("get_detector_state"):
-		_latest_state = tracking_singleton.get_detector_state()
+	if tracking_singleton != null:
+		if tracking_singleton.has_method("get_detector_state_view"):
+			_latest_state = tracking_singleton.get_detector_state_view()
+			return
+		if tracking_singleton.has_method("get_detector_state"):
+			_latest_state = tracking_singleton.get_detector_state()
 
 func _resolve_calibration_session() -> Dictionary:
 	var session: Dictionary = _latest_state.get("calibration_session", {}) if _latest_state.get("calibration_session", {}) is Dictionary else {}
@@ -1638,7 +1646,7 @@ func _on_pose_updated(landmarks: Array) -> void:
 		return
 
 	_latest_landmarks = landmarks.duplicate(true)
-	_latest_state = provider.get_detector_state() if provider != null else {}
+	_sync_latest_detector_state()
 	_maybe_anchor_fixture_time_origin_to_provider_ready()
 	_record_fixture_state_snapshot("pose_updated")
 

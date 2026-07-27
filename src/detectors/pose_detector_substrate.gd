@@ -495,6 +495,9 @@ func mark_tracking_timeout(timestamp_ms: int) -> void:
 func get_latest_state() -> Dictionary:
 	return _latest_state.duplicate(true)
 
+func get_latest_state_view() -> Dictionary:
+	return _latest_state.duplicate(false)
+
 func get_landmark(landmark_id: int) -> Dictionary:
 	var landmarks: Variant = _latest_state.get("landmarks_by_id", {})
 	if landmarks is Dictionary:

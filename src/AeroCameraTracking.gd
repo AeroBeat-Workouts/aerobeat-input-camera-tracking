@@ -199,6 +199,15 @@ func get_detector_state() -> Dictionary:
 		return provider.get_detector_state()
 	return {}
 
+func get_detector_state_view() -> Dictionary:
+	var provider := _ensure_provider()
+	if provider != null:
+		if provider.has_method("get_detector_state_view"):
+			return provider.get_detector_state_view()
+		if provider.has_method("get_detector_state"):
+			return provider.get_detector_state()
+	return {}
+
 func get_body_measurements() -> Dictionary:
 	var provider := _ensure_provider()
 	if provider != null and provider.has_method("get_body_measurements"):

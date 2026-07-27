@@ -141,6 +141,13 @@ func get_detector_state() -> Dictionary:
 		return {}
 	return _detector_substrate.get_latest_state()
 
+func get_detector_state_view() -> Dictionary:
+	if _detector_substrate == null:
+		return {}
+	if _detector_substrate.has_method("get_latest_state_view"):
+		return _detector_substrate.get_latest_state_view()
+	return _detector_substrate.get_latest_state()
+
 func get_body_measurements() -> Dictionary:
 	if _detector_substrate == null:
 		return {}
