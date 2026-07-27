@@ -2831,22 +2831,30 @@ func _build_boxing_signal_text() -> String:
 func _build_flow_signal_text() -> String:
 	var gesture_debug: Dictionary = _latest_state.get("gesture_debug", {})
 	var flow_debug: Dictionary = gesture_debug.get("flow", {})
+	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
+	var nose_flow: Dictionary = tracked_landmarks.get("nose", {}) if tracked_landmarks.get("nose", {}) is Dictionary else {}
 	var left_flow: Dictionary = flow_debug.get("left", {})
 	var right_flow: Dictionary = flow_debug.get("right", {})
 	var lines := [
 		"Flow direct-grid board",
 		"======================",
-		"Live detector truth for direct calibrated 4x3 wrist entry plus cardinal shoulder-relative motion.",
+		"Live detector truth for calibrated 4x3 previous entered cell -> current entered cell direction on nose and wrists.",
+		"Motion windows stay visible here as continuity debug only.",
+		"",
+		"Nose",
+		"----",
+		_format_flow_entry_truth_line(nose_flow),
+		_format_flow_landmark_row("nose", nose_flow),
 		"",
 		"Left wrist",
 		"----------",
 		_format_flow_event_row("flow_left_cell_entered", left_flow),
-		_format_flow_candidate_row("left", left_flow),
+		_format_flow_landmark_row("left wrist", left_flow),
 		"",
 		"Right wrist",
 		"-----------",
 		_format_flow_event_row("flow_right_cell_entered", right_flow),
-		_format_flow_candidate_row("right", right_flow),
+		_format_flow_landmark_row("right wrist", right_flow),
 	]
 	return "\n".join(lines)
 
@@ -2885,11 +2893,18 @@ func _build_metrics_text() -> String:
 	else:
 		var gesture_debug: Dictionary = state.get("gesture_debug", {})
 		var flow_debug: Dictionary = gesture_debug.get("flow", {})
+		var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
+		var nose_flow: Dictionary = tracked_landmarks.get("nose", {}) if tracked_landmarks.get("nose", {}) is Dictionary else {}
 		var left_flow: Dictionary = flow_debug.get("left", {})
 		var right_flow: Dictionary = flow_debug.get("right", {})
 		lines.append("")
 		lines.append("Flow direct-grid readouts")
 		lines.append("------------------------")
+		lines.append("Nose")
+		lines.append(_format_flow_entry_truth_line(nose_flow))
+		lines.append(_format_flow_analysis_line("continuity motion", nose_flow.get("direction_analysis", {})))
+		lines.append("current cell=%s latest=%s rel=%s conf=%s" % [_fmt_flow_candidate(nose_flow), _fmt_vec2(nose_flow.get("latest_position", Vector2.ZERO)), _fmt_vec2(nose_flow.get("latest_relative_position", Vector2.ZERO)), _fmt_float(nose_flow.get("latest_confidence", 0.0))])
+		lines.append("")
 		lines.append("Left wrist")
 		lines.append(_format_flow_entry_truth_line(left_flow))
 		lines.append(_format_flow_analysis_line("continuity motion", left_flow.get("direction_analysis", {})))
@@ -2902,7 +2917,7 @@ func _build_metrics_text() -> String:
 		lines.append("current cell=%s latest=%s rel=%s conf=%s" % [_fmt_flow_candidate(right_flow), _fmt_vec2(right_flow.get("latest_position", Vector2.ZERO)), _fmt_vec2(right_flow.get("latest_relative_position", Vector2.ZERO)), _fmt_float(right_flow.get("latest_confidence", 0.0))])
 		lines.append("vel=%s dir=%s" % [_fmt_vec3(velocities.get("right_hand", Vector3.ZERO)), _fmt_vec2(directions.get("right_hand", Vector2.ZERO))])
 		lines.append("")
-		lines.append("Local wrist trails and motion windows are continuity debug only; Flow direction truth is previous entered cell -> current entered cell.")
+		lines.append("Local wrist trails and motion windows are continuity debug only; Flow direction truth for nose and wrists is previous entered cell -> current entered cell.")
 	return "\n".join(lines)
 
 func _format_flow_event_row(event_name: String, hand_debug: Dictionary) -> String:
@@ -2916,14 +2931,14 @@ func _format_flow_event_row(event_name: String, hand_debug: Dictionary) -> Strin
 		int(hand_debug.get("history_duration_ms", 0)),
 	]
 
-func _format_flow_candidate_row(side: String, hand_debug: Dictionary) -> String:
-	return "%s wrist  latest=%s  rel=%s  conf=%s  cell=%s  motion=%s" % [
-		side,
-		_fmt_vec2(hand_debug.get("latest_position", Vector2.ZERO)),
-		_fmt_vec2(hand_debug.get("latest_relative_position", Vector2.ZERO)),
-		_fmt_float(hand_debug.get("latest_confidence", 0.0)),
-		_fmt_flow_candidate(hand_debug),
-		_fmt_flow_direction_candidate(hand_debug),
+func _format_flow_landmark_row(label: String, landmark_debug: Dictionary) -> String:
+	return "%s  latest=%s  rel=%s  conf=%s  cell=%s  dir=%s" % [
+		label,
+		_fmt_vec2(landmark_debug.get("latest_position", Vector2.ZERO)),
+		_fmt_vec2(landmark_debug.get("latest_relative_position", Vector2.ZERO)),
+		_fmt_float(landmark_debug.get("latest_confidence", 0.0)),
+		_fmt_flow_candidate(landmark_debug),
+		_fmt_flow_direction_candidate(landmark_debug),
 	]
 
 func _format_flow_analysis_line(label: String, analysis_variant: Variant) -> String:

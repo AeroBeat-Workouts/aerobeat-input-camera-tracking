@@ -1714,6 +1714,49 @@ func test_flow_proving_scene_nose_direction_chart_updates_live_with_successive_d
 	scene_root.call("_refresh_debug_panels")
 	assert_eq(int(nose_direction_chart.get("active_index")), 3)
 
+func test_flow_proving_scene_text_describes_previous_cell_entry_truth_for_nose_and_wrists() -> void:
+	var scene_root: Control = add_child_autoqfree(FlowProvingScene.instantiate()) as Control
+	assert_not_null(scene_root)
+	var state := _shared_flow_grid_truth_state()
+	var gesture_debug: Dictionary = state.get("gesture_debug", {})
+	var flow_debug: Dictionary = gesture_debug.get("flow", {})
+	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
+	var nose_debug: Dictionary = tracked_landmarks.get("nose", {})
+	nose_debug["cell_meta"] = {
+		"previous_cell": 5,
+		"current_cell": 6,
+		"direction": 2,
+		"direction_source": "previous_cell_entry",
+	}
+	tracked_landmarks["nose"] = nose_debug
+	flow_debug["tracked_landmarks"] = tracked_landmarks
+	var left_flow: Dictionary = flow_debug.get("left", {})
+	left_flow["cell_meta"] = {
+		"previous_cell": 6,
+		"current_cell": 7,
+		"direction": 0,
+		"direction_source": "previous_cell_entry",
+	}
+	flow_debug["left"] = left_flow
+	var right_flow: Dictionary = flow_debug.get("right", {})
+	right_flow["cell_meta"] = {
+		"previous_cell": 5,
+		"current_cell": 4,
+		"direction": 3,
+		"direction_source": "previous_cell_entry",
+	}
+	flow_debug["right"] = right_flow
+	gesture_debug["flow"] = flow_debug
+	state["gesture_debug"] = gesture_debug
+	scene_root.set("_latest_state", state)
+	var signal_text := String(scene_root.call("_build_flow_signal_text"))
+	var metrics_text := String(scene_root.call("_build_metrics_text"))
+	assert_string_contains(signal_text, "previous entered cell -> current entered cell direction on nose and wrists")
+	assert_string_contains(signal_text, "Nose")
+	assert_string_contains(signal_text, "entry truth: cell 5 [r1 c1] -> cell 6 [r1 c2]")
+	assert_string_contains(metrics_text, "Flow direction truth for nose and wrists is previous entered cell -> current entered cell")
+	assert_string_contains(metrics_text, "Nose")
+
 func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensions_in_preview_space() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)

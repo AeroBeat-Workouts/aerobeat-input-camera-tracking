@@ -1495,7 +1495,9 @@ func _build_flow_nose_debug() -> Dictionary:
 	var history: Array = _get_flow_history("nose")
 	var analysis := _analyze_flow_landmark_motion("nose", FLOW_DIRECTION_WINDOW_MAX_MS)
 	var latest_sample: Dictionary = history[history.size() - 1] if history.size() > 0 else {}
-	return _build_flow_landmark_debug(&"nose", PoseLandmarkIds.NOSE, history, analysis, {}, latest_sample)
+	var cell_meta: Dictionary = _get_flow_meta("flow_nose_cell")
+	var current_direction := int(cell_meta.get("direction", -1))
+	return _build_flow_landmark_debug(&"nose", PoseLandmarkIds.NOSE, history, analysis, cell_meta, latest_sample, current_direction)
 
 func _build_flow_landmark_debug(landmark_key: StringName, landmark_id: int, history: Array, analysis: Dictionary, cell_meta: Dictionary = {}, latest_sample: Dictionary = {}, current_direction_override: int = -1) -> Dictionary:
 	var grid_rect := _get_flow_grid_rect()
@@ -1748,6 +1750,7 @@ func _reset_gesture_state() -> void:
 			"nose": [],
 			"left_hand": [],
 			"right_hand": [],
+			"flow_nose_cell": {"current_cell": -1, "last_emit_ms": 0, "direction": -1},
 			"flow_left_cell": {"current_cell": -1, "last_emit_ms": 0, "direction": -1},
 			"flow_right_cell": {"current_cell": -1, "last_emit_ms": 0, "direction": -1},
 		},
@@ -1832,6 +1835,7 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if _get_punch_backend_for_family("uppercut") != BACKEND_DISABLED:
 		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
 		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
+	_process_flow_nose_cell_entry(timestamp_ms)
 	if not _has_any_event(events, ["punch_left", "hook_left", "uppercut_left"]):
 		_process_flow_cell_entry(events, "left", timestamp_ms)
 	if not _has_any_event(events, ["punch_right", "hook_right", "uppercut_right"]):
@@ -2357,26 +2361,37 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	_set_pose_strike_state(family, side, state)
 
 func _process_flow_cell_entry(events: Array, side: String, timestamp_ms: int) -> void:
-	var history: Array = _get_flow_history("%s_hand" % side)
-	if history.is_empty():
+	var history_name := "%s_hand" % side
+	var meta_name := "flow_%s_cell" % side
+	var analysis := _analyze_flow_motion(side, FLOW_DIRECTION_WINDOW_MAX_MS)
+	var entry := _update_flow_cell_meta_from_history(history_name, meta_name, analysis, timestamp_ms)
+	if entry.is_empty():
 		return
+	_emit_flow_cell_event(events, side, int(entry.get("current_cell", -1)), int(entry.get("direction", -1)))
+
+func _process_flow_nose_cell_entry(timestamp_ms: int) -> void:
+	var analysis := _analyze_flow_landmark_motion("nose", FLOW_DIRECTION_WINDOW_MAX_MS)
+	_update_flow_cell_meta_from_history("nose", "flow_nose_cell", analysis, timestamp_ms)
+
+func _update_flow_cell_meta_from_history(history_name: String, meta_name: String, analysis: Dictionary, timestamp_ms: int) -> Dictionary:
+	var history: Array = _get_flow_history(history_name)
+	if history.is_empty():
+		return {}
 	var latest_sample: Dictionary = history[history.size() - 1]
 	var current_cell := int(latest_sample.get("cell", -1))
-	var meta_name := "flow_%s_cell" % side
 	var flow_meta: Dictionary = _get_flow_meta(meta_name)
 	var previous_cell := int(flow_meta.get("current_cell", -1))
 	flow_meta["current_cell"] = current_cell
 	if current_cell < 0:
 		_set_flow_meta(meta_name, flow_meta)
-		return
+		return {}
 	if previous_cell < 0:
 		flow_meta["entered_at_ms"] = timestamp_ms
 		_set_flow_meta(meta_name, flow_meta)
-		return
+		return {}
 	if current_cell == previous_cell:
 		_set_flow_meta(meta_name, flow_meta)
-		return
-	var analysis := _analyze_flow_motion(side, FLOW_DIRECTION_WINDOW_MAX_MS)
+		return {}
 	var direction := _flow_direction_index_from_cell_transition(previous_cell, current_cell)
 	var previous_column := _flow_cell_column(previous_cell)
 	var current_column := _flow_cell_column(current_cell)
@@ -2398,7 +2413,7 @@ func _process_flow_cell_entry(events: Array, side: String, timestamp_ms: int) ->
 	flow_meta["net_distance"] = float(analysis.get("net_distance", 0.0))
 	flow_meta["avg_confidence"] = float(analysis.get("avg_confidence", 0.0))
 	_set_flow_meta(meta_name, flow_meta)
-	_emit_flow_cell_event(events, side, current_cell, direction)
+	return flow_meta
 
 func _update_flow_tracking_state(landmarks_by_id: Dictionary, metrics: Dictionary, timestamp_ms: int) -> void:
 	if not bool(_baseline.get("is_calibrated", false)):

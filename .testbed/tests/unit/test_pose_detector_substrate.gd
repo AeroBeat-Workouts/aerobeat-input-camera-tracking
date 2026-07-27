@@ -1833,32 +1833,22 @@ func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
 	assert_true(int(left_wrist_debug.get("current_cell", -1)) >= 0)
 	assert_true(int(right_wrist_debug.get("current_cell", -1)) >= 0)
 
-func test_flow_nose_direction_uses_live_nose_motion_not_shoulder_relative_drift() -> void:
+func test_flow_nose_direction_uses_previous_cell_transition_even_when_motion_window_has_no_direction_truth() -> void:
 	_calibrate_stance()
 	substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.50, "y": 0.90},
+		PoseLandmarkIds.NOSE: {"x": 0.48, "y": 0.79},
 	}), 1100)
 	var state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.NOSE: {"x": 0.61, "y": 0.90},
-		PoseLandmarkIds.LEFT_SHOULDER: {"x": 0.51, "y": 0.70},
-		PoseLandmarkIds.RIGHT_SHOULDER: {"x": 0.71, "y": 0.70},
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.45, "y": 0.66},
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.77, "y": 0.66},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.39, "y": 0.60},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.83, "y": 0.60},
-		PoseLandmarkIds.LEFT_HIP: {"x": 0.53, "y": 0.40},
-		PoseLandmarkIds.RIGHT_HIP: {"x": 0.69, "y": 0.40},
-		PoseLandmarkIds.LEFT_KNEE: {"x": 0.55, "y": 0.22},
-		PoseLandmarkIds.RIGHT_KNEE: {"x": 0.67, "y": 0.22},
-		PoseLandmarkIds.LEFT_ANKLE: {"x": 0.57, "y": 0.04},
-		PoseLandmarkIds.RIGHT_ANKLE: {"x": 0.65, "y": 0.04},
-	}, 0.60), 1200)
+		PoseLandmarkIds.NOSE: {"x": 0.35, "y": 0.79},
+	}), 1101)
 	var nose_debug: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("tracked_landmarks", {}).get("nose", {})
-	assert_eq(int(nose_debug.get("current_direction", -1)), 3)
-	var analysis: Dictionary = nose_debug.get("direction_analysis", {})
-	assert_true(float(analysis.get("net_distance", 0.0)) > 0.0)
-	var latest_relative_position: Vector2 = nose_debug.get("latest_relative_position", Vector2.ZERO)
-	assert_true(latest_relative_position.x > 0.0)
+	assert_eq(int(nose_debug.get("current_cell", -1)), 7)
+	assert_eq(int(nose_debug.get("current_direction", -1)), 2)
+	assert_eq(int(nose_debug.get("direction_analysis", {}).get("direction", -1)), -1)
+	assert_eq(String(nose_debug.get("cell_meta", {}).get("direction_source", "")), "previous_cell_entry")
+	assert_eq(int(nose_debug.get("cell_meta", {}).get("previous_cell", -1)), 6)
+	assert_eq(int(nose_debug.get("cell_meta", {}).get("current_cell", -1)), 7)
+	assert_eq(int(nose_debug.get("cell_meta", {}).get("direction", -1)), 2)
 
 func test_flow_debug_keeps_visible_wrist_tracking_when_other_wrist_drops_out() -> void:
 	_calibrate_stance()
