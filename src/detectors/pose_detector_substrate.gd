@@ -1415,6 +1415,8 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"grid_progress_ready": bool(state.get("grid_progress_ready", false)),
 		"grid_progress_window_ms": int(state.get("grid_progress_window_ms", 0)),
 		"grid_progress_transition_count": int((state.get("grid_progress_history", []) as Array).size()),
+		"grid_overflow_protection_enabled": bool(config.get("overflow_protection_enabled", false)),
+		"grid_overflow_accumulation_frozen": bool(state.get("grid_overflow_accumulation_frozen", false)),
 		"buffered_grid_transition_available": not (state.get("buffered_grid_transition", {}) as Dictionary).is_empty(),
 		"buffered_grid_previous_cell": int((state.get("buffered_grid_transition", {}) as Dictionary).get("previous_cell", -1)),
 		"buffered_grid_current_cell": int((state.get("buffered_grid_transition", {}) as Dictionary).get("current_cell", -1)),
@@ -2141,6 +2143,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["grid_cell_delta_gate_passed"] = false
 	state["grid_progress_threshold"] = 0
 	state["grid_progress_ready"] = false
+	state["grid_overflow_accumulation_frozen"] = false
 	if family == "hook":
 		var current_max_hook_angle_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
 		state["wrist_horizontal_angle_gate_passed"] = wrist_angle_from_elbow_horizontal_deg <= current_max_hook_angle_deg + 0.000001
@@ -2210,6 +2213,9 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var qualifying_grid_transition := false
 	var accumulated_grid_progress := 0
 	var grid_progress_ready := false
+	var grid_overflow_protection_enabled := bool(config.get("overflow_protection_enabled", false))
+	var grid_overflow_accumulation_frozen := backend_name == BACKEND_GRID_DETECTION and grid_overflow_protection_enabled and [POSE_STRIKE_STATE_TRIGGERED, POSE_STRIKE_STATE_NOT_READY].has(phase)
+	state["grid_overflow_accumulation_frozen"] = grid_overflow_accumulation_frozen
 	if backend_name == BACKEND_GRID_DETECTION:
 		min_axis_delta = max(1, int(config.get("min_column_delta", config.get("min_row_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))) if family == "hook" else max(1, int(config.get("min_row_delta", config.get("min_column_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 		state["grid_progress_threshold"] = min_axis_delta
@@ -2217,7 +2223,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["grid_direction_gate_passed"] = grid_column_delta > 0 if side == "left" else grid_column_delta < 0
 		else:
 			state["grid_direction_gate_passed"] = grid_row_delta < 0
-		var grid_progress := _update_pose_strike_grid_progress(state, family, side, grid_transition, timestamp_ms, int(config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS)))
+		var grid_progress := _update_pose_strike_grid_progress(state, family, side, grid_transition, timestamp_ms, int(config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS)), grid_overflow_accumulation_frozen)
 		accumulated_grid_progress = int(grid_progress.get("accumulated_progress", 0))
 		grid_progress_ready = accumulated_grid_progress >= min_axis_delta
 		state["grid_accumulated_progress"] = accumulated_grid_progress
@@ -3428,12 +3434,12 @@ func _consume_pose_strike_grid_transition(state: Dictionary, transition: Diction
 		state["buffered_grid_transition"] = {}
 		state["buffered_grid_transition_key"] = ""
 
-func _update_pose_strike_grid_progress(state: Dictionary, family: String, side: String, transition: Dictionary, timestamp_ms: int, window_ms: int) -> Dictionary:
+func _update_pose_strike_grid_progress(state: Dictionary, family: String, side: String, transition: Dictionary, timestamp_ms: int, window_ms: int, freeze_accumulation: bool = false) -> Dictionary:
 	var history: Array = (state.get("grid_progress_history", []) as Array).duplicate(true)
 	var clamped_window_ms := max(1, window_ms)
 	while history.size() > 0 and timestamp_ms - int((history[0] as Dictionary).get("timestamp_ms", timestamp_ms)) > clamped_window_ms:
 		history.remove_at(0)
-	if not transition.is_empty():
+	if not freeze_accumulation and not transition.is_empty():
 		var transition_copy := transition.duplicate(true)
 		var transition_key := _pose_strike_grid_transition_key(transition_copy)
 		var last_key := _pose_strike_grid_transition_key(history[history.size() - 1] as Dictionary) if history.size() > 0 else ""
@@ -3569,6 +3575,7 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"grid_progress_ready": false,
 		"grid_progress_window_ms": 0,
 		"grid_progress_history": [],
+		"grid_overflow_accumulation_frozen": false,
 		"buffered_grid_transition": {},
 		"buffered_grid_transition_key": "",
 		"last_emitted_grid_transition_key": "",
@@ -3597,6 +3604,7 @@ func _get_hook_config() -> Dictionary:
 		"grid_variant": GRID_VARIANT_STRIKE_SUBGRID,
 		"min_column_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
+		"overflow_protection_enabled": false,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -3618,6 +3626,7 @@ func _get_hook_config() -> Dictionary:
 	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_STRIKE_SUBGRID))))
 	config["min_column_delta"] = max(1, int(evaluation.get("min_column_delta", evaluation.get("min_cell_delta", config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 	config["min_cell_delta"] = int(config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
+	config["overflow_protection_enabled"] = bool(evaluation.get("overflow_protection_enabled", config.get("overflow_protection_enabled", false)))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -3633,6 +3642,7 @@ func _get_uppercut_config() -> Dictionary:
 		"grid_variant": GRID_VARIANT_STRIKE_SUBGRID,
 		"min_row_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
+		"overflow_protection_enabled": false,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -3654,6 +3664,7 @@ func _get_uppercut_config() -> Dictionary:
 	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_STRIKE_SUBGRID))))
 	config["min_row_delta"] = max(1, int(evaluation.get("min_row_delta", evaluation.get("min_cell_delta", config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 	config["min_cell_delta"] = int(config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
+	config["overflow_protection_enabled"] = bool(evaluation.get("overflow_protection_enabled", config.get("overflow_protection_enabled", false)))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))

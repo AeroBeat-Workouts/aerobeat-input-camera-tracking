@@ -2518,6 +2518,9 @@ func test_uppercut_grid_detection_buffers_fast_same_wrist_repeat_until_rearmed()
 	}), 2320)
 	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
 	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["triggered"])
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_false(bool(left_debug.get("grid_overflow_protection_enabled", true)))
+	assert_false(bool(left_debug.get("grid_overflow_accumulation_frozen", true)))
 
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
@@ -2528,8 +2531,10 @@ func test_uppercut_grid_detection_buffers_fast_same_wrist_repeat_until_rearmed()
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
 	}), 2470)
 	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
-	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	left_debug = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
 	assert_eq(String(left_debug.get("state", "")), "not_ready")
+	assert_false(bool(left_debug.get("grid_overflow_protection_enabled", true)))
+	assert_false(bool(left_debug.get("grid_overflow_accumulation_frozen", true)))
 	assert_true(bool(left_debug.get("buffered_grid_transition_available", false)))
 	assert_eq(int(left_debug.get("buffered_grid_previous_cell", -1)), 26)
 	assert_eq(int(left_debug.get("buffered_grid_current_cell", -1)), 10)
@@ -2561,6 +2566,69 @@ func test_uppercut_grid_detection_buffers_fast_same_wrist_repeat_until_rearmed()
 	}), 2810)
 	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
 	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
+func test_uppercut_grid_detection_overflow_protection_freezes_in_window_accumulation() -> void:
+	config.gesture_profile_document = {
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 1,
+					"overflow_protection_enabled": true,
+				},
+				"timing": {
+					"triggered_grace_ms": 120,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 40,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2160)
+	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2320)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_true(bool(left_debug.get("grid_overflow_protection_enabled", false)))
+	assert_false(bool(left_debug.get("grid_overflow_accumulation_frozen", true)))
+	var initial_progress := int(left_debug.get("grid_accumulated_progress", 0))
+	var initial_transition_count := int(left_debug.get("grid_progress_transition_count", 0))
+	assert_true(initial_progress >= 1)
+	assert_true(initial_transition_count >= 1)
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2440)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["not_ready"])
+	left_debug = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_true(bool(left_debug.get("grid_overflow_accumulation_frozen", false)))
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), initial_progress)
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2470)
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
+	left_debug = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "not_ready")
+	assert_true(bool(left_debug.get("grid_overflow_protection_enabled", false)))
+	assert_true(bool(left_debug.get("grid_overflow_accumulation_frozen", false)))
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), initial_progress)
+	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), initial_transition_count)
 
 func test_hook_grid_detection_buffers_fast_opposite_side_same_family_chain_until_block_clears() -> void:
 	config.gesture_profile_document = {
