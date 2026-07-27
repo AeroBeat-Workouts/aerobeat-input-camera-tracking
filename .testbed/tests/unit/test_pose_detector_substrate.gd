@@ -2218,7 +2218,7 @@ func test_weave_ends_only_when_nose_leaves_the_grid() -> void:
 	assert_false(bool(weave_debug.get("nose_inside_grid", true)))
 	assert_true(bool(weave_debug.get("neutral_candidate", false)))
 
-func test_hook_grid_detection_uses_athlete_space_outward_column_transitions() -> void:
+func test_hook_grid_detection_uses_athlete_space_side_specific_horizontal_transitions() -> void:
 	config.gesture_profile_document = {
 		"hook": {
 			"backend": "grid_detection",
@@ -2242,29 +2242,50 @@ func test_hook_grid_detection_uses_athlete_space_outward_column_transitions() ->
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.48, "y": 0.72},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
 	}), 1100)
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
 	}), 1160)
 	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "left"), ["ready"])
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
 	}), 1320)
 	assert_true(_event_names(state.get("events", [])).has("hook_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
 	assert_eq(String(left_debug.get("backend", "")), "grid_detection")
 	assert_eq(String(left_debug.get("direction_reference_frame", "")), "athlete_space_columns")
-	assert_eq(String(left_debug.get("required_direction_label", "")), "athlete_left")
+	assert_eq(String(left_debug.get("required_direction_label", "")), "athlete_right")
 	assert_eq(String(left_debug.get("grid_variant", "")), "strike_subgrid")
 	assert_eq(int(left_debug.get("grid_columns", 0)), 8)
 	assert_eq(int(left_debug.get("grid_rows", 0)), 6)
-	assert_eq(int(left_debug.get("grid_previous_cell", -1)), 18)
-	assert_eq(int(left_debug.get("grid_current_cell", -1)), 16)
-	assert_eq(int(left_debug.get("grid_column_delta", 0)), -2)
+	assert_eq(int(left_debug.get("grid_previous_cell", -1)), 16)
+	assert_eq(int(left_debug.get("grid_current_cell", -1)), 18)
+	assert_eq(int(left_debug.get("grid_column_delta", 0)), 2)
 	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
 	assert_false(bool(left_debug.get("wrist_on_required_hook_side", true)))
+
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 2100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 2160)
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.44, "y": 0.72},
+	}), 2320)
+	assert_true(_event_names(state.get("events", [])).has("hook_right"))
+	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
+	assert_eq(String(right_debug.get("backend", "")), "grid_detection")
+	assert_eq(String(right_debug.get("direction_reference_frame", "")), "athlete_space_columns")
+	assert_eq(String(right_debug.get("required_direction_label", "")), "athlete_left")
+	assert_true(int(right_debug.get("grid_column_delta", 0)) < 0)
+	assert_true(bool(right_debug.get("grid_cell_delta_gate_passed", false)))
+	assert_true(bool(right_debug.get("grid_direction_gate_passed", false)))
 
 func test_uppercut_grid_detection_uses_athlete_space_upward_row_transitions() -> void:
 	config.gesture_profile_document = {

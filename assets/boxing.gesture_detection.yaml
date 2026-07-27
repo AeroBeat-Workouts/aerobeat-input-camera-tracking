@@ -137,7 +137,7 @@ hook:
       window_ms: 250
       # Allowed options: [grid, strike_subgrid]. Select which calibrated grid to evaluate against. strike_subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
-      # Minimum signed outward column travel required to count as a hook. Lower values allow shorter outward moves; higher values require crossing more strike-subgrid columns in the hook direction. input/runtime.
+      # Minimum signed horizontal column travel required to count as a hook. Lower values allow shorter left-to-right/right-to-left moves; higher values require crossing more strike-subgrid columns in the side-specific hook direction. input/runtime.
       min_column_delta: 1
     timing:
       # Keep the grid-based hook triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.

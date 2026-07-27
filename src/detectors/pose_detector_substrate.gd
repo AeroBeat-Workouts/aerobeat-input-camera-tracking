@@ -1421,7 +1421,7 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["wrist_on_required_hook_side"] = bool(state.get("wrist_on_required_hook_side", false))
 		debug["required_hook_side_label"] = _required_hook_side_label(side)
 		if String(config.get("backend", BACKEND_THRESHOLD)) == BACKEND_GRID_DETECTION:
-			debug["required_direction_label"] = "athlete_left" if side == "left" else "athlete_right"
+			debug["required_direction_label"] = "athlete_right" if side == "left" else "athlete_left"
 			debug["direction_reference_frame"] = "athlete_space_columns"
 		else:
 			debug["required_direction_label"] = "rightward" if side == "left" else "leftward"
@@ -2189,7 +2189,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			var min_axis_delta := max(1, int(config.get("min_column_delta", config.get("min_row_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))) if family == "hook" else max(1, int(config.get("min_row_delta", config.get("min_column_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 			state["grid_cell_delta_gate_passed"] = absi(grid_column_delta if family == "hook" else grid_row_delta) >= min_axis_delta
 			if family == "hook":
-				state["grid_direction_gate_passed"] = grid_column_delta < 0 if side == "left" else grid_column_delta > 0
+				state["grid_direction_gate_passed"] = grid_column_delta > 0 if side == "left" else grid_column_delta < 0
 			else:
 				state["grid_direction_gate_passed"] = grid_row_delta < 0
 			ready_to_trigger = grid_transition_available and state["grid_cell_delta_gate_passed"] and state["grid_direction_gate_passed"]

@@ -2433,8 +2433,8 @@ func _build_boxing_event_feed_text() -> String:
 			4 * int(strike_subgrid.get("columns_multiplier", 2)),
 			3 * int(strike_subgrid.get("rows_multiplier", 2)),
 		])
-		lines.append("Minimum outward column travel: %d subcells" % int(hook_eval.get("min_column_delta", hook_eval.get("min_cell_delta", 0))))
-		lines.append("Hook direction reference: athlete-space outward columns (left hook = athlete_left with negative signed delta, right hook = athlete_right with positive signed delta)")
+		lines.append("Minimum horizontal column travel: %d subcells" % int(hook_eval.get("min_column_delta", hook_eval.get("min_cell_delta", 0))))
+		lines.append("Hook direction reference: athlete-space horizontal columns (left hook = athlete_right with positive signed delta, right hook = athlete_left with negative signed delta)")
 	else:
 		lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
 		lines.append("Max wrist angle from elbow horizontal ray: %s" % _fmt_float(hook_thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
