@@ -1598,6 +1598,29 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(right_chart.get("active_index")), 4)
 		assert_eq(String(truth_label.text), "")
 
+func test_flow_proving_scene_nose_direction_chart_updates_live_with_successive_debug_truth() -> void:
+	var scene_root: Control = add_child_autoqfree(FlowProvingScene.instantiate()) as Control
+	assert_not_null(scene_root)
+	var nose_direction_chart := scene_root.find_child("NoseDirectionChart", true, false) as Control
+	assert_not_null(nose_direction_chart)
+	scene_root.set("_latest_state", _shared_flow_grid_truth_state())
+	scene_root.call("_refresh_debug_panels")
+	assert_eq(int(nose_direction_chart.get("active_index")), 2)
+
+	var updated_state := _shared_flow_grid_truth_state().duplicate(true)
+	var gesture_debug: Dictionary = updated_state.get("gesture_debug", {})
+	var flow_debug: Dictionary = gesture_debug.get("flow", {})
+	var tracked_landmarks: Dictionary = flow_debug.get("tracked_landmarks", {})
+	var nose_debug: Dictionary = tracked_landmarks.get("nose", {})
+	nose_debug["current_direction"] = 3
+	tracked_landmarks["nose"] = nose_debug
+	flow_debug["tracked_landmarks"] = tracked_landmarks
+	gesture_debug["flow"] = flow_debug
+	updated_state["gesture_debug"] = gesture_debug
+	scene_root.set("_latest_state", updated_state)
+	scene_root.call("_refresh_debug_panels")
+	assert_eq(int(nose_direction_chart.get("active_index")), 3)
+
 func test_flow_grid_overlay_flips_gameplay_y_and_renders_calibrated_cell_dimensions_in_preview_space() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)

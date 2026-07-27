@@ -2265,8 +2265,8 @@ func _update_flow_tracking_state(landmarks_by_id: Dictionary, metrics: Dictionar
 	_update_flow_hand_history("left", left_wrist, left_shoulder, float(confidences.get("left_hand", 0.0)), timestamp_ms)
 	_update_flow_hand_history("right", right_wrist, right_shoulder, float(confidences.get("right_hand", 0.0)), timestamp_ms)
 
-func _update_flow_nose_history(nose: Dictionary, shoulder_center: Vector2, confidence: float, timestamp_ms: int) -> void:
-	_update_flow_landmark_history("nose", nose, shoulder_center, confidence, timestamp_ms)
+func _update_flow_nose_history(nose: Dictionary, _shoulder_center: Vector2, confidence: float, timestamp_ms: int) -> void:
+	_update_flow_landmark_history("nose", nose, Vector2.ZERO, confidence, timestamp_ms)
 
 func _update_flow_hand_history(side: String, wrist: Dictionary, shoulder: Dictionary, confidence: float, timestamp_ms: int) -> void:
 	_update_flow_landmark_history("%s_hand" % side, wrist, PoseMetrics.to_vector2(shoulder), confidence, timestamp_ms)
