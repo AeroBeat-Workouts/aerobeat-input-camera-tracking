@@ -19,7 +19,7 @@ calibration:
       left: 0.05
       right: 0.05
     # Shift the calibrated 4x3 grid vertically in camera space. 0.0 = current height; positive raises the grid; negative lowers it. input/runtime.
-    camera_space_grid_height_offset: -0.05
+    camera_space_grid_height_offset: 0.00 #-0.05
     thresholds:
       # Maximum wrist-vs-shoulder vertical drift ratio for a valid T-pose. Lower = stricter/leveler wrists; higher = more tolerance. input/runtime.
       max_wrist_shoulder_y_ratio: 0.35

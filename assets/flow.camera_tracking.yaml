@@ -53,4 +53,4 @@ tracking:
     # Run pose inference every N source frames. 1 = every frame; larger values skip more frames, reducing cost but increasing latency/coarseness. vendor.
     inference_interval_frames: 1
     # Allowed options: [lite_filtered, lite_raw]. Pick pose smoothing after samples come back. Filtered is steadier for occupancy review; raw is snappier but noisier. tool -> vendor.
-    smoothing_style: lite_filtered
+    smoothing_style: lite_raw
