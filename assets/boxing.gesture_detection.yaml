@@ -1,13 +1,16 @@
+# Select the gesture-detection config schema this asset should validate against.
 schema: aerobeat/gesture_detection_config
+# Increment when the config shape changes in a breaking way.
 version: 1
+# Route this asset to the boxing gesture-detection profile.
 profile: boxing
 calibration:
   # Auto-capture the shared athlete baseline from a held T-pose. input/runtime.
   mode: t_pose_auto
   t_pose:
-    # Fire calibration immediately when this continuous hold duration is satisfied. input/runtime.
+    # Fire calibration immediately when this continuous hold duration is satisfied. Shorter values calibrate faster; longer values reduce accidental triggers. input/runtime.
     hold_ms: 4000
-    # Allow re-firing from the same held T-pose after this cooldown elapses. input/runtime.
+    # Allow re-firing from the same held T-pose after this cooldown elapses. Shorter values allow quicker recalibration spam; longer values force more separation between captures. input/runtime.
     cooldown_ms: 4000
     # Scale the calibrated 4x3 grid size after wrist-span capture. 1.0 = current size; higher grows the grid; lower shrinks it. input/runtime.
     grid_size_multiplier: 1.1
@@ -21,19 +24,27 @@ calibration:
       # Minimum elbow angle for a valid T-pose. Lower = allows more bend; higher = requires straighter elbows. input/runtime.
       min_elbow_angle_deg: 130.0
 guard:
+  # Pick the guard detection backend. Threshold means guard state is derived from direct landmark distance checks rather than grid occupancy. input/runtime.
   backend: threshold
   threshold:
     thresholds:
+      # Maximum allowed left/right wrist separation on the X axis for a valid guard. Smaller values force hands closer together; larger values allow a wider guard. input/runtime.
       max_wrist_separation_x: 0.20
+      # Maximum allowed vertical separation between wrists for a valid guard. Smaller values require more level hands; larger values tolerate one hand sitting higher. input/runtime.
       max_wrist_separation_y: 0.12
+      # Maximum allowed wrist-to-nose distance for a valid guard. Smaller values require the hands closer to the face; larger values allow a looser guard. input/runtime.
       max_wrist_nose_distance: 0.20
 
 squat:
+  # Pick the squat detection backend. Grid avoidance means the nose must clear a blocked band inside the calibrated grid. input/runtime.
   backend: grid_avoidance
   grid_avoidance:
     obstacle:
+      # Runtime/debug label for the blocked region drawn and evaluated by the squat detector.
       label: squat_height_band
+      # Interpret the blocked region in athlete-space height ratio terms instead of absolute camera pixels.
       mode: athlete_space_height_ratio
+      # Start the blocked region from the top edge of the calibrated grid and extend downward.
       blocked_from_edge: top
       # Height percentage of the calibrated 4x3 grid to keep blocked from the top edge downward.
       # Smaller values move the line upward and make squat activation easier.
@@ -42,92 +53,141 @@ squat:
 
 grid_detection:
   strike_subgrid:
+    # Turn the denser strike-only subgrid on or off. True lets punch detectors resolve shorter travel inside each base cell; false makes them use only the coarse 4x3 grid. input/runtime.
     enabled: true
+    # Multiply base-grid columns for strike detection only. Higher values create narrower strike columns and require less coarse lateral travel; lower values collapse back toward the base grid. input/runtime.
     columns_multiplier: 2
+    # Multiply base-grid rows for strike detection only. Higher values create shorter strike rows and make vertical travel checks more fine-grained; lower values collapse back toward the base grid. input/runtime.
     rows_multiplier: 2
     visual:
+      # Draw the strike subgrid as dashed overlay lines in debug/preview views. True helps reviewers see the finer runtime strike map; false keeps overlays less busy. input debug/runtime.
       draw_dashed_overlay: true
 
 weave:
+  # Pick the weave detection backend. Grid avoidance means the athlete avoids occupied columns/cells instead of passing a raw angle threshold. input/runtime.
   backend: grid_avoidance
   grid_avoidance:
     left_obstacle:
+      # Runtime/debug label for the left-side blocked region.
       label: left_columns
+      # Base-grid columns considered blocked on the left weave check. More columns widen the blocked lane; fewer columns narrow it. input/runtime.
       occupied_columns: [0, 1]
+      # Exact base-grid cells treated as blocked for the left weave obstacle. Add more cells to grow the obstacle footprint; remove cells to shrink it. input/runtime.
       occupied_cells: [0, 1, 4, 5, 8, 9]
     right_obstacle:
+      # Runtime/debug label for the right-side blocked region.
       label: right_columns
+      # Base-grid columns considered blocked on the right weave check. More columns widen the blocked lane; fewer columns narrow it. input/runtime.
       occupied_columns: [2, 3]
+      # Exact base-grid cells treated as blocked for the right weave obstacle. Add more cells to grow the obstacle footprint; remove cells to shrink it. input/runtime.
       occupied_cells: [2, 3, 6, 7, 10, 11]
 
 straight_punch:
+  # Pick the straight-punch detector backend. Threshold uses direct landmark motion/pose heuristics instead of calibrated grid travel. input/runtime.
   backend: threshold
   threshold:
     evaluation:
+      # Ignore stale samples and only evaluate the freshest motion data in the window. False would allow older samples to influence the decision longer. input/runtime.
       fresh_samples_only: true
+      # Number of recent samples considered together for the punch decision. Smaller windows react faster but are noisier; larger windows smooth more but add inertia. input/runtime.
       sample_window_size: 4
+      # Time span covered by the motion evaluation window. Smaller windows demand a more immediate burst; larger windows consider motion over a longer slice. input/runtime.
       window_ms: 250
     thresholds:
+      # Minimum punch velocity needed to trigger. Lower values make straights easier/noisier; higher values require a more forceful forward drive. input/runtime.
       min_velocity: 0.5
+      # Maximum allowed elbow-to-shoulder XY distance while evaluating a straight. Lower values keep the elbow tucked more strictly; higher values allow wider arm positions. input/runtime.
       max_elbow_shoulder_xy_distance: 0.140
+      # Minimum sideways wrist angle away from elbow-vertical needed to count as a straight path. Lower values allow more vertical alignment; higher values require a more clearly lateral-forward line. input/runtime.
       min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
     timing:
+      # Keep the straight-punch triggered state alive for this long after detection. Shorter values clear faster; longer values make the trigger linger longer for downstream consumers. input/runtime.
       triggered_grace_ms: 240
     rearm:
+      # Minimum pose-only cooldown before another straight can arm again. Shorter values permit faster repeat punches; longer values reduce retrigger spam. input/runtime.
       pose_only_rearm_ms: 250
     state_machine:
+      # Stable-tracking time required after loss before this detector trusts reacquired data again. Lower values recover faster but risk noisy resumes; higher values wait for steadier reacquisition. input/runtime.
       lost_tracking_reacquire_stable_ms: 40
 
 hook:
+  # Pick the hook detector backend. Grid detection uses calibrated cell travel, including the strike subgrid when selected below. input/runtime.
   backend: grid_detection
   threshold:
     evaluation:
+      # Time span the legacy threshold-style hook heuristics would evaluate if this backend were selected. Smaller windows react faster; larger windows smooth longer motion. input/runtime.
       window_ms: 250
     thresholds:
+      # Minimum hook velocity for the legacy threshold backend. Lower values make hooks easier/noisier; higher values require more forceful motion. input/runtime.
       min_velocity: 0.4
+      # Maximum allowed wrist angle away from elbow-horizontal for the legacy threshold backend. Lower values require a flatter hook path; higher values tolerate more diagonal travel. input/runtime.
       max_wrist_angle_from_elbow_horizontal_deg: 25.0
     timing:
+      # Trigger hold time for the legacy threshold backend. Shorter values clear faster; longer values linger longer. input/runtime.
       triggered_grace_ms: 500
     rearm:
+      # Cooldown before the legacy threshold backend can rearm. Shorter values allow faster repeats; longer values reduce spam. input/runtime.
       pose_only_rearm_ms: 50
     state_machine:
+      # Stable-tracking time after reacquisition for the legacy threshold backend. Lower values recover faster; higher values wait for cleaner data. input/runtime.
       lost_tracking_reacquire_stable_ms: 40
   grid_detection:
     evaluation:
+      # Time span of recent cell-travel history considered by the active grid-based hook detector. Smaller windows require a tighter/faster lateral move; larger windows allow slower motion to count. input/runtime.
       window_ms: 250
+      # Select which calibrated grid to evaluate against. strike_subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
+      # Minimum left/right column travel required to count as a hook. Lower values allow shorter lateral travel; higher values require crossing more strike-subgrid columns. input/runtime.
       min_column_delta: 1
+      # Require this share of motion to be in the dominant lateral direction. Lower values tolerate messier diagonals; higher values require a cleaner sideward hook path. input/runtime.
       direction_dominance_ratio: 0.55
     timing:
+      # Keep the grid-based hook triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
       triggered_grace_ms: 500
     rearm:
+      # Minimum cooldown before another grid-based hook can arm. Shorter values allow faster combinations; longer values reduce retrigger spam. input/runtime.
       pose_only_rearm_ms: 50
     state_machine:
+      # Stable-tracking time required after loss before the grid-based hook trusts reacquired data again. Lower values recover faster but can reintroduce noisy frames; higher values wait longer for stable tracking. input/runtime.
       lost_tracking_reacquire_stable_ms: 40
 
 uppercut:
+  # Pick the uppercut detector backend. Grid detection uses calibrated upward cell travel, including the strike subgrid when selected below. input/runtime.
   backend: grid_detection
   threshold:
     evaluation:
+      # Time span the legacy threshold-style uppercut heuristics would evaluate if this backend were selected. Smaller windows react faster; larger windows smooth longer motion. input/runtime.
       window_ms: 250
     thresholds:
+      # Minimum upward punch velocity for the legacy threshold backend. Lower values make uppercuts easier/noisier; higher values require more forceful motion. input/runtime.
       min_velocity: 0.5
+      # Maximum allowed wrist angle away from elbow-vertical for the legacy threshold backend. Lower values require a straighter upward path; higher values tolerate more diagonal lift. input/runtime.
       max_wrist_angle_from_elbow_vertical_deg: 25.0
     timing:
+      # Trigger hold time for the legacy threshold backend. Shorter values clear faster; longer values linger longer. input/runtime.
       triggered_grace_ms: 500
     rearm:
+      # Cooldown before the legacy threshold backend can rearm. Shorter values allow faster repeats; longer values reduce spam. input/runtime.
       pose_only_rearm_ms: 50
     state_machine:
+      # Stable-tracking time after reacquisition for the legacy threshold backend. Lower values recover faster; higher values wait for cleaner data. input/runtime.
       lost_tracking_reacquire_stable_ms: 40
   grid_detection:
     evaluation:
+      # Time span of recent cell-travel history considered by the active grid-based uppercut detector. Smaller windows require a tighter/faster rise; larger windows allow slower motion to count. input/runtime.
       window_ms: 250
+      # Select which calibrated grid to evaluate against. strike_subgrid means runtime uppercut travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
+      # Minimum upward row travel required to count as an uppercut. Lower values allow shorter vertical travel; higher values require crossing more strike-subgrid rows. input/runtime.
       min_row_delta: 1
+      # Require this share of motion to be in the dominant upward direction. Lower values tolerate messier diagonals; higher values require a cleaner vertical path. input/runtime.
       direction_dominance_ratio: 0.55
     timing:
+      # Keep the grid-based uppercut triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
       triggered_grace_ms: 500
     rearm:
+      # Minimum cooldown before another grid-based uppercut can arm. Shorter values allow faster combinations; longer values reduce retrigger spam. input/runtime.
       pose_only_rearm_ms: 50
     state_machine:
+      # Stable-tracking time required after loss before the grid-based uppercut trusts reacquired data again. Lower values recover faster but can reintroduce noisy frames; higher values wait longer for stable tracking. input/runtime.
       lost_tracking_reacquire_stable_ms: 40

@@ -1,45 +1,56 @@
+# Select the camera-tracking config schema this asset should validate against.
 schema: aerobeat/camera_tracking_config
+# Increment when the config shape changes in a breaking way.
 version: 1
+# Route this asset to the flow runtime profile.
 profile: flow
 preview:
+  # Attach the preview surface to the normal presenter instead of forcing a detached window.
   surface_mode: attach
+  # Mirror the preview so flow playtests feel like a player-facing mirror. False would show camera-native left/right instead.
   flip_horizontal: true
   live:
-    # Emit a live preview feed only when this profile wants one. input -> tool -> vendor.
+    # Emit a live preview feed only when this profile wants one. False saves preview work without disabling tracking itself. input -> tool -> vendor.
     enabled: true
-    # Throttle live preview updates without changing live tracking cadence. tool -> vendor.
+    # Cap live preview draw/update cadence. Lower values reduce cost but look choppier; higher values look smoother without changing tracking cadence. tool -> vendor.
     max_fps: 10
-    # Resize emitted live preview frames without pretending to change live decode/inference. tool -> vendor.
+    # Resize emitted live preview frames. Smaller dimensions are cheaper but softer; larger ones are clearer but heavier. tool -> vendor.
     width: 960
+    # Pair with width to set the live preview output resolution. Smaller heights reduce detail; larger heights preserve more detail. tool -> vendor.
     height: 540
+    # JPEG-style preview quality for transmitted frames. Lower values compress harder with more artifacts; higher values preserve detail but use more bandwidth. tool -> vendor.
     quality: 75
   replay:
-    # Emit a replay preview feed only when this profile wants one. input -> tool -> vendor.
+    # Emit a replay preview feed only when this profile wants one. False keeps replay tracking/debug data available without video preview. input -> tool -> vendor.
     enabled: true
-    # Throttle replay preview updates without inventing replay decode controls the vendor does not support. tool -> vendor.
+    # Cap replay preview draw/update cadence. Lower values reduce cost; higher values make replay review look smoother. tool -> vendor.
     max_fps: 10
+    # Resize replay preview frames before they are emitted. Smaller dimensions are cheaper; larger ones are clearer. tool -> vendor.
     width: 960
+    # Companion height for replay preview sizing. Smaller = less detail/cost; larger = more detail/cost. tool -> vendor.
     height: 540
+    # Compression quality for replay preview frames. Lower = smaller/noisier; higher = cleaner/heavier. tool -> vendor.
     quality: 75
   overlays:
-    # Show the pose/skeleton overlay in the preview presenter independently from full video feed visibility. input presentation.
+    # Show the pose/skeleton overlay in the preview presenter independently from full video feed visibility. True helps review calibrated cell occupancy; false gives a cleaner raw feed. input presentation.
     pose_skeleton_visible: true
 source:
   live_camera:
-    # Request this live capture size from the real camera path. tool -> vendor.
+    # Request this live capture width from the real camera path. Smaller widths are cheaper but less detailed; larger widths preserve more visual precision if the vendor accepts them. tool -> vendor.
     requested_width: 960
+    # Request this live capture height from the real camera path. Smaller heights reduce cost/detail; larger heights increase both. tool -> vendor.
     requested_height: 540
-    # Request this live capture cadence from the real camera path. tool -> vendor.
+    # Request this live capture cadence from the real camera path. Lower values reduce camera/decode load; higher values improve motion freshness if the vendor/hardware can deliver them. tool -> vendor.
     requested_fps: 15
 tracking:
-  # Cap tracker sampling work. This is a requested upper bound, not a promise of achieved FPS on all hardware. input -> tool -> vendor.
+  # Cap tracker sampling work. Lower values reduce CPU/GPU cost but can miss fast transitions; higher values sample motion more often if hardware keeps up. This is a requested upper bound, not a delivered-FPS guarantee. input -> tool -> vendor.
   max_fps: 30
-  # Cap how often runtime state/debug updates publish. Replay/live preview cadence is now decoupled and continues to follow its own preview.*.max_fps caps. This is a requested upper bound, not a guaranteed delivered FPS. input -> tool -> vendor.
+  # Cap how often tracking state/debug updates are published. Lower values make inspectors less chatty but more latent; higher values feel more live. This is a requested upper bound, not a guaranteed delivered FPS. input -> tool -> vendor.
   state_update_max_fps: 30
   pose:
-    # Turn pose tracking on or off. Passed through tool -> vendor.
+    # Turn pose tracking on or off for this profile. False disables pose-driven flow occupancy/debug data entirely. Passed through tool -> vendor.
     enabled: true
-    # Run pose inference every N source frames. vendor.
+    # Run pose inference every N source frames. 1 = every frame; larger values skip more frames, reducing cost but increasing latency/coarseness. vendor.
     inference_interval_frames: 1
-    # [lite_filtered, lite_raw] Pick the pose smoothing mode after pose samples come back. tool -> vendor.
+    # [lite_filtered, lite_raw] Pick pose smoothing after samples come back. Filtered is steadier for occupancy review; raw is snappier but noisier. tool -> vendor.
     smoothing_style: lite_filtered

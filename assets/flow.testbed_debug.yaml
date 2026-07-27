@@ -1,15 +1,18 @@
+# Select the testbed-debug config schema this asset should validate against.
 schema: aerobeat/testbed_debug_config
+# Increment when the config shape changes in a breaking way.
 version: 1
+# Route this asset to the flow proving/testbed profile.
 profile: flow
 visuals:
-  # Show the pose landmark overlay in the proving scene. input debug only.
+  # Draw the pose landmark overlay in the proving scene. True helps inspect calibrated grid occupancy; false gives a cleaner gameplay-only view. input debug only.
   show_landmarks: true
-  # Show debug hit targets around landmarks. input debug only.
+  # Draw debug hit targets around landmarks. True exposes landmark interaction zones; false reduces overlay clutter. input debug only.
   show_landmark_hit_targets: false
-  # Show labels for those debug hit targets. input debug only.
+  # Draw labels on the landmark hit targets. True helps identify which target is which; false keeps the scene less noisy. input debug only.
   show_landmark_hit_target_labels: false
 refresh:
-  # Refresh the big debug panels this often so they stay readable. input debug only.
+  # Refresh the large debug panels at this cadence. Lower values update more often but cost more; higher values update less often and can feel stale. input debug only.
   debug_panel_refresh_interval_ms: 160
-  # Refresh the live inspector values this often. input debug only.
+  # Refresh the live inspector values at this cadence. Lower values feel more immediate; higher values reduce UI churn and debug overhead during slower flow review. input debug only.
   inspector_live_refresh_interval_ms: 120

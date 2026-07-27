@@ -1,13 +1,16 @@
+# Select the gesture-detection config schema this asset should validate against.
 schema: aerobeat/gesture_detection_config
+# Increment when the config shape changes in a breaking way.
 version: 1
+# Route this asset to the flow gesture-detection profile.
 profile: flow
 calibration:
   # Auto-capture the shared athlete baseline from a held T-pose. input/runtime.
   mode: t_pose_auto
   t_pose:
-    # Fire calibration immediately when this continuous hold duration is satisfied. input/runtime.
+    # Fire calibration immediately when this continuous hold duration is satisfied. Shorter values calibrate faster; longer values reduce accidental triggers. input/runtime.
     hold_ms: 4000
-    # Allow re-firing from the same held T-pose after this cooldown elapses. input/runtime.
+    # Allow re-firing from the same held T-pose after this cooldown elapses. Shorter values allow quicker recalibration spam; longer values force more separation between captures. input/runtime.
     cooldown_ms: 4000
     # Scale the calibrated 4x3 grid size after wrist-span capture. 1.0 = current size; higher grows the grid; lower shrinks it. input/runtime.
     grid_size_multiplier: 1.1
@@ -21,10 +24,12 @@ calibration:
       # Minimum elbow angle for a valid T-pose. Lower = allows more bend; higher = requires straighter elbows. input/runtime.
       min_elbow_angle_deg: 130.0
 flow:
-  # Flow uses the shared calibrated 4x3 cell occupancy + direction contract. input.
+  # Pick the gesture backend used for flow occupancy/direction evaluation. The shared threshold backend reads the calibrated 4x3 cell state directly instead of using strike-specific heuristics. input/runtime.
   backend: threshold
+  # Placeholder for future flow-threshold tuning. Empty currently means "use built-in defaults for the shared calibrated grid contract."
   threshold: {}
 straight_punch:
-  # Flow keeps straight punches inactive by selecting the disabled backend. input.
+  # Disable straight-punch detection entirely for flow. Switch to a real backend only if the flow profile should emit punch gestures again. input/runtime.
   backend: disabled
+  # Placeholder kept for config-shape stability even though the disabled backend ignores threshold tuning.
   threshold: {}

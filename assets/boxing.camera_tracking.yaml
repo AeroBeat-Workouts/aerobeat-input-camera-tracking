@@ -1,57 +1,66 @@
+# Select the camera-tracking config schema this asset should validate against.
 schema: aerobeat/camera_tracking_config
+# Increment when the config shape changes in a breaking way.
 version: 1
+# Route this asset to the boxing runtime profile.
 profile: boxing
 preview:
+  # Attach the preview surface to the normal presenter instead of forcing a detached window.
   surface_mode: attach
+  # Keep left/right unmirrored so debug review matches the real camera feed and strike directions.
   flip_horizontal: false
   live:
-    # Emit a live preview feed only when this profile wants one. input -> tool -> vendor.
+    # Emit a live preview feed only when this profile wants one. False saves preview work without disabling tracking itself. input -> tool -> vendor.
     enabled: true
-    # Throttle live preview updates without changing live tracking cadence. tool -> vendor.
+    # Cap live preview draw/update cadence. Lower values save bandwidth/CPU but look choppier; higher values feel smoother without changing tracking cadence. tool -> vendor.
     max_fps: 60
-    # Resize emitted live preview frames without pretending to change live decode/inference. tool -> vendor.
+    # Resize emitted live preview frames. Smaller dimensions cost less and look softer; larger dimensions look clearer but cost more. tool -> vendor.
     width: 960
+    # Pair with width to set the live preview output resolution. Smaller heights reduce detail; larger heights preserve more detail. tool -> vendor.
     height: 540
+    # JPEG-style preview quality for transmitted frames. Lower values compress harder with more artifacts; higher values preserve detail but use more bandwidth. tool -> vendor.
     quality: 75
   replay:
-    # Emit a replay preview feed only when this profile wants one. input -> tool -> vendor.
+    # Emit a replay preview feed only when this profile wants one. False keeps replay tracking/debug data available without video preview. input -> tool -> vendor.
     enabled: true
-    # Throttle replay preview updates without inventing replay decode controls the vendor does not support. tool -> vendor.
+    # Cap replay preview draw/update cadence. Lower values reduce cost; higher values make replay scrubbing/review look smoother. tool -> vendor.
     max_fps: 60
+    # Resize replay preview frames before they are emitted. Smaller dimensions are cheaper; larger ones are clearer. tool -> vendor.
     width: 960
+    # Companion height for replay preview sizing. Smaller = less detail/cost; larger = more detail/cost. tool -> vendor.
     height: 540
+    # Compression quality for replay preview frames. Lower = smaller/noisier; higher = cleaner/heavier. tool -> vendor.
     quality: 75
   overlays:
-    # Show the pose/skeleton overlay in the preview presenter independently from full video feed visibility. input presentation.
+    # Show the pose/skeleton overlay in the preview presenter independently from full video feed visibility. True helps landmark review; false gives a cleaner raw feed. input presentation.
     pose_skeleton_visible: true
 source:
   live_camera:
-    # Request this live capture size from the real camera path. tool -> vendor.
+    # Request this live capture width from the real camera path. Smaller widths are cheaper but less precise to inspect; larger widths preserve more detail if the vendor accepts them. tool -> vendor.
     requested_width: 960
+    # Request this live capture height from the real camera path. Smaller heights reduce cost/detail; larger heights increase both. tool -> vendor.
     requested_height: 540
-    # Request this live capture cadence from the real camera path. tool -> vendor.
+    # Request this live capture cadence from the real camera path. Lower values reduce camera/decode load; higher values improve motion sampling if the vendor/hardware can deliver them. tool -> vendor.
     requested_fps: 60
   replay:
-    # Pick whether replay reads a direct video file or a saved session manifest. input -> tool.
+    # Choose whether replay reads a direct source video or a saved session manifest package. input -> tool.
     input_kind: video_file
-    # Use this when input_kind = video_file for direct replay from a source video path. Relative to this YAML file unless absolute. input -> tool.
+    # Use this when input_kind = video_file. Relative to this YAML unless absolute. Empty means no default replay video is preselected. input -> tool.
     video_input_path: ""
-    # Use this when input_kind = session_manifest for replay from a saved session package entrypoint. Relative to this YAML file unless absolute. input -> tool.
+    # Use this when input_kind = session_manifest. Relative to this YAML unless absolute. Empty means no default replay session is preselected. input -> tool.
     session_manifest_path: ""
 tracking:
-  # Cap tracker sampling work. This is a requested upper bound, not a promise of achieved FPS on all hardware. input -> tool -> vendor.
-  # How often tracking system is allowed to look
+  # Cap tracker sampling work. Lower values reduce CPU/GPU cost but can miss fast motion; higher values sample motion more often if hardware keeps up. This is a requested upper bound, not a delivered-FPS guarantee. input -> tool -> vendor.
   max_fps: 30
-  # Cap how often runtime state/debug updates publish. Replay/live preview cadence is now decoupled and continues to follow its own preview.*.max_fps caps. This is a requested upper bound, not a guaranteed delivered FPS. input -> tool -> vendor.
-  # How often tracking system is allowed to report its findings
+  # Cap how often tracking state/debug updates are published. Lower values make inspectors less chatty but more latent; higher values feel more live without forcing preview cadence to match. This is a requested upper bound, not a guaranteed delivered FPS. input -> tool -> vendor.
   state_update_max_fps: 10
   pose:
-    # Turn pose tracking on or off. Passed through tool -> vendor.
+    # Turn pose tracking on or off for this profile. False disables pose-driven gameplay/debug data entirely. Passed through tool -> vendor.
     enabled: true
-    # Run pose inference every N source frames. vendor.
+    # Run pose inference every N source frames. 1 = every frame; larger values skip more frames, reducing cost but increasing latency/coarseness. vendor.
     inference_interval_frames: 1
-    # [lite_filtered, lite_raw] Pick the pose smoothing mode after pose samples come back. tool -> vendor.
+    # [lite_filtered, lite_raw] Pick pose smoothing after samples come back. Filtered is steadier but slightly laggier; raw is snappier but noisier. tool -> vendor.
     smoothing_style: lite_filtered
   hands:
-    # Boxing straight-punch threshold truth is pose-only unless a profile explicitly opts back into hand tracking.
+    # Enable hand tracking only when a profile truly needs hand landmarks. False reduces extra vendor work; true can add richer hand data at extra cost. Boxing straight-punch truth is pose-only unless this is explicitly re-enabled.
     enabled: false
