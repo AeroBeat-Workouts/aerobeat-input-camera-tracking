@@ -1859,6 +1859,11 @@ func test_proving_scenes_mount_t_pose_badge_in_preview_overlay_and_show_live_hol
 		var badge_snapshot: Dictionary = scene_root.call("get_t_pose_badge_snapshot")
 		assert_true(bool(badge_snapshot.get("progress_active", false)))
 		assert_true(is_equal_approx(float(badge_snapshot.get("fill_ratio", 0.0)), 0.5))
+		assert_true(is_equal_approx(float(badge_snapshot.get("displayed_fill_ratio", 0.0)), 0.0))
+		assert_true(bool(badge_snapshot.get("tween_active", false)))
+		await get_tree().process_frame
+		badge_snapshot = scene_root.call("get_t_pose_badge_snapshot")
+		assert_true(float(badge_snapshot.get("displayed_fill_ratio", 0.0)) <= float(badge_snapshot.get("fill_ratio", 0.0)))
 		assert_eq(badge.custom_minimum_size, Vector2(75.0, 75.0))
 
 		scene_root.set("_latest_state", {

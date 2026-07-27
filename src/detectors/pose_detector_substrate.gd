@@ -85,6 +85,8 @@ const CALIBRATION_DEFAULT_COOLDOWN_MS := 1000
 const CALIBRATION_DEFAULT_MAX_WRIST_SHOULDER_Y_RATIO := 0.18
 const CALIBRATION_DEFAULT_MAX_ELBOW_SHOULDER_Y_RATIO := 0.18
 const CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG := 160.0
+const CALIBRATION_DEFAULT_GRID_SIZE_MULTIPLIER := 1.0
+const CALIBRATION_DEFAULT_CAMERA_SPACE_GRID_HEIGHT_OFFSET := 0.0
 
 var _config = null
 var _smoother: LandmarkSmoother = LandmarkSmoother.new()
@@ -340,6 +342,15 @@ func _get_calibration_threshold(key: String, fallback: float) -> float:
 	var thresholds := _get_calibration_thresholds_document()
 	return float(thresholds.get(key, fallback))
 
+func _get_calibration_grid_size_multiplier() -> float:
+	var t_pose_document := _get_calibration_t_pose_document()
+	var multiplier := float(t_pose_document.get("grid_size_multiplier", CALIBRATION_DEFAULT_GRID_SIZE_MULTIPLIER))
+	return multiplier if multiplier > 0.000001 else CALIBRATION_DEFAULT_GRID_SIZE_MULTIPLIER
+
+func _get_calibration_camera_space_grid_height_offset() -> float:
+	var t_pose_document := _get_calibration_t_pose_document()
+	return float(t_pose_document.get("camera_space_grid_height_offset", CALIBRATION_DEFAULT_CAMERA_SPACE_GRID_HEIGHT_OFFSET))
+
 func _sync_calibration_state_into_latest_state() -> void:
 	if _latest_state.is_empty():
 		_latest_state = _build_empty_state()
@@ -422,7 +433,7 @@ func process_landmarks(landmarks: Array, timestamp_ms: int = 0, tracking_frame: 
 	var smoothed_landmarks: Dictionary = _smoother.push_landmarks(landmarks)
 	var metrics: Dictionary = _build_metrics(smoothed_landmarks, timestamp_ms)
 	var tracking_state: StringName = _update_tracking_state(smoothed_landmarks)
-	var calibration_readiness := _evaluate_calibration_readiness(metrics, tracking_state, smoothed_landmarks)
+	var calibration_readiness := _evaluate_calibration_readiness(metrics, tracking_state, smoothed_landmarks, tracking_frame)
 	_update_calibration_session(runtime_timestamp_ms, calibration_readiness)
 	_update_baseline(metrics, tracking_state, smoothed_landmarks, runtime_timestamp_ms, tracking_frame)
 	_update_flow_tracking_state(smoothed_landmarks, metrics, timestamp_ms)
@@ -862,7 +873,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		_calibration_session["instruction_text"] = "Auto-calibration captured. Hold the T-pose to re-fire after cooldown"
 
 func _compute_calibration_grid_width(left_wrist: Dictionary, right_wrist: Dictionary) -> float:
-	return _camera_space_axis_distance(left_wrist, right_wrist, "x")
+	return _camera_space_axis_distance(left_wrist, right_wrist, "x") * _get_calibration_grid_size_multiplier()
 
 func _compute_calibration_grid_height(calibration_width: float, grid_content_aspect_ratio: float = FLOW_GRID_SOURCE_ASPECT_RATIO) -> float:
 	if calibration_width <= 0.0:
@@ -953,7 +964,7 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 	_calibration_session["result"] = "pending"
 	_calibration_session["failure_reason"] = String(readiness.get("failure_reason", "required_sample_landmarks_unavailable"))
 
-func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary) -> Dictionary:
+func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: StringName, landmarks_by_id: Dictionary, tracking_frame: Dictionary = {}) -> Dictionary:
 	var readiness := _build_default_calibration_readiness()
 	var hold_ms := _get_calibration_hold_ms()
 	var cooldown_ms := _get_calibration_cooldown_ms()
@@ -1055,7 +1066,7 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 		readiness["instruction_text"] = "Hold the T-pose — auto-calibration can re-fire after cooldown"
 		return readiness
 	var calibration_width := _compute_calibration_grid_width(left_wrist, right_wrist)
-	var calibration_height := _compute_calibration_grid_height(calibration_width, _resolve_flow_grid_content_aspect_ratio())
+	var calibration_height := _compute_calibration_grid_height(calibration_width, _resolve_flow_grid_content_aspect_ratio(tracking_frame))
 	var measurement_debug: Dictionary = readiness.get("measurements", {}) if readiness.get("measurements", {}) is Dictionary else {}
 	measurement_debug["calibration_width"] = calibration_width
 	measurement_debug["calibration_height"] = calibration_height
@@ -1521,7 +1532,7 @@ func _get_flow_grid_rect() -> Dictionary:
 	var anchor_x := float(_baseline.get("nose_x", 0.0))
 	var left_boundary := anchor_x - grid_width * 0.5
 	var right_boundary := anchor_x + grid_width * 0.5
-	var anchor_y := float(_baseline.get("left_shoulder_y", _baseline.get("shoulder_center_y", 0.0)))
+	var anchor_y := float(_baseline.get("left_shoulder_y", _baseline.get("shoulder_center_y", 0.0))) + _get_calibration_camera_space_grid_height_offset()
 	var top_boundary := anchor_y + cell_height * 1.5
 	var bottom_boundary := top_boundary - cell_height * float(FLOW_GRID_ROWS)
 	return {
