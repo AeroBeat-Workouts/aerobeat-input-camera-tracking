@@ -2836,7 +2836,7 @@ func _build_flow_signal_text() -> String:
 	var lines := [
 		"Flow direct-grid board",
 		"======================",
-		"Live detector truth for direct calibrated 4x3 wrist entry plus 8-way shoulder-relative motion.",
+		"Live detector truth for direct calibrated 4x3 wrist entry plus cardinal shoulder-relative motion.",
 		"",
 		"Left wrist",
 		"----------",
@@ -3087,14 +3087,6 @@ func _fmt_flow_direction(value: int) -> String:
 			return "left"
 		3:
 			return "right"
-		4:
-			return "up-left"
-		5:
-			return "up-right"
-		6:
-			return "down-left"
-		7:
-			return "down-right"
 		_:
 			return "-"
 
