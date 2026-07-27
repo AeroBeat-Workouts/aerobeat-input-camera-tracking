@@ -38,7 +38,7 @@ squat:
       # Height percentage of the calibrated 4x3 grid to keep blocked from the top edge downward.
       # Smaller values move the line upward and make squat activation easier.
       # Larger values move the line lower and require a deeper squat before the nose clears the blocked band.
-      blocked_height_ratio: 0.60
+      blocked_height_ratio: 0.50
 
 grid_detection:
   strike_subgrid:
