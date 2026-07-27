@@ -536,6 +536,52 @@ func test_sync_latest_detector_state_prefers_shallow_view_export_when_available(
 	assert_true(harness.get("_latest_state").get("nested") == provider.shared_nested)
 
 
+func test_live_proving_pose_updates_skip_fixture_pose_snapshot_capture_by_default() -> void:
+	var harness: Variant = _new_base_harness()
+	harness._reset_event_tracking()
+	harness.set("_latest_state", {
+		"frame_index": 12,
+		"timestamp_ms": 345,
+		"tracking_state": "tracking",
+		"landmarks_by_id": {0: {"x": 0.5, "y": 0.5}},
+		"metrics": {"fps": 60.0},
+	})
+
+	harness._record_fixture_state_snapshot("pose_updated")
+
+	var report: Dictionary = harness.get_fixture_capture_report()
+	var capture: Dictionary = report.get("state_timeline_capture", {})
+	assert_eq(int(capture.get("pose_snapshots_seen", 0)), 1)
+	assert_eq(int(capture.get("pose_snapshots_retained", 0)), 0)
+	assert_eq(int(capture.get("pose_snapshots_dropped", 0)), 1)
+	assert_true((report.get("state_timeline", []) as Array).is_empty())
+
+
+func test_prerecorded_pose_updates_still_capture_fixture_pose_snapshots() -> void:
+	var harness: Variant = _new_playback_harness()
+	harness._reset_event_tracking()
+	harness.set("_latest_state", {
+		"frame_index": 7,
+		"timestamp_ms": 890,
+		"tracking_state": "tracking",
+		"landmarks_by_id": {0: {"x": 0.25, "y": 0.75}},
+		"metrics": {"fps": 30.0},
+	})
+
+	harness._record_fixture_state_snapshot("pose_updated")
+
+	var report: Dictionary = harness.get_fixture_capture_report()
+	var capture: Dictionary = report.get("state_timeline_capture", {})
+	assert_eq(int(capture.get("pose_snapshots_seen", 0)), 1)
+	assert_eq(int(capture.get("pose_snapshots_retained", 0)), 1)
+	assert_eq(int(capture.get("pose_snapshots_dropped", 0)), 0)
+	var timeline: Array = report.get("state_timeline", []) as Array
+	assert_eq(timeline.size(), 1)
+	var entry: Dictionary = timeline[0] as Dictionary
+	assert_eq(String(entry.get("reason", "")), "pose_updated")
+	assert_true(entry.has("pose_snapshot"))
+
+
 func test_boxing_proving_scene_no_longer_has_in_scene_profile_picker_controls() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)

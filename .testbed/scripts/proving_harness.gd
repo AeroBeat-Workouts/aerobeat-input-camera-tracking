@@ -3126,6 +3126,9 @@ func _fixture_relative_ms(timestamp_ms: int = -1) -> int:
 func _should_capture_fixture_pose_state_snapshots() -> bool:
 	return fixture_state_timeline_mode != FIXTURE_STATE_TIMELINE_MODE_EVENTS_ONLY and fixture_pose_state_timeline_limit != 0
 
+func _should_skip_live_fixture_pose_snapshot_capture() -> bool:
+	return fixture_state_timeline_mode == FIXTURE_STATE_TIMELINE_MODE_BOUNDED and not _is_prerecorded_source_active()
+
 func _should_retain_full_fixture_state_timeline() -> bool:
 	return fixture_state_timeline_mode == FIXTURE_STATE_TIMELINE_MODE_FULL or fixture_pose_state_timeline_limit < 0
 
@@ -3228,7 +3231,7 @@ func _record_fixture_state_snapshot(reason: String) -> void:
 	var is_pose_snapshot := reason == "pose_updated"
 	if is_pose_snapshot:
 		_fixture_pose_state_snapshots_seen += 1
-		if not _should_capture_fixture_pose_state_snapshots():
+		if not _should_capture_fixture_pose_state_snapshots() or _should_skip_live_fixture_pose_snapshot_capture():
 			_fixture_pose_state_snapshots_dropped += 1
 			return
 	_fixture_state_sequence += 1
