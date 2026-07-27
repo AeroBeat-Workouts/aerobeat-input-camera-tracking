@@ -137,10 +137,8 @@ hook:
       window_ms: 250
       # Select which calibrated grid to evaluate against. strike_subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
-      # Minimum left/right column travel required to count as a hook. Lower values allow shorter lateral travel; higher values require crossing more strike-subgrid columns. input/runtime.
+      # Minimum signed outward column travel required to count as a hook. Lower values allow shorter outward moves; higher values require crossing more strike-subgrid columns in the hook direction. input/runtime.
       min_column_delta: 1
-      # Require this share of motion to be in the dominant lateral direction. Lower values tolerate messier diagonals; higher values require a cleaner sideward hook path. input/runtime.
-      direction_dominance_ratio: 0.55
     timing:
       # Keep the grid-based hook triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
       triggered_grace_ms: 500
@@ -178,10 +176,8 @@ uppercut:
       window_ms: 250
       # Select which calibrated grid to evaluate against. strike_subgrid means runtime uppercut travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
-      # Minimum upward row travel required to count as an uppercut. Lower values allow shorter vertical travel; higher values require crossing more strike-subgrid rows. input/runtime.
+      # Minimum signed upward row travel required to count as an uppercut. Lower values allow shorter rises; higher values require crossing more strike-subgrid rows toward the athlete-space top. input/runtime.
       min_row_delta: 1
-      # Require this share of motion to be in the dominant upward direction. Lower values tolerate messier diagonals; higher values require a cleaner vertical path. input/runtime.
-      direction_dominance_ratio: 0.55
     timing:
       # Keep the grid-based uppercut triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
       triggered_grace_ms: 500

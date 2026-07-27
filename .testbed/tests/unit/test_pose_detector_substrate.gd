@@ -2226,7 +2226,6 @@ func test_hook_grid_detection_uses_athlete_space_outward_column_transitions() ->
 				"evaluation": {
 					"window_ms": 250,
 					"min_cell_delta": 1,
-					"direction_dominance_ratio": 0.55,
 				},
 				"timing": {
 					"triggered_grace_ms": 500,
@@ -2265,6 +2264,7 @@ func test_hook_grid_detection_uses_athlete_space_outward_column_transitions() ->
 	assert_eq(int(left_debug.get("grid_column_delta", 0)), -2)
 	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
+	assert_false(bool(left_debug.get("wrist_on_required_hook_side", true)))
 
 func test_uppercut_grid_detection_uses_athlete_space_upward_row_transitions() -> void:
 	config.gesture_profile_document = {
@@ -2274,7 +2274,6 @@ func test_uppercut_grid_detection_uses_athlete_space_upward_row_transitions() ->
 				"evaluation": {
 					"window_ms": 250,
 					"min_cell_delta": 1,
-					"direction_dominance_ratio": 0.55,
 				},
 				"timing": {
 					"triggered_grace_ms": 500,

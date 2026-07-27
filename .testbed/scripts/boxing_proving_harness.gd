@@ -2019,10 +2019,12 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 				passed = averaged_velocity >= min_velocity
 		"dominance_ratio":
 			if using_grid_detection:
-				threshold_text = _fmt_float(side_debug.get("required_direction_dominance_ratio", 0.0))
-				current_text = _fmt_float(side_debug.get("grid_direction_dominance_ratio", 0.0))
+				var required_direction_label := String(side_debug.get("required_direction_label", ""))
+				var signed_axis_delta := int(side_debug.get("grid_column_delta", 0)) if family == "hook" else int(side_debug.get("grid_row_delta", 0))
+				threshold_text = required_direction_label
+				current_text = _fmt_signed_int(signed_axis_delta)
 				passed = bool(side_debug.get("grid_direction_gate_passed", false))
-				label = "Axis dominance ratio >= {threshold}"
+				label = "Signed %s delta follows {threshold}" % ["column" if family == "hook" else "row"]
 			elif family == "hook":
 				threshold_text = _fmt_float(hook_max_alignment_angle)
 				current_text = _fmt_float(hook_alignment_angle)
@@ -2036,10 +2038,9 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 		"directionality_ratio":
 			threshold_text = _fmt_bool(true)
 			if using_grid_detection:
-				var required_direction_label := String(side_debug.get("required_direction_label", ""))
-				current_text = "%s via %s" % [_fmt_bool(bool(side_debug.get("grid_direction_gate_passed", false))), String(side_debug.get("direction_reference_frame", "athlete_space"))]
-				passed = bool(side_debug.get("grid_direction_gate_passed", false))
-				label = "Required grid direction" if required_direction_label.is_empty() else "Required grid direction (%s)" % required_direction_label
+				current_text = "%s via %s" % [_fmt_bool(bool(side_debug.get("grid_transition_available", false))), String(side_debug.get("direction_reference_frame", "athlete_space"))]
+				passed = bool(side_debug.get("grid_transition_available", false))
+				label = "Observed grid transition available"
 			elif family == "hook":
 				var required_hook_side_label := String(side_debug.get("required_hook_side_label", ""))
 				current_text = _fmt_bool(hook_side_gate_passed)
@@ -2433,8 +2434,7 @@ func _build_boxing_event_feed_text() -> String:
 			3 * int(strike_subgrid.get("rows_multiplier", 2)),
 		])
 		lines.append("Minimum outward column travel: %d subcells" % int(hook_eval.get("min_column_delta", hook_eval.get("min_cell_delta", 0))))
-		lines.append("Axis dominance ratio: %s" % _fmt_float(hook_eval.get("direction_dominance_ratio", 0.0)))
-		lines.append("Hook direction reference: athlete-space outward columns (left hook = athlete_left, right hook = athlete_right)")
+		lines.append("Hook direction reference: athlete-space outward columns (left hook = athlete_left with negative signed delta, right hook = athlete_right with positive signed delta)")
 	else:
 		lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
 		lines.append("Max wrist angle from elbow horizontal ray: %s" % _fmt_float(hook_thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
@@ -2459,8 +2459,7 @@ func _build_boxing_event_feed_text() -> String:
 			3 * int(strike_subgrid.get("rows_multiplier", 2)),
 		])
 		lines.append("Minimum upward row travel: %d subcells" % int(uppercut_eval.get("min_row_delta", uppercut_eval.get("min_cell_delta", 0))))
-		lines.append("Axis dominance ratio: %s" % _fmt_float(uppercut_eval.get("direction_dominance_ratio", 0.0)))
-		lines.append("Uppercut direction reference: athlete-space upward rows")
+		lines.append("Uppercut direction reference: athlete-space upward rows (negative signed delta)")
 	else:
 		lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
 		lines.append("Max wrist angle from elbow vertical ray: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_angle_from_elbow_vertical_deg", 0.0)))

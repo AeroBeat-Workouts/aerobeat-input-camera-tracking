@@ -52,7 +52,6 @@ const HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG := 25.0
 
 const UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG := 25.0
 const GRID_DETECTION_DEFAULT_MIN_CELL_DELTA := 1
-const GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO := 0.55
 const GRID_VARIANT_BASE_GRID := "base_grid"
 const GRID_VARIANT_STRIKE_SUBGRID := "strike_subgrid"
 const STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER := 2
@@ -1409,8 +1408,6 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"grid_row_delta": int(state.get("grid_row_delta", 0)),
 		"grid_columns": int(_resolve_grid_variant_spec(String(config.get("grid_variant", GRID_VARIANT_BASE_GRID))).get("columns", FLOW_GRID_COLUMNS)),
 		"grid_rows": int(_resolve_grid_variant_spec(String(config.get("grid_variant", GRID_VARIANT_BASE_GRID))).get("rows", FLOW_GRID_ROWS)),
-		"required_direction_dominance_ratio": float(config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO)),
-		"grid_direction_dominance_ratio": float(state.get("grid_direction_dominance_ratio", 0.0)),
 		"grid_direction_gate_passed": bool(state.get("grid_direction_gate_passed", false)),
 		"grid_cell_delta_gate_passed": bool(state.get("grid_cell_delta_gate_passed", false)),
 	}
@@ -2095,7 +2092,6 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	var grid_current_row := int(grid_transition.get("current_row", -1))
 	var grid_column_delta := int(grid_transition.get("column_delta", 0))
 	var grid_row_delta := int(grid_transition.get("row_delta", 0))
-	var grid_direction_dominance_ratio := _compute_direction_dominance_ratio(lateral_speed, vertical_speed) if family == "hook" else _compute_direction_dominance_ratio(vertical_speed, lateral_speed)
 	state["last_wrist_velocity"] = speed
 	state["last_wrist_velocity_vector"] = motion_window.get("averaged_velocity_vector", velocity_vector)
 	state["last_lateral_velocity"] = lateral_speed
@@ -2130,7 +2126,6 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["grid_current_row"] = grid_current_row
 	state["grid_column_delta"] = grid_column_delta
 	state["grid_row_delta"] = grid_row_delta
-	state["grid_direction_dominance_ratio"] = grid_direction_dominance_ratio
 	state["grid_direction_gate_passed"] = false
 	state["grid_cell_delta_gate_passed"] = false
 	if family == "hook":
@@ -2192,15 +2187,12 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		var ready_to_trigger := false
 		if backend_name == BACKEND_GRID_DETECTION:
 			var min_axis_delta := max(1, int(config.get("min_column_delta", config.get("min_row_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))) if family == "hook" else max(1, int(config.get("min_row_delta", config.get("min_column_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
-			var dominance_requirement := clampf(float(config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO)), 0.0, 1.0)
 			state["grid_cell_delta_gate_passed"] = absi(grid_column_delta if family == "hook" else grid_row_delta) >= min_axis_delta
-			state["grid_direction_gate_passed"] = grid_direction_dominance_ratio >= dominance_requirement
 			if family == "hook":
-				var direction_ok := grid_column_delta < 0 if side == "left" else grid_column_delta > 0
-				ready_to_trigger = grid_transition_available and state["grid_cell_delta_gate_passed"] and state["grid_direction_gate_passed"] and direction_ok
+				state["grid_direction_gate_passed"] = grid_column_delta < 0 if side == "left" else grid_column_delta > 0
 			else:
-				var direction_ok := grid_row_delta < 0
-				ready_to_trigger = grid_transition_available and state["grid_cell_delta_gate_passed"] and state["grid_direction_gate_passed"] and direction_ok
+				state["grid_direction_gate_passed"] = grid_row_delta < 0
+			ready_to_trigger = grid_transition_available and state["grid_cell_delta_gate_passed"] and state["grid_direction_gate_passed"]
 		else:
 			var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
 			if family == "hook":
@@ -2908,7 +2900,6 @@ func _build_straight_punch_state(phase: String = STRAIGHT_PUNCH_STATE_TRACKING_L
 		"grid_current_row": -1,
 		"grid_column_delta": 0,
 		"grid_row_delta": 0,
-		"grid_direction_dominance_ratio": 0.0,
 		"grid_direction_gate_passed": false,
 		"grid_cell_delta_gate_passed": false,
 	}
@@ -3345,14 +3336,6 @@ func _build_pose_strike_grid_transition(side: String, timestamp_ms: int, grid_va
 		"row_delta": current_row - previous_row,
 	}
 
-func _compute_direction_dominance_ratio(dominant_axis: float, other_axis: float) -> float:
-	var dominant := absf(dominant_axis)
-	var other := absf(other_axis)
-	var total := dominant + other
-	if total <= 0.000001:
-		return 0.0
-	return dominant / total
-
 func _get_straight_punch_config() -> Dictionary:
 	var config := {
 		"enabled": true,
@@ -3460,7 +3443,6 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"grid_current_row": -1,
 		"grid_column_delta": 0,
 		"grid_row_delta": 0,
-		"grid_direction_dominance_ratio": 0.0,
 		"grid_direction_gate_passed": false,
 		"grid_cell_delta_gate_passed": false,
 	}
@@ -3488,7 +3470,6 @@ func _get_hook_config() -> Dictionary:
 		"grid_variant": GRID_VARIANT_STRIKE_SUBGRID,
 		"min_column_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
-		"direction_dominance_ratio": GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -3510,7 +3491,6 @@ func _get_hook_config() -> Dictionary:
 	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_STRIKE_SUBGRID))))
 	config["min_column_delta"] = max(1, int(evaluation.get("min_column_delta", evaluation.get("min_cell_delta", config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 	config["min_cell_delta"] = int(config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
-	config["direction_dominance_ratio"] = clampf(float(evaluation.get("direction_dominance_ratio", config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO))), 0.0, 1.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -3526,7 +3506,6 @@ func _get_uppercut_config() -> Dictionary:
 		"grid_variant": GRID_VARIANT_STRIKE_SUBGRID,
 		"min_row_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
-		"direction_dominance_ratio": GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
@@ -3548,7 +3527,6 @@ func _get_uppercut_config() -> Dictionary:
 	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_STRIKE_SUBGRID))))
 	config["min_row_delta"] = max(1, int(evaluation.get("min_row_delta", evaluation.get("min_cell_delta", config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 	config["min_cell_delta"] = int(config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
-	config["direction_dominance_ratio"] = clampf(float(evaluation.get("direction_dominance_ratio", config.get("direction_dominance_ratio", GRID_DETECTION_DEFAULT_DIRECTION_DOMINANCE_RATIO))), 0.0, 1.0)
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
