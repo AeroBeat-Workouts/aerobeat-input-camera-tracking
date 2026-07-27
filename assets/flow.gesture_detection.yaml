@@ -12,8 +12,12 @@ calibration:
     hold_ms: 4000
     # Allow re-firing from the same held T-pose after this cooldown elapses. Shorter values allow quicker recalibration spam; longer values force more separation between captures. input/runtime.
     cooldown_ms: 4000
-    # Scale the calibrated 4x3 grid size after wrist-span capture. 1.0 = current size; higher grows the grid; lower shrinks it. input/runtime.
-    grid_size_multiplier: 1.1
+    # Expand the effective calibrated 4x3 bounds outward from the captured base box. Ratios are per-edge fractions of the base width/height, so 0.05 adds 5% outward padding on that edge. input/runtime/debug.
+    grid_bounds_padding:
+      top: 0.05
+      bottom: 0.05
+      left: 0.05
+      right: 0.05
     # Shift the calibrated 4x3 grid vertically in camera space. 0.0 = current height; positive raises the grid; negative lowers it. input/runtime.
     camera_space_grid_height_offset: -0.05
     thresholds:

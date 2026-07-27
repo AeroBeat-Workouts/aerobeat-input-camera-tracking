@@ -1703,12 +1703,17 @@ func test_calibration_uses_preview_descriptor_aspect_ratio_for_grid_height() -> 
 	assert_true(is_equal_approx(float(baseline.get("grid_content_aspect_ratio", 0.0)), 1.5))
 	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), 0.44 * 1.5 * 3.0 / 4.0))
 
-func test_calibration_grid_size_multiplier_and_height_offset_tune_baseline_grid_truth() -> void:
+func test_calibration_grid_bounds_padding_and_height_offset_keep_base_box_and_expand_effective_grid_truth() -> void:
 	config.gesture_profile_document = {
 		"calibration": {
 			"mode": "t_pose_auto",
 			"t_pose": {
-				"grid_size_multiplier": 1.1,
+				"grid_bounds_padding": {
+					"top": 0.10,
+					"bottom": 0.20,
+					"left": 0.05,
+					"right": 0.15,
+				},
 				"camera_space_grid_height_offset": 0.09,
 			}
 		}
@@ -1718,16 +1723,37 @@ func test_calibration_grid_size_multiplier_and_height_offset_tune_baseline_grid_
 		var state := substrate.process_landmarks(_make_pose_frame(), 1000 + idx * 16)
 		assert_eq(String(state["tracking_state"]), "tracking")
 	var baseline: Dictionary = substrate.get_latest_state().get("baseline", {})
-	assert_true(is_equal_approx(float(baseline.get("grid_width", 0.0)), 0.44 * 1.1))
-	assert_true(is_equal_approx(float(baseline.get("horizontal_wrist_span", 0.0)), 0.44 * 1.1))
-	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), 0.44 * 1.1 * (16.0 / 9.0) * 3.0 / 4.0))
+	var base_grid_width := 0.44
+	var base_grid_height := 0.44 * (16.0 / 9.0) * 3.0 / 4.0
+	assert_true(is_equal_approx(float(baseline.get("grid_width", 0.0)), base_grid_width))
+	assert_true(is_equal_approx(float(baseline.get("horizontal_wrist_span", 0.0)), base_grid_width))
+	assert_true(is_equal_approx(float(baseline.get("grid_height", 0.0)), base_grid_height))
 	var state := substrate.process_landmarks(_make_pose_frame(), 1200)
 	var grid_debug: Dictionary = state.get("gesture_debug", {}).get("flow", {}).get("grid", {})
+	var padding: Dictionary = grid_debug.get("padding", {})
+	var expected_left_padding := base_grid_width * 0.05
+	var expected_right_padding := base_grid_width * 0.15
+	var expected_top_padding := base_grid_height * 0.10
+	var expected_bottom_padding := base_grid_height * 0.20
 	assert_true(is_equal_approx(float(grid_debug.get("anchor_y", 0.0)), 0.70 + 0.09))
-	assert_true(is_equal_approx(float(grid_debug.get("grid_width", 0.0)), 0.44 * 1.1))
-	assert_true(is_equal_approx(float(grid_debug.get("grid_height", 0.0)), 0.44 * 1.1 * (16.0 / 9.0) * 3.0 / 4.0))
-	assert_true(is_equal_approx(float(grid_debug.get("left_boundary", 0.0)), 0.50 - (0.44 * 1.1 * 0.5)))
-	assert_true(is_equal_approx(float(grid_debug.get("right_boundary", 0.0)), 0.50 + (0.44 * 1.1 * 0.5)))
+	assert_true(is_equal_approx(float(grid_debug.get("grid_width", 0.0)), base_grid_width))
+	assert_true(is_equal_approx(float(grid_debug.get("grid_height", 0.0)), base_grid_height))
+	assert_true(is_equal_approx(float(grid_debug.get("base_width", 0.0)), base_grid_width))
+	assert_true(is_equal_approx(float(grid_debug.get("base_height", 0.0)), base_grid_height))
+	assert_true(is_equal_approx(float(grid_debug.get("effective_grid_width", 0.0)), base_grid_width + expected_left_padding + expected_right_padding))
+	assert_true(is_equal_approx(float(grid_debug.get("effective_grid_height", 0.0)), base_grid_height + expected_top_padding + expected_bottom_padding))
+	assert_true(is_equal_approx(float(grid_debug.get("base_left_boundary", 0.0)), 0.50 - (base_grid_width * 0.5)))
+	assert_true(is_equal_approx(float(grid_debug.get("base_right_boundary", 0.0)), 0.50 + (base_grid_width * 0.5)))
+	assert_true(is_equal_approx(float(grid_debug.get("left_boundary", 0.0)), (0.50 - (base_grid_width * 0.5)) - expected_left_padding))
+	assert_true(is_equal_approx(float(grid_debug.get("right_boundary", 0.0)), (0.50 + (base_grid_width * 0.5)) + expected_right_padding))
+	assert_true(is_equal_approx(float(grid_debug.get("padding", {}).get("left", 0.0)), expected_left_padding))
+	assert_true(is_equal_approx(float(grid_debug.get("padding", {}).get("right", 0.0)), expected_right_padding))
+	assert_true(is_equal_approx(float(grid_debug.get("padding", {}).get("top", 0.0)), expected_top_padding))
+	assert_true(is_equal_approx(float(grid_debug.get("padding", {}).get("bottom", 0.0)), expected_bottom_padding))
+	assert_true(is_equal_approx(float(padding.get("left_ratio", 0.0)), 0.05))
+	assert_true(is_equal_approx(float(padding.get("right_ratio", 0.0)), 0.15))
+	assert_true(is_equal_approx(float(padding.get("top_ratio", 0.0)), 0.10))
+	assert_true(is_equal_approx(float(padding.get("bottom_ratio", 0.0)), 0.20))
 
 func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 	_calibrate_stance()

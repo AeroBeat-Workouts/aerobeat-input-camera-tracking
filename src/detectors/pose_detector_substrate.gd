@@ -92,7 +92,7 @@ const CALIBRATION_DEFAULT_COOLDOWN_MS := 1000
 const CALIBRATION_DEFAULT_MAX_WRIST_SHOULDER_Y_RATIO := 0.18
 const CALIBRATION_DEFAULT_MAX_ELBOW_SHOULDER_Y_RATIO := 0.18
 const CALIBRATION_DEFAULT_MIN_ELBOW_ANGLE_DEG := 160.0
-const CALIBRATION_DEFAULT_GRID_SIZE_MULTIPLIER := 1.0
+const CALIBRATION_DEFAULT_GRID_BOUNDS_PADDING_RATIO := 0.0
 const CALIBRATION_DEFAULT_CAMERA_SPACE_GRID_HEIGHT_OFFSET := 0.0
 
 var _config = null
@@ -349,10 +349,25 @@ func _get_calibration_threshold(key: String, fallback: float) -> float:
 	var thresholds := _get_calibration_thresholds_document()
 	return float(thresholds.get(key, fallback))
 
-func _get_calibration_grid_size_multiplier() -> float:
+func _get_calibration_grid_bounds_padding_document() -> Dictionary:
 	var t_pose_document := _get_calibration_t_pose_document()
-	var multiplier := float(t_pose_document.get("grid_size_multiplier", CALIBRATION_DEFAULT_GRID_SIZE_MULTIPLIER))
-	return multiplier if multiplier > 0.000001 else CALIBRATION_DEFAULT_GRID_SIZE_MULTIPLIER
+	return t_pose_document.get("grid_bounds_padding", {}) if t_pose_document.get("grid_bounds_padding", {}) is Dictionary else {}
+
+func _get_calibration_grid_bounds_padding_ratio(edge: String) -> float:
+	var padding_document := _get_calibration_grid_bounds_padding_document()
+	return maxf(float(padding_document.get(edge, CALIBRATION_DEFAULT_GRID_BOUNDS_PADDING_RATIO)), 0.0)
+
+func _resolve_calibration_grid_bounds_padding(base_grid_width: float, base_grid_height: float) -> Dictionary:
+	return {
+		"left_ratio": _get_calibration_grid_bounds_padding_ratio("left"),
+		"right_ratio": _get_calibration_grid_bounds_padding_ratio("right"),
+		"top_ratio": _get_calibration_grid_bounds_padding_ratio("top"),
+		"bottom_ratio": _get_calibration_grid_bounds_padding_ratio("bottom"),
+		"left": maxf(base_grid_width, 0.0) * _get_calibration_grid_bounds_padding_ratio("left"),
+		"right": maxf(base_grid_width, 0.0) * _get_calibration_grid_bounds_padding_ratio("right"),
+		"top": maxf(base_grid_height, 0.0) * _get_calibration_grid_bounds_padding_ratio("top"),
+		"bottom": maxf(base_grid_height, 0.0) * _get_calibration_grid_bounds_padding_ratio("bottom"),
+	}
 
 func _get_calibration_camera_space_grid_height_offset() -> float:
 	var t_pose_document := _get_calibration_t_pose_document()
@@ -883,7 +898,7 @@ func _update_baseline(metrics: Dictionary, tracking_state: StringName, landmarks
 		_calibration_session["instruction_text"] = "Auto-calibration captured. Hold the T-pose to re-fire after cooldown"
 
 func _compute_calibration_grid_width(left_wrist: Dictionary, right_wrist: Dictionary) -> float:
-	return _camera_space_axis_distance(left_wrist, right_wrist, "x") * _get_calibration_grid_size_multiplier()
+	return _camera_space_axis_distance(left_wrist, right_wrist, "x")
 
 func _compute_calibration_grid_height(calibration_width: float, grid_content_aspect_ratio: float = FLOW_GRID_SOURCE_ASPECT_RATIO) -> float:
 	if calibration_width <= 0.0:
@@ -1513,8 +1528,13 @@ func _build_flow_grid_debug() -> Dictionary:
 	var top_boundary := float(grid_rect.get("top_boundary", 0.0))
 	var right_boundary := float(grid_rect.get("right_boundary", 0.0))
 	var bottom_boundary := float(grid_rect.get("bottom_boundary", 0.0))
+	var base_left_boundary := float(grid_rect.get("base_left_boundary", left_boundary))
+	var base_top_boundary := float(grid_rect.get("base_top_boundary", top_boundary))
+	var base_right_boundary := float(grid_rect.get("base_right_boundary", right_boundary))
+	var base_bottom_boundary := float(grid_rect.get("base_bottom_boundary", bottom_boundary))
 	var anchor_x := float(grid_rect.get("anchor_x", 0.0))
 	var anchor_y := float(grid_rect.get("anchor_y", 0.0))
+	var padding: Dictionary = grid_rect.get("padding", {}) if grid_rect.get("padding", {}) is Dictionary else {}
 	var cell_rects: Array = []
 	if is_calibrated:
 		for athlete_row: int in range(rows):
@@ -1534,6 +1554,10 @@ func _build_flow_grid_debug() -> Dictionary:
 					"top": cell_top,
 					"bottom": cell_bottom,
 				})
+	var base_grid_width := float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0)))
+	var base_grid_height := float(_baseline.get("grid_height", 0.0))
+	var effective_grid_width := right_boundary - left_boundary
+	var effective_grid_height := top_boundary - bottom_boundary
 	var grid_debug := {
 		"is_calibrated": is_calibrated,
 		"columns": columns,
@@ -1544,21 +1568,30 @@ func _build_flow_grid_debug() -> Dictionary:
 		"cell_size": cell_width,
 		"cell_width": cell_width,
 		"cell_height": cell_height,
-		"width": right_boundary - left_boundary,
-		"height": top_boundary - bottom_boundary,
+		"width": effective_grid_width,
+		"height": effective_grid_height,
 		"anchor_x": anchor_x,
 		"wrist_midpoint_x": float(_baseline.get("wrist_midpoint_x", 0.0)),
 		"anchor_y": anchor_y,
 		"left_wrist_x": float(_baseline.get("left_wrist_x", 0.0)),
 		"right_wrist_x": float(_baseline.get("right_wrist_x", 0.0)),
-		"grid_width": float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0))),
-		"grid_height": float(_baseline.get("grid_height", 0.0)),
+		"grid_width": base_grid_width,
+		"grid_height": base_grid_height,
+		"effective_grid_width": effective_grid_width,
+		"effective_grid_height": effective_grid_height,
 		"grid_content_aspect_ratio": float(_baseline.get("grid_content_aspect_ratio", FLOW_GRID_SOURCE_ASPECT_RATIO)),
 		"horizontal_wrist_span": float(_baseline.get("horizontal_wrist_span", 0.0)),
 		"left_boundary": left_boundary,
 		"top_boundary": top_boundary,
 		"right_boundary": right_boundary,
 		"bottom_boundary": bottom_boundary,
+		"base_left_boundary": base_left_boundary,
+		"base_top_boundary": base_top_boundary,
+		"base_right_boundary": base_right_boundary,
+		"base_bottom_boundary": base_bottom_boundary,
+		"base_width": base_grid_width,
+		"base_height": base_grid_height,
+		"padding": padding.duplicate(true),
 		"cell_rects": cell_rects,
 	}
 	var strike_subgrid := _build_strike_subgrid_debug(grid_rect, is_calibrated)
@@ -1567,15 +1600,23 @@ func _build_flow_grid_debug() -> Dictionary:
 	return grid_debug
 
 func _get_flow_grid_rect() -> Dictionary:
-	var cell_width := _get_flow_cell_width()
-	var cell_height := _get_flow_cell_height(cell_width)
-	var grid_width := float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0)))
+	var base_grid_width := float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0)))
+	var base_grid_height := float(_baseline.get("grid_height", 0.0))
+	var padding := _resolve_calibration_grid_bounds_padding(base_grid_width, base_grid_height)
+	var effective_grid_width := base_grid_width + float(padding.get("left", 0.0)) + float(padding.get("right", 0.0))
+	var effective_grid_height := base_grid_height + float(padding.get("top", 0.0)) + float(padding.get("bottom", 0.0))
+	var cell_width := effective_grid_width / float(FLOW_GRID_COLUMNS) if effective_grid_width > 0.0 else 0.0
+	var cell_height := effective_grid_height / float(FLOW_GRID_ROWS) if effective_grid_height > 0.0 else 0.0
 	var anchor_x := float(_baseline.get("nose_x", 0.0))
-	var left_boundary := anchor_x - grid_width * 0.5
-	var right_boundary := anchor_x + grid_width * 0.5
 	var anchor_y := float(_baseline.get("left_shoulder_y", _baseline.get("shoulder_center_y", 0.0))) + _get_calibration_camera_space_grid_height_offset()
-	var top_boundary := anchor_y + cell_height * 1.5
-	var bottom_boundary := top_boundary - cell_height * float(FLOW_GRID_ROWS)
+	var base_left_boundary := anchor_x - base_grid_width * 0.5
+	var base_right_boundary := anchor_x + base_grid_width * 0.5
+	var base_top_boundary := anchor_y + base_grid_height * 0.5
+	var base_bottom_boundary := anchor_y - base_grid_height * 0.5
+	var left_boundary := base_left_boundary - float(padding.get("left", 0.0))
+	var right_boundary := base_right_boundary + float(padding.get("right", 0.0))
+	var top_boundary := base_top_boundary + float(padding.get("top", 0.0))
+	var bottom_boundary := base_bottom_boundary - float(padding.get("bottom", 0.0))
 	return {
 		"cell_width": cell_width,
 		"cell_height": cell_height,
@@ -1583,8 +1624,15 @@ func _get_flow_grid_rect() -> Dictionary:
 		"right_boundary": right_boundary,
 		"top_boundary": top_boundary,
 		"bottom_boundary": bottom_boundary,
+		"base_left_boundary": base_left_boundary,
+		"base_right_boundary": base_right_boundary,
+		"base_top_boundary": base_top_boundary,
+		"base_bottom_boundary": base_bottom_boundary,
+		"base_width": base_grid_width,
+		"base_height": base_grid_height,
 		"anchor_x": anchor_x,
 		"anchor_y": anchor_y,
+		"padding": padding,
 	}
 
 func _flow_history_duration_ms(history: Array) -> int:
@@ -2423,21 +2471,12 @@ func _analyze_flow_landmark_motion(history_name: String, max_window_ms: int) -> 
 	}
 
 func _get_flow_cell_width() -> float:
-	var grid_width := float(_baseline.get("grid_width", _baseline.get("horizontal_wrist_span", 0.0)))
-	if grid_width <= 0.0:
-		return 0.0
-	return grid_width / float(FLOW_GRID_COLUMNS)
+	var grid_rect := _get_flow_grid_rect()
+	return float(grid_rect.get("cell_width", 0.0))
 
-func _get_flow_cell_height(cell_width: float = -1.0) -> float:
-	if cell_width <= 0.0:
-		cell_width = _get_flow_cell_width()
-	if cell_width <= 0.0:
-		return 0.0
-	var stored_grid_height := float(_baseline.get("grid_height", 0.0))
-	if stored_grid_height > 0.0:
-		return stored_grid_height / float(FLOW_GRID_ROWS)
-	var grid_content_aspect_ratio := float(_baseline.get("grid_content_aspect_ratio", FLOW_GRID_SOURCE_ASPECT_RATIO))
-	return cell_width * _sanitize_flow_grid_content_aspect_ratio(grid_content_aspect_ratio)
+func _get_flow_cell_height(_cell_width: float = -1.0) -> float:
+	var grid_rect := _get_flow_grid_rect()
+	return float(grid_rect.get("cell_height", 0.0))
 
 func _get_flow_cell_size() -> float:
 	return _get_flow_cell_width()

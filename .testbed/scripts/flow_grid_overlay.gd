@@ -35,6 +35,7 @@ func get_overlay_snapshot() -> Dictionary:
 	var cell_rects: Array = _grid_debug.get("cell_rects", []) as Array
 	var render_snapshot := _build_render_snapshot()
 	var strike_subgrid: Dictionary = _grid_debug.get("strike_subgrid", {}) if _grid_debug.get("strike_subgrid", {}) is Dictionary else {}
+	var padding: Dictionary = _grid_debug.get("padding", {}) if _grid_debug.get("padding", {}) is Dictionary else {}
 	return {
 		"is_calibrated": bool(_grid_debug.get("is_calibrated", false)),
 		"columns": int(_grid_debug.get("columns", 0)),
@@ -45,6 +46,10 @@ func get_overlay_snapshot() -> Dictionary:
 		"cell_height": float(_grid_debug.get("cell_height", _grid_debug.get("cell_size", 0.0))),
 		"width": float(_grid_debug.get("width", 0.0)),
 		"height": float(_grid_debug.get("height", 0.0)),
+		"base_width": float(_grid_debug.get("base_width", _grid_debug.get("grid_width", 0.0))),
+		"base_height": float(_grid_debug.get("base_height", _grid_debug.get("grid_height", 0.0))),
+		"effective_grid_width": float(_grid_debug.get("effective_grid_width", _grid_debug.get("width", 0.0))),
+		"effective_grid_height": float(_grid_debug.get("effective_grid_height", _grid_debug.get("height", 0.0))),
 		"line_count": maxi(0, int(_grid_debug.get("columns", 0)) + 1) + maxi(0, int(_grid_debug.get("rows", 0)) + 1),
 		"dashed_line_count": maxi(0, int(strike_subgrid.get("columns", 0)) - 1 - (int(_grid_debug.get("columns", 0)) - 1)) + maxi(0, int(strike_subgrid.get("rows", 0)) - 1 - (int(_grid_debug.get("rows", 0)) - 1)),
 		"cell_count": cell_rects.size(),
@@ -52,6 +57,11 @@ func get_overlay_snapshot() -> Dictionary:
 		"top_boundary": float(_grid_debug.get("top_boundary", 0.0)),
 		"right_boundary": float(_grid_debug.get("right_boundary", 0.0)),
 		"bottom_boundary": float(_grid_debug.get("bottom_boundary", 0.0)),
+		"base_left_boundary": float(_grid_debug.get("base_left_boundary", 0.0)),
+		"base_top_boundary": float(_grid_debug.get("base_top_boundary", 0.0)),
+		"base_right_boundary": float(_grid_debug.get("base_right_boundary", 0.0)),
+		"base_bottom_boundary": float(_grid_debug.get("base_bottom_boundary", 0.0)),
+		"padding": padding.duplicate(true),
 		"strike_subgrid": strike_subgrid.duplicate(true),
 		"render_top_left": render_snapshot.get("top_left", Vector2.ZERO),
 		"render_bottom_right": render_snapshot.get("bottom_right", Vector2.ZERO),
