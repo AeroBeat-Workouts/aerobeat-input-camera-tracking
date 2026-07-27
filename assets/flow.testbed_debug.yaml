@@ -10,6 +10,6 @@ visuals:
   show_landmark_hit_target_labels: false
 refresh:
   # Refresh the big debug panels this often so they stay readable. input debug only.
-  debug_panel_refresh_interval_ms: 160
+  debug_panel_refresh_interval_ms: 1000 #160
   # Refresh the live inspector values this often. input debug only.
-  inspector_live_refresh_interval_ms: 120
+  inspector_live_refresh_interval_ms: 1000 #120
