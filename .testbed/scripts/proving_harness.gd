@@ -16,6 +16,9 @@ const VENDOR_MODEL_LITE := "models/pose_landmarker_lite.task"
 const VENDOR_MODEL_FULL := "models/pose_landmarker_full.task"
 const VENDOR_MODEL_HEAVY := "models/pose_landmarker_heavy.task"
 const DEFAULT_TRACKING_OVERLAY_MODE := "optimized"
+const TESTBED_CAMERA_CACHE_PATH := "user://testbed/proving_harness_camera_selection.cfg"
+const TESTBED_CAMERA_CACHE_SECTION := "camera_selection"
+const TESTBED_CAMERA_CACHE_KEY_LIVE_DEVICE_ID := "last_live_camera_device_id"
 
 const NOSE_ID := 0
 const LEFT_SHOULDER_ID := 11
@@ -501,9 +504,12 @@ func _refresh_t_pose_calibration_badge(session: Dictionary) -> void:
 	if _t_pose_calibration_badge == null or not is_instance_valid(_t_pose_calibration_badge):
 		return
 	var state_name := String(session.get("state", "idle"))
+	var cooldown_active := state_name == "cooldown"
 	var fill_ratio := clampf(float(session.get("hold_progress_ratio", 0.0)), 0.0, 1.0)
 	var progress_active := state_name == "holding" and fill_ratio > 0.0 and fill_ratio < 1.0
 	_t_pose_calibration_badge.visible = true
+	if _t_pose_calibration_badge.has_method("set_cooldown_active"):
+		_t_pose_calibration_badge.set_cooldown_active(cooldown_active)
 	_t_pose_calibration_badge.set_progress(progress_active, fill_ratio if progress_active else 0.0)
 	_position_t_pose_calibration_badge()
 
@@ -576,7 +582,7 @@ func _calibration_status_text(state_name: String, _session: Dictionary, has_base
 		"holding":
 			return "T-pose qualified. Keep both arms level and extended until the hold completes."
 		"cooldown":
-			return "Auto-calibration is cooling down. Keep the T-pose held if you want it to re-fire as soon as the cooldown ends."
+			return "Auto-calibration is cooling down. The current sample is locked until cooldown ends, then a fresh hold can re-fire."
 		"succeeded":
 			return "Auto-calibration complete. Boxing and Flow are using the latest held T-pose wrist-span baseline."
 		"cancelled":
@@ -985,7 +991,7 @@ func _refresh_camera_source_controls() -> void:
 		return
 	_camera_devices = _load_available_camera_devices()
 	if _selected_live_camera_device_id.strip_edges().is_empty():
-		_selected_live_camera_device_id = _resolve_default_live_camera_device_id(_camera_devices)
+		_selected_live_camera_device_id = _resolve_initial_live_camera_device_id(_camera_devices)
 	_populate_camera_source_picker()
 
 func _should_show_camera_source_controls() -> bool:
@@ -1008,6 +1014,12 @@ func _load_available_camera_devices() -> Array:
 		})
 	return devices
 
+func _resolve_initial_live_camera_device_id(devices: Array) -> String:
+	var persisted_device_id := _load_persisted_live_camera_device_id()
+	if not persisted_device_id.is_empty() and _device_list_has_id(devices, persisted_device_id):
+		return persisted_device_id
+	return _resolve_default_live_camera_device_id(devices)
+
 func _resolve_default_live_camera_device_id(devices: Array) -> String:
 	var source := _get_effective_camera_source()
 	if not _is_live_camera_source_value(source):
@@ -1020,6 +1032,35 @@ func _resolve_default_live_camera_device_id(devices: Array) -> String:
 	if not normalized.is_empty():
 		return normalized
 	return _first_camera_device_id(devices)
+
+func _camera_selection_cache_path() -> String:
+	return TESTBED_CAMERA_CACHE_PATH
+
+func _load_persisted_live_camera_device_id() -> String:
+	var cache_path := _camera_selection_cache_path().strip_edges()
+	if cache_path.is_empty():
+		return ""
+	var cache := ConfigFile.new()
+	if cache.load(cache_path) != OK:
+		return ""
+	return _normalize_live_camera_device_id(String(cache.get_value(TESTBED_CAMERA_CACHE_SECTION, TESTBED_CAMERA_CACHE_KEY_LIVE_DEVICE_ID, "")).strip_edges())
+
+func _persist_selected_live_camera_device_id(device_id: String) -> void:
+	var normalized_device_id := _normalize_live_camera_device_id(device_id)
+	if normalized_device_id.is_empty():
+		return
+	var cache_path := _camera_selection_cache_path().strip_edges()
+	if cache_path.is_empty():
+		return
+	var cache_dir := ProjectSettings.globalize_path(cache_path.get_base_dir())
+	if not cache_dir.is_empty():
+		DirAccess.make_dir_recursive_absolute(cache_dir)
+	var cache := ConfigFile.new()
+	cache.load(cache_path)
+	cache.set_value(TESTBED_CAMERA_CACHE_SECTION, TESTBED_CAMERA_CACHE_KEY_LIVE_DEVICE_ID, normalized_device_id)
+	var save_result := cache.save(cache_path)
+	if save_result != OK:
+		push_warning("[ProvingHarness] Failed to persist live camera selection to %s (error %d)" % [cache_path, save_result])
 
 func _camera_device_id(device: Dictionary) -> String:
 	var device_id := String(device.get("id", "")).strip_edges()
@@ -1099,6 +1140,7 @@ func _switch_live_camera_source(device_id: String) -> void:
 	_camera_switch_in_progress = false
 	_refresh_camera_source_controls()
 	if success:
+		_persist_selected_live_camera_device_id(_selected_live_camera_device_id)
 		_record_event("camera_source_switched", {"device_id": _selected_live_camera_device_id})
 		_update_status("Live camera switched", Color.GREEN)
 	elif _should_show_camera_source_controls():

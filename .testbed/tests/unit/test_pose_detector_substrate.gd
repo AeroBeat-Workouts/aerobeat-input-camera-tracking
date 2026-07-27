@@ -1994,7 +1994,7 @@ func test_calibration_session_auto_fires_after_t_pose_hold_and_commits_baseline(
 	assert_eq(String(session.get("state", "")), "succeeded")
 	assert_eq(int(session.get("captured_sample_frames", 0)), 1)
 
-func test_calibration_session_uses_monotonic_runtime_time_and_can_refire_after_cooldown_without_pose_break() -> void:
+func test_calibration_session_uses_monotonic_runtime_time_and_requires_a_fresh_hold_after_cooldown() -> void:
 	var t_pose_frame := _make_calibration_pose_frame({
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.22, "y": 0.70, "z": 0.0, "v": 0.99},
 		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.78, "y": 0.70, "z": 0.0, "v": 0.99},
@@ -2013,10 +2013,22 @@ func test_calibration_session_uses_monotonic_runtime_time_and_can_refire_after_c
 	var cooldown_session: Dictionary = state.get("calibration_session", {})
 	var rewind_runtime_ms := int(state.get("runtime_timestamp_ms", 0))
 	assert_eq(String(cooldown_session.get("state", "")), "cooldown")
+	assert_eq(int(cooldown_session.get("hold_progress_ms", -1)), 0)
+	assert_eq(int(cooldown_session.get("hold_started_at_ms", -1)), 0)
 	assert_true(rewind_runtime_ms > first_runtime_ms)
 
+	var saw_fresh_post_cooldown_hold := false
 	for idx in range(20):
 		state = substrate.process_landmarks(t_pose_frame, 200 + idx * 100)
+		var session: Dictionary = state.get("calibration_session", {})
+		if String(session.get("state", "")) == "holding":
+			saw_fresh_post_cooldown_hold = true
+			assert_false(bool((session.get("readiness", {}) as Dictionary).get("ready", true)))
+			assert_true(int(session.get("hold_progress_ms", 0)) < int(session.get("hold_ms", 0)))
+			assert_true(int(session.get("hold_started_at_ms", 0)) > first_capture_ms)
+			break
+	assert_true(saw_fresh_post_cooldown_hold)
+
 	state = substrate.process_landmarks(t_pose_frame, 5000)
 	var final_session: Dictionary = state.get("calibration_session", {})
 	assert_eq(String(final_session.get("state", "")), "succeeded")

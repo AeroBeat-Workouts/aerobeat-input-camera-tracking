@@ -7,10 +7,12 @@ const SEGMENTS := 48
 const FILL_TWEEN_DURATION_SEC := 0.12
 const ICON_SIZE := Vector2(42.0, 42.0)
 const IDLE_COLOR := Color(0.44, 0.46, 0.50, 0.58)
+const COOLDOWN_COLOR := Color(0.44, 0.46, 0.50, 0.26)
 const PROGRESS_COLOR := Color(0.18, 0.83, 0.34, 0.82)
 const BORDER_COLOR := Color(1.0, 1.0, 1.0, 0.78)
 const HOVER_BORDER_COLOR := Color(1.0, 1.0, 1.0, 0.96)
 const ICON_TINT := Color(1.0, 1.0, 1.0, 0.96)
+const COOLDOWN_ICON_TINT := Color(0.78, 0.80, 0.84, 0.52)
 
 var fill_ratio := 0.0:
 	set(value):
@@ -24,6 +26,12 @@ var displayed_fill_ratio := 0.0:
 var progress_active := false:
 	set(value):
 		progress_active = value
+		queue_redraw()
+
+var cooldown_active := false:
+	set(value):
+		cooldown_active = value
+		_refresh_icon_tint()
 		queue_redraw()
 
 var _hovered := false
@@ -55,16 +63,22 @@ func set_progress(active: bool, ratio: float) -> void:
 	progress_active = true
 	_animate_fill_ratio_to(clamped_ratio)
 
+func set_cooldown_active(active: bool) -> void:
+	cooldown_active = active
+
 func get_badge_snapshot() -> Dictionary:
 	return {
 		"fill_ratio": fill_ratio,
 		"displayed_fill_ratio": displayed_fill_ratio,
 		"progress_active": progress_active,
+		"cooldown_active": cooldown_active,
 		"hovered": _hovered,
 		"tween_active": _fill_ratio_tween != null,
 		"size": size,
 		"custom_minimum_size": custom_minimum_size,
 		"icon_present": _icon_rect != null and _icon_rect.texture != null,
+		"icon_modulate": _icon_rect.modulate if _icon_rect != null else Color.WHITE,
+		"idle_color": COOLDOWN_COLOR if cooldown_active else IDLE_COLOR,
 	}
 
 func _ensure_icon() -> void:
@@ -80,6 +94,7 @@ func _ensure_icon() -> void:
 	_icon_rect.position = (custom_minimum_size - ICON_SIZE) * 0.5
 	_icon_rect.modulate = ICON_TINT
 	add_child(_icon_rect)
+	_refresh_icon_tint()
 
 func _gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
@@ -106,6 +121,11 @@ func _animate_fill_ratio_to(target_ratio: float) -> void:
 		_fill_ratio_tween = null
 	)
 
+func _refresh_icon_tint() -> void:
+	if _icon_rect == null:
+		return
+	_icon_rect.modulate = COOLDOWN_ICON_TINT if cooldown_active else ICON_TINT
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_MOUSE_ENTER:
 		_hovered = true
@@ -121,7 +141,7 @@ func _notification(what: int) -> void:
 func _draw() -> void:
 	var center := size * 0.5
 	var radius := maxf(0.0, minf(size.x, size.y) * 0.5 - BORDER_WIDTH)
-	draw_circle(center, radius, IDLE_COLOR)
+	draw_circle(center, radius, COOLDOWN_COLOR if cooldown_active else IDLE_COLOR)
 	if progress_active and displayed_fill_ratio > 0.0:
 		if displayed_fill_ratio >= 0.999:
 			draw_circle(center, radius, PROGRESS_COLOR)

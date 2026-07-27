@@ -1868,17 +1868,23 @@ func test_proving_scenes_mount_t_pose_badge_in_preview_overlay_and_show_live_hol
 
 		scene_root.set("_latest_state", {
 			"baseline": {"is_calibrated": true, "capture_source": "calibration_session", "sample_frames": 1},
-			"calibration_session": _make_test_calibration_session("succeeded", {
-				"hold_progress_ms": 750,
-				"hold_progress_ratio": 1.0,
-				"captured_sample_frames": 1,
-				"instruction_text": "Auto-calibration captured. Hold the T-pose to re-fire after cooldown",
+			"calibration_session": _make_test_calibration_session("cooldown", {
+				"hold_progress_ms": 0,
+				"hold_progress_ratio": 0.0,
+				"cooldown_remaining_ms": 640,
+				"failure_reason": "cooldown_active",
+				"instruction_text": "Auto-calibration is cooling down — wait for unlock, then hold a fresh T-pose to re-fire",
 			}),
 		})
 		scene_root.call("_refresh_calibration_flow_ui")
 		badge_snapshot = scene_root.call("get_t_pose_badge_snapshot")
 		assert_false(bool(badge_snapshot.get("progress_active", true)))
+		assert_true(bool(badge_snapshot.get("cooldown_active", false)))
 		assert_true(is_equal_approx(float(badge_snapshot.get("fill_ratio", 1.0)), 0.0))
+		var idle_color: Color = badge_snapshot.get("idle_color", Color.WHITE)
+		assert_true(idle_color.a < 0.58)
+		var icon_modulate: Color = badge_snapshot.get("icon_modulate", Color.WHITE)
+		assert_true(icon_modulate.a < 0.96)
 
 func test_clicking_t_pose_badge_opens_live_calibration_inspector_truth() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

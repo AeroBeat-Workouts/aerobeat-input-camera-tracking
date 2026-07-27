@@ -934,7 +934,11 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 	_calibration_session["is_active"] = _get_calibration_mode() == CALIBRATION_MODE_T_POSE_AUTO
 	_calibration_session["hold_progress_ms"] = int(readiness.get("hold_progress_ms", 0))
 	_calibration_session["hold_progress_ratio"] = float(readiness.get("hold_progress_ratio", 0.0))
-	_calibration_session["cooldown_remaining_ms"] = int(readiness.get("cooldown_remaining_ms", 0))
+	var cooldown_remaining_ms := int(readiness.get("cooldown_remaining_ms", -1))
+	if cooldown_remaining_ms < 0:
+		var last_fired_at_ms := int(_calibration_session.get("last_fired_at_ms", 0))
+		cooldown_remaining_ms = maxi((last_fired_at_ms + _get_calibration_cooldown_ms()) - timestamp_ms, 0) if last_fired_at_ms > 0 else 0
+	_calibration_session["cooldown_remaining_ms"] = cooldown_remaining_ms
 	_calibration_session["instruction_key"] = String(readiness.get("instruction_key", "hold_t_pose"))
 	_calibration_session["instruction_text"] = String(readiness.get("instruction_text", "Hold a straight-arm T-pose to auto-calibrate"))
 	var hold_started_at_ms := int(readiness.get("hold_started_at_ms", 0))
@@ -943,17 +947,19 @@ func _update_calibration_session(timestamp_ms: int, readiness: Dictionary) -> vo
 		_calibration_session["state"] = CALIBRATION_SESSION_IDLE
 		_calibration_session["result"] = CALIBRATION_SESSION_IDLE
 		return
+	if cooldown_remaining_ms > 0:
+		_calibration_session["state"] = CALIBRATION_SESSION_COOLDOWN
+		_calibration_session["result"] = "pending"
+		_calibration_session["failure_reason"] = "cooldown_active"
+		_calibration_session["hold_started_at_ms"] = 0
+		_calibration_session["hold_progress_ms"] = 0
+		_calibration_session["hold_progress_ratio"] = 0.0
+		_calibration_session["next_fire_at_ms"] = int(_calibration_session.get("last_fired_at_ms", 0)) + _get_calibration_cooldown_ms()
+		return
 	if bool(readiness.get("ready", false)):
 		_calibration_session["state"] = CALIBRATION_SESSION_HOLDING
 		_calibration_session["result"] = "pending"
 		_calibration_session["failure_reason"] = ""
-		return
-	var cooldown_remaining_ms := int(readiness.get("cooldown_remaining_ms", 0))
-	if cooldown_remaining_ms > 0 and bool(readiness.get("qualified", false)):
-		_calibration_session["state"] = CALIBRATION_SESSION_COOLDOWN
-		_calibration_session["result"] = "pending"
-		_calibration_session["failure_reason"] = "cooldown_active"
-		_calibration_session["next_fire_at_ms"] = timestamp_ms + cooldown_remaining_ms
 		return
 	if bool(readiness.get("qualified", false)):
 		_calibration_session["state"] = CALIBRATION_SESSION_HOLDING
@@ -1046,8 +1052,19 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 		readiness["instruction_text"] = "Straighten both elbows in the T-pose"
 		return readiness
 	readiness["qualified"] = true
+	var last_fired_at_ms := int(_calibration_session.get("last_fired_at_ms", 0))
+	var cooldown_remaining_ms := maxi((last_fired_at_ms + cooldown_ms) - runtime_timestamp_ms, 0) if last_fired_at_ms > 0 else 0
+	readiness["cooldown_remaining_ms"] = cooldown_remaining_ms
+	if cooldown_remaining_ms > 0:
+		readiness["failure_reason"] = "cooldown_active"
+		readiness["hold_started_at_ms"] = 0
+		readiness["hold_progress_ms"] = 0
+		readiness["hold_progress_ratio"] = 0.0
+		readiness["instruction_key"] = "hold_t_pose"
+		readiness["instruction_text"] = "Auto-calibration is cooling down — wait for unlock, then hold a fresh T-pose to re-fire"
+		return readiness
 	var hold_started_at_ms := int(_calibration_session.get("hold_started_at_ms", 0))
-	if hold_started_at_ms <= 0:
+	if hold_started_at_ms <= 0 or (last_fired_at_ms > 0 and hold_started_at_ms <= last_fired_at_ms):
 		hold_started_at_ms = runtime_timestamp_ms
 	var hold_progress_ms := maxi(runtime_timestamp_ms - hold_started_at_ms, 0)
 	readiness["hold_started_at_ms"] = hold_started_at_ms
@@ -1057,13 +1074,6 @@ func _evaluate_calibration_readiness(metrics: Dictionary, tracking_state: String
 	if not bool(readiness.get("hold_ready", false)):
 		readiness["instruction_key"] = "hold_t_pose"
 		readiness["instruction_text"] = "Hold the T-pose steady to finish auto-calibration"
-		return readiness
-	var last_fired_at_ms := int(_calibration_session.get("last_fired_at_ms", 0))
-	var cooldown_remaining_ms := maxi((last_fired_at_ms + cooldown_ms) - runtime_timestamp_ms, 0) if last_fired_at_ms > 0 else 0
-	readiness["cooldown_remaining_ms"] = cooldown_remaining_ms
-	if cooldown_remaining_ms > 0:
-		readiness["instruction_key"] = "hold_t_pose"
-		readiness["instruction_text"] = "Hold the T-pose — auto-calibration can re-fire after cooldown"
 		return readiness
 	var calibration_width := _compute_calibration_grid_width(left_wrist, right_wrist)
 	var calibration_height := _compute_calibration_grid_height(calibration_width, _resolve_flow_grid_content_aspect_ratio(tracking_frame))
