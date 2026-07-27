@@ -1772,13 +1772,33 @@ func test_detects_flow_cell_entry_events_and_surfaces_debug_truth() -> void:
 	assert_eq(flow_events[0]["name"], "flow_left_cell_entered")
 	assert_eq(int(flow_events[0]["cell"]), 7)
 	var emitted_direction := int(flow_events[0]["direction"])
-	assert_true(emitted_direction >= 0)
+	assert_eq(emitted_direction, 2)
 	var left_flow: Dictionary = flow_state.get("gesture_debug", {}).get("flow", {}).get("left", {})
 	assert_eq(int(left_flow.get("current_cell", -1)), 7)
 	assert_true(int(left_flow.get("history_points", 0)) >= 2)
+	assert_eq(int(left_flow.get("current_direction", -1)), emitted_direction)
 	assert_eq(int(left_flow.get("cell_meta", {}).get("previous_cell", -1)), 6)
 	assert_eq(int(left_flow.get("cell_meta", {}).get("current_cell", -1)), 7)
+	assert_eq(int(left_flow.get("cell_meta", {}).get("column_delta", 0)), 1)
+	assert_eq(int(left_flow.get("cell_meta", {}).get("row_delta", 0)), 0)
+	assert_eq(String(left_flow.get("cell_meta", {}).get("direction_source", "")), "previous_cell_entry")
 	assert_eq(int(left_flow.get("cell_meta", {}).get("direction", -1)), emitted_direction)
+
+func test_flow_entry_direction_uses_previous_cell_transition_even_without_motion_window_truth() -> void:
+	_calibrate_stance()
+	substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.48, "y": 0.72},
+	}), 1100)
+	var flow_state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.72},
+	}), 1101)
+	var flow_events := _flow_events(flow_state.get("events", []))
+	assert_eq(flow_events.size(), 1)
+	assert_eq(int(flow_events[0].get("direction", -1)), 2)
+	var left_flow: Dictionary = flow_state.get("gesture_debug", {}).get("flow", {}).get("left", {})
+	assert_eq(int(left_flow.get("current_direction", -1)), 2)
+	assert_eq(int(left_flow.get("direction_analysis", {}).get("direction", -1)), -1)
+	assert_eq(int(left_flow.get("cell_meta", {}).get("direction", -1)), 2)
 
 func test_flow_debug_surfaces_shared_grid_and_nose_wrist_truth() -> void:
 	_calibrate_stance()

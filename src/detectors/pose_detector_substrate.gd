@@ -1488,7 +1488,8 @@ func _build_flow_side_debug(side: String) -> Dictionary:
 	var latest_sample: Dictionary = history[history.size() - 1] if history.size() > 0 else {}
 	var cell_meta: Dictionary = _get_flow_meta("flow_%s_cell" % side)
 	var landmark_id := PoseLandmarkIds.LEFT_WRIST if side == "left" else PoseLandmarkIds.RIGHT_WRIST
-	return _build_flow_landmark_debug(StringName("%s_wrist" % side), landmark_id, history, analysis, cell_meta, latest_sample)
+	var current_direction := int(cell_meta.get("direction", -1))
+	return _build_flow_landmark_debug(StringName("%s_wrist" % side), landmark_id, history, analysis, cell_meta, latest_sample, current_direction)
 
 func _build_flow_nose_debug() -> Dictionary:
 	var history: Array = _get_flow_history("nose")
@@ -1496,8 +1497,9 @@ func _build_flow_nose_debug() -> Dictionary:
 	var latest_sample: Dictionary = history[history.size() - 1] if history.size() > 0 else {}
 	return _build_flow_landmark_debug(&"nose", PoseLandmarkIds.NOSE, history, analysis, {}, latest_sample)
 
-func _build_flow_landmark_debug(landmark_key: StringName, landmark_id: int, history: Array, analysis: Dictionary, cell_meta: Dictionary = {}, latest_sample: Dictionary = {}) -> Dictionary:
+func _build_flow_landmark_debug(landmark_key: StringName, landmark_id: int, history: Array, analysis: Dictionary, cell_meta: Dictionary = {}, latest_sample: Dictionary = {}, current_direction_override: int = -1) -> Dictionary:
 	var grid_rect := _get_flow_grid_rect()
+	var current_direction := current_direction_override if current_direction_override >= 0 else int(analysis.get("direction", -1))
 	return {
 		"landmark_key": String(landmark_key),
 		"landmark_id": landmark_id,
@@ -1507,7 +1509,7 @@ func _build_flow_landmark_debug(landmark_key: StringName, landmark_id: int, hist
 		"latest_relative_position": latest_sample.get("relative_position", Vector2.ZERO),
 		"latest_confidence": float(latest_sample.get("confidence", 0.0)),
 		"current_cell": int(latest_sample.get("cell", -1)),
-		"current_direction": int(analysis.get("direction", -1)),
+		"current_direction": current_direction,
 		"grid_anchor": Vector2(float(grid_rect.get("anchor_x", 0.0)), float(grid_rect.get("anchor_y", 0.0))),
 		"grid_cell_size": float(grid_rect.get("cell_width", 0.0)),
 		"grid_cell_width": float(grid_rect.get("cell_width", 0.0)),
@@ -2375,12 +2377,23 @@ func _process_flow_cell_entry(events: Array, side: String, timestamp_ms: int) ->
 		_set_flow_meta(meta_name, flow_meta)
 		return
 	var analysis := _analyze_flow_motion(side, FLOW_DIRECTION_WINDOW_MAX_MS)
-	var direction := int(analysis.get("direction", -1))
+	var direction := _flow_direction_index_from_cell_transition(previous_cell, current_cell)
+	var previous_column := _flow_cell_column(previous_cell)
+	var current_column := _flow_cell_column(current_cell)
+	var previous_row := _flow_cell_row(previous_cell)
+	var current_row := _flow_cell_row(current_cell)
 	flow_meta["previous_cell"] = previous_cell
 	flow_meta["current_cell"] = current_cell
+	flow_meta["previous_column"] = previous_column
+	flow_meta["current_column"] = current_column
+	flow_meta["previous_row"] = previous_row
+	flow_meta["current_row"] = current_row
+	flow_meta["column_delta"] = current_column - previous_column
+	flow_meta["row_delta"] = current_row - previous_row
 	flow_meta["last_emit_ms"] = timestamp_ms
 	flow_meta["entered_at_ms"] = timestamp_ms
 	flow_meta["direction"] = direction
+	flow_meta["direction_source"] = "previous_cell_entry"
 	flow_meta["duration_ms"] = int(analysis.get("duration_ms", 0))
 	flow_meta["net_distance"] = float(analysis.get("net_distance", 0.0))
 	flow_meta["avg_confidence"] = float(analysis.get("avg_confidence", 0.0))
@@ -2516,6 +2529,23 @@ func _flow_direction_index_from_vector(vector: Vector2) -> int:
 	if abs_y > abs_x:
 		return 0 if vector.y > 0.0 else 1
 	return 3 if vector.x > 0.0 else 2
+
+func _flow_direction_index_from_cell_transition(previous_cell: int, current_cell: int) -> int:
+	var previous_column := _flow_cell_column(previous_cell)
+	var current_column := _flow_cell_column(current_cell)
+	var previous_row := _flow_cell_row(previous_cell)
+	var current_row := _flow_cell_row(current_cell)
+	if previous_column < 0 or current_column < 0 or previous_row < 0 or current_row < 0:
+		return -1
+	var column_delta := current_column - previous_column
+	var row_delta := current_row - previous_row
+	if column_delta == 0 and row_delta == 0:
+		return -1
+	if column_delta != 0 and row_delta != 0:
+		return -1
+	if row_delta != 0:
+		return 0 if row_delta < 0 else 1
+	return 2 if column_delta > 0 else 3
 
 func _emit_flow_cell_event(events: Array, side: String, cell: int, direction: int) -> void:
 	events.append({

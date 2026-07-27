@@ -2891,16 +2891,18 @@ func _build_metrics_text() -> String:
 		lines.append("Flow direct-grid readouts")
 		lines.append("------------------------")
 		lines.append("Left wrist")
-		lines.append(_format_flow_analysis_line("recent motion", left_flow.get("direction_analysis", {})))
+		lines.append(_format_flow_entry_truth_line(left_flow))
+		lines.append(_format_flow_analysis_line("continuity motion", left_flow.get("direction_analysis", {})))
 		lines.append("current cell=%s latest=%s rel=%s conf=%s" % [_fmt_flow_candidate(left_flow), _fmt_vec2(left_flow.get("latest_position", Vector2.ZERO)), _fmt_vec2(left_flow.get("latest_relative_position", Vector2.ZERO)), _fmt_float(left_flow.get("latest_confidence", 0.0))])
 		lines.append("vel=%s dir=%s" % [_fmt_vec3(velocities.get("left_hand", Vector3.ZERO)), _fmt_vec2(directions.get("left_hand", Vector2.ZERO))])
 		lines.append("")
 		lines.append("Right wrist")
-		lines.append(_format_flow_analysis_line("recent motion", right_flow.get("direction_analysis", {})))
+		lines.append(_format_flow_entry_truth_line(right_flow))
+		lines.append(_format_flow_analysis_line("continuity motion", right_flow.get("direction_analysis", {})))
 		lines.append("current cell=%s latest=%s rel=%s conf=%s" % [_fmt_flow_candidate(right_flow), _fmt_vec2(right_flow.get("latest_position", Vector2.ZERO)), _fmt_vec2(right_flow.get("latest_relative_position", Vector2.ZERO)), _fmt_float(right_flow.get("latest_confidence", 0.0))])
 		lines.append("vel=%s dir=%s" % [_fmt_vec3(velocities.get("right_hand", Vector3.ZERO)), _fmt_vec2(directions.get("right_hand", Vector2.ZERO))])
 		lines.append("")
-		lines.append("Local wrist trails are continuity debug only; hit truth is detector-owned cell entry plus direction.")
+		lines.append("Local wrist trails and motion windows are continuity debug only; Flow direction truth is previous entered cell -> current entered cell.")
 	return "\n".join(lines)
 
 func _format_flow_event_row(event_name: String, hand_debug: Dictionary) -> String:
@@ -2936,6 +2938,17 @@ func _format_flow_analysis_line(label: String, analysis_variant: Variant) -> Str
 		_fmt_float(analysis.get("avg_confidence", 0.0)),
 		_fmt_flow_direction(int(analysis.get("direction", -1))),
 		_fmt_vec2(analysis.get("net_delta", Vector2.ZERO)),
+	]
+
+func _format_flow_entry_truth_line(hand_debug: Dictionary) -> String:
+	var cell_meta: Dictionary = hand_debug.get("cell_meta", {}) if hand_debug.get("cell_meta", {}) is Dictionary else {}
+	if cell_meta.is_empty():
+		return "entry truth: waiting for previous cell -> current cell transition"
+	return "entry truth: %s -> %s  dir=%s  source=%s" % [
+		_fmt_flow_cell(int(cell_meta.get("previous_cell", -1))),
+		_fmt_flow_cell(int(cell_meta.get("current_cell", -1))),
+		_fmt_flow_direction(int(cell_meta.get("direction", -1))),
+		String(cell_meta.get("direction_source", "previous_cell_entry")),
 	]
 
 func _format_flow_sanity_line(side: String, hand_debug: Dictionary) -> String:
