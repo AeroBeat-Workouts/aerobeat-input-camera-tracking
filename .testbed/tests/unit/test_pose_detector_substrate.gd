@@ -2328,6 +2328,160 @@ func test_uppercut_grid_detection_uses_athlete_space_upward_row_transitions() ->
 	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
 
+func test_hook_grid_detection_accumulates_in_family_horizontal_progress_across_curved_path() -> void:
+	config.gesture_profile_document = {
+		"hook": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 2,
+				},
+				"timing": {
+					"triggered_grace_ms": 500,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 50,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+	}), 1100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+	}), 1160)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "left"), ["ready"])
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.61, "y": 0.62},
+	}), 1240)
+	assert_false(_event_names(state.get("events", [])).has("hook_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 1)
+	assert_false(bool(left_debug.get("grid_progress_ready", false)))
+	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+	}), 1320)
+	assert_true(_event_names(state.get("events", [])).has("hook_left"))
+	left_debug = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 2)
+	assert_eq(int(left_debug.get("grid_progress_threshold", 0)), 2)
+	assert_true(bool(left_debug.get("grid_progress_ready", false)))
+	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
+	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), 2)
+	assert_true(int(left_debug.get("grid_row_delta", 0)) != 0)
+
+func test_uppercut_grid_detection_accumulates_upward_progress_across_curved_path_with_horizontal_drift() -> void:
+	config.gesture_profile_document = {
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 2,
+				},
+				"timing": {
+					"triggered_grace_ms": 500,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 50,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.64, "y": 0.62},
+	}), 2100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.64, "y": 0.62},
+	}), 2160)
+	assert_true(["tracking_lost", "ready"].has(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", ""))))
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.72},
+	}), 2240)
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 1)
+	assert_false(bool(left_debug.get("grid_progress_ready", false)))
+	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
+	assert_true(int(left_debug.get("grid_column_delta", 0)) != 0)
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.53, "y": 0.84},
+	}), 2320)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	left_debug = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 2)
+	assert_eq(int(left_debug.get("grid_progress_threshold", 0)), 2)
+	assert_true(bool(left_debug.get("grid_progress_ready", false)))
+	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
+	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), 2)
+	assert_true(int(left_debug.get("grid_row_delta", 0)) < 0)
+
+func test_hook_grid_detection_does_not_fire_when_signed_progress_stays_below_threshold() -> void:
+	config.gesture_profile_document = {
+		"hook": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 3,
+				},
+				"timing": {
+					"triggered_grace_ms": 500,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 50,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+	}), 3100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+	}), 3160)
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.61, "y": 0.62},
+	}), 3240)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.62},
+	}), 3320)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.61, "y": 0.72},
+	}), 3400)
+	assert_false(_event_names(state.get("events", [])).has("hook_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "ready")
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 2)
+	assert_eq(int(left_debug.get("grid_progress_threshold", 0)), 3)
+	assert_false(bool(left_debug.get("grid_progress_ready", false)))
+	assert_false(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
+	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), 3)
+
 func test_uppercut_grid_detection_buffers_fast_same_wrist_repeat_until_rearmed() -> void:
 	config.gesture_profile_document = {
 		"uppercut": {
@@ -2379,6 +2533,7 @@ func test_uppercut_grid_detection_buffers_fast_same_wrist_repeat_until_rearmed()
 	assert_true(bool(left_debug.get("buffered_grid_transition_available", false)))
 	assert_eq(int(left_debug.get("buffered_grid_previous_cell", -1)), 26)
 	assert_eq(int(left_debug.get("buffered_grid_current_cell", -1)), 10)
+	assert_true(int(left_debug.get("buffered_grid_accumulated_progress", 0)) >= 1)
 
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},

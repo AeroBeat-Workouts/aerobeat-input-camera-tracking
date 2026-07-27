@@ -1410,11 +1410,17 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"grid_rows": int(_resolve_grid_variant_spec(String(config.get("grid_variant", GRID_VARIANT_BASE_GRID))).get("rows", FLOW_GRID_ROWS)),
 		"grid_direction_gate_passed": bool(state.get("grid_direction_gate_passed", false)),
 		"grid_cell_delta_gate_passed": bool(state.get("grid_cell_delta_gate_passed", false)),
+		"grid_accumulated_progress": int(state.get("grid_accumulated_progress", 0)),
+		"grid_progress_threshold": int(state.get("grid_progress_threshold", 0)),
+		"grid_progress_ready": bool(state.get("grid_progress_ready", false)),
+		"grid_progress_window_ms": int(state.get("grid_progress_window_ms", 0)),
+		"grid_progress_transition_count": int((state.get("grid_progress_history", []) as Array).size()),
 		"buffered_grid_transition_available": not (state.get("buffered_grid_transition", {}) as Dictionary).is_empty(),
 		"buffered_grid_previous_cell": int((state.get("buffered_grid_transition", {}) as Dictionary).get("previous_cell", -1)),
 		"buffered_grid_current_cell": int((state.get("buffered_grid_transition", {}) as Dictionary).get("current_cell", -1)),
 		"buffered_grid_column_delta": int((state.get("buffered_grid_transition", {}) as Dictionary).get("column_delta", 0)),
 		"buffered_grid_row_delta": int((state.get("buffered_grid_transition", {}) as Dictionary).get("row_delta", 0)),
+		"buffered_grid_accumulated_progress": int((state.get("buffered_grid_transition", {}) as Dictionary).get("accumulated_progress", 0)),
 	}
 	if family == "hook":
 		debug["outward_velocity"] = float(state.get("outward_velocity", 0.0))
@@ -2133,6 +2139,8 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["grid_row_delta"] = grid_row_delta
 	state["grid_direction_gate_passed"] = false
 	state["grid_cell_delta_gate_passed"] = false
+	state["grid_progress_threshold"] = 0
+	state["grid_progress_ready"] = false
 	if family == "hook":
 		var current_max_hook_angle_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
 		state["wrist_horizontal_angle_gate_passed"] = wrist_angle_from_elbow_horizontal_deg <= current_max_hook_angle_deg + 0.000001
@@ -2156,6 +2164,9 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		state["not_ready_started_timestamp_ms"] = -1
 		state["buffered_grid_transition"] = {}
 		state["buffered_grid_transition_key"] = ""
+		state["grid_progress_history"] = []
+		state["grid_accumulated_progress"] = 0
+		state["grid_progress_ready"] = false
 		_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRACKING_LOST)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -2189,27 +2200,39 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["reacquire_started_timestamp_ms"] = -1
 			state["buffered_grid_transition"] = {}
 			state["buffered_grid_transition_key"] = ""
+			state["grid_progress_history"] = []
+			state["grid_accumulated_progress"] = 0
+			state["grid_progress_ready"] = false
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
 		_set_pose_strike_state(family, side, state)
 		return
 	var min_axis_delta := 0
 	var qualifying_grid_transition := false
+	var accumulated_grid_progress := 0
+	var grid_progress_ready := false
 	if backend_name == BACKEND_GRID_DETECTION:
 		min_axis_delta = max(1, int(config.get("min_column_delta", config.get("min_row_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))))) if family == "hook" else max(1, int(config.get("min_row_delta", config.get("min_column_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
-		state["grid_cell_delta_gate_passed"] = absi(grid_column_delta if family == "hook" else grid_row_delta) >= min_axis_delta
+		state["grid_progress_threshold"] = min_axis_delta
 		if family == "hook":
 			state["grid_direction_gate_passed"] = grid_column_delta > 0 if side == "left" else grid_column_delta < 0
 		else:
 			state["grid_direction_gate_passed"] = grid_row_delta < 0
-		qualifying_grid_transition = grid_transition_available and state["grid_cell_delta_gate_passed"] and state["grid_direction_gate_passed"]
-		if qualifying_grid_transition and phase != POSE_STRIKE_STATE_READY:
+		var grid_progress := _update_pose_strike_grid_progress(state, family, side, grid_transition, timestamp_ms, int(config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS)))
+		accumulated_grid_progress = int(grid_progress.get("accumulated_progress", 0))
+		grid_progress_ready = accumulated_grid_progress >= min_axis_delta
+		state["grid_accumulated_progress"] = accumulated_grid_progress
+		state["grid_progress_ready"] = grid_progress_ready
+		state["grid_cell_delta_gate_passed"] = grid_progress_ready
+		qualifying_grid_transition = grid_transition_available and state["grid_direction_gate_passed"]
+		if phase != POSE_STRIKE_STATE_READY and grid_progress_ready and qualifying_grid_transition:
 			_buffer_pose_strike_grid_transition(state, grid_transition)
 	if phase == POSE_STRIKE_STATE_READY:
 		var ready_to_trigger := false
 		var trigger_grid_transition := {}
 		if backend_name == BACKEND_GRID_DETECTION:
-			if qualifying_grid_transition:
-				trigger_grid_transition = grid_transition
+			if grid_progress_ready and qualifying_grid_transition:
+				trigger_grid_transition = grid_transition.duplicate(true)
+				trigger_grid_transition["accumulated_progress"] = accumulated_grid_progress
 			else:
 				trigger_grid_transition = _get_buffered_pose_strike_grid_transition(state)
 			ready_to_trigger = not trigger_grid_transition.is_empty()
@@ -2231,7 +2254,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			var blocking_state := _get_same_family_threshold_blocking_state(family, side, timestamp_ms)
 			if not blocking_state.is_empty():
 				_apply_same_family_block(state, blocking_state)
-				if backend_name == BACKEND_GRID_DETECTION and qualifying_grid_transition:
+				if backend_name == BACKEND_GRID_DETECTION and grid_progress_ready and qualifying_grid_transition:
 					_buffer_pose_strike_grid_transition(state, grid_transition)
 			else:
 				var triggered_grace_ms := max(0, int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)))
@@ -2269,6 +2292,9 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["depth_closeness_history"] = []
 			_reset_depth_analysis_state(state)
 			state["not_ready_started_timestamp_ms"] = -1
+			state["grid_progress_history"] = []
+			state["grid_accumulated_progress"] = 0
+			state["grid_progress_ready"] = false
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -3374,10 +3400,12 @@ func _pose_strike_grid_transition_key(transition: Dictionary) -> String:
 func _buffer_pose_strike_grid_transition(state: Dictionary, transition: Dictionary) -> void:
 	if transition.is_empty():
 		return
-	var transition_key := _pose_strike_grid_transition_key(transition)
+	var buffered_transition := transition.duplicate(true)
+	buffered_transition["accumulated_progress"] = int(state.get("grid_accumulated_progress", 0))
+	var transition_key := _pose_strike_grid_transition_key(buffered_transition)
 	if transition_key.is_empty() or transition_key == String(state.get("last_emitted_grid_transition_key", "")):
 		return
-	state["buffered_grid_transition"] = transition.duplicate(true)
+	state["buffered_grid_transition"] = buffered_transition
 	state["buffered_grid_transition_key"] = transition_key
 
 func _get_buffered_pose_strike_grid_transition(state: Dictionary) -> Dictionary:
@@ -3399,6 +3427,33 @@ func _consume_pose_strike_grid_transition(state: Dictionary, transition: Diction
 	if transition_key == String(state.get("buffered_grid_transition_key", "")):
 		state["buffered_grid_transition"] = {}
 		state["buffered_grid_transition_key"] = ""
+
+func _update_pose_strike_grid_progress(state: Dictionary, family: String, side: String, transition: Dictionary, timestamp_ms: int, window_ms: int) -> Dictionary:
+	var history: Array = (state.get("grid_progress_history", []) as Array).duplicate(true)
+	var clamped_window_ms := max(1, window_ms)
+	while history.size() > 0 and timestamp_ms - int((history[0] as Dictionary).get("timestamp_ms", timestamp_ms)) > clamped_window_ms:
+		history.remove_at(0)
+	if not transition.is_empty():
+		var transition_copy := transition.duplicate(true)
+		var transition_key := _pose_strike_grid_transition_key(transition_copy)
+		var last_key := _pose_strike_grid_transition_key(history[history.size() - 1] as Dictionary) if history.size() > 0 else ""
+		if not transition_key.is_empty() and transition_key != last_key:
+			history.append(transition_copy)
+	var accumulated_progress := 0
+	var direction_sign := 1 if side == "left" else -1
+	for entry in history:
+		var typed_entry := entry as Dictionary
+		if family == "hook":
+			accumulated_progress += maxi(0, int(typed_entry.get("column_delta", 0)) * direction_sign)
+		else:
+			accumulated_progress += maxi(0, -int(typed_entry.get("row_delta", 0)))
+	state["grid_progress_history"] = history
+	state["grid_accumulated_progress"] = accumulated_progress
+	state["grid_progress_window_ms"] = clamped_window_ms
+	return {
+		"history": history,
+		"accumulated_progress": accumulated_progress,
+	}
 
 func _get_straight_punch_config() -> Dictionary:
 	var config := {
@@ -3509,6 +3564,11 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"grid_row_delta": 0,
 		"grid_direction_gate_passed": false,
 		"grid_cell_delta_gate_passed": false,
+		"grid_accumulated_progress": 0,
+		"grid_progress_threshold": 0,
+		"grid_progress_ready": false,
+		"grid_progress_window_ms": 0,
+		"grid_progress_history": [],
 		"buffered_grid_transition": {},
 		"buffered_grid_transition_key": "",
 		"last_emitted_grid_transition_key": "",
