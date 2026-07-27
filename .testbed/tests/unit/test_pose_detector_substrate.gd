@@ -2328,6 +2328,201 @@ func test_uppercut_grid_detection_uses_athlete_space_upward_row_transitions() ->
 	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
 
+func test_uppercut_grid_detection_buffers_fast_same_wrist_repeat_until_rearmed() -> void:
+	config.gesture_profile_document = {
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 1,
+				},
+				"timing": {
+					"triggered_grace_ms": 120,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 40,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2160)
+	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2320)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["triggered"])
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2440)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["not_ready"])
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2470)
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "not_ready")
+	assert_true(bool(left_debug.get("buffered_grid_transition_available", false)))
+	assert_eq(int(left_debug.get("buffered_grid_previous_cell", -1)), 26)
+	assert_eq(int(left_debug.get("buffered_grid_current_cell", -1)), 10)
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2480)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["ready"])
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2521)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["triggered"])
+	left_debug = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_false(bool(left_debug.get("buffered_grid_transition_available", true)))
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2700)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["not_ready"])
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2750)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2810)
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
+	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
+func test_hook_grid_detection_buffers_fast_opposite_side_same_family_chain_until_block_clears() -> void:
+	config.gesture_profile_document = {
+		"hook": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 1,
+				},
+				"timing": {
+					"triggered_grace_ms": 120,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 40,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1160)
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("state", "")), "ready")
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1220)
+	assert_true(_event_names(state.get("events", [])).has("hook_left"))
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.44, "y": 0.72},
+	}), 1280)
+	assert_false(_event_names(state.get("events", [])).has("hook_right"))
+	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
+	assert_eq(String(right_debug.get("state", "")), "ready")
+	assert_true(bool(right_debug.get("buffered_grid_transition_available", false)))
+	assert_eq(int(right_debug.get("buffered_grid_previous_cell", -1)), 23)
+	assert_eq(int(right_debug.get("buffered_grid_current_cell", -1)), 21)
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.44, "y": 0.72},
+	}), 1340)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "left"), ["not_ready"])
+	assert_true(_event_names(state.get("events", [])).has("hook_right"))
+	right_debug = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
+	assert_eq(String(right_debug.get("state", "")), "triggered")
+	assert_false(bool(right_debug.get("buffered_grid_transition_available", true)))
+
+func test_uppercut_grid_detection_does_not_retrigger_from_static_held_later_subcell() -> void:
+	config.gesture_profile_document = {
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 1,
+				},
+				"timing": {
+					"triggered_grace_ms": 120,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 40,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2160)
+	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2320)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2440)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["not_ready"])
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2481)
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["ready"])
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_false(bool(left_debug.get("buffered_grid_transition_available", false)))
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2540)
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
+	left_debug = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "ready")
+	assert_false(bool(left_debug.get("buffered_grid_transition_available", false)))
+
 func test_hook_threshold_backend_remains_available_as_fallback() -> void:
 	config.gesture_profile_document = {
 		"hook": {
