@@ -2,7 +2,7 @@
 schema: aerobeat/testbed_debug_config
 # Increment when the config shape changes in a breaking way.
 version: 1
-# Route this asset to the flow proving/testbed profile.
+# Route this asset to the proving/testbed profile. Allowed options: [boxing, flow].
 profile: flow
 visuals:
   # Draw the pose landmark overlay in the proving scene. True helps inspect calibrated grid occupancy; false gives a cleaner gameplay-only view. input debug only.

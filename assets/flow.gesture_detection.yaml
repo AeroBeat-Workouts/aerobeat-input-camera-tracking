@@ -2,10 +2,10 @@
 schema: aerobeat/gesture_detection_config
 # Increment when the config shape changes in a breaking way.
 version: 1
-# Route this asset to the flow gesture-detection profile.
+# Route this asset to the gesture-detection profile. Allowed options: [boxing, flow].
 profile: flow
 calibration:
-  # Auto-capture the shared athlete baseline from a held T-pose. input/runtime.
+  # Allowed options: [t_pose_auto]. Auto-capture the shared athlete baseline from a held T-pose. input/runtime.
   mode: t_pose_auto
   t_pose:
     # Fire calibration immediately when this continuous hold duration is satisfied. Shorter values calibrate faster; longer values reduce accidental triggers. input/runtime.
@@ -24,12 +24,12 @@ calibration:
       # Minimum elbow angle for a valid T-pose. Lower = allows more bend; higher = requires straighter elbows. input/runtime.
       min_elbow_angle_deg: 130.0
 flow:
-  # Pick the gesture backend used for flow occupancy/direction evaluation. The shared threshold backend reads the calibrated 4x3 cell state directly instead of using strike-specific heuristics. input/runtime.
+  # Allowed options: [threshold]. Pick the gesture backend used for flow occupancy/direction evaluation. The shared threshold backend reads the calibrated 4x3 cell state directly instead of using strike-specific heuristics. input/runtime.
   backend: threshold
   # Placeholder for future flow-threshold tuning. Empty currently means "use built-in defaults for the shared calibrated grid contract."
   threshold: {}
 straight_punch:
-  # Disable straight-punch detection entirely for flow. Switch to a real backend only if the flow profile should emit punch gestures again. input/runtime.
+  # Allowed options: [disabled, threshold]. Disable straight-punch detection entirely for flow. Switch to a real backend only if the flow profile should emit punch gestures again. input/runtime.
   backend: disabled
   # Placeholder kept for config-shape stability even though the disabled backend ignores threshold tuning.
   threshold: {}

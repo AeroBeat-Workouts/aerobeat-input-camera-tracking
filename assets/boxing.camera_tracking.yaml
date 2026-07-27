@@ -2,10 +2,10 @@
 schema: aerobeat/camera_tracking_config
 # Increment when the config shape changes in a breaking way.
 version: 1
-# Route this asset to the boxing runtime profile.
+# Route this asset to the runtime profile. Allowed options: [boxing, flow].
 profile: boxing
 preview:
-  # Attach the preview surface to the normal presenter instead of forcing a detached window.
+  # Allowed options: [attach]. Attach the preview surface to the normal presenter instead of forcing a detached window.
   surface_mode: attach
   # Keep left/right unmirrored so debug review matches the real camera feed and strike directions.
   flip_horizontal: false
@@ -43,7 +43,7 @@ source:
     # Request this live capture cadence from the real camera path. Lower values reduce camera/decode load; higher values improve motion sampling if the vendor/hardware can deliver them. tool -> vendor.
     requested_fps: 60
   replay:
-    # Choose whether replay reads a direct source video or a saved session manifest package. input -> tool.
+    # Allowed options: [video_file, session_manifest]. Choose whether replay reads a direct source video or a saved session manifest package. input -> tool.
     input_kind: video_file
     # Use this when input_kind = video_file. Relative to this YAML unless absolute. Empty means no default replay video is preselected. input -> tool.
     video_input_path: ""
@@ -59,7 +59,7 @@ tracking:
     enabled: true
     # Run pose inference every N source frames. 1 = every frame; larger values skip more frames, reducing cost but increasing latency/coarseness. vendor.
     inference_interval_frames: 1
-    # [lite_filtered, lite_raw] Pick pose smoothing after samples come back. Filtered is steadier but slightly laggier; raw is snappier but noisier. tool -> vendor.
+    # Allowed options: [lite_filtered, lite_raw]. Pick pose smoothing after samples come back. Filtered is steadier but slightly laggier; raw is snappier but noisier. tool -> vendor.
     smoothing_style: lite_filtered
   hands:
     # Enable hand tracking only when a profile truly needs hand landmarks. False reduces extra vendor work; true can add richer hand data at extra cost. Boxing straight-punch truth is pose-only unless this is explicitly re-enabled.

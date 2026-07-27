@@ -2,10 +2,10 @@
 schema: aerobeat/gesture_detection_config
 # Increment when the config shape changes in a breaking way.
 version: 1
-# Route this asset to the boxing gesture-detection profile.
+# Route this asset to the gesture-detection profile. Allowed options: [boxing, flow].
 profile: boxing
 calibration:
-  # Auto-capture the shared athlete baseline from a held T-pose. input/runtime.
+  # Allowed options: [t_pose_auto]. Auto-capture the shared athlete baseline from a held T-pose. input/runtime.
   mode: t_pose_auto
   t_pose:
     # Fire calibration immediately when this continuous hold duration is satisfied. Shorter values calibrate faster; longer values reduce accidental triggers. input/runtime.
@@ -24,7 +24,7 @@ calibration:
       # Minimum elbow angle for a valid T-pose. Lower = allows more bend; higher = requires straighter elbows. input/runtime.
       min_elbow_angle_deg: 130.0
 guard:
-  # Pick the guard detection backend. Threshold means guard state is derived from direct landmark distance checks rather than grid occupancy. input/runtime.
+  # Allowed options: [threshold]. Pick the guard detection backend. Threshold means guard state is derived from direct landmark distance checks rather than grid occupancy. input/runtime.
   backend: threshold
   threshold:
     thresholds:
@@ -36,15 +36,15 @@ guard:
       max_wrist_nose_distance: 0.20
 
 squat:
-  # Pick the squat detection backend. Grid avoidance means the nose must clear a blocked band inside the calibrated grid. input/runtime.
+  # Allowed options: [grid_avoidance]. Pick the squat detection backend. Grid avoidance means the nose must clear a blocked band inside the calibrated grid. input/runtime.
   backend: grid_avoidance
   grid_avoidance:
     obstacle:
       # Runtime/debug label for the blocked region drawn and evaluated by the squat detector.
       label: squat_height_band
-      # Interpret the blocked region in athlete-space height ratio terms instead of absolute camera pixels.
+      # Allowed options: [athlete_space_height_ratio]. Interpret the blocked region in athlete-space height ratio terms instead of absolute camera pixels.
       mode: athlete_space_height_ratio
-      # Start the blocked region from the top edge of the calibrated grid and extend downward.
+      # Allowed options: [top]. Start the blocked region from the top edge of the calibrated grid and extend downward.
       blocked_from_edge: top
       # Height percentage of the calibrated 4x3 grid to keep blocked from the top edge downward.
       # Smaller values move the line upward and make squat activation easier.
@@ -64,7 +64,7 @@ grid_detection:
       draw_dashed_overlay: true
 
 weave:
-  # Pick the weave detection backend. Grid avoidance means the athlete avoids occupied columns/cells instead of passing a raw angle threshold. input/runtime.
+  # Allowed options: [grid_avoidance]. Pick the weave detection backend. Grid avoidance means the athlete avoids occupied columns/cells instead of passing a raw angle threshold. input/runtime.
   backend: grid_avoidance
   grid_avoidance:
     left_obstacle:
@@ -83,7 +83,7 @@ weave:
       occupied_cells: [2, 3, 6, 7, 10, 11]
 
 straight_punch:
-  # Pick the straight-punch detector backend. Threshold uses direct landmark motion/pose heuristics instead of calibrated grid travel. input/runtime.
+  # Allowed options: [threshold]. Pick the straight-punch detector backend. Threshold uses direct landmark motion/pose heuristics instead of calibrated grid travel. input/runtime.
   backend: threshold
   threshold:
     evaluation:
@@ -111,7 +111,7 @@ straight_punch:
       lost_tracking_reacquire_stable_ms: 40
 
 hook:
-  # Pick the hook detector backend. Grid detection uses calibrated cell travel, including the strike subgrid when selected below. input/runtime.
+  # Allowed options: [grid_detection, threshold]. Pick the hook detector backend. Grid detection uses calibrated cell travel, including the strike subgrid when selected below. input/runtime.
   backend: grid_detection
   threshold:
     evaluation:
@@ -135,7 +135,7 @@ hook:
     evaluation:
       # Time span of recent cell-travel history considered by the active grid-based hook detector. Smaller windows require a tighter/faster lateral move; larger windows allow slower motion to count. input/runtime.
       window_ms: 250
-      # Select which calibrated grid to evaluate against. strike_subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
+      # Allowed options: [grid, strike_subgrid]. Select which calibrated grid to evaluate against. strike_subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
       # Minimum signed outward column travel required to count as a hook. Lower values allow shorter outward moves; higher values require crossing more strike-subgrid columns in the hook direction. input/runtime.
       min_column_delta: 1
@@ -150,7 +150,7 @@ hook:
       lost_tracking_reacquire_stable_ms: 40
 
 uppercut:
-  # Pick the uppercut detector backend. Grid detection uses calibrated upward cell travel, including the strike subgrid when selected below. input/runtime.
+  # Allowed options: [grid_detection, threshold]. Pick the uppercut detector backend. Grid detection uses calibrated upward cell travel, including the strike subgrid when selected below. input/runtime.
   backend: grid_detection
   threshold:
     evaluation:
@@ -174,7 +174,7 @@ uppercut:
     evaluation:
       # Time span of recent cell-travel history considered by the active grid-based uppercut detector. Smaller windows require a tighter/faster rise; larger windows allow slower motion to count. input/runtime.
       window_ms: 250
-      # Select which calibrated grid to evaluate against. strike_subgrid means runtime uppercut travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
+      # Allowed options: [grid, strike_subgrid]. Select which calibrated grid to evaluate against. strike_subgrid means runtime uppercut travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
       # Minimum signed upward row travel required to count as an uppercut. Lower values allow shorter rises; higher values require crossing more strike-subgrid rows toward the athlete-space top. input/runtime.
       min_row_delta: 1
