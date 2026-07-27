@@ -1814,6 +1814,7 @@ func test_proving_scenes_hide_replay_auto_bootstrap_grid_truth() -> void:
 		var packed_scene := packed_scene_variant as PackedScene
 		var scene_root: Control = add_child_autoqfree(packed_scene.instantiate()) as Control
 		assert_not_null(scene_root)
+		scene_root.prerecorded_video_source = "res://fixtures/replay-auto-bootstrap.mp4"
 		var presenter := add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
 		scene_root.set("_preview_presenter", presenter)
 		scene_root.set("_latest_state", _shared_flow_grid_truth_state("auto_bootstrap"))
