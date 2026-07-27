@@ -63,8 +63,8 @@ Copy this into a session note and fill it while testing on Cookie.
 | uppercut | right |  |  | Count increments, power visible, re-arms after settle |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
 | guard | both | 3 cycles |  | active=true while held, start/end balanced, suppression on |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
 | squat | both | 3 cycles |  | active=true while lowered, start/end balanced |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
-| weave | left | 3 cycles |  | weave_left active, clears at neutral |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
-| weave | right | 3 cycles |  | weave_right active, clears at neutral |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
+| weave | left | 3 cycles |  | left weave badge stays active during the hold, clears after leaving the left weave side |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
+| weave | right | 3 cycles |  | right weave badge stays active during the hold, clears after leaving the right weave side |  |  |  |  |  |  |  | PASS / SOFT FAIL / FAIL / NOT TESTED |
 
 ### Boxing combined-state notes
 

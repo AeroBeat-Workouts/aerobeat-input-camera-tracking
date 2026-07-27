@@ -2080,6 +2080,22 @@ func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void
 	assert_eq(String(left_badge.get("style_key", "")), "active")
 	assert_eq(harness._event_count("punch_left"), 1)
 
+func test_boxing_weave_tile_uses_held_state_instead_of_entry_pulse() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness := scene_root as Object
+	harness.set("_latest_state", {
+		"gesture_states": {
+			"weave_left": true,
+			"weave_right": false,
+		}
+	})
+	harness._update_tile_states()
+	var weave_tile: Dictionary = harness.get("_tile_refs").get("weave", {})
+	var left_badge: Dictionary = weave_tile.get("left", {})
+	var right_badge: Dictionary = weave_tile.get("right", {})
+	assert_eq(String(left_badge.get("style_key", "")), "active")
+	assert_eq(String(right_badge.get("style_key", "")), "idle")
+
 func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> void:
 	var harness = _new_harness()
 	harness.set("_playback_status", {"paused": true})

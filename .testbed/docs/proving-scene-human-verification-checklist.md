@@ -161,7 +161,8 @@ While testing, keep an eye on these visible surfaces:
 - boxing signal board:
   - punch/hook/uppercut rows with `status`, `count`, `last`, `power`
   - guard suppression line
-  - guard / squat / weave rows with `active`, `start/end`, `last`
+  - guard / squat rows with `active`, `start/end`, `last`
+  - weave left/right badges that stay active while the held weave state remains true
 - live event feed
 
 ## Boxing test method
@@ -273,14 +274,15 @@ Same expectations as left, but for `uppercut_right`.
 ### 9. Weave left state
 
 - Exercise:
-  - weave torso/head clearly to Derrick's left, then return neutral
+  - move torso/head into the left weave side, hold briefly, then return out of that weave side
 - Expected visible result:
-  - `weave_left` activates without also activating `weave_right`
+  - the left weave badge stays active while `weave_left` remains true, without also activating `weave_right`
   - lateral offset lines in the summary move in the expected direction
-  - state clears near neutral
+  - state clears once you leave the held left-weave side
 - Watch for:
   - weave direction confused left vs right
-  - state staying on after recentring
+  - left badge only flashing on entry instead of staying active during the hold
+  - state staying on after you leave the weave side
 - Capture:
   - intended/detected enter/exit counts
   - tag `AMB` if body English needed is unclear

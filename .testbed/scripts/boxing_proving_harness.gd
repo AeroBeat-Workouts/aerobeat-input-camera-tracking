@@ -82,9 +82,9 @@ const TILE_CONFIGS := [
 		"id": "weave",
 		"label": "Weave",
 		"icon": BOARD_ICON_PATHS["weave"],
-		"mode": "pulse_lr",
-		"left_events": ["weave_left_start"],
-		"right_events": ["weave_right_start"],
+		"mode": "state_lr",
+		"left_states": ["weave_left"],
+		"right_states": ["weave_right"],
 	},
 ]
 const PUNCH_REQUIREMENT_ROWS := [

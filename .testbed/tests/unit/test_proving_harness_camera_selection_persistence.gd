@@ -61,6 +61,22 @@ func test_refresh_camera_source_controls_ignores_cached_device_when_missing() ->
 
 	assert_eq(harness.get("_selected_live_camera_device_id"), "/dev/video0")
 
+func test_refresh_camera_source_controls_preserves_cached_device_during_placeholder_prestart_inventory() -> void:
+	harness.stub_devices = [
+		{"id": "/dev/video0", "label": "Default camera", "placeholder": true},
+	]
+	_write_cached_device(harness.cache_path, "/dev/video4")
+
+	harness._refresh_camera_source_controls()
+
+	assert_eq(harness.get("_selected_live_camera_device_id"), "/dev/video4")
+	var picker := harness.get("camera_source_picker") as OptionButton
+	assert_not_null(picker)
+	assert_eq(picker.item_count, 2)
+	assert_eq(String(picker.get_item_metadata(1)), "/dev/video4")
+	assert_string_contains(picker.get_item_text(1), "waiting for inventory")
+	assert_eq(picker.selected, 1)
+
 func test_switch_live_camera_source_persists_successful_selection() -> void:
 	harness.stub_devices = [
 		{"id": "/dev/video0", "label": "Built-in"},

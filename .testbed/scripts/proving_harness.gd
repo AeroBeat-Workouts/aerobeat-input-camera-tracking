@@ -1019,13 +1019,15 @@ func _load_available_camera_devices() -> Array:
 			"label": "Default camera",
 			"path": "/dev/video0",
 			"provider": "camera_tracking",
+			"placeholder": true,
 		})
 	return devices
 
 func _resolve_initial_live_camera_device_id(devices: Array) -> String:
 	var persisted_device_id := _load_persisted_live_camera_device_id()
-	if not persisted_device_id.is_empty() and _device_list_has_id(devices, persisted_device_id):
-		return persisted_device_id
+	if not persisted_device_id.is_empty():
+		if _device_list_has_id(devices, persisted_device_id) or _devices_are_placeholder_only(devices):
+			return persisted_device_id
 	return _resolve_default_live_camera_device_id(devices)
 
 func _resolve_default_live_camera_device_id(devices: Array) -> String:
@@ -1096,6 +1098,14 @@ func _device_list_has_id(devices: Array, device_id: String) -> bool:
 			return true
 	return false
 
+func _devices_are_placeholder_only(devices: Array) -> bool:
+	if devices.size() != 1:
+		return false
+	var device_variant: Variant = devices[0]
+	if not device_variant is Dictionary:
+		return false
+	return bool((device_variant as Dictionary).get("placeholder", false))
+
 func _populate_camera_source_picker() -> void:
 	if camera_source_picker == null:
 		return
@@ -1115,6 +1125,11 @@ func _populate_camera_source_picker() -> void:
 		camera_source_picker.set_item_tooltip(item_index, device_id)
 		if device_id == _selected_live_camera_device_id:
 			selected_index = item_index
+	if selected_index == -1 and not _selected_live_camera_device_id.strip_edges().is_empty() and _devices_are_placeholder_only(_camera_devices):
+		camera_source_picker.add_item("Saved camera (%s) — waiting for inventory" % _selected_live_camera_device_id)
+		selected_index = camera_source_picker.item_count - 1
+		camera_source_picker.set_item_metadata(selected_index, _selected_live_camera_device_id)
+		camera_source_picker.set_item_tooltip(selected_index, _selected_live_camera_device_id)
 	if selected_index == -1 and camera_source_picker.item_count > 0:
 		selected_index = 0
 		_selected_live_camera_device_id = String(camera_source_picker.get_item_metadata(0)).strip_edges()
