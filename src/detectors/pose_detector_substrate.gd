@@ -2511,22 +2511,11 @@ func _grid_cell_index_from_position(position: Vector2, columns: int, rows: int) 
 func _flow_direction_index_from_vector(vector: Vector2) -> int:
 	if vector.length() <= 0.000001:
 		return -1
-	var angle_deg := fposmod(rad_to_deg(atan2(vector.y, vector.x)), 360.0)
-	if angle_deg >= 67.5 and angle_deg < 112.5:
-		return 0
-	if angle_deg >= 247.5 and angle_deg < 292.5:
-		return 1
-	if angle_deg >= 157.5 and angle_deg < 202.5:
-		return 2
-	if angle_deg < 22.5 or angle_deg >= 337.5:
-		return 3
-	if angle_deg >= 112.5 and angle_deg < 157.5:
-		return 4
-	if angle_deg >= 22.5 and angle_deg < 67.5:
-		return 5
-	if angle_deg >= 202.5 and angle_deg < 247.5:
-		return 6
-	return 7
+	var abs_x := absf(vector.x)
+	var abs_y := absf(vector.y)
+	if abs_y > abs_x:
+		return 0 if vector.y > 0.0 else 1
+	return 3 if vector.x > 0.0 else 2
 
 func _emit_flow_cell_event(events: Array, side: String, cell: int, direction: int) -> void:
 	events.append({

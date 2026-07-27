@@ -14,20 +14,12 @@ const DIRECTION_ARROW_LABELS := {
 	1: "↓",
 	2: "←",
 	3: "→",
-	4: "↖",
-	5: "↗",
-	6: "↙",
-	7: "↘",
 }
 const COMPASS_OFFSETS := {
 	0: Vector2(0, -1),
 	1: Vector2(0, 1),
 	2: Vector2(-1, 0),
 	3: Vector2(1, 0),
-	4: Vector2(-1, -1),
-	5: Vector2(1, -1),
-	6: Vector2(-1, 1),
-	7: Vector2(1, 1),
 }
 
 @export var chart_title := "Placement"

@@ -1650,11 +1650,15 @@ func test_pose_strike_window_ms_no_longer_falls_back_to_legacy_wrist_velocity_wi
 	assert_eq(int(hook_config.get("window_ms", 0)), 160)
 	assert_eq(int(uppercut_config.get("window_ms", 0)), 160)
 
-func test_quantizes_flow_direction_to_eight_direction_slots() -> void:
+func test_quantizes_flow_direction_to_cardinal_slots_only() -> void:
 	assert_eq(substrate._flow_direction_index_from_vector(Vector2(0.0, 1.0)), 0)
 	assert_eq(substrate._flow_direction_index_from_vector(Vector2(0.0, -1.0)), 1)
 	assert_eq(substrate._flow_direction_index_from_vector(Vector2(-1.0, 0.0)), 2)
 	assert_eq(substrate._flow_direction_index_from_vector(Vector2(1.0, 0.0)), 3)
+	assert_eq(substrate._flow_direction_index_from_vector(Vector2(-0.45, 0.90)), 0)
+	assert_eq(substrate._flow_direction_index_from_vector(Vector2(0.90, 0.45)), 3)
+	assert_eq(substrate._flow_direction_index_from_vector(Vector2(-0.90, -0.45)), 2)
+	assert_eq(substrate._flow_direction_index_from_vector(Vector2(0.45, -0.90)), 1)
 
 func test_quantizes_flow_cells_from_calibrated_wrist_rect() -> void:
 	_calibrate_stance()
