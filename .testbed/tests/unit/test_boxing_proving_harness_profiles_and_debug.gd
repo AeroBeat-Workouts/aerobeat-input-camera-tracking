@@ -1811,17 +1811,17 @@ func test_flow_grid_overlay_preserves_unclamped_render_truth_when_cover_crops_th
 	assert_true(is_equal_approx(visible_top_left.x, 25.0))
 	assert_true(is_equal_approx(visible_top_left.y, 0.0))
 
-func test_flow_ring_chart_maps_runtime_cells_directly_into_athlete_space_visual_slots() -> void:
+func test_flow_ring_chart_maps_runtime_cells_into_preview_mirrored_visual_slots() -> void:
 	var chart := add_child_autoqfree(FlowRingChartScript.new()) as Control
 	assert_not_null(chart)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 0)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 3)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 4)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 3)), 7)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 8)
-	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 11)
-	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 0, 0)), 0)
-	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 2, 3)), 11)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 3)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 0)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 7)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 3)), 4)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 11)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 8)
+	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 0, 0)), 3)
+	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 2, 3)), 8)
 
 func test_proving_harness_formats_flow_cells_in_athlete_space_row_and_column_order() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

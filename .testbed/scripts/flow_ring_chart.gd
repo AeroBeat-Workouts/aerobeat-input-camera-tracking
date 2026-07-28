@@ -103,12 +103,17 @@ func _draw_placement_grid(chart_rect: Rect2, font: Font, font_size: int) -> void
 func _gameplay_cell_index_for_visual_slot(visual_row: int, column: int) -> int:
 	if visual_row < 0 or visual_row >= GRID_ROWS or column < 0 or column >= GRID_COLUMNS:
 		return -1
-	return visual_row * GRID_COLUMNS + column
+	# Runtime flow cell ids are canonical athlete-space values, but the proving board is
+	# read against the mirrored camera preview. Mirror columns in presentation space so
+	# the highlighted slot matches what Derrick sees on screen while preserving the ids.
+	var athlete_space_column := (GRID_COLUMNS - 1) - column
+	return visual_row * GRID_COLUMNS + athlete_space_column
 
 func _athlete_space_cell_index_for_visual_slot(visual_row: int, column: int) -> int:
 	if visual_row < 0 or visual_row >= GRID_ROWS or column < 0 or column >= GRID_COLUMNS:
 		return -1
-	return visual_row * GRID_COLUMNS + column
+	var athlete_space_column := (GRID_COLUMNS - 1) - column
+	return visual_row * GRID_COLUMNS + athlete_space_column
 
 func _draw_cell_label(font: Font, font_size: int, cell_rect: Rect2, label: String, _corner_radius: float) -> void:
 	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
