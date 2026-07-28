@@ -1426,10 +1426,16 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"grid_direction_gate_passed": bool(state.get("grid_direction_gate_passed", false)),
 		"grid_cell_delta_gate_passed": bool(state.get("grid_cell_delta_gate_passed", false)),
 		"grid_accumulated_progress": int(state.get("grid_accumulated_progress", 0)),
+		"grid_progress_mode": String(state.get("grid_progress_mode", "directional_run_excursion")),
 		"grid_progress_threshold": int(state.get("grid_progress_threshold", 0)),
 		"grid_progress_ready": bool(state.get("grid_progress_ready", false)),
 		"grid_progress_window_ms": int(state.get("grid_progress_window_ms", 0)),
 		"grid_progress_transition_count": int((state.get("grid_progress_history", []) as Array).size()),
+		"grid_run_transition_count": int(state.get("grid_run_transition_count", 0)),
+		"grid_run_anchor_cell": int(state.get("grid_run_anchor_cell", -1)),
+		"grid_run_anchor_column": int(state.get("grid_run_anchor_column", -1)),
+		"grid_run_anchor_row": int(state.get("grid_run_anchor_row", -1)),
+		"grid_run_reset_reason": String(state.get("grid_run_reset_reason", "")),
 		"grid_overflow_protection_enabled": bool(config.get("overflow_protection_enabled", false)),
 		"grid_overflow_accumulation_frozen": bool(state.get("grid_overflow_accumulation_frozen", false)),
 		"buffered_grid_transition_available": not (state.get("buffered_grid_transition", {}) as Dictionary).is_empty(),
@@ -2223,7 +2229,13 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		state["buffered_grid_transition_key"] = ""
 		state["grid_progress_history"] = []
 		state["grid_accumulated_progress"] = 0
+		state["grid_progress_mode"] = "directional_run_excursion"
 		state["grid_progress_ready"] = false
+		state["grid_run_transition_count"] = 0
+		state["grid_run_anchor_cell"] = -1
+		state["grid_run_anchor_column"] = -1
+		state["grid_run_anchor_row"] = -1
+		state["grid_run_reset_reason"] = "tracking_lost"
 		_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRACKING_LOST)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -2259,7 +2271,13 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["buffered_grid_transition_key"] = ""
 			state["grid_progress_history"] = []
 			state["grid_accumulated_progress"] = 0
+			state["grid_progress_mode"] = "directional_run_excursion"
 			state["grid_progress_ready"] = false
+			state["grid_run_transition_count"] = 0
+			state["grid_run_anchor_cell"] = -1
+			state["grid_run_anchor_column"] = -1
+			state["grid_run_anchor_row"] = -1
+			state["grid_run_reset_reason"] = "tracking_lost"
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -2354,7 +2372,13 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["not_ready_started_timestamp_ms"] = -1
 			state["grid_progress_history"] = []
 			state["grid_accumulated_progress"] = 0
+			state["grid_progress_mode"] = "directional_run_excursion"
 			state["grid_progress_ready"] = false
+			state["grid_run_transition_count"] = 0
+			state["grid_run_anchor_cell"] = -1
+			state["grid_run_anchor_column"] = -1
+			state["grid_run_anchor_row"] = -1
+			state["grid_run_reset_reason"] = "rearm"
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -3520,18 +3544,51 @@ func _update_pose_strike_grid_progress(state: Dictionary, family: String, side: 
 			history.append(transition_copy)
 	var accumulated_progress := 0
 	var direction_sign := 1 if side == "left" else -1
+	var run_transition_count := 0
+	var run_anchor_cell := -1
+	var run_anchor_column := -1
+	var run_anchor_row := -1
+	var run_reset_reason := ""
+	var run_started := false
 	for entry in history:
 		var typed_entry := entry as Dictionary
+		if not run_started:
+			run_anchor_cell = int(typed_entry.get("previous_cell", -1))
+			run_anchor_column = int(typed_entry.get("previous_column", -1))
+			run_anchor_row = int(typed_entry.get("previous_row", -1))
+			run_started = true
+		var family_axis_delta := int(typed_entry.get("column_delta", 0)) * direction_sign if family == "hook" else -int(typed_entry.get("row_delta", 0))
+		if family_axis_delta < 0:
+			run_anchor_cell = int(typed_entry.get("current_cell", -1))
+			run_anchor_column = int(typed_entry.get("current_column", -1))
+			run_anchor_row = int(typed_entry.get("current_row", -1))
+			run_transition_count = 0
+			run_reset_reason = "reversal"
+			continue
+		run_transition_count += 1
+		var current_excursion := 0
 		if family == "hook":
-			accumulated_progress += maxi(0, int(typed_entry.get("column_delta", 0)) * direction_sign)
+			current_excursion = maxi(0, (int(typed_entry.get("current_column", run_anchor_column)) - run_anchor_column) * direction_sign)
 		else:
-			accumulated_progress += maxi(0, -int(typed_entry.get("row_delta", 0)))
+			current_excursion = maxi(0, run_anchor_row - int(typed_entry.get("current_row", run_anchor_row)))
+		accumulated_progress = maxi(accumulated_progress, current_excursion)
 	state["grid_progress_history"] = history
 	state["grid_accumulated_progress"] = accumulated_progress
+	state["grid_progress_mode"] = "directional_run_excursion"
 	state["grid_progress_window_ms"] = clamped_window_ms
+	state["grid_run_transition_count"] = run_transition_count
+	state["grid_run_anchor_cell"] = run_anchor_cell
+	state["grid_run_anchor_column"] = run_anchor_column
+	state["grid_run_anchor_row"] = run_anchor_row
+	state["grid_run_reset_reason"] = run_reset_reason
 	return {
 		"history": history,
 		"accumulated_progress": accumulated_progress,
+		"run_transition_count": run_transition_count,
+		"run_anchor_cell": run_anchor_cell,
+		"run_anchor_column": run_anchor_column,
+		"run_anchor_row": run_anchor_row,
+		"run_reset_reason": run_reset_reason,
 	}
 
 func _get_straight_punch_config() -> Dictionary:
@@ -3644,10 +3701,16 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"grid_direction_gate_passed": false,
 		"grid_cell_delta_gate_passed": false,
 		"grid_accumulated_progress": 0,
+		"grid_progress_mode": "directional_run_excursion",
 		"grid_progress_threshold": 0,
 		"grid_progress_ready": false,
 		"grid_progress_window_ms": 0,
 		"grid_progress_history": [],
+		"grid_run_transition_count": 0,
+		"grid_run_anchor_cell": -1,
+		"grid_run_anchor_column": -1,
+		"grid_run_anchor_row": -1,
+		"grid_run_reset_reason": "",
 		"grid_overflow_accumulation_frozen": false,
 		"buffered_grid_transition": {},
 		"buffered_grid_transition_key": "",

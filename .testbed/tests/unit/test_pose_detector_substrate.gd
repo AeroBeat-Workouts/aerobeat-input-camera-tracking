@@ -2473,14 +2473,14 @@ func test_uppercut_grid_detection_accumulates_upward_progress_across_curved_path
 	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), 2)
 	assert_true(int(left_debug.get("grid_row_delta", 0)) < 0)
 
-func test_hook_grid_detection_does_not_fire_when_signed_progress_stays_below_threshold() -> void:
+func test_hook_grid_detection_reversal_clears_stale_pretrigger_credit() -> void:
 	config.gesture_profile_document = {
 		"hook": {
 			"backend": "grid_detection",
 			"grid_detection": {
 				"evaluation": {
 					"window_ms": 250,
-					"min_cell_delta": 3,
+					"min_cell_delta": 2,
 				},
 				"timing": {
 					"triggered_grace_ms": 500,
@@ -2516,11 +2516,66 @@ func test_hook_grid_detection_does_not_fire_when_signed_progress_stays_below_thr
 	assert_false(_event_names(state.get("events", [])).has("hook_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
 	assert_eq(String(left_debug.get("state", "")), "ready")
-	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 2)
-	assert_eq(int(left_debug.get("grid_progress_threshold", 0)), 3)
+	assert_eq(String(left_debug.get("grid_progress_mode", "")), "directional_run_excursion")
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 1)
+	assert_eq(int(left_debug.get("grid_progress_threshold", 0)), 2)
 	assert_false(bool(left_debug.get("grid_progress_ready", false)))
 	assert_false(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), 3)
+	assert_eq(int(left_debug.get("grid_run_transition_count", 0)), 1)
+	assert_eq(String(left_debug.get("grid_run_reset_reason", "")), "reversal")
+
+func test_uppercut_grid_detection_reversal_clears_stale_pretrigger_credit() -> void:
+	config.gesture_profile_document = {
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 2,
+				},
+				"timing": {
+					"triggered_grace_ms": 500,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 50,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.64, "y": 0.62},
+	}), 4100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.64, "y": 0.62},
+	}), 4160)
+	assert_true(["tracking_lost", "ready"].has(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", ""))))
+
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.72},
+	}), 4240)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 4320)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.53, "y": 0.72},
+	}), 4400)
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "ready")
+	assert_eq(String(left_debug.get("grid_progress_mode", "")), "directional_run_excursion")
+	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 1)
+	assert_eq(int(left_debug.get("grid_progress_threshold", 0)), 2)
+	assert_false(bool(left_debug.get("grid_progress_ready", false)))
+	assert_false(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
+	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), 3)
+	assert_eq(int(left_debug.get("grid_run_transition_count", 0)), 1)
+	assert_eq(String(left_debug.get("grid_run_reset_reason", "")), "reversal")
 
 func test_uppercut_grid_detection_buffers_fast_same_wrist_repeat_until_rearmed() -> void:
 	config.gesture_profile_document = {
