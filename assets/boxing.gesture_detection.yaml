@@ -183,7 +183,7 @@ uppercut:
       # Allowed options: [grid, strike_subgrid]. Select which calibrated grid to evaluate against. strike_subgrid means runtime uppercut travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
       # Minimum signed upward row travel required to count as an uppercut. Lower values allow shorter rises; higher values require crossing more strike-subgrid rows toward the athlete-space top. input/runtime.
-      min_row_delta: 2
+      min_row_delta: 1
       # Freeze fresh uppercut grid-progress accumulation while that same uppercut side is already active inside its triggered/rearm window. False preserves today's accumulating/buffering behavior; true protects against in-window progress overflow. input/runtime/debug.
       overflow_protection_enabled: true
     timing:
