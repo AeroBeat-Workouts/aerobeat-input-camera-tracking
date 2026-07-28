@@ -252,6 +252,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
 chart_title = "Nose Cell"
+mirror_placement_columns_for_preview = true
 
 [node name="LeftPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=139140040]
 layout_mode = 2
@@ -265,6 +266,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
 chart_title = "Left Wrist Cell"
+mirror_placement_columns_for_preview = true
 
 [node name="RightPlacementCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=1888742916]
 layout_mode = 2
@@ -278,6 +280,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("5_flow_ring_chart")
 chart_title = "Right Wrist Cell"
+mirror_placement_columns_for_preview = true
 
 [node name="NoseDirectionCard" type="PanelContainer" parent="Margin/VSplit/Content/BoardPanel/BoardMargin/BoardColumn/BoardGrid" unique_id=1888742917]
 layout_mode = 2

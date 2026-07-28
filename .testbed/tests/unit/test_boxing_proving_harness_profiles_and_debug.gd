@@ -1691,16 +1691,17 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(int(right_chart.get("active_index")), 4)
 		assert_eq(String(truth_label.text), "")
 
-func test_flow_proving_scene_placement_cards_use_direct_athlete_space_slots() -> void:
+func test_flow_proving_scene_placement_cards_mirror_columns_only_for_preview() -> void:
 	var scene_root: Control = add_child_autoqfree(FlowProvingScene.instantiate()) as Control
 	assert_not_null(scene_root)
 	for chart_name: String in ["NosePlacementChart", "LeftPlacementChart", "RightPlacementChart"]:
 		var chart := scene_root.find_child(chart_name, true, false) as Control
 		assert_not_null(chart)
-		assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 0)
-		assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 3)
-		assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 8)
-		assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 11)
+		assert_eq(bool(chart.get("mirror_placement_columns_for_preview")), true)
+		assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 3)
+		assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 0)
+		assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 11)
+		assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 8)
 
 func test_flow_proving_scene_nose_direction_chart_updates_live_with_successive_debug_truth() -> void:
 	var scene_root: Control = add_child_autoqfree(FlowProvingScene.instantiate()) as Control
@@ -1822,9 +1823,10 @@ func test_flow_grid_overlay_preserves_unclamped_render_truth_when_cover_crops_th
 	assert_true(is_equal_approx(visible_top_left.x, 25.0))
 	assert_true(is_equal_approx(visible_top_left.y, 0.0))
 
-func test_flow_ring_chart_maps_runtime_cells_directly_into_athlete_space_visual_slots() -> void:
+func test_flow_ring_chart_defaults_to_direct_athlete_space_visual_slots() -> void:
 	var chart := add_child_autoqfree(FlowRingChartScript.new()) as Control
 	assert_not_null(chart)
+	assert_eq(bool(chart.get("mirror_placement_columns_for_preview")), false)
 	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 0)
 	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 3)
 	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 4)
@@ -1833,6 +1835,19 @@ func test_flow_ring_chart_maps_runtime_cells_directly_into_athlete_space_visual_
 	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 11)
 	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 0, 0)), 0)
 	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 2, 3)), 11)
+
+func test_flow_ring_chart_can_mirror_columns_for_preview_space() -> void:
+	var chart := add_child_autoqfree(FlowRingChartScript.new()) as Control
+	assert_not_null(chart)
+	chart.set("mirror_placement_columns_for_preview", true)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 3)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 0)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 0)), 7)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 1, 3)), 4)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 0)), 11)
+	assert_eq(int(chart.call("_gameplay_cell_index_for_visual_slot", 2, 3)), 8)
+	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 0, 0)), 3)
+	assert_eq(int(chart.call("_athlete_space_cell_index_for_visual_slot", 2, 3)), 8)
 
 func test_proving_harness_formats_flow_cells_in_athlete_space_row_and_column_order() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
@@ -1850,10 +1865,15 @@ func test_boxing_proving_scene_places_shared_grid_cards_inside_board_grid_with_b
 	var nose_card := scene_root.find_child("NosePlacementCard", true, false) as PanelContainer
 	var left_card := scene_root.find_child("LeftPlacementCard", true, false) as PanelContainer
 	var right_card := scene_root.find_child("RightPlacementCard", true, false) as PanelContainer
+	var nose_chart := scene_root.find_child("NosePlacementChart", true, false) as Control
 	assert_not_null(board_grid)
 	assert_not_null(nose_card)
 	assert_not_null(left_card)
 	assert_not_null(right_card)
+	assert_not_null(nose_chart)
+	assert_eq(bool(nose_chart.get("mirror_placement_columns_for_preview")), false)
+	assert_eq(int(nose_chart.call("_gameplay_cell_index_for_visual_slot", 0, 0)), 0)
+	assert_eq(int(nose_chart.call("_gameplay_cell_index_for_visual_slot", 0, 3)), 3)
 	assert_same(nose_card.get_parent(), board_grid)
 	assert_same(left_card.get_parent(), board_grid)
 	assert_same(right_card.get_parent(), board_grid)

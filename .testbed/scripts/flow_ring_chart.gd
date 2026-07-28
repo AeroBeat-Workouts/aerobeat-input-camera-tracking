@@ -25,6 +25,7 @@ const COMPASS_OFFSETS := {
 @export var chart_title := "Placement"
 @export_multiline var chart_subtitle := ""
 @export var chart_mode: ChartMode = ChartMode.PLACEMENT_GRID
+@export var mirror_placement_columns_for_preview := false
 @export var active_index := -1:
 	set(value):
 		if active_index == value:
@@ -103,12 +104,19 @@ func _draw_placement_grid(chart_rect: Rect2, font: Font, font_size: int) -> void
 func _gameplay_cell_index_for_visual_slot(visual_row: int, column: int) -> int:
 	if visual_row < 0 or visual_row >= GRID_ROWS or column < 0 or column >= GRID_COLUMNS:
 		return -1
-	return visual_row * GRID_COLUMNS + column
+	var athlete_space_column := _athlete_space_column_for_visual_column(column)
+	return visual_row * GRID_COLUMNS + athlete_space_column
 
 func _athlete_space_cell_index_for_visual_slot(visual_row: int, column: int) -> int:
 	if visual_row < 0 or visual_row >= GRID_ROWS or column < 0 or column >= GRID_COLUMNS:
 		return -1
-	return visual_row * GRID_COLUMNS + column
+	var athlete_space_column := _athlete_space_column_for_visual_column(column)
+	return visual_row * GRID_COLUMNS + athlete_space_column
+
+func _athlete_space_column_for_visual_column(column: int) -> int:
+	if mirror_placement_columns_for_preview:
+		return (GRID_COLUMNS - 1) - column
+	return column
 
 func _draw_cell_label(font: Font, font_size: int, cell_rect: Rect2, label: String, _corner_radius: float) -> void:
 	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
