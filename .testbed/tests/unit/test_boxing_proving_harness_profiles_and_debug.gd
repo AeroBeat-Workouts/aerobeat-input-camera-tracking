@@ -13,6 +13,7 @@ class FakePreviewPresenter:
 	extends Control
 
 	var overlay_layer: Control
+	var preview_surface: TextureRect
 	var hand_snapshot := {
 		"hands": {
 			"left": {
@@ -33,13 +34,25 @@ class FakePreviewPresenter:
 
 	func _init() -> void:
 		size = Vector2(520.0, 293.0)
+		preview_surface = TextureRect.new()
+		preview_surface.name = "PreviewSurface"
+		preview_surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		preview_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(preview_surface)
 		overlay_layer = Control.new()
 		overlay_layer.name = "OverlayLayer"
+		overlay_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		overlay_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		add_child(overlay_layer)
 
 	func get_overlay_layer() -> Control:
 		return overlay_layer
+
+	func get_preview_surface() -> TextureRect:
+		return preview_surface
+
+	func set_preview_texture(texture: Texture2D) -> void:
+		preview_surface.texture = texture
 
 	func get_hand_debug_snapshot() -> Dictionary:
 		return hand_snapshot.duplicate(true)
@@ -714,8 +727,7 @@ func test_boxing_depth_debug_thumbnail_truthfully_reports_unavailable_depth_text
 	var harness: Variant = scene_root
 	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
 	harness.set("_preview_presenter", presenter)
-	harness.camera_view = TextureRect.new()
-	harness.camera_view.texture = _make_test_texture(Color(0.18, 0.34, 0.72, 1.0))
+	presenter.set_preview_texture(_make_test_texture(Color(0.18, 0.34, 0.72, 1.0)))
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"depth_runtime": {
@@ -753,8 +765,7 @@ func test_boxing_depth_debug_overlay_consumes_runtime_region_metadata_without_co
 	var harness: Variant = scene_root
 	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
 	harness.set("_preview_presenter", presenter)
-	harness.camera_view = TextureRect.new()
-	harness.camera_view.texture = _make_test_texture(Color(0.18, 0.34, 0.72, 1.0))
+	presenter.set_preview_texture(_make_test_texture(Color(0.18, 0.34, 0.72, 1.0)))
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"depth_runtime": {
@@ -779,8 +790,7 @@ func test_boxing_depth_debug_swap_uses_real_runtime_texture_when_available() -> 
 	harness.set("_preview_presenter", presenter)
 	var preview_texture := _make_test_texture(Color(0.22, 0.61, 0.38, 1.0))
 	var depth_texture := _make_test_texture(Color(0.71, 0.71, 0.71, 1.0))
-	harness.camera_view = TextureRect.new()
-	harness.camera_view.texture = preview_texture
+	presenter.set_preview_texture(preview_texture)
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"depth_runtime": {
@@ -815,8 +825,7 @@ func test_boxing_depth_debug_swap_resets_when_yaml_disables_thumbnail_click_swap
 	var harness: Variant = scene_root
 	var presenter: FakePreviewPresenter = add_child_autoqfree(FakePreviewPresenter.new()) as FakePreviewPresenter
 	harness.set("_preview_presenter", presenter)
-	harness.camera_view = TextureRect.new()
-	harness.camera_view.texture = _make_test_texture(Color(0.22, 0.61, 0.38, 1.0))
+	presenter.set_preview_texture(_make_test_texture(Color(0.22, 0.61, 0.38, 1.0)))
 	harness.set("_latest_state", {
 		"gesture_debug": {
 			"depth_runtime": {
