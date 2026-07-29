@@ -256,6 +256,25 @@ func test_aero_camera_tracking_starts_replay_sources_through_camera_tracking_con
 	assert_eq(String(source.get("path", "")), "res://fixtures/replay/head_rotate_left_repeat_04_take_01.mp4")
 	assert_true(bool(vendor_source.get("loop", false)))
 
+func test_aero_camera_tracking_treats_blank_replay_source_as_live_camera_start() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var tracker = CameraTrackingScript.new()
+	tracker.set_backend(CameraTrackingFakeBackendScript.new())
+	singleton.set_tracking_session(tracker)
+
+	assert_true(singleton.start_replay("   ", {
+		"flip_horizontal": false,
+		"tracking_overlay_mode": "full",
+		"model_complexity": 1,
+		"camera_source": "/dev/video7",
+	}))
+
+	var active_config: Dictionary = tracker.get_active_config()
+	var source: Dictionary = active_config.get("source", {})
+	assert_eq(String(source.get("kind", "")), "live_camera")
+	assert_eq(String(source.get("camera_id", "")), "/dev/video7")
+	assert_false((active_config.get("vendor", {}) as Dictionary).has("source"))
+
 func test_aero_camera_tracking_coerce_runtime_config_sanitizes_removed_backends_and_families() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
 	var config := CameraTrackingConfigScript.new()

@@ -88,8 +88,10 @@ func start_live_camera(camera_id: String = "", config_variant: Variant = null) -
 func start_replay(source_path: String, config_variant: Variant = null) -> bool:
 	var normalized_source := source_path.strip_edges()
 	if normalized_source.is_empty():
-		push_warning("[AeroCameraTracking] Replay start requested without a source path")
-		return false
+		var live_runtime_config = _coerce_runtime_config(config_variant)
+		if live_runtime_config == null:
+			return false
+		return _start_with_config(live_runtime_config)
 	var runtime_config = _make_replay_runtime_config(normalized_source, null, null, config_variant)
 	if runtime_config == null:
 		return false
