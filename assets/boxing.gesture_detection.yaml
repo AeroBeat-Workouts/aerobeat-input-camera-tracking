@@ -107,6 +107,8 @@ straight_punch:
     timing:
       # Keep the straight-punch triggered state alive for this long after detection. Shorter values clear faster; longer values make the trigger linger longer for downstream consumers. input/runtime.
       triggered_grace_ms: 240
+      # Allow a brand-new straight punch to be captured even while the previous straight is still inside triggered grace. False preserves the old grace-window suppression; true supports faster same-arm repeats and left/right straight chains. input/runtime/debug.
+      allow_next_gesture_capture_during_grace: true
     rearm:
       # Minimum pose-only cooldown before another straight can arm again. Shorter values permit faster repeat punches; longer values reduce retrigger spam. input/runtime.
       pose_only_rearm_ms: 250
@@ -129,6 +131,8 @@ hook:
     timing:
       # Trigger hold time for the legacy threshold backend. Shorter values clear faster; longer values linger longer. input/runtime.
       triggered_grace_ms: 500
+      # Allow a brand-new hook to be captured while the previous hook is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
+      allow_next_gesture_capture_during_grace: true
     rearm:
       # Cooldown before the legacy threshold backend can rearm. Shorter values allow faster repeats; longer values reduce spam. input/runtime.
       pose_only_rearm_ms: 50
@@ -148,6 +152,8 @@ hook:
     timing:
       # Keep the grid-based hook triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
       triggered_grace_ms: 500
+      # Allow a brand-new hook to be captured while the previous hook is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
+      allow_next_gesture_capture_during_grace: true
     rearm:
       # Minimum cooldown before another grid-based hook can arm. Shorter values allow faster combinations; longer values reduce retrigger spam. input/runtime.
       pose_only_rearm_ms: 50
@@ -170,6 +176,8 @@ uppercut:
     timing:
       # Trigger hold time for the legacy threshold backend. Shorter values clear faster; longer values linger longer. input/runtime.
       triggered_grace_ms: 500
+      # Allow a brand-new uppercut to be captured while the previous uppercut is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
+      allow_next_gesture_capture_during_grace: true
     rearm:
       # Cooldown before the legacy threshold backend can rearm. Shorter values allow faster repeats; longer values reduce spam. input/runtime.
       pose_only_rearm_ms: 50
@@ -189,6 +197,8 @@ uppercut:
     timing:
       # Keep the grid-based uppercut triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
       triggered_grace_ms: 500
+      # Allow a brand-new uppercut to be captured while the previous uppercut is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
+      allow_next_gesture_capture_during_grace: true
     rearm:
       # Minimum cooldown before another grid-based uppercut can arm. Shorter values allow faster combinations; longer values reduce retrigger spam. input/runtime.
       pose_only_rearm_ms: 50

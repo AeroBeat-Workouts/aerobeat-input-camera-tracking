@@ -2912,6 +2912,220 @@ func test_hook_same_family_trigger_exposes_threshold_blocking_truth() -> void:
 	assert_eq(String(left_state.get("blocking_event_name", "")), "hook_right")
 	assert_eq(String(left_state.get("blocking_phase", "")), "triggered")
 
+func test_boxing_profile_bundle_enables_next_gesture_capture_during_grace_for_punch_families() -> void:
+	var bundle: Dictionary = config.get_selected_profile_bundle()
+	assert_true(bool(bundle.get("ok", false)))
+	var gesture_detection: Dictionary = bundle.get("gesture_detection", {}) as Dictionary
+	var straight_timing: Dictionary = ((((gesture_detection.get("straight_punch", {}) as Dictionary).get("threshold", {}) as Dictionary).get("timing", {}) as Dictionary))
+	var hook_timing: Dictionary = ((((gesture_detection.get("hook", {}) as Dictionary).get("grid_detection", {}) as Dictionary).get("timing", {}) as Dictionary))
+	var uppercut_timing: Dictionary = ((((gesture_detection.get("uppercut", {}) as Dictionary).get("grid_detection", {}) as Dictionary).get("timing", {}) as Dictionary))
+	assert_true(bool(straight_timing.get("allow_next_gesture_capture_during_grace", false)))
+	assert_true(bool(hook_timing.get("allow_next_gesture_capture_during_grace", false)))
+	assert_true(bool(uppercut_timing.get("allow_next_gesture_capture_during_grace", false)))
+
+func test_straight_punch_allows_same_side_retrigger_during_grace_when_enabled() -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"backend": "threshold",
+			"threshold": {
+				"evaluation": {
+					"window_ms": 250,
+				},
+				"thresholds": {
+					"min_velocity": 0.18,
+					"max_elbow_shoulder_xy_distance": 0.140,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+				},
+				"timing": {
+					"triggered_grace_ms": 240,
+					"allow_next_gesture_capture_during_grace": true,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 250,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.02}}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.18}}), 1220)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["triggered"])
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.04}}), 1300)
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	state = substrate.process_landmarks(_make_pose_frame({PoseLandmarkIds.LEFT_WRIST: {"z": -0.22}}), 1380)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), [])
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+	assert_true(bool(left_debug.get("allow_next_gesture_capture_during_grace", false)))
+
+func test_straight_punch_allows_opposite_side_chain_during_grace_when_enabled() -> void:
+	config.tracker_profile_document = {
+		"tracking": {
+			"hands": {
+				"enabled": false,
+			},
+		},
+	}
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"backend": "threshold",
+			"threshold": {
+				"evaluation": {
+					"window_ms": 250,
+				},
+				"thresholds": {
+					"min_velocity": 0.18,
+					"max_elbow_shoulder_xy_distance": 0.140,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+				},
+				"timing": {
+					"triggered_grace_ms": 240,
+					"allow_next_gesture_capture_during_grace": true,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 250,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.02},
+		PoseLandmarkIds.RIGHT_WRIST: {"z": -0.02},
+	}), 1140)
+	assert_eq(_straight_punch_state_names(state.get("events", []), "left"), ["ready"])
+	assert_eq(_straight_punch_state_names(state.get("events", []), "right"), ["ready"])
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.18},
+		PoseLandmarkIds.RIGHT_WRIST: {"z": -0.02},
+	}), 1220)
+	assert_true(_event_names(state.get("events", [])).has("punch_left"))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"z": -0.04},
+		PoseLandmarkIds.RIGHT_WRIST: {"z": -0.20},
+	}), 1300)
+	assert_true(_event_names(state.get("events", [])).has("punch_right"))
+	assert_eq(_straight_punch_state_names(state.get("events", []), "right"), ["triggered"])
+	var right_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("right", {})
+	assert_eq(String(right_debug.get("state", "")), "triggered")
+	assert_false(bool(right_debug.get("same_family_blocked", true)))
+	assert_true(bool(right_debug.get("allow_next_gesture_capture_during_grace", false)))
+
+func test_hook_grid_detection_allows_opposite_side_same_family_chain_during_grace_when_enabled() -> void:
+	config.gesture_profile_document = {
+		"hook": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 1,
+				},
+				"timing": {
+					"triggered_grace_ms": 120,
+					"allow_next_gesture_capture_during_grace": true,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 40,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1160)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1220)
+	assert_true(_event_names(state.get("events", [])).has("hook_left"))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.44, "y": 0.72},
+	}), 1280)
+	assert_true(_event_names(state.get("events", [])).has("hook_right"))
+	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["triggered"])
+	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
+	assert_eq(String(right_debug.get("state", "")), "triggered")
+	assert_true(bool(right_debug.get("allow_next_gesture_capture_during_grace", false)))
+
+func test_uppercut_grid_detection_allows_same_wrist_repeat_during_grace_when_enabled() -> void:
+	config.gesture_profile_document = {
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 250,
+					"min_cell_delta": 1,
+				},
+				"timing": {
+					"triggered_grace_ms": 200,
+					"allow_next_gesture_capture_during_grace": true,
+				},
+				"rearm": {
+					"pose_only_rearm_ms": 40,
+				},
+				"state_machine": {
+					"lost_tracking_reacquire_stable_ms": 40,
+				},
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2160)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2320)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.62},
+	}), 2380)
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.84},
+	}), 2440)
+	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), [])
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "triggered")
+	assert_false(bool(left_debug.get("buffered_grid_transition_available", true)))
+	assert_true(bool(left_debug.get("allow_next_gesture_capture_during_grace", false)))
+
 func test_disabled_family_backend_prevents_any_punch_runtime_activation() -> void:
 	config.tracker_profile_document = {
 		"tracking": {

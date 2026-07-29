@@ -1288,6 +1288,7 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		"trigger_bbox_area": float(state.get("trigger_bbox_area", 0.0)),
 		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
 		"triggered_grace_ms": int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)),
+		"allow_next_gesture_capture_during_grace": bool(straight_punch_config.get("allow_next_gesture_capture_during_grace", false)),
 		"bbox_area_retract_epsilon": float(straight_punch_config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON)),
 		"pose_only_rearm_ms": int(straight_punch_config.get("pose_only_rearm_ms", STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS)),
 		"reacquire_stable_ms_required": int(straight_punch_config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS)),
@@ -1365,6 +1366,7 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"min_velocity": float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))),
 		"min_punch_velocity": float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))),
 		"triggered_grace_ms": int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)),
+		"allow_next_gesture_capture_during_grace": bool(config.get("allow_next_gesture_capture_during_grace", false)),
 		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
 		"pose_only_rearm_ms": int(config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS)),
 		"reacquire_stable_ms_required": int(config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS)),
@@ -2023,30 +2025,9 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		_set_straight_punch_state(side, state)
 		return
 
+	var allow_next_gesture_capture_during_grace := bool(straight_punch_config.get("allow_next_gesture_capture_during_grace", false))
 	if phase == STRAIGHT_PUNCH_STATE_READY:
-		if fresh_sample:
-			var min_velocity := maxf(float(straight_punch_config.get("min_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.0)
-			var min_bbox_area_growth := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.0)
-			var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
-			var recent_peak_wrist_velocity := maxf(float(state.get("recent_peak_wrist_velocity", wrist_velocity)), wrist_velocity)
-			var recent_peak_bbox_area_growth := maxf(float(state.get("recent_peak_bbox_area_growth", state.get("last_bbox_area_growth", 0.0))), float(state.get("last_bbox_area_growth", 0.0)))
-			var ready_to_trigger := recent_peak_wrist_velocity >= min_velocity and elbow_shoulder_xy_gate_passed and wrist_lateral_angle_gate_passed
-			if use_hand_tracking:
-				ready_to_trigger = ready_to_trigger and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples
-			if bool(depth_analysis.get("gate_applied", false)):
-				ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
-			if ready_to_trigger:
-				var blocking_state := _get_same_family_threshold_blocking_state("straight_punch", side, timestamp_ms)
-				if not blocking_state.is_empty():
-					_apply_same_family_block(state, blocking_state)
-				else:
-					state["trigger_bbox_area"] = bbox_area
-					var triggered_grace_ms := max(0, int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)))
-					state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
-					state["grace_ms_remaining"] = triggered_grace_ms
-					state["not_ready_started_timestamp_ms"] = -1
-					_emit_power_event(events, event_name, _compute_straight_punch_power(recent_peak_wrist_velocity, bbox_area, state, straight_punch_config, recent_peak_bbox_area_growth))
-					_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRIGGERED)
+		_try_trigger_straight_punch(events, side, state, straight_punch_config, event_name, timestamp_ms, fresh_sample, use_hand_tracking, wrist_velocity, bbox_area, elbow_shoulder_xy_gate_passed, wrist_lateral_angle_gate_passed, depth_analysis, allow_next_gesture_capture_during_grace)
 		_set_straight_punch_state(side, state)
 		return
 
@@ -2054,6 +2035,11 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 		var grace_deadline_timestamp_ms := int(state.get("grace_deadline_timestamp_ms", 0))
 		var grace_ms_remaining := max(0, grace_deadline_timestamp_ms - timestamp_ms)
 		state["grace_ms_remaining"] = grace_ms_remaining
+		if grace_ms_remaining > 0 and allow_next_gesture_capture_during_grace:
+			_try_trigger_straight_punch(events, side, state, straight_punch_config, event_name, timestamp_ms, fresh_sample, use_hand_tracking, wrist_velocity, bbox_area, elbow_shoulder_xy_gate_passed, wrist_lateral_angle_gate_passed, depth_analysis, true)
+			grace_deadline_timestamp_ms = int(state.get("grace_deadline_timestamp_ms", grace_deadline_timestamp_ms))
+			grace_ms_remaining = max(0, grace_deadline_timestamp_ms - timestamp_ms)
+			state["grace_ms_remaining"] = grace_ms_remaining
 		if timestamp_ms >= grace_deadline_timestamp_ms:
 			state["not_ready_started_timestamp_ms"] = timestamp_ms
 			_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_NOT_READY)
@@ -2304,51 +2290,20 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		qualifying_grid_transition = grid_transition_available and state["grid_direction_gate_passed"]
 		if phase != POSE_STRIKE_STATE_READY and grid_progress_ready and qualifying_grid_transition:
 			_buffer_pose_strike_grid_transition(state, grid_transition)
+	var allow_next_gesture_capture_during_grace := bool(config.get("allow_next_gesture_capture_during_grace", false))
 	if phase == POSE_STRIKE_STATE_READY:
-		var ready_to_trigger := false
-		var trigger_grid_transition := {}
-		if backend_name == BACKEND_GRID_DETECTION:
-			if grid_progress_ready and qualifying_grid_transition:
-				trigger_grid_transition = grid_transition.duplicate(true)
-				trigger_grid_transition["accumulated_progress"] = accumulated_grid_progress
-			else:
-				trigger_grid_transition = _get_buffered_pose_strike_grid_transition(state)
-			ready_to_trigger = not trigger_grid_transition.is_empty()
-		else:
-			var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
-			if family == "hook":
-				var max_wrist_angle_from_elbow_horizontal_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
-				var wrist_horizontal_angle_gate_passed := wrist_angle_from_elbow_horizontal_deg <= max_wrist_angle_from_elbow_horizontal_deg + 0.000001
-				state["wrist_horizontal_angle_gate_passed"] = wrist_horizontal_angle_gate_passed
-				ready_to_trigger = speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side
-			else:
-				var max_wrist_angle_from_elbow_vertical_deg := clampf(float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0, 90.0)
-				var wrist_vertical_angle_gate_passed := wrist_angle_from_elbow_vertical_deg <= max_wrist_angle_from_elbow_vertical_deg + 0.000001
-				state["wrist_vertical_angle_gate_passed"] = wrist_vertical_angle_gate_passed
-				ready_to_trigger = speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed
-			if bool(depth_analysis.get("gate_applied", false)):
-				ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
-		if ready_to_trigger:
-			var blocking_state := _get_same_family_threshold_blocking_state(family, side, timestamp_ms)
-			if not blocking_state.is_empty():
-				_apply_same_family_block(state, blocking_state)
-				if backend_name == BACKEND_GRID_DETECTION and grid_progress_ready and qualifying_grid_transition:
-					_buffer_pose_strike_grid_transition(state, grid_transition)
-			else:
-				var triggered_grace_ms := max(0, int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)))
-				state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
-				state["grace_ms_remaining"] = triggered_grace_ms
-				state["not_ready_started_timestamp_ms"] = -1
-				if backend_name == BACKEND_GRID_DETECTION:
-					_consume_pose_strike_grid_transition(state, trigger_grid_transition)
-				_emit_power_event(events, event_name, _compute_pose_strike_power(family, speed, horizontal_direction_velocity, upward_velocity, config))
-				_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRIGGERED)
+		_try_trigger_pose_strike(events, family, side, state, config, event_name, timestamp_ms, backend_name, speed, horizontal_direction_velocity, upward_velocity, depth_analysis, wrist_angle_from_elbow_horizontal_deg, wrist_angle_from_elbow_vertical_deg, wrist_on_required_hook_side, wrist_above_elbow_gate_passed, grid_progress_ready, qualifying_grid_transition, grid_transition, accumulated_grid_progress, allow_next_gesture_capture_during_grace)
 		_set_pose_strike_state(family, side, state)
 		return
 	if phase == POSE_STRIKE_STATE_TRIGGERED:
 		var grace_deadline_timestamp_ms := int(state.get("grace_deadline_timestamp_ms", 0))
 		var grace_ms_remaining := max(0, grace_deadline_timestamp_ms - timestamp_ms)
 		state["grace_ms_remaining"] = grace_ms_remaining
+		if grace_ms_remaining > 0 and allow_next_gesture_capture_during_grace:
+			_try_trigger_pose_strike(events, family, side, state, config, event_name, timestamp_ms, backend_name, speed, horizontal_direction_velocity, upward_velocity, depth_analysis, wrist_angle_from_elbow_horizontal_deg, wrist_angle_from_elbow_vertical_deg, wrist_on_required_hook_side, wrist_above_elbow_gate_passed, grid_progress_ready, qualifying_grid_transition, grid_transition, accumulated_grid_progress, true)
+			grace_deadline_timestamp_ms = int(state.get("grace_deadline_timestamp_ms", grace_deadline_timestamp_ms))
+			grace_ms_remaining = max(0, grace_deadline_timestamp_ms - timestamp_ms)
+			state["grace_ms_remaining"] = grace_ms_remaining
 		if timestamp_ms >= grace_deadline_timestamp_ms:
 			state["not_ready_started_timestamp_ms"] = timestamp_ms
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_NOT_READY)
@@ -2766,15 +2721,90 @@ func _family_side_to_event_name(family: String, side: String) -> String:
 		return ""
 	return String(family_events[0] if side == "left" else family_events[1])
 
-func _get_same_family_threshold_blocking_state(family: String, side: String, timestamp_ms: int) -> Dictionary:
+func _try_trigger_straight_punch(events: Array, side: String, state: Dictionary, straight_punch_config: Dictionary, event_name: String, timestamp_ms: int, fresh_sample: bool, use_hand_tracking: bool, wrist_velocity: float, bbox_area: float, elbow_shoulder_xy_gate_passed: bool, wrist_lateral_angle_gate_passed: bool, depth_analysis: Dictionary, allow_grace_capture: bool) -> void:
+	if not fresh_sample:
+		return
+	var min_velocity := maxf(float(straight_punch_config.get("min_velocity", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_VELOCITY)), 0.0)
+	var min_bbox_area_growth := maxf(float(straight_punch_config.get("min_bbox_area_growth", STRAIGHT_PUNCH_DEFAULT_MIN_BBOX_AREA_GROWTH)), 0.0)
+	var min_positive_growth_samples := max(1, int(straight_punch_config.get("min_positive_growth_samples", STRAIGHT_PUNCH_DEFAULT_MIN_POSITIVE_GROWTH_SAMPLES)))
+	var in_triggered_grace := allow_grace_capture and String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)) == STRAIGHT_PUNCH_STATE_TRIGGERED
+	var recent_peak_wrist_velocity := wrist_velocity if in_triggered_grace else maxf(float(state.get("recent_peak_wrist_velocity", wrist_velocity)), wrist_velocity)
+	var recent_peak_bbox_area_growth := float(state.get("last_bbox_area_growth", 0.0)) if in_triggered_grace else maxf(float(state.get("recent_peak_bbox_area_growth", state.get("last_bbox_area_growth", 0.0))), float(state.get("last_bbox_area_growth", 0.0)))
+	var ready_to_trigger := recent_peak_wrist_velocity >= min_velocity and elbow_shoulder_xy_gate_passed and wrist_lateral_angle_gate_passed
+	if use_hand_tracking:
+		ready_to_trigger = ready_to_trigger and recent_peak_bbox_area_growth + 0.000001 >= min_bbox_area_growth and int(state.get("positive_growth_samples", 0)) >= min_positive_growth_samples
+	if bool(depth_analysis.get("gate_applied", false)):
+		ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
+	if not ready_to_trigger:
+		return
+	var blocking_state := _get_same_family_threshold_blocking_state("straight_punch", side, timestamp_ms, allow_grace_capture)
+	if not blocking_state.is_empty():
+		_apply_same_family_block(state, blocking_state)
+		return
+	_clear_same_family_block(state)
+	state["trigger_bbox_area"] = bbox_area
+	var triggered_grace_ms := max(0, int(straight_punch_config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS)))
+	state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
+	state["grace_ms_remaining"] = triggered_grace_ms
+	state["not_ready_started_timestamp_ms"] = -1
+	_emit_power_event(events, event_name, _compute_straight_punch_power(recent_peak_wrist_velocity, bbox_area, state, straight_punch_config, recent_peak_bbox_area_growth))
+	_transition_straight_punch_state(events, side, state, STRAIGHT_PUNCH_STATE_TRIGGERED)
+
+func _try_trigger_pose_strike(events: Array, family: String, side: String, state: Dictionary, config: Dictionary, event_name: String, timestamp_ms: int, backend_name: String, speed: float, horizontal_direction_velocity: float, upward_velocity: float, depth_analysis: Dictionary, wrist_angle_from_elbow_horizontal_deg: float, wrist_angle_from_elbow_vertical_deg: float, wrist_on_required_hook_side: bool, wrist_above_elbow_gate_passed: bool, grid_progress_ready: bool, qualifying_grid_transition: bool, grid_transition: Dictionary, accumulated_grid_progress: int, allow_grace_capture: bool) -> void:
+	var ready_to_trigger := false
+	var trigger_grid_transition := {}
+	if backend_name == BACKEND_GRID_DETECTION:
+		if grid_progress_ready and qualifying_grid_transition:
+			trigger_grid_transition = grid_transition.duplicate(true)
+			trigger_grid_transition["accumulated_progress"] = accumulated_grid_progress
+		else:
+			trigger_grid_transition = _get_buffered_pose_strike_grid_transition(state)
+		ready_to_trigger = not trigger_grid_transition.is_empty()
+	else:
+		var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
+		if family == "hook":
+			var max_wrist_angle_from_elbow_horizontal_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
+			var wrist_horizontal_angle_gate_passed := wrist_angle_from_elbow_horizontal_deg <= max_wrist_angle_from_elbow_horizontal_deg + 0.000001
+			state["wrist_horizontal_angle_gate_passed"] = wrist_horizontal_angle_gate_passed
+			ready_to_trigger = speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side
+		else:
+			var max_wrist_angle_from_elbow_vertical_deg := clampf(float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0, 90.0)
+			var wrist_vertical_angle_gate_passed := wrist_angle_from_elbow_vertical_deg <= max_wrist_angle_from_elbow_vertical_deg + 0.000001
+			state["wrist_vertical_angle_gate_passed"] = wrist_vertical_angle_gate_passed
+			ready_to_trigger = speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed
+		if bool(depth_analysis.get("gate_applied", false)):
+			ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
+	if not ready_to_trigger:
+		return
+	var blocking_state := _get_same_family_threshold_blocking_state(family, side, timestamp_ms, allow_grace_capture)
+	if not blocking_state.is_empty():
+		_apply_same_family_block(state, blocking_state)
+		if backend_name == BACKEND_GRID_DETECTION and grid_progress_ready and qualifying_grid_transition:
+			_buffer_pose_strike_grid_transition(state, grid_transition)
+		return
+	_clear_same_family_block(state)
+	var triggered_grace_ms := max(0, int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)))
+	state["grace_deadline_timestamp_ms"] = timestamp_ms + triggered_grace_ms
+	state["grace_ms_remaining"] = triggered_grace_ms
+	state["not_ready_started_timestamp_ms"] = -1
+	if backend_name == BACKEND_GRID_DETECTION:
+		_consume_pose_strike_grid_transition(state, trigger_grid_transition)
+	_emit_power_event(events, event_name, _compute_pose_strike_power(family, speed, horizontal_direction_velocity, upward_velocity, config))
+	_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRIGGERED)
+
+func _get_same_family_threshold_blocking_state(family: String, side: String, timestamp_ms: int, allow_capture_during_triggered_grace: bool = false) -> Dictionary:
 	var blocking_side := "right" if side == "left" else "left"
 	var blocking_state := _get_straight_punch_state(blocking_side) if family == "straight_punch" else _get_pose_strike_state(family, blocking_side)
 	var blocking_phase := String(blocking_state.get("phase", ""))
 	if family == "straight_punch":
+		if blocking_phase == STRAIGHT_PUNCH_STATE_TRIGGERED and allow_capture_during_triggered_grace:
+			return {}
 		if blocking_phase != STRAIGHT_PUNCH_STATE_TRIGGERED and blocking_phase != STRAIGHT_PUNCH_STATE_NOT_READY:
 			return {}
 	else:
 		if blocking_phase != POSE_STRIKE_STATE_TRIGGERED:
+			return {}
+		if allow_capture_during_triggered_grace:
 			return {}
 		var grace_deadline_timestamp_ms := int(blocking_state.get("grace_deadline_timestamp_ms", 0))
 		if timestamp_ms >= grace_deadline_timestamp_ms:
@@ -3603,6 +3633,7 @@ func _get_straight_punch_config() -> Dictionary:
 		"max_elbow_shoulder_xy_distance": STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE,
 		"min_wrist_lateral_angle_from_elbow_vertical_deg": STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG,
 		"triggered_grace_ms": STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS,
+		"allow_next_gesture_capture_during_grace": false,
 		"bbox_area_retract_epsilon": STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON,
 		"pose_only_rearm_ms": STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS,
@@ -3625,6 +3656,7 @@ func _get_straight_punch_config() -> Dictionary:
 	config["max_elbow_shoulder_xy_distance"] = maxf(0.0, float(thresholds.get("max_elbow_shoulder_xy_distance", config.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE))))
 	config["min_wrist_lateral_angle_from_elbow_vertical_deg"] = maxf(0.0, float(thresholds.get("min_wrist_lateral_angle_from_elbow_vertical_deg", config.get("min_wrist_lateral_angle_from_elbow_vertical_deg", STRAIGHT_PUNCH_DEFAULT_MIN_WRIST_LATERAL_ANGLE_FROM_ELBOW_VERTICAL_DEG))))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", STRAIGHT_PUNCH_DEFAULT_TRIGGERED_GRACE_MS))))
+	config["allow_next_gesture_capture_during_grace"] = bool(timing.get("allow_next_gesture_capture_during_grace", config.get("allow_next_gesture_capture_during_grace", false)))
 	config["bbox_area_retract_epsilon"] = maxf(0.0, float(rearm.get("bbox_area_retract_epsilon", config.get("bbox_area_retract_epsilon", STRAIGHT_PUNCH_DEFAULT_BBOX_AREA_RETRACT_EPSILON))))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", STRAIGHT_PUNCH_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", STRAIGHT_PUNCH_DEFAULT_REACQUIRE_STABLE_MS))))
@@ -3742,6 +3774,7 @@ func _get_hook_config() -> Dictionary:
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"overflow_protection_enabled": false,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
+		"allow_next_gesture_capture_during_grace": false,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
 	}
@@ -3764,6 +3797,7 @@ func _get_hook_config() -> Dictionary:
 	config["min_cell_delta"] = int(config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
 	config["overflow_protection_enabled"] = bool(evaluation.get("overflow_protection_enabled", config.get("overflow_protection_enabled", false)))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
+	config["allow_next_gesture_capture_during_grace"] = bool(timing.get("allow_next_gesture_capture_during_grace", config.get("allow_next_gesture_capture_during_grace", false)))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
 	return config
@@ -3780,6 +3814,7 @@ func _get_uppercut_config() -> Dictionary:
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"overflow_protection_enabled": false,
 		"triggered_grace_ms": POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS,
+		"allow_next_gesture_capture_during_grace": false,
 		"pose_only_rearm_ms": POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS,
 		"lost_tracking_reacquire_stable_ms": POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS,
 	}
@@ -3802,6 +3837,7 @@ func _get_uppercut_config() -> Dictionary:
 	config["min_cell_delta"] = int(config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
 	config["overflow_protection_enabled"] = bool(evaluation.get("overflow_protection_enabled", config.get("overflow_protection_enabled", false)))
 	config["triggered_grace_ms"] = max(0, int(timing.get("triggered_grace_ms", config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS))))
+	config["allow_next_gesture_capture_during_grace"] = bool(timing.get("allow_next_gesture_capture_during_grace", config.get("allow_next_gesture_capture_during_grace", false)))
 	config["pose_only_rearm_ms"] = max(0, int(rearm.get("pose_only_rearm_ms", config.get("pose_only_rearm_ms", POSE_STRIKE_DEFAULT_POSE_ONLY_REARM_MS))))
 	config["lost_tracking_reacquire_stable_ms"] = max(0, int(state_machine.get("lost_tracking_reacquire_stable_ms", config.get("lost_tracking_reacquire_stable_ms", POSE_STRIKE_DEFAULT_REACQUIRE_STABLE_MS))))
 	return config
