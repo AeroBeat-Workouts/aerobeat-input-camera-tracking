@@ -1042,7 +1042,7 @@ func test_boxing_punch_hover_card_uses_pose_threshold_state_machine_debug_fields
 	assert_eq(String(rows[2].get("current_text", "")), "tracked, valid=true, source=fresh_inference, stale=40ms (1 frames), grace=40ms (1 frames), stable=120ms")
 	assert_eq(String(rows[3].get("current_text", "")), "true")
 	assert_eq(String(rows[4].get("current_text", "")), "waiting for first straight-punch state change")
-	assert_eq(String(rows[5].get("current_text", "")), "state=not_ready wrist=0.420 peak=0.455 xy=0.082<=0.090 (true) angle=18.000>=15.000 (true) fresh=true source=fresh_inference grace=0ms pose_valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "waiting for first straight-punch state change payload")
 	assert_eq(String(rows[7].get("threshold_text", "")), "0.180")
 	assert_eq(String(rows[7].get("current_text", "")), "0.455")
 	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
@@ -1260,7 +1260,7 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	assert_string_contains(text_body, "Depth live metrics (L): available=true, fresh=true, source=placeholder, closeness=0.020")
 	assert_string_contains(text_body, "Depth thresholds: max_closeness_delta=0.030, max_peak_closeness=0.060")
 	assert_string_contains(text_body, "Uppercut tuning")
-	assert_string_contains(text_body, "Minimum upward row travel: 2 subcells")
+	assert_string_contains(text_body, "Minimum upward row travel: 1 subcells")
 	assert_string_contains(text_body, "Uppercut direction reference: athlete-space upward rows (negative signed delta)")
 	assert_string_contains(text_body, "Depth artifact path: res://assets/depth_models/midas/openvino_midas_v21_small_256/")
 	assert_string_contains(text_body, "Depth backend/family: openvino / midas_openvino_v21_small_256")
@@ -2367,30 +2367,55 @@ func test_playback_replay_step_buttons_are_hidden_in_timeline() -> void:
 	assert_false(step_back.visible)
 	assert_false(step_forward.visible)
 
-func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -> void:
+func test_boxing_punch_hover_card_keeps_live_rows_fresh_while_preserving_latest_state_change_snapshot() -> void:
 	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"left": {
+					"state": "ready",
+					"hand_tracking_enabled": false,
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"tracking_valid": true,
+					"sample_source": "pose",
+					"fresh_sample": false,
+					"wrist_velocity": 0.0,
+					"recent_peak_wrist_velocity": 0.0,
+					"min_velocity": 0.180,
+					"elbow_shoulder_xy_distance": 0.010,
+					"max_elbow_shoulder_xy_distance": 0.090,
+					"elbow_shoulder_xy_gate_passed": true,
+					"wrist_lateral_angle_from_elbow_vertical_deg": 18.0,
+					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+					"wrist_lateral_angle_gate_passed": true,
+					"grace_ms_remaining": 0,
+					"triggered_grace_ms": 240,
+					"pose_only_rearm_ms": 250,
+					"reacquire_stable_ms_required": 40,
+				},
+			}
+		}
+	})
 	harness.set("_straight_punch_transition_debug", {
 		"left": {
 			"state": "triggered",
 			"previous_state": "ready",
 			"timestamp_ms": Time.get_ticks_msec() - 80,
-			"tracking_state": "tracked",
-			"sample_source": "fresh_inference",
+			"hand_tracking_enabled": false,
+			"pose_tracking_valid": true,
+			"tracking_state": "pose_tracked",
+			"sample_source": "pose",
 			"tracking_valid": true,
-			"stale_frames": 0,
-			"stale_ms": 0,
-			"grace_frames": 0,
-			"grace_ms": 0,
-			"stable_ms": 160,
 			"fresh_sample": true,
 			"wrist_velocity": 0.280,
-			"forward_depth_spike": 0.100,
-			"recent_peak_forward_depth_spike": 0.120,
+			"recent_peak_wrist_velocity": 0.280,
 			"elbow_shoulder_xy_distance": 0.082,
 			"max_elbow_shoulder_xy_distance": 0.090,
 			"elbow_shoulder_xy_gate_passed": true,
-			"bbox_area": 0.064,
-			"bbox_area_growth": 0.011,
+			"wrist_lateral_angle_from_elbow_vertical_deg": 0.0,
+			"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
+			"wrist_lateral_angle_gate_passed": false,
 			"grace_ms_remaining": 240,
 		},
 		"right": {},
@@ -2398,6 +2423,7 @@ func test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot() -
 
 	var model: Dictionary = harness._build_hover_card_model("punch_left")
 	var rows: Array = model.get("rows", [])
-	assert_string_contains(String(rows[1].get("current_text", "")), "tracking_lost")
-	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> tracking_lost")
-	assert_eq(String(rows[5].get("current_text", "")), "state=tracking_lost wrist=0.280 peak=0.000 xy=0.082<=0.090 (true) angle=0.000>=0.000 (false) fresh=true source=fresh_inference grace=240ms pose_valid=false")
+	assert_string_contains(String(rows[1].get("current_text", "")), "ready")
+	assert_string_contains(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose")
+	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> triggered")
+	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 peak=0.280 xy=0.082<=0.090 (true) angle=0.000>=15.000 (false) fresh=true source=pose grace=240ms pose_valid=true")

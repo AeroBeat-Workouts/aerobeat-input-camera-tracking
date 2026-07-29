@@ -61,6 +61,3 @@ tracking:
     inference_interval_frames: 1
     # Allowed options: [lite_filtered, lite_raw]. Pick pose smoothing after samples come back. Filtered is steadier but slightly laggier; raw is snappier but noisier. tool -> vendor.
     smoothing_style: lite_raw
-  hands:
-    # Enable hand tracking only when a profile truly needs hand landmarks. False reduces extra vendor work; true can add richer hand data at extra cost. Boxing straight-punch truth is pose-only unless this is explicitly re-enabled.
-    enabled: false

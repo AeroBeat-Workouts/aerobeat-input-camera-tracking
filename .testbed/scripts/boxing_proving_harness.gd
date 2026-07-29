@@ -1483,18 +1483,15 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 func _boxing_latest_state_snapshot() -> Dictionary:
 	return _paused_boxing_latest_state if _paused_boxing_state_active else _latest_state
 
-func _merged_punch_debug_state(side: String) -> Dictionary:
+func _live_punch_debug_state(side: String) -> Dictionary:
 	var latest_state := _boxing_latest_state_snapshot()
 	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
 	var straight_punch_debug: Dictionary = (gesture_debug.get("straight_punch", {}) as Dictionary)
-	var straight_side: Dictionary = ((straight_punch_debug.get(side, {}) as Dictionary)).duplicate(true)
+	return ((straight_punch_debug.get(side, {}) as Dictionary)).duplicate(true)
+
+func _punch_transition_debug_state(side: String) -> Dictionary:
 	var transition_debug_source := _paused_straight_punch_transition_debug if _paused_boxing_state_active else _straight_punch_transition_debug
-	var transition_debug: Dictionary = ((transition_debug_source.get(side, {}) as Dictionary)).duplicate(true)
-	if straight_side.is_empty():
-		return transition_debug
-	for key_variant: Variant in transition_debug.keys():
-		straight_side[key_variant] = transition_debug[key_variant]
-	return straight_side
+	return ((transition_debug_source.get(side, {}) as Dictionary)).duplicate(true)
 
 func _boxing_transition_age_ms(timestamp_ms: int) -> int:
 	if timestamp_ms <= 0:
@@ -1511,15 +1508,16 @@ func _paused_punch_prefers_bbox_growth_row(straight_side: Dictionary) -> bool:
 	return _paused_boxing_state_active and bool(straight_side.get("hand_tracking_enabled", true)) and float(straight_side.get("min_bbox_area_growth", 0.0)) > 0.0
 
 func _build_punch_hover_card_model(spec: Dictionary, side: String) -> Dictionary:
-	var straight_side := _merged_punch_debug_state(side)
+	var live_side := _live_punch_debug_state(side)
+	var transition_side := _punch_transition_debug_state(side)
 	var rows: Array[Dictionary] = []
-	var pose_only_inputs := not bool(straight_side.get("hand_tracking_enabled", true))
+	var pose_only_inputs := not bool(live_side.get("hand_tracking_enabled", transition_side.get("hand_tracking_enabled", true)))
 	for row_spec_variant: Variant in spec.get("rows", []):
 		var row_spec: Dictionary = row_spec_variant
 		var row_id := String(row_spec.get("id", ""))
 		if pose_only_inputs and (row_id == "rearm_section" or row_id == "grace_timer"):
 			continue
-		rows.append(_build_punch_requirement_row(row_spec, straight_side, side))
+		rows.append(_build_punch_requirement_row(row_spec, live_side, transition_side, side))
 	return {
 		"title": spec.get("title", _display_name_for_card_key("punch_%s" % side)),
 		"rows": rows,
@@ -1777,45 +1775,57 @@ func _truthful_punch_state_name(straight_side: Dictionary) -> String:
 	var tracking_state := String(straight_side.get("tracking_state", "pose_tracked")).strip_edges()
 	return tracking_state if not tracking_state.is_empty() else state_name
 
-func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionary, _side: String) -> Dictionary:
+func _build_punch_requirement_row(row_spec: Dictionary, live_side: Dictionary, transition_side: Dictionary, _side: String) -> Dictionary:
 	var row_id := String(row_spec.get("id", ""))
 	if row_id.begins_with("depth_"):
-		return _build_depth_config_row(row_spec, "straight_punch", straight_side)
+		return _build_depth_config_row(row_spec, "straight_punch", live_side)
 	var row := row_spec.duplicate(true)
 	var label := String(row_spec.get("label", ""))
 	var passed := false
 	var current_text := ""
 	var threshold_text := ""
-	var hand_tracking_enabled := bool(straight_side.get("hand_tracking_enabled", true))
-	var pose_tracking_valid := bool(straight_side.get("pose_tracking_valid", false))
-	var state_name := _truthful_punch_state_name(straight_side)
-	var wrist_velocity := float(straight_side.get("wrist_velocity", 0.0))
-	var recent_peak_wrist_velocity := float(straight_side.get("recent_peak_wrist_velocity", wrist_velocity))
-	var min_velocity := float(straight_side.get("min_velocity", 0.0))
-	var elbow_shoulder_xy_distance := float(straight_side.get("elbow_shoulder_xy_distance", 0.0))
-	var max_elbow_shoulder_xy_distance := float(straight_side.get("max_elbow_shoulder_xy_distance", 0.0))
-	var elbow_shoulder_xy_gate_passed := bool(straight_side.get("elbow_shoulder_xy_gate_passed", false))
-	var wrist_lateral_angle := float(straight_side.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
-	var min_wrist_lateral_angle := float(straight_side.get("min_wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
-	var wrist_lateral_angle_gate_passed := bool(straight_side.get("wrist_lateral_angle_gate_passed", false))
-	var pose_reference_shoulder_width := float(straight_side.get("pose_reference_shoulder_width", 0.0))
-	var pose_reference_shoulder_width_source := String(straight_side.get("pose_reference_shoulder_width_source", "missing"))
-	var fresh_sample := bool(straight_side.get("fresh_sample", false))
-	var tracking_valid := bool(straight_side.get("tracking_valid", false))
-	var tracking_state := String(straight_side.get("tracking_state", "idle"))
-	var sample_source := String(straight_side.get("sample_source", "none"))
-	var stale_frames := int(straight_side.get("stale_frames", 0))
-	var stale_ms := int(straight_side.get("stale_ms", 0))
-	var grace_frames := int(straight_side.get("grace_frames", 0))
-	var grace_ms := int(straight_side.get("grace_ms", 0))
-	var hand_stable_ms := int(straight_side.get("stable_ms", 0))
-	var transition_timestamp_ms := int(straight_side.get("timestamp_ms", 0))
-	var previous_state := String(straight_side.get("previous_state", ""))
-	var grace_ms_remaining := int(straight_side.get("grace_ms_remaining", 0))
-	var triggered_grace_ms := int(straight_side.get("triggered_grace_ms", 0))
-	var pose_only_rearm_ms := int(straight_side.get("pose_only_rearm_ms", 0))
-	var reacquire_stable_ms_required := int(straight_side.get("reacquire_stable_ms_required", 0))
-	var trigger_bbox_area := float(straight_side.get("trigger_bbox_area", 0.0))
+	var hand_tracking_enabled := bool(live_side.get("hand_tracking_enabled", transition_side.get("hand_tracking_enabled", true)))
+	var pose_tracking_valid := bool(live_side.get("pose_tracking_valid", false))
+	var state_name := _truthful_punch_state_name(live_side)
+	var wrist_velocity := float(live_side.get("wrist_velocity", 0.0))
+	var recent_peak_wrist_velocity := float(live_side.get("recent_peak_wrist_velocity", wrist_velocity))
+	var min_velocity := float(live_side.get("min_velocity", 0.0))
+	var elbow_shoulder_xy_distance := float(live_side.get("elbow_shoulder_xy_distance", 0.0))
+	var max_elbow_shoulder_xy_distance := float(live_side.get("max_elbow_shoulder_xy_distance", 0.0))
+	var elbow_shoulder_xy_gate_passed := bool(live_side.get("elbow_shoulder_xy_gate_passed", false))
+	var wrist_lateral_angle := float(live_side.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
+	var min_wrist_lateral_angle := float(live_side.get("min_wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
+	var wrist_lateral_angle_gate_passed := bool(live_side.get("wrist_lateral_angle_gate_passed", false))
+	var pose_reference_shoulder_width := float(live_side.get("pose_reference_shoulder_width", 0.0))
+	var pose_reference_shoulder_width_source := String(live_side.get("pose_reference_shoulder_width_source", "missing"))
+	var fresh_sample := bool(live_side.get("fresh_sample", false))
+	var tracking_valid := bool(live_side.get("tracking_valid", false))
+	var tracking_state := String(live_side.get("tracking_state", "idle"))
+	var sample_source := String(live_side.get("sample_source", "none"))
+	var stale_frames := int(live_side.get("stale_frames", 0))
+	var stale_ms := int(live_side.get("stale_ms", 0))
+	var grace_frames := int(live_side.get("grace_frames", 0))
+	var grace_ms := int(live_side.get("grace_ms", 0))
+	var hand_stable_ms := int(live_side.get("stable_ms", 0))
+	var transition_timestamp_ms := int(transition_side.get("timestamp_ms", 0))
+	var previous_state := String(transition_side.get("previous_state", ""))
+	var transition_state_name := _truthful_punch_state_name(transition_side)
+	var transition_sample_source := String(transition_side.get("sample_source", "none"))
+	var transition_fresh_sample := bool(transition_side.get("fresh_sample", false))
+	var transition_tracking_valid := bool(transition_side.get("tracking_valid", false))
+	var transition_wrist_velocity := float(transition_side.get("wrist_velocity", 0.0))
+	var transition_recent_peak_wrist_velocity := float(transition_side.get("recent_peak_wrist_velocity", transition_wrist_velocity))
+	var transition_elbow_shoulder_xy_distance := float(transition_side.get("elbow_shoulder_xy_distance", 0.0))
+	var transition_max_elbow_shoulder_xy_distance := float(transition_side.get("max_elbow_shoulder_xy_distance", 0.0))
+	var transition_elbow_shoulder_xy_gate_passed := bool(transition_side.get("elbow_shoulder_xy_gate_passed", false))
+	var transition_wrist_lateral_angle := float(transition_side.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
+	var transition_min_wrist_lateral_angle := float(transition_side.get("min_wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
+	var transition_wrist_lateral_angle_gate_passed := bool(transition_side.get("wrist_lateral_angle_gate_passed", false))
+	var grace_ms_remaining := int(live_side.get("grace_ms_remaining", 0))
+	var triggered_grace_ms := int(live_side.get("triggered_grace_ms", 0))
+	var pose_only_rearm_ms := int(live_side.get("pose_only_rearm_ms", 0))
+	var reacquire_stable_ms_required := int(live_side.get("reacquire_stable_ms_required", 0))
+	var trigger_bbox_area := float(live_side.get("trigger_bbox_area", 0.0))
 	var transition_age_ms: int = _boxing_transition_age_ms(transition_timestamp_ms)
 	match row_id:
 		"state_section", "trigger_section", "rearm_section":
@@ -1846,45 +1856,49 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 				current_text = "waiting for first straight-punch state change"
 				passed = false
 			else:
-				var transition_summary := state_name
+				var transition_summary := transition_state_name
 				if not previous_state.is_empty():
-					transition_summary = "%s -> %s" % [previous_state, state_name]
+					transition_summary = "%s -> %s" % [previous_state, transition_state_name]
 				current_text = transition_summary
 				if transition_timestamp_ms > 0:
 					current_text += " (%s ago)" % _fmt_age_ms(_boxing_transition_age_ms(transition_timestamp_ms))
 				passed = true
 		"state_change_payload":
-			if _punch_state_change_uses_bbox_summary(straight_side):
+			if transition_side.is_empty():
+				current_text = "waiting for first straight-punch state change payload"
+				passed = false
+			elif _punch_state_change_uses_bbox_summary(transition_side):
 				current_text = "state=%s wrist=%s xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
-					state_name,
-					_fmt_float(wrist_velocity),
-					_fmt_float(elbow_shoulder_xy_distance),
-					_fmt_float(max_elbow_shoulder_xy_distance),
-					_fmt_bool(elbow_shoulder_xy_gate_passed),
-					_fmt_float(float(straight_side.get("bbox_area", 0.0))),
-					_fmt_float(float(straight_side.get("bbox_area_growth", 0.0))),
-					_fmt_bool(fresh_sample),
-					sample_source,
-					grace_ms_remaining,
-					_fmt_bool(tracking_valid),
+					transition_state_name,
+					_fmt_float(transition_wrist_velocity),
+					_fmt_float(transition_elbow_shoulder_xy_distance),
+					_fmt_float(transition_max_elbow_shoulder_xy_distance),
+					_fmt_bool(transition_elbow_shoulder_xy_gate_passed),
+					_fmt_float(float(transition_side.get("bbox_area", 0.0))),
+					_fmt_float(float(transition_side.get("bbox_area_growth", 0.0))),
+					_fmt_bool(transition_fresh_sample),
+					transition_sample_source,
+					int(transition_side.get("grace_ms_remaining", 0)),
+					_fmt_bool(transition_tracking_valid),
 				]
+				passed = true
 			else:
 				current_text = "state=%s wrist=%s peak=%s xy=%s<=%s (%s) angle=%s>=%s (%s) fresh=%s source=%s grace=%dms pose_valid=%s" % [
-					state_name,
-					_fmt_float(wrist_velocity),
-					_fmt_float(recent_peak_wrist_velocity),
-					_fmt_float(elbow_shoulder_xy_distance),
-					_fmt_float(max_elbow_shoulder_xy_distance),
-					_fmt_bool(elbow_shoulder_xy_gate_passed),
-					_fmt_float(wrist_lateral_angle),
-					_fmt_float(min_wrist_lateral_angle),
-					_fmt_bool(wrist_lateral_angle_gate_passed),
-					_fmt_bool(fresh_sample),
-					sample_source,
-					grace_ms_remaining,
-					_fmt_bool(pose_tracking_valid),
+					transition_state_name,
+					_fmt_float(transition_wrist_velocity),
+					_fmt_float(transition_recent_peak_wrist_velocity),
+					_fmt_float(transition_elbow_shoulder_xy_distance),
+					_fmt_float(transition_max_elbow_shoulder_xy_distance),
+					_fmt_bool(transition_elbow_shoulder_xy_gate_passed),
+					_fmt_float(transition_wrist_lateral_angle),
+					_fmt_float(transition_min_wrist_lateral_angle),
+					_fmt_bool(transition_wrist_lateral_angle_gate_passed),
+					_fmt_bool(transition_fresh_sample),
+					transition_sample_source,
+					int(transition_side.get("grace_ms_remaining", 0)),
+					_fmt_bool(bool(transition_side.get("pose_tracking_valid", false))),
 				]
-			passed = transition_timestamp_ms > 0 or not straight_side.is_empty()
+				passed = true
 		"wrist_velocity":
 			threshold_text = _fmt_float(min_velocity)
 			passed = recent_peak_wrist_velocity >= min_velocity
@@ -1894,10 +1908,10 @@ func _build_punch_requirement_row(row_spec: Dictionary, straight_side: Dictionar
 			passed = elbow_shoulder_xy_gate_passed
 			current_text = _fmt_threshold_comparison_value(elbow_shoulder_xy_distance, max_elbow_shoulder_xy_distance, true)
 		"wrist_lateral_angle":
-			if _paused_punch_prefers_bbox_growth_row(straight_side):
+			if _paused_punch_prefers_bbox_growth_row(live_side):
 				label = "Recent bbox area growth peak >= {threshold}"
-				var min_bbox_area_growth := float(straight_side.get("min_bbox_area_growth", 0.0))
-				var recent_peak_bbox_area_growth := float(straight_side.get("recent_peak_bbox_area_growth", straight_side.get("bbox_area_growth", 0.0)))
+				var min_bbox_area_growth := float(live_side.get("min_bbox_area_growth", 0.0))
+				var recent_peak_bbox_area_growth := float(live_side.get("recent_peak_bbox_area_growth", live_side.get("bbox_area_growth", 0.0)))
 				threshold_text = _fmt_float(min_bbox_area_growth)
 				passed = recent_peak_bbox_area_growth >= min_bbox_area_growth
 				current_text = _fmt_threshold_comparison_value(recent_peak_bbox_area_growth, min_bbox_area_growth)
@@ -2360,6 +2374,10 @@ func _build_boxing_event_feed_text() -> String:
 	var pose_config: Dictionary = tracking.get("pose", {}) if tracking.get("pose", {}) is Dictionary else {}
 	var hands_config: Dictionary = tracking.get("hands", {}) if tracking.get("hands", {}) is Dictionary else {}
 	var hand_validity: Dictionary = hands_config.get("validity", {}) if hands_config.get("validity", {}) is Dictionary else {}
+	var tracker_profile_name := String(tracker_document.get("profile", bundle.get("profile", _selected_profile_id))).strip_edges().to_lower()
+	var pose_enabled := bool(pose_config.get("enabled", false))
+	var hand_tracking_override_present := hands_config.has("enabled")
+	var hand_tracking_summary := "disabled" if hand_tracking_override_present else ("auto (boxing pose-only)" if tracker_profile_name == "boxing" and pose_enabled else "auto")
 	var straight_family: Dictionary = _gesture_family_document(gesture_document, "straight_punch")
 	var straight_config: Dictionary = _gesture_family_backend_document(gesture_document, "straight_punch", "threshold")
 	var straight_eval: Dictionary = straight_config.get("evaluation", {}) if straight_config.get("evaluation", {}) is Dictionary else {}
@@ -2399,10 +2417,13 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("--------------")
 	lines.append("Pose smoothing: %s" % String(pose_config.get("smoothing_style", _tracking_smoothing_style_spec().get("label", "unknown"))))
 	lines.append("Pose cadence: every %s frame(s)" % str(int(pose_config.get("inference_interval_frames", 1))))
-	lines.append("Hand cadence: every %s frame(s)" % str(int(hands_config.get("inference_interval_frames", 1))))
-	lines.append("Hand tracking enabled: %s" % _fmt_bool(bool(hands_config.get("enabled", false))))
-	lines.append("Hand reacquire stable window: %dms" % int(hand_validity.get("reacquire_stable_ms", 0)))
-	lines.append("Hand grace/stale window: %dms" % int(hand_validity.get("max_stale_ms", 0)))
+	if hand_tracking_override_present:
+		lines.append("Hand tracking override: %s" % hand_tracking_summary)
+		lines.append("Hand cadence: every %s frame(s)" % str(int(hands_config.get("inference_interval_frames", 1))))
+		lines.append("Hand reacquire stable window: %dms" % int(hand_validity.get("reacquire_stable_ms", 0)))
+		lines.append("Hand grace/stale window: %dms" % int(hand_validity.get("max_stale_ms", 0)))
+	else:
+		lines.append("Hand tracking override: %s" % hand_tracking_summary)
 
 	lines.append("")
 	lines.append("Straight-punch tuning")
