@@ -129,6 +129,10 @@ const PUNCH_REQUIREMENT_ROWS := [
 		"label": "Elbow-shoulder XY distance <= {threshold}",
 	},
 	{
+		"id": "wrist_shoulder_xy_distance",
+		"label": "Wrist-shoulder XY distance <= {threshold}",
+	},
+	{
 		"id": "wrist_lateral_angle",
 		"label": "Wrist lateral angle from elbow vertical >= {threshold}°",
 	},
@@ -1791,6 +1795,9 @@ func _build_punch_requirement_row(row_spec: Dictionary, live_side: Dictionary, t
 	var elbow_shoulder_xy_distance := float(live_side.get("elbow_shoulder_xy_distance", 0.0))
 	var max_elbow_shoulder_xy_distance := float(live_side.get("max_elbow_shoulder_xy_distance", 0.0))
 	var elbow_shoulder_xy_gate_passed := bool(live_side.get("elbow_shoulder_xy_gate_passed", false))
+	var wrist_shoulder_xy_distance := float(live_side.get("wrist_shoulder_xy_distance", 0.0))
+	var max_wrist_shoulder_xy_distance := float(live_side.get("max_wrist_shoulder_xy_distance", 0.0))
+	var wrist_shoulder_xy_gate_passed := bool(live_side.get("wrist_shoulder_xy_gate_passed", false))
 	var wrist_lateral_angle := float(live_side.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
 	var min_wrist_lateral_angle := float(live_side.get("min_wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
 	var wrist_lateral_angle_gate_passed := bool(live_side.get("wrist_lateral_angle_gate_passed", false))
@@ -1816,6 +1823,9 @@ func _build_punch_requirement_row(row_spec: Dictionary, live_side: Dictionary, t
 	var transition_elbow_shoulder_xy_distance := float(transition_side.get("elbow_shoulder_xy_distance", 0.0))
 	var transition_max_elbow_shoulder_xy_distance := float(transition_side.get("max_elbow_shoulder_xy_distance", 0.0))
 	var transition_elbow_shoulder_xy_gate_passed := bool(transition_side.get("elbow_shoulder_xy_gate_passed", false))
+	var transition_wrist_shoulder_xy_distance := float(transition_side.get("wrist_shoulder_xy_distance", 0.0))
+	var transition_max_wrist_shoulder_xy_distance := float(transition_side.get("max_wrist_shoulder_xy_distance", 0.0))
+	var transition_wrist_shoulder_xy_gate_passed := bool(transition_side.get("wrist_shoulder_xy_gate_passed", false))
 	var transition_wrist_lateral_angle := float(transition_side.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
 	var transition_min_wrist_lateral_angle := float(transition_side.get("min_wrist_lateral_angle_from_elbow_vertical_deg", 0.0))
 	var transition_wrist_lateral_angle_gate_passed := bool(transition_side.get("wrist_lateral_angle_gate_passed", false))
@@ -1866,12 +1876,15 @@ func _build_punch_requirement_row(row_spec: Dictionary, live_side: Dictionary, t
 				current_text = "waiting for first straight-punch state change payload"
 				passed = false
 			elif _punch_state_change_uses_bbox_summary(transition_side):
-				current_text = "state=%s wrist=%s xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
+				current_text = "state=%s wrist=%s elbow_xy=%s<=%s (%s) wrist_xy=%s<=%s (%s) bbox=%s growth=%s fresh=%s source=%s grace=%dms valid=%s" % [
 					transition_state_name,
 					_fmt_float(transition_wrist_velocity),
 					_fmt_float(transition_elbow_shoulder_xy_distance),
 					_fmt_float(transition_max_elbow_shoulder_xy_distance),
 					_fmt_bool(transition_elbow_shoulder_xy_gate_passed),
+					_fmt_float(transition_wrist_shoulder_xy_distance),
+					_fmt_float(transition_max_wrist_shoulder_xy_distance),
+					_fmt_bool(transition_wrist_shoulder_xy_gate_passed),
 					_fmt_float(float(transition_side.get("bbox_area", 0.0))),
 					_fmt_float(float(transition_side.get("bbox_area_growth", 0.0))),
 					_fmt_bool(transition_fresh_sample),
@@ -1881,13 +1894,16 @@ func _build_punch_requirement_row(row_spec: Dictionary, live_side: Dictionary, t
 				]
 				passed = true
 			else:
-				current_text = "state=%s wrist=%s peak=%s xy=%s<=%s (%s) angle=%s>=%s (%s) fresh=%s source=%s grace=%dms pose_valid=%s" % [
+				current_text = "state=%s wrist=%s peak=%s elbow_xy=%s<=%s (%s) wrist_xy=%s<=%s (%s) angle=%s>=%s (%s) fresh=%s source=%s grace=%dms pose_valid=%s" % [
 					transition_state_name,
 					_fmt_float(transition_wrist_velocity),
 					_fmt_float(transition_recent_peak_wrist_velocity),
 					_fmt_float(transition_elbow_shoulder_xy_distance),
 					_fmt_float(transition_max_elbow_shoulder_xy_distance),
 					_fmt_bool(transition_elbow_shoulder_xy_gate_passed),
+					_fmt_float(transition_wrist_shoulder_xy_distance),
+					_fmt_float(transition_max_wrist_shoulder_xy_distance),
+					_fmt_bool(transition_wrist_shoulder_xy_gate_passed),
 					_fmt_float(transition_wrist_lateral_angle),
 					_fmt_float(transition_min_wrist_lateral_angle),
 					_fmt_bool(transition_wrist_lateral_angle_gate_passed),
@@ -1905,6 +1921,10 @@ func _build_punch_requirement_row(row_spec: Dictionary, live_side: Dictionary, t
 			threshold_text = _fmt_float(max_elbow_shoulder_xy_distance)
 			passed = elbow_shoulder_xy_gate_passed
 			current_text = _fmt_threshold_comparison_value(elbow_shoulder_xy_distance, max_elbow_shoulder_xy_distance, true)
+		"wrist_shoulder_xy_distance":
+			threshold_text = _fmt_float(max_wrist_shoulder_xy_distance)
+			passed = wrist_shoulder_xy_gate_passed
+			current_text = _fmt_threshold_comparison_value(wrist_shoulder_xy_distance, max_wrist_shoulder_xy_distance, true)
 		"wrist_lateral_angle":
 			if _paused_punch_prefers_bbox_growth_row(live_side):
 				label = "Recent bbox area growth peak >= {threshold}"
@@ -2439,6 +2459,7 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Min velocity: %s" % _fmt_float(straight_thresholds.get("min_velocity", 0.0)))
 	lines.append("Min bbox area growth: %s" % _fmt_float(straight_thresholds.get("min_bbox_area_growth", 0.0)))
 	lines.append("Max elbow-shoulder XY distance: %s" % _fmt_float(straight_thresholds.get("max_elbow_shoulder_xy_distance", 0.0)))
+	lines.append("Max wrist-shoulder XY distance: %s" % _fmt_float(straight_thresholds.get("max_wrist_shoulder_xy_distance", 0.0)))
 	lines.append("Triggered grace: %dms" % int(straight_timing.get("triggered_grace_ms", 0)))
 	lines.append("BBox retract epsilon: %s" % _fmt_float(straight_rearm.get("bbox_area_retract_epsilon", 0.0)))
 	lines.append("Pose-only rearm timer: %dms" % int(straight_rearm.get("pose_only_rearm_ms", 0)))
@@ -2624,7 +2645,7 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		hand_grace_ms = 0
 		hand_stable_ms = 0
 		stale_ms = 0
-	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s peak_xyz_vel=%s wrist_forward_vel=%s depth_spike=%s elbow_shoulder_xy=%s<=%s(%s) wrist_angle=%s>=%s(%s) shoulder_width=%s(%s) grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
+	return "%s: state=%s tracking=%s valid=%s source=%s wrist_xyz_vel=%s peak_xyz_vel=%s wrist_forward_vel=%s depth_spike=%s elbow_shoulder_xy=%s<=%s(%s) wrist_shoulder_xy=%s<=%s(%s) wrist_angle=%s>=%s(%s) shoulder_width=%s(%s) grace=%dms hook=%s/%s dir=%s uppercut=%s/%s dir=%s hand_grace=%dms hand_stable=%dms stale=%dms" % [
 		"L" if side == "left" else "R",
 		state_name,
 		tracking_state,
@@ -2637,6 +2658,9 @@ func _build_hand_debug_line(side: String, hand_snapshot: Dictionary) -> String:
 		_fmt_float(side_debug.get("elbow_shoulder_xy_distance", 0.0)),
 		_fmt_float(side_debug.get("max_elbow_shoulder_xy_distance", 0.0)),
 		_fmt_bool(bool(side_debug.get("elbow_shoulder_xy_gate_passed", false))),
+		_fmt_float(side_debug.get("wrist_shoulder_xy_distance", 0.0)),
+		_fmt_float(side_debug.get("max_wrist_shoulder_xy_distance", 0.0)),
+		_fmt_bool(bool(side_debug.get("wrist_shoulder_xy_gate_passed", false))),
 		_fmt_float(side_debug.get("wrist_lateral_angle_from_elbow_vertical_deg", 0.0)),
 		_fmt_float(side_debug.get("min_wrist_lateral_angle_from_elbow_vertical_deg", 0.0)),
 		_fmt_bool(bool(side_debug.get("wrist_lateral_angle_gate_passed", false))),

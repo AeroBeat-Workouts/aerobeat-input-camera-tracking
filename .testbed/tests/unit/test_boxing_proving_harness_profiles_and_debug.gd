@@ -961,6 +961,9 @@ func test_boxing_proving_hand_debug_line_surfaces_pose_threshold_metrics() -> vo
 					"elbow_shoulder_xy_distance": 0.082,
 					"max_elbow_shoulder_xy_distance": 0.090,
 					"elbow_shoulder_xy_gate_passed": true,
+					"wrist_shoulder_xy_distance": 0.108,
+					"max_wrist_shoulder_xy_distance": 0.180,
+					"wrist_shoulder_xy_gate_passed": true,
 					"wrist_lateral_angle_from_elbow_vertical_deg": 19.0,
 					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
 					"wrist_lateral_angle_gate_passed": true,
@@ -997,6 +1000,7 @@ func test_boxing_proving_hand_debug_line_surfaces_pose_threshold_metrics() -> vo
 	assert_string_contains(line, "wrist_forward_vel=0.090")
 	assert_string_contains(line, "depth_spike=0.140")
 	assert_string_contains(line, "elbow_shoulder_xy=0.082<=0.090(true)")
+	assert_string_contains(line, "wrist_shoulder_xy=0.108<=0.180(true)")
 	assert_string_contains(line, "wrist_angle=19.000>=15.000(true)")
 	assert_string_contains(line, "shoulder_width=0.310(live)")
 	assert_string_contains(line, "grace=160ms")
@@ -1030,6 +1034,9 @@ func test_boxing_punch_hover_card_uses_pose_threshold_state_machine_debug_fields
 					"elbow_shoulder_xy_distance": 0.082,
 					"max_elbow_shoulder_xy_distance": 0.090,
 					"elbow_shoulder_xy_gate_passed": true,
+					"wrist_shoulder_xy_distance": 0.118,
+					"max_wrist_shoulder_xy_distance": 0.180,
+					"wrist_shoulder_xy_gate_passed": true,
 					"wrist_lateral_angle_from_elbow_vertical_deg": 18.0,
 					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
 					"wrist_lateral_angle_gate_passed": true,
@@ -1056,8 +1063,10 @@ func test_boxing_punch_hover_card_uses_pose_threshold_state_machine_debug_fields
 	assert_eq(String(rows[7].get("current_text", "")), "0.455")
 	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
 	assert_eq(String(rows[8].get("current_text", "")), "0.082")
-	assert_eq(String(rows[9].get("threshold_text", "")), "15.000")
-	assert_eq(String(rows[9].get("current_text", "")), "18.000")
+	assert_eq(String(rows[9].get("threshold_text", "")), "0.180")
+	assert_eq(String(rows[9].get("current_text", "")), "0.118")
+	assert_eq(String(rows[10].get("threshold_text", "")), "15.000")
+	assert_eq(String(rows[10].get("current_text", "")), "18.000")
 
 func test_boxing_punch_inspector_body_calls_out_live_pose_inputs() -> void:
 	var harness = _new_harness()
@@ -1084,6 +1093,9 @@ func test_boxing_punch_inspector_body_calls_out_live_pose_inputs() -> void:
 					"elbow_shoulder_xy_distance": 0.076,
 					"max_elbow_shoulder_xy_distance": 0.090,
 					"elbow_shoulder_xy_gate_passed": true,
+					"wrist_shoulder_xy_distance": 0.112,
+					"max_wrist_shoulder_xy_distance": 0.180,
+					"wrist_shoulder_xy_gate_passed": true,
 					"wrist_lateral_angle_from_elbow_vertical_deg": 18.0,
 					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
 					"wrist_lateral_angle_gate_passed": true,
@@ -1107,6 +1119,7 @@ func test_boxing_punch_inspector_body_calls_out_live_pose_inputs() -> void:
 	assert_string_contains(body, "Recent punch velocity peak >= 0.180 - 0.365")
 	assert_false(body.contains("Recent forward depth spike"))
 	assert_string_contains(body, "Elbow-shoulder XY distance <= 0.090 - 0.076")
+	assert_string_contains(body, "Wrist-shoulder XY distance <= 0.180 - 0.112")
 	assert_string_contains(body, "Wrist lateral angle from elbow vertical >= 15.000° - 18.000")
 	assert_string_contains(body, "Grace timer - 160/240ms remaining (active)")
 	assert_string_contains(body, "Pose-only rearm - waiting for pose-only rearm timer")
@@ -1257,6 +1270,8 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 		}
 	})
 	var text_body := String(harness._build_boxing_event_feed_text())
+	assert_string_contains(text_body, "Straight-punch tuning")
+	assert_string_contains(text_body, "Max wrist-shoulder XY distance: 0.180")
 	assert_string_contains(text_body, "Hook tuning")
 	assert_string_contains(text_body, "Grid variant: strike_subgrid")
 	assert_string_contains(text_body, "Minimum horizontal column travel: 2 subcells")
@@ -1401,6 +1416,9 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 					"elbow_shoulder_xy_distance": 0.082,
 					"max_elbow_shoulder_xy_distance": 0.090,
 					"elbow_shoulder_xy_gate_passed": true,
+					"wrist_shoulder_xy_distance": 0.140,
+					"max_wrist_shoulder_xy_distance": 0.180,
+					"wrist_shoulder_xy_gate_passed": true,
 					"bbox_area": 0.0,
 					"bbox_area_growth": 0.0,
 					"min_bbox_area_growth": 0.010,
@@ -1425,7 +1443,9 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 	assert_eq(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
 	assert_eq(String(rows[8].get("threshold_text", "")), "0.090")
 	assert_eq(String(rows[8].get("current_text", "")), "0.082")
-	assert_eq(String(rows[10].get("current_text", "")), "waiting for pose-only rearm timer")
+	assert_eq(String(rows[9].get("threshold_text", "")), "0.180")
+	assert_eq(String(rows[9].get("current_text", "")), "0.140")
+	assert_eq(String(rows[11].get("current_text", "")), "waiting for pose-only rearm timer")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
 	var body := String(inspector.get("body", ""))
@@ -1433,6 +1453,7 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 	assert_string_contains(body, "Tracking status - pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
 	assert_false(body.contains("Recent forward depth spike"))
 	assert_string_contains(body, "Elbow-shoulder XY distance <= 0.090 - 0.082")
+	assert_string_contains(body, "Wrist-shoulder XY distance <= 0.180 - 0.140")
 	assert_string_contains(body, "Wrist lateral angle from elbow vertical")
 	assert_false(body.contains("BBox area - "))
 	assert_false(body.contains("Recent bbox area growth peak"))
@@ -2478,6 +2499,9 @@ func test_boxing_punch_hover_card_keeps_live_rows_fresh_while_preserving_latest_
 			"elbow_shoulder_xy_distance": 0.082,
 			"max_elbow_shoulder_xy_distance": 0.090,
 			"elbow_shoulder_xy_gate_passed": true,
+			"wrist_shoulder_xy_distance": 0.124,
+			"max_wrist_shoulder_xy_distance": 0.180,
+			"wrist_shoulder_xy_gate_passed": true,
 			"wrist_lateral_angle_from_elbow_vertical_deg": 0.0,
 			"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
 			"wrist_lateral_angle_gate_passed": false,
@@ -2491,4 +2515,4 @@ func test_boxing_punch_hover_card_keeps_live_rows_fresh_while_preserving_latest_
 	assert_string_contains(String(rows[1].get("current_text", "")), "ready")
 	assert_string_contains(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose")
 	assert_string_contains(String(rows[4].get("current_text", "")), "ready -> triggered")
-	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 peak=0.280 xy=0.082<=0.090 (true) angle=0.000>=15.000 (false) fresh=true source=pose grace=240ms pose_valid=true")
+	assert_eq(String(rows[5].get("current_text", "")), "state=triggered wrist=0.280 peak=0.280 elbow_xy=0.082<=0.090 (true) wrist_xy=0.124<=0.180 (true) angle=0.000>=15.000 (false) fresh=true source=pose grace=240ms pose_valid=true")

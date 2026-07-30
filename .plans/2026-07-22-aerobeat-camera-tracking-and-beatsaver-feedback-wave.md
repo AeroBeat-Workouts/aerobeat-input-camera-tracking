@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-22
 **Status:** In Progress
-**Last Updated:** 2026-07-30 08:35 EDT
-**Blocked Reason:** None. Derrick has now moved from the last boxing retest wave into the next approved narrow straight-punch tuning seam: add a new `max_wrist_shoulder_xy_distance` threshold gate alongside the existing straight-punch `max_elbow_shoulder_xy_distance` check, with matching YAML comment/help text and directly coupled runtime/test updates. Active next seam: land that config/runtime/test slice and push for Derrick’s follow-up tuning pass.  
+**Last Updated:** 2026-07-30 09:38 EDT
+**Blocked Reason:** None. Task 100 landed the proving-scene straight-punch wrist/shoulder XY threshold truth, so the active feedback plan stays open only for Derrick’s next manual tuning pass.  
 **Agent:** `pico`
 
 ---
@@ -3404,6 +3404,29 @@ Runtime truth is still worth splitting by family. For hook and uppercut, the Tas
 **Status:** ✅ Complete
 
 **Results:** Added the new straight-punch `max_wrist_shoulder_xy_distance` threshold seam in `src/detectors/pose_detector_substrate.gd`, including config loading, runtime gating, debug-state surfacing, and transition payload truth. The detector now preserves old behavior unless the new field is explicitly set by using a permissive runtime default, while the boxing profile now opts in with `max_wrist_shoulder_xy_distance: 0.180` plus parallel YAML help text in `assets/boxing.gesture_detection.yaml`. Updated directly coupled tests in `.testbed/tests/unit/test_pose_detector_substrate.gd` and `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` to cover the new wrist/shoulder gate and to keep the published boxing-profile timing/config expectations honest. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd -gexit` (110/110 passing). Code commit: `6222350` (`Add wrist shoulder gate for straight punches`). Caveat: the new wrist gate is only enforced when configured; older straight-punch configs that do not set the field continue to run with a permissive default so Derrick can tune the new boxing value separately in the next pass.
+
+---
+
+### Task 100: Wire straight-punch proving inspector to max_wrist_shoulder_xy_distance truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-bll5`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, fix the next narrow follow-up seam after Task 99. Current user-truth: the new straight-punch threshold variable `straight_punch.threshold.thresholds.max_wrist_shoulder_xy_distance` is landed in runtime/config/tests, but the boxing proving scene straight-punch gesture inspector UI is not hooked up to it. Wire the proving inspector/debug surface so the new wrist/shoulder XY threshold and its pass/fail truth are surfaced alongside the existing straight-punch threshold fields, using actual runtime/debug data rather than stale or missing labels. Keep scope narrow to the proving-scene inspector/debug surface, directly coupled debug payload wiring if needed, tests, and plan updates. Commit and push to `main` by default when ready.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Wired the boxing proving straight-punch debug surface to the new runtime `max_wrist_shoulder_xy_distance` truth. `.testbed/scripts/boxing_proving_harness.gd` now adds a dedicated “Wrist-shoulder XY distance <= {threshold}” requirement row beside the existing elbow/angle rows, surfaces the live pass/fail state from `gesture_debug.straight_punch.{side}`, includes the wrist/shoulder gate in paused transition payload snapshots, extends the hand-debug console line with `wrist_shoulder_xy=...<=...(bool)`, and adds the new threshold to the straight-punch tuning summary so the proving UI reflects actual runtime/config values instead of stale or missing labels. `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` now covers the new live row, inspector body text, pose-only truth, transition snapshot text, hand-debug line, and tuning summary. Validation: `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` (59/59 passing), plus focused targeted runs for the touched straight-punch proving tests during iteration. Commit hash: `b02534f` (`Wire straight-punch wrist shoulder proving truth`). Caveat: this coder pass only wires the proving/debug surface; it does not retune the underlying threshold value or change detector behavior beyond surfacing the already-landed runtime/debug truth.
 
 ---
 
