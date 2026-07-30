@@ -120,25 +120,30 @@ func validate_profile_document(document: Dictionary, expected_schema: String, ex
 
 func _sanitize_gesture_detection_document(document: Dictionary) -> Dictionary:
 	var sanitized := document.duplicate(true)
+	var profile := _normalize_profile_name(String(sanitized.get("profile", "")))
+	for stale_family in ["knee_strike", "leg_lift", "side_step"]:
+		sanitized.erase(stale_family)
+	if profile == PROFILE_FLOW:
+		for retired_boxing_family in ["guard", "squat", "weave", "straight_punch", "hook", "uppercut", "grid_detection", "flow"]:
+			sanitized.erase(retired_boxing_family)
+		return sanitized
 	for family_name in ["guard", "squat", "weave", "straight_punch", "hook", "uppercut"]:
 		var family: Dictionary = sanitized.get(family_name, {}) if sanitized.get(family_name, {}) is Dictionary else {}
 		if family.is_empty():
 			continue
-			
 		family.erase("prototype")
 		family.erase("classifier")
-		var backend := String(family.get("backend", "threshold")).strip_edges().to_lower().replace("-", "_")
+		var backend := String(family.get("backend", "")).strip_edges().to_lower().replace("-", "_")
 		if backend == "disabled":
 			family["backend"] = "disabled"
 		elif family_name == "squat" or family_name == "weave":
 			family["backend"] = "grid_avoidance" if backend == "grid_avoidance" else "threshold"
 		elif family_name == "hook" or family_name == "uppercut":
-			family["backend"] = "grid_detection" if backend == "grid_detection" else "threshold"
+			family["backend"] = "grid_detection"
 		else:
 			family["backend"] = "threshold"
 		sanitized[family_name] = family
-	for stale_family in ["knee_strike", "leg_lift", "side_step"]:
-		sanitized.erase(stale_family)
+	sanitized.erase("flow")
 	return sanitized
 
 func _normalize_profile_name(profile_name: String) -> String:

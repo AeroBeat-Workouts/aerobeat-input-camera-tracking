@@ -732,15 +732,11 @@ func test_straight_punch_depth_gate_uses_placeholder_closeness_signal() -> void:
 	assert_true(float(left_debug.get("depth_closeness_delta", 0.0)) >= 0.06)
 	assert_true(float(left_debug.get("depth_peak_closeness", 0.0)) >= 0.12)
 
-func test_hook_depth_gate_blocks_excessive_forward_closeness() -> void:
+func test_hook_retired_depth_threshold_config_no_longer_activates_runtime() -> void:
 	var hook_threshold := _default_hook_threshold_block()
 	hook_threshold["depth"] = {
 		"enabled": true,
-		"evaluation": {
-			"window_ms": 160,
-			"early_window_fraction": 0.5,
-			"late_window_fraction": 0.5,
-		},
+		"evaluation": {"window_ms": 160},
 		"thresholds": {
 			"max_closeness_delta": 0.03,
 			"max_peak_closeness": 0.06,
@@ -754,35 +750,22 @@ func test_hook_depth_gate_blocks_excessive_forward_closeness() -> void:
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1000, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("hook", "right", 0.01)))
-	state = substrate.process_landmarks(_make_pose_frame(), 1160, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("hook", "right", 0.02)))
-	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.64, "y": 0.60},
-	}), 1320, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("hook", "right", 0.10)))
-	assert_false(_event_names(state.get("events", [])).has("hook_right"))
+	var state := substrate.process_landmarks(_make_pose_frame(), 1160, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("hook", "right", 0.10)))
 	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
-	assert_true(bool(right_debug.get("depth_gate_applied", false)))
-	assert_false(bool(right_debug.get("depth_gate_passed", true)))
-	assert_eq(String(right_debug.get("state", "")), "ready")
+	assert_eq(String(right_debug.get("backend", "")), "disabled")
+	assert_false(bool(right_debug.get("depth_gate_applied", false)))
+	assert_false(_event_names(state.get("events", [])).has("hook_right"))
 
-func test_uppercut_depth_gate_allows_placeholder_signal_inside_family_thresholds() -> void:
+func test_uppercut_retired_depth_threshold_config_no_longer_activates_runtime() -> void:
 	var uppercut_threshold := {
 		"evaluation": {"window_ms": 160},
 		"thresholds": {
 			"min_velocity": 0.40,
 			"max_wrist_angle_from_elbow_vertical_deg": 70.0,
 		},
-		"timing": {"triggered_grace_ms": 300},
-		"rearm": {"pose_only_rearm_ms": 120},
-		"state_machine": {"lost_tracking_reacquire_stable_ms": 32},
 		"depth": {
 			"enabled": true,
-			"evaluation": {
-				"window_ms": 160,
-				"early_window_fraction": 0.5,
-				"late_window_fraction": 0.5,
-			},
+			"evaluation": {"window_ms": 160},
 			"thresholds": {
 				"max_closeness_delta": 0.03,
 				"max_peak_closeness": 0.06,
@@ -797,17 +780,11 @@ func test_uppercut_depth_gate_allows_placeholder_signal_inside_family_thresholds
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 2000, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("uppercut", "left", 0.01)))
-	state = substrate.process_landmarks(_make_pose_frame(), 2160, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("uppercut", "left", 0.02)))
-	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.62},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.33, "y": 0.76},
-	}), 2320, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("uppercut", "left", 0.03)))
-	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
+	var state := substrate.process_landmarks(_make_pose_frame(), 2160, _make_tracking_frame({}, {}, _depth_tracking_frame_extras("uppercut", "left", 0.03)))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
-	assert_true(bool(left_debug.get("depth_gate_applied", false)))
-	assert_true(bool(left_debug.get("depth_gate_passed", false)))
-	assert_true(float(left_debug.get("depth_peak_closeness", 0.0)) <= 0.06)
+	assert_eq(String(left_debug.get("backend", "")), "disabled")
+	assert_false(bool(left_debug.get("depth_gate_applied", false)))
+	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
 
 func test_straight_punch_debug_surfaces_forward_depth_spike_metrics_without_gate_threshold() -> void:
 	substrate = PoseDetectorSubstrate.new().configure(config)
@@ -1361,69 +1338,68 @@ func test_straight_punch_pose_only_mode_rearms_on_elapsed_timer() -> void:
 
 func test_hook_uses_pose_primary_state_machine_and_debug_surfaces() -> void:
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1000)
 	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "tracking_lost")
 
-	state = substrate.process_landmarks(_make_pose_frame(), 1160)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1160)
 	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
 
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.64, "y": 0.60},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.44, "y": 0.72},
 	}), 1320)
 	assert_true(_event_names(state.get("events", [])).has("hook_right"))
 	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["triggered"])
 	var right_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("right", {})
 	assert_eq(String(right_debug.get("state", "")), "triggered")
 	assert_eq(int(right_debug.get("window_ms", 0)), 160)
-	assert_true(float(right_debug.get("horizontal_direction_velocity", 0.0)) >= float(right_debug.get("min_velocity", 1.0)))
-	assert_true(float(right_debug.get("wrist_angle_from_elbow_horizontal_deg", 99.0)) <= float(right_debug.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
-	assert_true(bool(right_debug.get("wrist_horizontal_angle_gate_passed", false)))
-	assert_true(bool(right_debug.get("wrist_on_required_hook_side", false)))
+	assert_true(bool(right_debug.get("grid_direction_gate_passed", false)))
+	assert_true(bool(right_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_eq(String(right_debug.get("required_hook_side_label", "")), "right_of_elbow")
-	assert_true(absf(float(right_debug.get("outward_distance", 0.0))) >= 0.0)
-	assert_eq(String(right_debug.get("required_direction_label", "")), "leftward")
-	assert_eq(String(right_debug.get("direction_reference_frame", "")), "preview_space_horizontal")
+	assert_eq(String(right_debug.get("required_direction_label", "")), "athlete_left")
+	assert_eq(String(right_debug.get("direction_reference_frame", "")), "athlete_space_columns")
 	assert_eq(String(right_debug.get("sample_source", "")), "pose")
 	assert_eq(String(right_debug.get("tracking_state", "")), "pose_tracked")
 
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.46, "y": 0.60},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.44, "y": 0.72},
 	}), 1568)
 	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["not_ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "not_ready")
 
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.65, "y": 0.60},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.76, "y": 0.58},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
 	}), 1828)
 	assert_eq(_pose_strike_state_names(state.get("events", []), "hook", "right"), ["ready"])
 	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("right", {}).get("state", "")), "ready")
 
 func test_uppercut_uses_pose_primary_state_machine_and_tracking_loss_truth() -> void:
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 2000)
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.64, "y": 0.62},
+	}), 2000)
 	assert_true(["tracking_lost", "ready"].has(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", ""))))
 
-	state = substrate.process_landmarks(_make_pose_frame(), 2160)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.64, "y": 0.62},
+	}), 2160)
 	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
 
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.62},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.33, "y": 0.76},
-	}), 2320)
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.58, "y": 0.72},
+	}), 2240)
 	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
 	assert_eq(_pose_strike_state_names(state.get("events", []), "uppercut", "left"), ["triggered"])
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
 	assert_eq(String(left_debug.get("state", "")), "triggered")
 	assert_eq(int(left_debug.get("window_ms", 0)), 160)
-	assert_true(float(left_debug.get("upward_velocity", 0.0)) >= float(left_debug.get("min_velocity", 1.0)))
-	assert_true(float(left_debug.get("wrist_angle_from_elbow_vertical_deg", 99.0)) <= float(left_debug.get("max_wrist_angle_from_elbow_vertical_deg", 0.0)))
-	assert_true(bool(left_debug.get("wrist_vertical_angle_gate_passed", false)))
-	assert_true(bool(left_debug.get("wrist_above_elbow_gate_passed", false)))
-	assert_eq(String(left_debug.get("required_direction_label", "")), "upward")
+	assert_true(bool(left_debug.get("grid_direction_gate_passed", false)))
+	assert_true(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
+	assert_eq(String(left_debug.get("required_direction_label", "")), "athlete_up")
 	assert_eq(String(left_debug.get("velocity_signal_source", "")), "elbow_plus_wrist")
 	assert_eq(String(left_debug.get("sample_source", "")), "pose")
 
@@ -1475,11 +1451,14 @@ func test_replay_timestamp_rewind_resets_straight_punch_temporal_windows() -> vo
 
 func test_replay_timestamp_rewind_resets_pose_strike_temporal_windows() -> void:
 	_calibrate_stance()
-	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
-	state = substrate.process_landmarks(_make_pose_frame(), 1160)
+	var state := substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1000)
 	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.RIGHT_ELBOW: {"x": 0.55, "y": 0.62},
-		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.64, "y": 0.60},
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.33, "y": 0.72},
+	}), 1160)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.RIGHT_WRIST: {"x": 0.44, "y": 0.72},
 	}), 1320)
 	assert_true(_event_names(state.get("events", [])).has("hook_right"))
 
@@ -1540,79 +1519,37 @@ func test_uppercut_requires_wrist_above_elbow_in_camera_space() -> void:
 	assert_false(bool(left_debug.get("wrist_above_elbow_gate_passed", true)))
 	assert_eq(String(left_debug.get("state", "")), "ready")
 
-func test_hook_alignment_angle_gate_participates_honestly() -> void:
+func test_hook_threshold_only_config_is_retired_and_does_not_activate_runtime() -> void:
 	config.gesture_profile_document = {
 		"hook": {
-			"enabled": true,
-			"evaluation": {
-				"window_ms": 160,
-			},
-			"thresholds": {
-				"min_velocity": 0.6,
-				"max_wrist_angle_from_elbow_horizontal_deg": 20.0,
-			},
+			"backend": "threshold",
+			"threshold": _default_hook_threshold_block(),
 		},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 3000)
 	state = substrate.process_landmarks(_make_pose_frame(), 3160)
-	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("state", "")), "ready")
-
-	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.43, "y": 0.70},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.31, "y": 0.73},
-	}), 3320)
-	assert_true(_event_names(state.get("events", [])).has("hook_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
-	assert_true(float(left_debug.get("wrist_angle_from_elbow_horizontal_deg", 99.0)) <= float(left_debug.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
-	assert_true(bool(left_debug.get("wrist_horizontal_angle_gate_passed", false)))
-	assert_true(bool(left_debug.get("wrist_on_required_hook_side", false)))
-	assert_eq(String(left_debug.get("required_hook_side_label", "")), "left_of_elbow")
+	assert_eq(String(left_debug.get("backend", "")), "disabled")
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
 
-func test_uppercut_alignment_angle_gate_participates_honestly() -> void:
+func test_uppercut_threshold_only_config_is_retired_and_does_not_activate_runtime() -> void:
 	config.gesture_profile_document = {
 		"uppercut": {
-			"enabled": true,
-			"evaluation": {
-				"window_ms": 160,
-			},
-			"thresholds": {
-				"min_velocity": 0.5,
-				"max_wrist_angle_from_elbow_vertical_deg": 20.0,
-			},
+			"backend": "threshold",
+			"threshold": _default_uppercut_threshold_block(),
 		},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 4000)
 	state = substrate.process_landmarks(_make_pose_frame(), 4160)
-	assert_eq(String(state.get("gesture_debug", {}).get("uppercut", {}).get("left", {}).get("state", "")), "ready")
-
-	state = substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.38, "y": 0.74},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.35, "y": 0.84},
-	}), 4320)
-	assert_true(_event_names(state.get("events", [])).has("uppercut_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
-	assert_true(float(left_debug.get("wrist_angle_from_elbow_vertical_deg", 99.0)) <= float(left_debug.get("max_wrist_angle_from_elbow_vertical_deg", 0.0)))
-	assert_true(bool(left_debug.get("wrist_vertical_angle_gate_passed", false)))
-	assert_true(bool(left_debug.get("wrist_above_elbow_gate_passed", false)))
+	assert_eq(String(left_debug.get("backend", "")), "disabled")
+	assert_eq(String(left_debug.get("state", "")), "tracking_lost")
 
-func test_hook_alignment_angle_gate_blocks_even_when_velocity_is_high() -> void:
-	config.gesture_profile_document = {
-		"hook": {
-			"enabled": true,
-			"evaluation": {
-				"window_ms": 160,
-			},
-			"thresholds": {
-				"min_velocity": 0.6,
-				"max_wrist_angle_from_elbow_horizontal_deg": 20.0,
-			},
-		},
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
+func test_hook_grid_detection_still_reports_live_pose_telemetry_without_threshold_contracts() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1000)
 	state = substrate.process_landmarks(_make_pose_frame(), 1160)
@@ -1622,29 +1559,15 @@ func test_hook_alignment_angle_gate_blocks_even_when_velocity_is_high() -> void:
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.42, "y": 0.74},
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.36, "y": 0.80},
 	}), 1320)
-	assert_false(_event_names(state.get("events", [])).has("hook_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
-	assert_eq(int(left_debug.get("window_ms", 0)), 160)
-	assert_eq(int(left_debug.get("window_span_ms", 0)), 160)
-	assert_true(float(left_debug.get("wrist_velocity", 0.0)) >= float(left_debug.get("min_velocity", 0.0)))
-	assert_true(float(left_debug.get("wrist_angle_from_elbow_horizontal_deg", 0.0)) > float(left_debug.get("max_wrist_angle_from_elbow_horizontal_deg", 99.0)))
-	assert_false(bool(left_debug.get("wrist_horizontal_angle_gate_passed", true)))
-	assert_true(bool(left_debug.get("wrist_on_required_hook_side", false)))
+	assert_eq(String(left_debug.get("backend", "")), "grid_detection")
+	assert_eq(String(left_debug.get("direction_reference_frame", "")), "athlete_space_columns")
+	assert_eq(String(left_debug.get("required_direction_label", "")), "athlete_right")
+	assert_true(left_debug.has("wrist_angle_from_elbow_horizontal_deg"))
+	assert_false(left_debug.has("max_wrist_angle_from_elbow_horizontal_deg"))
+	assert_false(left_debug.has("min_velocity"))
 
-func test_uppercut_alignment_angle_gate_blocks_even_when_velocity_is_high() -> void:
-	config.gesture_profile_document = {
-		"uppercut": {
-			"enabled": true,
-			"evaluation": {
-				"window_ms": 160,
-			},
-			"thresholds": {
-				"min_velocity": 0.5,
-				"max_wrist_angle_from_elbow_vertical_deg": 20.0,
-			},
-		},
-	}
-	substrate = PoseDetectorSubstrate.new().configure(config)
+func test_uppercut_grid_detection_still_reports_live_pose_telemetry_without_threshold_contracts() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 2000)
 	state = substrate.process_landmarks(_make_pose_frame(), 2160)
@@ -1654,14 +1577,13 @@ func test_uppercut_alignment_angle_gate_blocks_even_when_velocity_is_high() -> v
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.74},
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.40, "y": 0.80},
 	}), 2320)
-	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
-	assert_eq(int(left_debug.get("window_ms", 0)), 160)
-	assert_eq(int(left_debug.get("window_span_ms", 0)), 160)
-	assert_true(float(left_debug.get("wrist_velocity", 0.0)) >= float(left_debug.get("min_velocity", 0.0)))
-	assert_true(float(left_debug.get("wrist_angle_from_elbow_vertical_deg", 0.0)) > float(left_debug.get("max_wrist_angle_from_elbow_vertical_deg", 99.0)))
-	assert_false(bool(left_debug.get("wrist_vertical_angle_gate_passed", true)))
-	assert_true(bool(left_debug.get("wrist_above_elbow_gate_passed", false)))
+	assert_eq(String(left_debug.get("backend", "")), "grid_detection")
+	assert_eq(String(left_debug.get("direction_reference_frame", "")), "athlete_space_rows")
+	assert_eq(String(left_debug.get("required_direction_label", "")), "athlete_up")
+	assert_true(left_debug.has("wrist_angle_from_elbow_vertical_deg"))
+	assert_false(left_debug.has("max_wrist_angle_from_elbow_vertical_deg"))
+	assert_false(left_debug.has("min_velocity"))
 
 func test_pose_strike_window_ms_no_longer_falls_back_to_legacy_wrist_velocity_window_ms() -> void:
 	config.gesture_profile_document = {
@@ -2959,7 +2881,7 @@ func test_uppercut_grid_detection_does_not_retrigger_from_static_held_later_subc
 	assert_eq(String(left_debug.get("state", "")), "ready")
 	assert_false(bool(left_debug.get("buffered_grid_transition_available", false)))
 
-func test_hook_threshold_backend_remains_available_as_fallback() -> void:
+func test_hook_threshold_backend_is_retired_even_when_requested_explicitly() -> void:
 	config.gesture_profile_document = {
 		"hook": {
 			"backend": "threshold",
@@ -2974,8 +2896,8 @@ func test_hook_threshold_backend_remains_available_as_fallback() -> void:
 		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.43, "y": 0.70},
 		PoseLandmarkIds.LEFT_WRIST: {"x": 0.31, "y": 0.73},
 	}), 3320)
-	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("backend", "")), "threshold")
-	assert_true(_event_names(state.get("events", [])).has("hook_left"))
+	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("backend", "")), "disabled")
+	assert_false(_event_names(state.get("events", [])).has("hook_left"))
 
 func test_straight_opposite_side_trigger_is_not_blocked_while_older_side_is_not_ready() -> void:
 	_calibrate_stance()
@@ -3006,7 +2928,7 @@ func test_straight_opposite_side_trigger_is_not_blocked_while_older_side_is_not_
 	assert_eq(String(right_debug.get("blocking_event_name", "")), "")
 	assert_eq(String(right_debug.get("blocking_phase", "")), "")
 
-func test_hook_same_family_trigger_exposes_threshold_blocking_truth() -> void:
+func test_hook_same_family_trigger_exposes_same_family_blocking_truth() -> void:
 	_calibrate_stance()
 	substrate.process_landmarks(_make_pose_frame(), 3000)
 	substrate.process_landmarks(_make_pose_frame(), 3160)
@@ -3016,7 +2938,7 @@ func test_hook_same_family_trigger_exposes_threshold_blocking_truth() -> void:
 	right_state["timestamp_ms"] = 3200
 	substrate.call("_set_pose_strike_state", "hook", "right", right_state)
 
-	var blocking_state: Dictionary = substrate.call("_get_same_family_threshold_blocking_state", "hook", "left", 3320)
+	var blocking_state: Dictionary = substrate.call("_get_same_family_blocking_state", "hook", "left", 3320)
 	assert_eq(String(blocking_state.get("family", "")), "hook")
 	assert_eq(String(blocking_state.get("blocking_side", "")), "right")
 	assert_eq(String(blocking_state.get("blocking_event_name", "")), "hook_right")
@@ -3317,22 +3239,48 @@ func test_disabled_family_backend_prevents_any_punch_runtime_activation() -> voi
 	assert_eq(String(punch_detection_debug.get("hook_backend", "")), "disabled")
 	assert_eq(String(punch_detection_debug.get("uppercut_backend", "")), "disabled")
 
-func test_disabled_straight_family_suppresses_punch_events_while_threshold_families_stay_live() -> void:
+func test_disabled_straight_family_suppresses_punch_events_while_grid_detection_families_stay_live() -> void:
 	config.gesture_profile_document = {
 		"straight_punch": {"backend": "disabled"},
-		"hook": {"backend": "threshold", "threshold": _default_hook_threshold_block()},
-		"uppercut": {"backend": "threshold", "threshold": _default_uppercut_threshold_block()},
+		"hook": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 160,
+					"grid_variant": "subgrid",
+					"min_column_delta": 1,
+				},
+			},
+		},
+		"uppercut": {
+			"backend": "grid_detection",
+			"grid_detection": {
+				"evaluation": {
+					"window_ms": 160,
+					"grid_variant": "subgrid",
+					"min_row_delta": 1,
+				},
+			},
+		},
 	}
 	substrate = PoseDetectorSubstrate.new().configure(config)
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame({
-		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.34, "y": 0.66, "z": 0.0},
-		PoseLandmarkIds.LEFT_WRIST: {"x": 0.28, "y": 0.60, "z": 0.0},
-	}), 1400)
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+	}), 1100)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.67, "y": 0.72},
+	}), 1160)
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.56, "y": 0.72},
+	}), 1220)
 	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	assert_true(_event_names(state.get("events", [])).has("hook_left"))
 	var punch_detection_debug: Dictionary = state.get("gesture_debug", {}).get("punch_detection", {})
 	assert_eq(String(punch_detection_debug.get("straight_backend", "")), "disabled")
-	assert_true(bool(punch_detection_debug.get("threshold_enabled", false)))
+	assert_eq(String(punch_detection_debug.get("hook_backend", "")), "grid_detection")
+	assert_true(bool(punch_detection_debug.get("selected_backend_enabled", false)))
+	assert_true((punch_detection_debug.get("active_backends", []) as Array).has("grid_detection"))
 
 func _weave_obstacle_debug(weave_debug: Dictionary, key: String) -> Dictionary:
 	return weave_debug.get(key, {}) if weave_debug.get(key, {}) is Dictionary else {}

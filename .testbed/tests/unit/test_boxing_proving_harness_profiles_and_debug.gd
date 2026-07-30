@@ -1276,18 +1276,19 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	assert_string_contains(text_body, "Grid selection: subgrid")
 	assert_string_contains(text_body, "Trigger rule: fire once the wrist crosses 1 hook columns in the required direction")
 	assert_string_contains(text_body, "Hook direction reference: athlete-space horizontal columns (left hook = athlete_right with positive signed delta, right hook = athlete_left with negative signed delta)")
-	assert_string_contains(text_body, "Depth loader truth: enabled; artifact resolved to FastDepth/ONNX but adapter is still staged")
-	assert_string_contains(text_body, "Depth runtime status / stage: blocked / adapter_load")
-	assert_string_contains(text_body, "Depth artifact path: res://assets/depth_models/fastdepth/fastdepth_224.onnx")
-	assert_string_contains(text_body, "Depth backend/family: onnx / fastdepth_224_onnx")
-	assert_string_contains(text_body, "Depth failure reason: adapter_unimplemented - ONNX adapter is staged but not implemented yet")
-	assert_string_contains(text_body, "Depth live metrics (L): available=true, fresh=true, source=placeholder, closeness=0.020")
-	assert_string_contains(text_body, "Depth thresholds: max_closeness_delta=0.030, max_peak_closeness=0.060")
+	assert_string_contains(text_body, "Depth loader truth: not present in selected gesture YAML")
+	assert_string_contains(text_body, "Depth enabled: false")
+	assert_false(text_body.contains("Depth runtime status / stage: blocked / adapter_load"))
+	assert_false(text_body.contains("Depth artifact path: res://assets/depth_models/fastdepth/fastdepth_224.onnx"))
+	assert_string_contains(text_body, "Hook grace / rearm / reacquire: 250ms / 1ms / 40ms")
+	assert_false(text_body.contains("Depth live metrics (L): available=true, fresh=true, source=placeholder, closeness=0.020"))
+	assert_false(text_body.contains("Depth thresholds: max_closeness_delta=0.030, max_peak_closeness=0.060"))
 	assert_string_contains(text_body, "Uppercut tuning")
 	assert_string_contains(text_body, "Trigger rule: fire once the wrist crosses 1 uppercut rows upward")
 	assert_string_contains(text_body, "Uppercut direction reference: athlete-space upward rows (negative signed delta)")
-	assert_string_contains(text_body, "Depth artifact path: res://assets/depth_models/midas/openvino_midas_v21_small_256/")
-	assert_string_contains(text_body, "Depth backend/family: openvino / midas_openvino_v21_small_256")
+	assert_string_contains(text_body, "Uppercut grace / rearm / reacquire: 250ms / 1ms / 40ms")
+	assert_false(text_body.contains("Depth artifact path: res://assets/depth_models/midas/openvino_midas_v21_small_256/"))
+	assert_false(text_body.contains("Depth backend/family: openvino / midas_openvino_v21_small_256"))
 	assert_string_contains(text_body, "Guard tuning")
 	assert_string_contains(text_body, "Wrist separation X <=")
 	assert_string_contains(text_body, "Wrist separation Y <=")
@@ -1300,6 +1301,7 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 		"gesture_debug": {
 			"hook": {
 				"left": {
+					"backend": "grid_detection",
 					"state": "not_ready",
 					"previous_state": "triggered",
 					"timestamp_ms": Time.get_ticks_msec() - 260,
@@ -1308,15 +1310,34 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 					"sample_source": "pose",
 					"window_ms": 120,
 					"window_span_ms": 118,
-					"wrist_velocity": 0.420,
-					"min_velocity": 0.080,
 					"wrist_angle_from_elbow_horizontal_deg": 18.0,
-					"max_wrist_angle_from_elbow_horizontal_deg": 20.0,
 					"wrist_horizontal_angle_gate_passed": true,
 					"wrist_on_required_hook_side": true,
-					"required_direction_label": "rightward",
+					"required_direction_label": "athlete_right",
 					"required_hook_side_label": "left_of_elbow",
-					"direction_reference_frame": "preview_space_horizontal",
+					"direction_reference_frame": "athlete_space_columns",
+					"grid_variant": "subgrid",
+					"grid_previous_cell": 16,
+					"grid_current_cell": 18,
+					"grid_run_anchor_cell": 16,
+					"grid_accumulated_progress": 2,
+					"min_column_delta": 1,
+					"grid_progress_threshold": 1,
+					"grid_progress_ready": true,
+					"grid_progress_transition_count": 3,
+					"grid_column_delta": 2,
+					"grid_row_delta": 0,
+					"grid_direction_gate_passed": true,
+					"grid_cell_delta_gate_passed": true,
+					"grid_transition_available": true,
+					"grid_overflow_protection_enabled": true,
+					"grid_overflow_accumulation_frozen": true,
+					"buffered_grid_transition_available": true,
+					"buffered_grid_previous_cell": 18,
+					"buffered_grid_current_cell": 20,
+					"buffered_grid_column_delta": 2,
+					"buffered_grid_row_delta": 0,
+					"buffered_grid_accumulated_progress": 2,
 					"grace_ms_remaining": 0,
 					"triggered_grace_ms": 240,
 					"pose_only_rearm_ms": 250,
@@ -1329,24 +1350,27 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	var model: Dictionary = harness._build_hover_card_model("hook_left")
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose")
-	assert_eq(String(rows[4].get("current_text", "")), "120ms configured, 118ms averaged span")
-	assert_eq(String(rows[5].get("threshold_text", "")), "0.080")
-	assert_eq(String(rows[5].get("current_text", "")), "0.420")
-	assert_eq(String(rows[6].get("label", "")), "Wrist angle from elbow horizontal ray <= {threshold}°")
-	assert_eq(String(rows[6].get("threshold_text", "")), "20.000")
-	assert_eq(String(rows[6].get("current_text", "")), "18.000")
-	assert_eq(String(rows[7].get("label", "")), "Preview-space wrist stays on required mirrored hook side")
+	assert_eq(String(rows[4].get("current_text", "")), "subgrid, cell 16 [r4 c0] -> cell 18 [r4 c2]")
+	assert_eq(String(rows[5].get("label", "")), "Passed column travel >= {threshold} subcells")
+	assert_eq(String(rows[5].get("threshold_text", "")), "1")
+	assert_eq(String(rows[5].get("current_text", "")), "2")
+	assert_eq(String(rows[6].get("label", "")), "Latest column step follows {threshold}")
+	assert_eq(String(rows[6].get("threshold_text", "")), "athlete_right")
+	assert_eq(String(rows[6].get("current_text", "")), "+2")
+	assert_eq(String(rows[7].get("label", "")), "Observed grid transition available")
 	assert_eq(String(rows[7].get("threshold_text", "")), "true")
-	assert_eq(String(rows[7].get("current_text", "")), "true (left_of_elbow)")
-	assert_string_contains(String(rows[10].get("current_text", "")), "elapsed (pose-only timer)")
-	assert_eq(String(rows[11].get("current_text", "")), "tracked / 40ms required")
+	assert_eq(String(rows[7].get("current_text", "")), "true via athlete_space_columns")
+	assert_string_contains(String(rows[8].get("current_text", "")), "cell 16 [r4 c0] -> cell 18 [r4 c2], 2/1 subcells")
+	assert_string_contains(String(rows[9].get("current_text", "")), "cell 18 [r4 c2] -> cell 20 [r5 c0], Δcol +2")
+	assert_eq(String(rows[10].get("current_text", "")), "enabled, frozen=true")
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
 	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Motion window - 120ms configured, 118ms averaged span")
-	assert_string_contains(body, "Averaged velocity >= 0.080 - 0.420")
-	assert_string_contains(body, "Wrist angle from elbow horizontal ray <= 20.000° - 18.000")
-	assert_string_contains(body, "Preview-space wrist stays on required mirrored hook side - true (left_of_elbow)")
+	assert_string_contains(body, "Selected grid - subgrid, cell 16 [r4 c0] -> cell 18 [r4 c2]")
+	assert_string_contains(body, "Passed column travel >= 1 subcells - 2")
+	assert_string_contains(body, "Latest column step follows athlete_right - +2")
+	assert_string_contains(body, "Observed grid transition available - true via athlete_space_columns")
+	assert_string_contains(body, "Grid progress - cell 16 [r4 c0] -> cell 18 [r4 c2], 2/1 subcells, transitions=3, ready=true")
 	assert_string_contains(body, "Pose-only rearm - ")
 
 func test_pose_strike_grid_hover_card_and_inspector_surface_buffered_progress_and_overflow_truth() -> void:

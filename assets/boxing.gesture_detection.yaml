@@ -119,28 +119,8 @@ straight_punch:
       lost_tracking_reacquire_stable_ms: 40
 
 hook:
-  # Allowed options: [grid_detection, threshold]. Pick the hook detector backend. Grid detection uses calibrated cell travel, including the subgrid when selected below. input/runtime.
+  # Allowed options: [grid_detection]. Hook detection is calibrated grid travel only; retired threshold tuning is no longer part of the public contract. input/runtime.
   backend: grid_detection
-  threshold:
-    evaluation:
-      # Time span the legacy threshold-style hook heuristics would evaluate if this backend were selected. Smaller windows react faster; larger windows smooth longer motion. input/runtime.
-      window_ms: 250
-    thresholds:
-      # Minimum hook velocity for the legacy threshold backend. Lower values make hooks easier/noisier; higher values require more forceful motion. input/runtime.
-      min_velocity: 0.4
-      # Maximum allowed wrist angle away from elbow-horizontal for the legacy threshold backend. Lower values require a flatter hook path; higher values tolerate more diagonal travel. input/runtime.
-      max_wrist_angle_from_elbow_horizontal_deg: 25.0
-    timing:
-      # Trigger hold time for the legacy threshold backend. Shorter values clear faster; longer values linger longer. input/runtime.
-      triggered_grace_ms: 500
-      # Allow a brand-new hook to be captured while the previous hook is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
-      allow_next_gesture_capture_during_grace: true
-    rearm:
-      # Cooldown before the legacy threshold backend can rearm. Shorter values allow faster repeats; longer values reduce spam. input/runtime.
-      pose_only_rearm_ms: 50
-    state_machine:
-      # Stable-tracking time after reacquisition for the legacy threshold backend. Lower values recover faster; higher values wait for cleaner data. input/runtime.
-      lost_tracking_reacquire_stable_ms: 40
   grid_detection:
     evaluation:
       # Allowed options: [grid, subgrid]. Select which calibrated grid to evaluate against. subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
@@ -162,28 +142,8 @@ hook:
       lost_tracking_reacquire_stable_ms: 40
 
 uppercut:
-  # Allowed options: [grid_detection, threshold]. Pick the uppercut detector backend. Grid detection uses calibrated upward cell travel, including the subgrid when selected below. input/runtime.
+  # Allowed options: [grid_detection]. Uppercut detection is calibrated grid travel only; retired threshold tuning is no longer part of the public contract. input/runtime.
   backend: grid_detection
-  threshold:
-    evaluation:
-      # Time span the legacy threshold-style uppercut heuristics would evaluate if this backend were selected. Smaller windows react faster; larger windows smooth longer motion. input/runtime.
-      window_ms: 250
-    thresholds:
-      # Minimum upward punch velocity for the legacy threshold backend. Lower values make uppercuts easier/noisier; higher values require more forceful motion. input/runtime.
-      min_velocity: 0.5
-      # Maximum allowed wrist angle away from elbow-vertical for the legacy threshold backend. Lower values require a straighter upward path; higher values tolerate more diagonal lift. input/runtime.
-      max_wrist_angle_from_elbow_vertical_deg: 25.0
-    timing:
-      # Trigger hold time for the legacy threshold backend. Shorter values clear faster; longer values linger longer. input/runtime.
-      triggered_grace_ms: 500
-      # Allow a brand-new uppercut to be captured while the previous uppercut is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
-      allow_next_gesture_capture_during_grace: true
-    rearm:
-      # Cooldown before the legacy threshold backend can rearm. Shorter values allow faster repeats; longer values reduce spam. input/runtime.
-      pose_only_rearm_ms: 50
-    state_machine:
-      # Stable-tracking time after reacquisition for the legacy threshold backend. Lower values recover faster; higher values wait for cleaner data. input/runtime.
-      lost_tracking_reacquire_stable_ms: 40
   grid_detection:
     evaluation:
       # Allowed options: [grid, subgrid]. Select which calibrated grid to evaluate against. subgrid means runtime uppercut travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.

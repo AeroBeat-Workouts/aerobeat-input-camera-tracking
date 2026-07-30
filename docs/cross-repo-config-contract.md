@@ -5,7 +5,7 @@ This document locks the current cross-repo config boundary between:
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-tool-camera-tracking`
 
-The active system is pose-driven threshold detection only. Prototype matcher, learned classifier, hand-tracking overlays, and boxing depth-tuning config are no longer part of the approved public contract in this repo.
+The active system is pose-driven gameplay built on calibrated pose landmarks. Prototype matcher, learned classifier, hand-tracking overlays, and retired hook/uppercut threshold tuning are not part of the approved public contract.
 
 ## Canonical config files
 
@@ -41,7 +41,7 @@ The input repo chooses which tracker profile file to load and pass downstream. T
 - **Authoritative files:** `*.gesture_detection.yaml`
 - **Parsing + validation owner:** `aerobeat-input-camera-tracking`
 
-The input repo owns gameplay meaning and pose-threshold tuning. The tool repo must not parse or validate gesture fields.
+The input repo owns gameplay meaning and pose-threshold/grid tuning. The tool repo must not parse or validate gesture fields.
 
 ### Proving/testbed debug layer
 
@@ -98,11 +98,32 @@ Public tracker truth in this repo is pose-only. No hand-tracking fields are requ
 
 ## Locked gesture schema (active public fields)
 
-### Boxing
+### Shared calibration
 
 ```yaml
 schema: aerobeat/gesture_detection_config
 version: 1
+profile: boxing|flow
+calibration:
+  mode: t_pose_auto
+  t_pose:
+    hold_ms: number
+    cooldown_ms: number
+    grid_bounds_padding:
+      top: number
+      bottom: number
+      left: number
+      right: number
+    camera_space_grid_height_offset: number
+    thresholds:
+      max_wrist_shoulder_y_ratio: number
+      max_elbow_shoulder_y_ratio: number
+      min_elbow_angle_deg: number
+```
+
+### Boxing profile additions
+
+```yaml
 profile: boxing
 guard:
   backend: threshold
@@ -110,76 +131,115 @@ squat:
   backend: grid_avoidance
   grid_avoidance:
     obstacle:
-      label: top_row
-      occupied_rows: [0]
-      occupied_cells: [0, 1, 2, 3]
+      label: string
+      mode: athlete_space_height_ratio
+      blocked_from_edge: top
+      blocked_height_ratio: number
+grid_detection:
+  subgrid:
+    enabled: true|false
+    columns_multiplier: number
+    rows_multiplier: number
+    visual:
+      draw_dashed_overlay: true|false
 weave:
   backend: grid_avoidance
   grid_avoidance:
     left_obstacle:
-      label: left_columns
-      occupied_columns: [0, 1]
-      occupied_cells: [2, 3, 6, 7, 10, 11]
+      label: string
+      occupied_columns: [number, ...]
+      occupied_cells: [number, ...]
     right_obstacle:
-      label: right_columns
-      occupied_columns: [2, 3]
-      occupied_cells: [0, 1, 4, 5, 8, 9]
+      label: string
+      occupied_columns: [number, ...]
+      occupied_cells: [number, ...]
 straight_punch:
   backend: threshold
   threshold:
     evaluation:
-      fresh_samples_only: true
-      sample_window_size: 4
-      min_positive_growth_samples: 1
-      window_ms: 250
+      fresh_samples_only: true|false
+      sample_window_size: number
+      window_ms: number
     thresholds:
       min_velocity: number
-      min_bbox_area_growth: number
       max_elbow_shoulder_xy_distance: number
+      max_wrist_shoulder_xy_distance: number
       min_wrist_lateral_angle_from_elbow_vertical_deg: number
     timing:
       triggered_grace_ms: number
+      allow_next_gesture_capture_during_grace: true|false
     rearm:
-      bbox_area_retract_epsilon: number
       pose_only_rearm_ms: number
     state_machine:
       lost_tracking_reacquire_stable_ms: number
 hook:
-  backend: threshold
-  threshold:
+  backend: grid_detection
+  grid_detection:
     evaluation:
-      window_ms: 250
-    thresholds:
-      min_velocity: number
-      max_wrist_angle_from_elbow_horizontal_deg: number
+      grid_variant: grid|subgrid
+      min_column_delta: number
+      overflow_protection_enabled: true|false
+    timing:
+      triggered_grace_ms: number
+      allow_next_gesture_capture_during_grace: true|false
+    rearm:
+      pose_only_rearm_ms: number
+    state_machine:
+      lost_tracking_reacquire_stable_ms: number
 uppercut:
-  backend: threshold
-  threshold:
+  backend: grid_detection
+  grid_detection:
     evaluation:
-      window_ms: 250
-    thresholds:
-      min_velocity: number
-      max_wrist_angle_from_elbow_vertical_deg: number
+      grid_variant: grid|subgrid
+      min_row_delta: number
+      overflow_protection_enabled: true|false
+    timing:
+      triggered_grace_ms: number
+      allow_next_gesture_capture_during_grace: true|false
+    rearm:
+      pose_only_rearm_ms: number
+    state_machine:
+      lost_tracking_reacquire_stable_ms: number
 ```
 
-### Flow
+### Flow profile additions
 
 ```yaml
-schema: aerobeat/gesture_detection_config
-version: 1
 profile: flow
-flow:
-  backend: threshold
-  threshold:
-    stance:
-      min_vertical_separation: number
-    cell_transition:
-      min_normalized_distance: number
-      min_shoulder_width_ratio: number
-    direction:
-      min_axis_velocity: number
-      min_stability_samples: number
+# No authored boxing families.
+# Flow currently uses only the shared calibration surface above.
 ```
+
+## Locked runtime/debug contract by profile
+
+### Boxing runtime/debug truth
+
+Boxing consumers may legitimately expect boxing family truth:
+
+- `gesture_debug.guard`
+- `gesture_debug.squat`
+- `gesture_debug.weave`
+- `gesture_debug.punch_detection`
+- `gesture_debug.straight_punch`
+- `gesture_debug.hook`
+- `gesture_debug.uppercut`
+- `gesture_debug.depth_runtime`
+- shared calibrated grid truth under `gesture_debug.flow`
+
+### Flow runtime/debug truth
+
+Flow consumers must only rely on flow/grid surfaces, not boxing families:
+
+- `gesture_debug.ready`
+- `gesture_debug.flow.grid`
+- `gesture_debug.flow.tracked_landmarks.nose`
+- `gesture_debug.flow.tracked_landmarks.left_wrist`
+- `gesture_debug.flow.tracked_landmarks.right_wrist`
+- `gesture_debug.flow.left`
+- `gesture_debug.flow.right`
+- flow events `flow_left_cell_entered` and `flow_right_cell_entered`
+
+Flow profile config/docs/tests must not rely on `guard`, `squat`, `weave`, `straight_punch`, `hook`, `uppercut`, `punch_detection`, or `depth_runtime` surfaces.
 
 ## Locked testbed debug schema (active public fields)
 
@@ -199,7 +259,8 @@ refresh:
 ## Contract notes
 
 - `preview.overlays.pose_skeleton_visible` is the only committed overlay intent still carried in profile config.
-- Boxing guard + punch families remain threshold-driven, but Boxing squat/weave now use calibrated nose-grid obstacle avoidance (`grid_avoidance`) instead of body-mechanics threshold tuning. Flow still exposes the calibrated 4x3 cell occupancy + direction contract under the `flow` family rather than a `squat` gesture surface.
-- A local gameplay-anchor helper (`nose`, shoulders, elbows, wrists) is allowed for input-repo-owned gesture logic, but it does **not** change the current cross-repo frame contract: this repo still depends on upstream full-pose landmarks for tracking validity, baseline capture, lower-body metrics, and published debug state.
+- Boxing guard + straight remain pose-threshold driven. Boxing squat/weave use calibrated nose-grid obstacle avoidance. Boxing hook/uppercut are calibrated grid-detection families only; retired threshold/depth config for those families is no longer public contract.
+- Flow is a profile selection plus shared calibration contract. Its authored config surface does not include boxing families or a dedicated `flow.backend` block.
+- A local gameplay-anchor helper (`nose`, shoulders, elbows, wrists) is allowed for input-repo-owned gesture logic, but it does not change the cross-repo frame contract: this repo still depends on upstream full-pose landmarks for tracking validity, baseline capture, lower-body metrics, and published debug state.
 - Any meaningful landmark-count performance reduction therefore belongs upstream in `aerobeat-tool-camera-tracking` (or the underlying vendor/runtime layer) where inference output can actually be reduced.
-- If depth proving or hand-tracking debug ever returns, it should land as a new explicitly approved contract slice rather than lingering as undocumented legacy fields.
+- If future flow-specific authored tuning is introduced, it should land as a new explicitly approved contract slice rather than as fallback boxing behavior or dead placeholder fields.

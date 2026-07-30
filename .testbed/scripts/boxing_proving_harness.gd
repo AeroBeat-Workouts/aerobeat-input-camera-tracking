@@ -2563,15 +2563,12 @@ func _build_boxing_event_feed_text() -> String:
 		lines.append("Trigger rule: fire once the wrist crosses %d hook columns in the required direction" % int(hook_eval.get("min_column_delta", hook_eval.get("min_cell_delta", 0))))
 		lines.append("Hook direction reference: athlete-space horizontal columns (left hook = athlete_right with positive signed delta, right hook = athlete_left with negative signed delta)")
 	else:
-		lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
-		lines.append("Max wrist angle from elbow horizontal ray: %s" % _fmt_float(hook_thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", 0.0)))
-		lines.append("Hook wrist must stay on mirrored preview-space side of elbow: left hook = left_of_elbow, right hook = right_of_elbow")
+		lines.append("Disabled")
 	lines.append("Hook grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(hook_timing.get("triggered_grace_ms", 0)),
 		int(hook_rearm.get("pose_only_rearm_ms", 0)),
 		int(hook_state_machine.get("lost_tracking_reacquire_stable_ms", 0)),
 	])
-	_append_depth_config_summary_lines(lines, "hook", hook_depth)
 
 	lines.append("")
 	lines.append("Uppercut tuning")
@@ -2587,15 +2584,12 @@ func _build_boxing_event_feed_text() -> String:
 		lines.append("Trigger rule: fire once the wrist crosses %d uppercut rows upward" % int(uppercut_eval.get("min_row_delta", uppercut_eval.get("min_cell_delta", 0))))
 		lines.append("Uppercut direction reference: athlete-space upward rows (negative signed delta)")
 	else:
-		lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))
-		lines.append("Max wrist angle from elbow vertical ray: %s" % _fmt_float(uppercut_thresholds.get("max_wrist_angle_from_elbow_vertical_deg", 0.0)))
-		lines.append("Uppercut wrist must stay above elbow in preview space: yes")
+		lines.append("Disabled")
 	lines.append("Uppercut grace / rearm / reacquire: %dms / %dms / %dms" % [
 		int(uppercut_timing.get("triggered_grace_ms", 0)),
 		int(uppercut_rearm.get("pose_only_rearm_ms", 0)),
 		int(uppercut_state_machine.get("lost_tracking_reacquire_stable_ms", 0)),
 	])
-	_append_depth_config_summary_lines(lines, "uppercut", uppercut_depth)
 
 	var guard_config: Dictionary = gesture_document.get("guard", {}) if gesture_document.get("guard", {}) is Dictionary else {}
 	var guard_thresholds: Dictionary = guard_config.get("thresholds", {}) if guard_config.get("thresholds", {}) is Dictionary else {}

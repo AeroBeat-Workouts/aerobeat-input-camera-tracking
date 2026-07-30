@@ -1141,15 +1141,17 @@ func _get_metric_dictionary(key: String) -> Dictionary:
 func _build_gesture_debug_state(metrics: Dictionary = {}) -> Dictionary:
 	var debug_state := {
 		"ready": _gesture_state.get("ready", {}).duplicate(true),
-		"guard": _build_guard_debug_state(),
-		"weave": _build_weave_debug_state(metrics),
-		"punch_detection": _build_punch_detection_debug_state(),
-		"straight_punch": _build_straight_punch_debug_state(metrics),
-		"hook": _build_pose_strike_debug_state("hook", metrics),
-		"uppercut": _build_pose_strike_debug_state("uppercut", metrics),
-		"depth_runtime": _build_depth_runtime_debug_state(),
 		"flow": _build_flow_debug_state(metrics),
 	}
+	if _get_active_profile_id() == "flow":
+		return debug_state
+	debug_state["guard"] = _build_guard_debug_state()
+	debug_state["weave"] = _build_weave_debug_state(metrics)
+	debug_state["punch_detection"] = _build_punch_detection_debug_state()
+	debug_state["straight_punch"] = _build_straight_punch_debug_state(metrics)
+	debug_state["hook"] = _build_pose_strike_debug_state("hook", metrics)
+	debug_state["uppercut"] = _build_pose_strike_debug_state("uppercut", metrics)
+	debug_state["depth_runtime"] = _build_depth_runtime_debug_state()
 	if _supports_squat_surface():
 		debug_state["squat"] = _build_squat_debug_state(metrics)
 	return debug_state
@@ -1367,8 +1369,6 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"wrist_velocity": float(state.get("last_wrist_velocity", 0.0)),
 		"window_ms": int(config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS)),
 		"window_span_ms": int(state.get("last_wrist_velocity_window_span_ms", 0)),
-		"min_velocity": float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))),
-		"min_punch_velocity": float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))),
 		"triggered_grace_ms": int(config.get("triggered_grace_ms", POSE_STRIKE_DEFAULT_TRIGGERED_GRACE_MS)),
 		"allow_next_gesture_capture_during_grace": bool(config.get("allow_next_gesture_capture_during_grace", false)),
 		"grace_ms_remaining": int(state.get("grace_ms_remaining", 0)),
@@ -1453,30 +1453,20 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		debug["outward_velocity"] = float(state.get("outward_velocity", 0.0))
 		debug["outward_distance"] = float(state.get("outward_distance", 0.0))
 		debug["wrist_angle_from_elbow_horizontal_deg"] = float(state.get("wrist_angle_from_elbow_horizontal_deg", 0.0))
-		debug["max_wrist_angle_from_elbow_horizontal_deg"] = float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))
 		debug["min_column_delta"] = int(config.get("min_column_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))
 		debug["wrist_horizontal_angle_gate_passed"] = bool(state.get("wrist_horizontal_angle_gate_passed", false))
 		debug["wrist_on_required_hook_side"] = bool(state.get("wrist_on_required_hook_side", false))
 		debug["required_hook_side_label"] = _required_hook_side_label(side)
-		if String(config.get("backend", BACKEND_THRESHOLD)) == BACKEND_GRID_DETECTION:
-			debug["required_direction_label"] = "athlete_right" if side == "left" else "athlete_left"
-			debug["direction_reference_frame"] = "athlete_space_columns"
-		else:
-			debug["required_direction_label"] = "rightward" if side == "left" else "leftward"
-			debug["direction_reference_frame"] = "preview_space_horizontal"
+		debug["required_direction_label"] = "athlete_right" if side == "left" else "athlete_left"
+		debug["direction_reference_frame"] = "athlete_space_columns"
 	else:
 		debug["upward_velocity"] = float(state.get("upward_velocity", 0.0))
 		debug["wrist_angle_from_elbow_vertical_deg"] = float(state.get("wrist_angle_from_elbow_vertical_deg", 0.0))
-		debug["max_wrist_angle_from_elbow_vertical_deg"] = float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))
 		debug["min_row_delta"] = int(config.get("min_row_delta", config.get("min_cell_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))
 		debug["wrist_vertical_angle_gate_passed"] = bool(state.get("wrist_vertical_angle_gate_passed", false))
 		debug["wrist_above_elbow_gate_passed"] = bool(state.get("wrist_above_elbow_gate_passed", false))
-		if String(config.get("backend", BACKEND_THRESHOLD)) == BACKEND_GRID_DETECTION:
-			debug["required_direction_label"] = "athlete_up"
-			debug["direction_reference_frame"] = "athlete_space_rows"
-		else:
-			debug["required_direction_label"] = "upward"
-			debug["direction_reference_frame"] = "preview_space_vertical"
+		debug["required_direction_label"] = "athlete_up"
+		debug["direction_reference_frame"] = "athlete_space_rows"
 	return debug
 
 func _build_flow_debug_state(_metrics: Dictionary = {}) -> Dictionary:
@@ -2199,11 +2189,9 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["grid_progress_ready"] = false
 	state["grid_overflow_accumulation_frozen"] = false
 	if family == "hook":
-		var current_max_hook_angle_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
-		state["wrist_horizontal_angle_gate_passed"] = wrist_angle_from_elbow_horizontal_deg <= current_max_hook_angle_deg + 0.000001
+		state["wrist_horizontal_angle_gate_passed"] = wrist_on_required_hook_side
 	else:
-		var current_max_uppercut_angle_deg := clampf(float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0, 90.0)
-		state["wrist_vertical_angle_gate_passed"] = wrist_angle_from_elbow_vertical_deg <= current_max_uppercut_angle_deg + 0.000001
+		state["wrist_vertical_angle_gate_passed"] = wrist_above_elbow_gate_passed
 	state["dominance_ratio"] = float(motion_window.get("hook_dominance_ratio", 0.0)) if family == "hook" else float(motion_window.get("uppercut_dominance_ratio", 0.0))
 	if not pose_tracking_valid:
 		state["wrist_velocity_history"] = []
@@ -2721,7 +2709,7 @@ func _try_trigger_straight_punch(events: Array, side: String, state: Dictionary,
 		ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
 	if not ready_to_trigger:
 		return
-	var blocking_state := _get_same_family_threshold_blocking_state("straight_punch", side, timestamp_ms, allow_grace_capture)
+	var blocking_state := _get_same_family_blocking_state("straight_punch", side, timestamp_ms, allow_grace_capture)
 	if not blocking_state.is_empty():
 		_apply_same_family_block(state, blocking_state)
 		return
@@ -2744,23 +2732,9 @@ func _try_trigger_pose_strike(events: Array, family: String, side: String, state
 		else:
 			trigger_grid_transition = _get_buffered_pose_strike_grid_transition(state)
 		ready_to_trigger = not trigger_grid_transition.is_empty()
-	else:
-		var min_velocity := maxf(float(config.get("min_velocity", config.get("min_punch_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY))), 0.0)
-		if family == "hook":
-			var max_wrist_angle_from_elbow_horizontal_deg := clampf(float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG)), 0.0, 90.0)
-			var wrist_horizontal_angle_gate_passed := wrist_angle_from_elbow_horizontal_deg <= max_wrist_angle_from_elbow_horizontal_deg + 0.000001
-			state["wrist_horizontal_angle_gate_passed"] = wrist_horizontal_angle_gate_passed
-			ready_to_trigger = speed >= min_velocity and wrist_horizontal_angle_gate_passed and wrist_on_required_hook_side
-		else:
-			var max_wrist_angle_from_elbow_vertical_deg := clampf(float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG)), 0.0, 90.0)
-			var wrist_vertical_angle_gate_passed := wrist_angle_from_elbow_vertical_deg <= max_wrist_angle_from_elbow_vertical_deg + 0.000001
-			state["wrist_vertical_angle_gate_passed"] = wrist_vertical_angle_gate_passed
-			ready_to_trigger = speed >= min_velocity and wrist_vertical_angle_gate_passed and wrist_above_elbow_gate_passed
-		if bool(depth_analysis.get("gate_applied", false)):
-			ready_to_trigger = ready_to_trigger and bool(depth_analysis.get("gate_passed", false))
 	if not ready_to_trigger:
 		return
-	var blocking_state := _get_same_family_threshold_blocking_state(family, side, timestamp_ms, allow_grace_capture)
+	var blocking_state := _get_same_family_blocking_state(family, side, timestamp_ms, allow_grace_capture)
 	if not blocking_state.is_empty():
 		_apply_same_family_block(state, blocking_state)
 		if backend_name == BACKEND_GRID_DETECTION and grid_progress_ready and qualifying_grid_transition:
@@ -2776,7 +2750,7 @@ func _try_trigger_pose_strike(events: Array, family: String, side: String, state
 	_emit_power_event(events, event_name, _compute_pose_strike_power(family, speed, horizontal_direction_velocity, upward_velocity, config))
 	_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRIGGERED)
 
-func _get_same_family_threshold_blocking_state(family: String, side: String, timestamp_ms: int, allow_capture_during_triggered_grace: bool = false) -> Dictionary:
+func _get_same_family_blocking_state(family: String, side: String, timestamp_ms: int, allow_capture_during_triggered_grace: bool = false) -> Dictionary:
 	var blocking_side := "right" if side == "left" else "left"
 	var blocking_state := _get_straight_punch_state(blocking_side) if family == "straight_punch" else _get_pose_strike_state(family, blocking_side)
 	var blocking_phase := String(blocking_state.get("phase", ""))
@@ -3224,9 +3198,27 @@ func _build_subgrid_debug(grid_rect: Dictionary, is_calibrated: bool) -> Diction
 
 func _get_punch_backend_for_family(family: String) -> String:
 	var family_document := _get_family_document(family)
+	if family_document.is_empty():
+		if _get_active_profile_id() == "boxing":
+			if family == "straight_punch":
+				return BACKEND_THRESHOLD
+			if family == "hook" or family == "uppercut":
+				return BACKEND_GRID_DETECTION
+		return BACKEND_DISABLED
 	var backend := String(family_document.get("backend", "")).strip_edges()
+	if family == "hook" or family == "uppercut":
+		var normalized_backend := _normalize_punch_backend_name(backend)
+		if normalized_backend == BACKEND_DISABLED:
+			return BACKEND_DISABLED
+		if normalized_backend == BACKEND_GRID_DETECTION or family_document.has(BACKEND_GRID_DETECTION):
+			return BACKEND_GRID_DETECTION
+		return BACKEND_DISABLED
 	if backend == "":
-		return BACKEND_THRESHOLD
+		if family == "straight_punch":
+			return BACKEND_THRESHOLD
+		if family_document.has(BACKEND_GRID_DETECTION):
+			return BACKEND_GRID_DETECTION
+		return BACKEND_DISABLED
 	return _normalize_punch_backend_name(backend)
 
 func _get_active_profile_id() -> String:
@@ -3771,10 +3763,8 @@ func _get_pose_strike_config(family: String) -> Dictionary:
 func _get_hook_config() -> Dictionary:
 	var config := {
 		"enabled": true,
-		"backend": BACKEND_THRESHOLD,
+		"backend": BACKEND_GRID_DETECTION,
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
-		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
-		"max_wrist_angle_from_elbow_horizontal_deg": HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG,
 		"grid_variant": GRID_VARIANT_SUBGRID,
 		"min_column_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
@@ -3789,15 +3779,12 @@ func _get_hook_config() -> Dictionary:
 	var backend_name := _get_punch_backend_for_family("hook")
 	var hook: Dictionary = _get_family_backend_document("hook", backend_name)
 	var evaluation: Dictionary = hook.get("evaluation", {}) if hook.get("evaluation", {}) is Dictionary else {}
-	var thresholds: Dictionary = hook.get("thresholds", {}) if hook.get("thresholds", {}) is Dictionary else {}
 	var timing: Dictionary = hook.get("timing", {}) if hook.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = hook.get("rearm", {}) if hook.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = hook.get("state_machine", {}) if hook.get("state_machine", {}) is Dictionary else {}
 	config["enabled"] = backend_name != BACKEND_DISABLED
 	config["backend"] = backend_name
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
-	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
-	config["max_wrist_angle_from_elbow_horizontal_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))), 0.0, 90.0)
 	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_SUBGRID))))
 	config["min_column_delta"] = max(1, int(evaluation.get("min_column_delta", evaluation.get("min_cell_delta", config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 	config["min_cell_delta"] = int(config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
@@ -3811,10 +3798,8 @@ func _get_hook_config() -> Dictionary:
 func _get_uppercut_config() -> Dictionary:
 	var config := {
 		"enabled": true,
-		"backend": BACKEND_THRESHOLD,
+		"backend": BACKEND_GRID_DETECTION,
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
-		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
-		"max_wrist_angle_from_elbow_vertical_deg": UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG,
 		"grid_variant": GRID_VARIANT_SUBGRID,
 		"min_row_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
@@ -3829,15 +3814,12 @@ func _get_uppercut_config() -> Dictionary:
 	var backend_name := _get_punch_backend_for_family("uppercut")
 	var uppercut: Dictionary = _get_family_backend_document("uppercut", backend_name)
 	var evaluation: Dictionary = uppercut.get("evaluation", {}) if uppercut.get("evaluation", {}) is Dictionary else {}
-	var thresholds: Dictionary = uppercut.get("thresholds", {}) if uppercut.get("thresholds", {}) is Dictionary else {}
 	var timing: Dictionary = uppercut.get("timing", {}) if uppercut.get("timing", {}) is Dictionary else {}
 	var rearm: Dictionary = uppercut.get("rearm", {}) if uppercut.get("rearm", {}) is Dictionary else {}
 	var state_machine: Dictionary = uppercut.get("state_machine", {}) if uppercut.get("state_machine", {}) is Dictionary else {}
 	config["enabled"] = backend_name != BACKEND_DISABLED
 	config["backend"] = backend_name
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
-	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
-	config["max_wrist_angle_from_elbow_vertical_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_vertical_deg", config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))), 0.0, 90.0)
 	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_SUBGRID))))
 	config["min_row_delta"] = max(1, int(evaluation.get("min_row_delta", evaluation.get("min_cell_delta", config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 	config["min_cell_delta"] = int(config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
