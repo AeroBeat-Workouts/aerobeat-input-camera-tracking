@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-22
 **Status:** In Progress
-**Last Updated:** 2026-07-30 10:42 EDT
-**Blocked Reason:** None. Task 100 landed the straight-punch wrist/shoulder inspector truth, and Derrick’s current manual tuning pass has now exposed a shared repeated same-side pose-strike follow-up seam: fast same-arm hooks and uppercuts are not reliably firing even when he expects the configured grid/subgrid requirement to qualify, and the hook proving inspector screenshot suggests some trigger-input rows may not reflect live truth. Active next seam: sync current repo truth, inspect Derrick’s live hook/uppercut variables plus the relevant pose-strike grid-detection and proving-scene inspector code paths, and determine whether the misses are runtime gating, proving-scene UI staleness, or both.  
+**Last Updated:** 2026-07-30 11:50 EDT
+**Blocked Reason:** None. Derrick explicitly reversed the order of the next hook/uppercut wave: simplify the actual runtime/code path first, handle the `strike_subgrid` → `subgrid` refactor across code and both proving-scene UIs while inside that seam, and then simplify the boxing proving inspector toward the smaller decision-critical surface. Active next seam: land that implementation-first simplification wave, preserving the now-good straight-punch path while focusing the runtime/UI cleanup on hooks and uppercuts.  
 **Agent:** `pico`
 
 ---
@@ -3500,6 +3500,63 @@ The proving inspector seam was tightened in `.testbed/scripts/boxing_proving_har
 
 ---
 
+### Task 103: Review hook/uppercut inspector minimal surface and subgrid terminology cleanup
+
+**Bead ID:** `aerobeat-input-camera-tracking-a7so`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-03`, `REF-13`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, review Derrick’s latest proving-scene screenshot and feedback after Task 102. Current user-truth: the hook inspector is still too vertically large, hides the hook/uppercut gesture icons, and includes values whose relationship to actual hook/uppercut firing is unclear; Derrick specifically questions `Signed column delta` and `Observed grid transition`, wants the minimal useful info set for hook/uppercut debugging, suspects hidden logic is still blocking repeated same-side hooks/uppercuts, and wants to rename `strike_subgrid` to `subgrid` across code/flow/proving UI where practical. Keep this pass investigative/design-first: explain what the screenshot currently means, identify which rows are decision-critical vs removable/noisy, propose a minimal inspector UI, and map the narrowest implementation seam (including the naming cleanup) without widening into implementation yet.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- likely none for the investigative/design pass unless a tiny documentation/plan note is needed
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ❌ Superseded
+
+**Results:** Derrick explicitly reversed the order after this review seam was materialized: instead of doing a design-only pass first, the approved next wave is to simplify the actual hook/uppercut runtime and UI surfaces first, including the `strike_subgrid` → `subgrid` refactor, then let the smaller inspector fall out of that implementation. This design-only bead remains useful as context for what to simplify, but execution moved directly into Task 104.
+
+---
+
+### Task 104: Simplify hook/uppercut subgrid runtime and proving UI; rename strike_subgrid to subgrid
+
+**Bead ID:** `aerobeat-input-camera-tracking-3jva`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-13`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s approved simplification-first hook/uppercut wave. Current user-truth: straight punches are working well, but hooks and uppercuts still feel overcomplicated, the boxing proving inspector is too tall and hides the gesture icons, and Derrick wants the system simplified before more review prose. Simplify the actual hook/uppercut runtime/code path toward the intended model where the chosen grid/subgrid crossing requirement is the primary firing truth, refactor `strike_subgrid` user-facing and code terminology toward `subgrid`, update both proving-scene UIs accordingly, and then simplify the boxing proving inspector toward the minimal decision-critical hook/uppercut surface while culling dead code made obsolete by the simplification. Keep scope focused on hooks/uppercuts plus the shared naming/UI cleanup; preserve the now-good straight-punch behavior. Commit and push to `main` by default when ready.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `src/detectors/pose_detector_substrate.gd`
+- `assets/boxing.gesture_detection.yaml`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/scripts/flow_grid_overlay.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the simplification-first hook/uppercut slice Derrick asked for. Runtime grid detection now uses a simpler anchor-to-current travel rule instead of the prior windowed `directional_run_excursion` history path: pick `grid` or `subgrid`, remember the start cell for the current attempt, and fire once the wrist has crossed the required number of side-correct hook columns or upward uppercut rows from that anchor. Straight punches were left on their existing threshold path. `strike_subgrid` user-facing/runtime naming was refactored to `subgrid` across the active boxing profile, detector/grid debug surfaces, overlay snapshot, proving summaries, and directly coupled tests, while the detector still accepts the legacy `strike_subgrid` spelling as a compatibility read path.
+
+The boxing proving UI was simplified in two places for this slice: the boxing event-feed tuning text now describes the actual pass-through-grid trigger rule, and the hook/uppercut custom inspector now uses a compact decision-critical body so the gesture icons stay visible. The live grid-progress surface was also trimmed down to anchor/current cells, crossed travel, transition count, buffered repeat truth, and rearm state instead of the old history/mode/window prose. Directly coupled validation passed via `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit`.
+
+**Commit(s):**
+- `fab80a8` - Simplify hook and uppercut grid travel
+
+**Caveats / Follow-up seam:**
+- The runtime now treats returning to the anchor cell as clearing progress naturally instead of carrying the old explicit reversal-history bookkeeping; Derrick’s next manual tuning pass should verify whether any hook/uppercut profiles still want stricter reversal semantics or different `min_column_delta` / `min_row_delta` values after this simplification.
+
+---
+
 ## Final Results
 
 **Status:** ⚠️ Partial - active feedback plan remains open for Derrick's next manual testing wave
@@ -3507,7 +3564,7 @@ The proving inspector seam was tightened in `.testbed/scripts/boxing_proving_har
 **What We Built:**
 - BeatSaver/package lane: corrected the `.testbed` difficulty presentation, surfaced package validation honestly, adopted the clean-break `song.package.yaml` contract, aligned emitted manifests to the approved final shape, removed leaked legacy linkage like root `setIds`, brought the package-lane broad authoring tests back to substantive green, and restored direct validator availability in `aerobeat-vendor-beatsaver/.testbed` by mounting `aerobeat-content-core` through the normal GodotEnv/addons path.
 - Camera/calibration lane: corrected the runtime countdown/wrist-span sampling flow to Derrick's simpler calibration contract, fixed the proving overlay Y mapping and square-cell display sync, aligned the underlying runtime grid quantization/orientation so the gameplay grid and visual grid use the same calibrated truth, and simplified the remaining calibration math so grid width is back on wrist-span X distance and flow cell height again matches cell width end to end.
-- Boxing/debug lane from today's testing wave: landed repeated-punch grace-capture controls for straight/hook/uppercut, fixed the straight-punch proving inspector so live pose-only rows stay current between punches, retired the stale explicit boxing hand-toggle seam, cleaned up the boxing depth-debug test fixture leaks/orphans, and made blank replay source truthfully mean live-camera startup without bogus warning noise.
+- Boxing/debug lane from today's testing wave: landed repeated-punch grace-capture controls for straight/hook/uppercut, fixed the straight-punch proving inspector so live pose-only rows stay current between punches, retired the stale explicit boxing hand-toggle seam, cleaned up the boxing depth-debug test fixture leaks/orphans, made blank replay source truthfully mean live-camera startup without bogus warning noise, and then simplified hook/uppercut grid runtime + proving surfaces around the new anchor-to-current `grid`/`subgrid` crossing rule.
 
 **Reference Check:**
 - `REF-02` / `REF-03`: camera/boxing seam now targets Derrick's intended truth: simple countdown + calibration contract, straight-punch inspector rows that stay live in pose-only mode, no fake hand-toggle workaround, and no bogus replay warning when blank source means live camera.
@@ -3530,6 +3587,7 @@ The proving inspector seam was tightened in `.testbed/scripts/boxing_proving_har
 - `8fa0a8f` - Test: clean up boxing depth debug preview fixtures
 - `7aabf0b` - Treat blank replay source as live camera
 - `3b9183c` - Add hook repeat seam coverage and inspector truth
+- `fab80a8` - Simplify hook and uppercut grid travel
 
 **Lessons Learned:**
 - The trickiest package-lane failures were mostly contract drift, stale tests, and missing shared-validator runtime dependencies; once the manifest was treated as the source of truth and the vendor testbed loaded `aerobeat-content-core` directly, the remaining package seams became narrow and mechanical.
