@@ -3494,7 +3494,7 @@ The proving inspector seam was tightened in `.testbed/scripts/boxing_proving_har
 
 **Validation:** `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → **172/172 passed**.
 
-**Commit:** `7ae565f` - Add hook repeat seam coverage and inspector truth
+**Commit:** `3b9183c` - Add hook repeat seam coverage and inspector truth
 
 **Caveats / follow-up seam exposed:** this coder pass intentionally did **not** retune or change `src/detectors/pose_detector_substrate.gd`; it proved the shared repeat seam with hook-parity tests and made the proving surface truthful about buffered/progress/overflow state. If Derrick still sees missed same-side repeats after this, the next seam is no longer “inspector rows might be lying” — it is a tighter manual/runtime timing question about whether the real performed motion is producing a qualifying fresh or buffered transition before the side exits `triggered`/`not_ready` under the current 250ms grace + 1ms pose-only rearm settings.
 
@@ -3529,7 +3529,7 @@ The proving inspector seam was tightened in `.testbed/scripts/boxing_proving_har
 - `bccfe4f` - Fix boxing straight-punch debug truth
 - `8fa0a8f` - Test: clean up boxing depth debug preview fixtures
 - `7aabf0b` - Treat blank replay source as live camera
-- `7ae565f` - Add hook repeat seam coverage and inspector truth
+- `3b9183c` - Add hook repeat seam coverage and inspector truth
 
 **Lessons Learned:**
 - The trickiest package-lane failures were mostly contract drift, stale tests, and missing shared-validator runtime dependencies; once the manifest was treated as the source of truth and the vendor testbed loaded `aerobeat-content-core` directly, the remaining package seams became narrow and mechanical.
