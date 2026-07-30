@@ -57,7 +57,7 @@ func test_boxing_profile_bundle_keeps_guard_threshold_and_grid_avoidance_surface
 	assert_eq(String(gesture_debug.get("weave", {}).get("backend", "")), "grid_avoidance")
 	assert_true(bool(gesture_debug.get("weave", {}).get("enabled", false)))
 
-func test_boxing_profile_bundle_keeps_straight_punch_trigger_truth_visible_at_published_replay_cadence() -> void:
+func test_boxing_profile_bundle_surfaces_current_straight_punch_timing_truth_at_published_replay_cadence() -> void:
 	var bundle: Dictionary = config.get_selected_profile_bundle()
 	assert_true(bool(bundle.get("ok", false)))
 
@@ -77,6 +77,7 @@ func test_boxing_profile_bundle_keeps_straight_punch_trigger_truth_visible_at_pu
 				"thresholds": {
 					"min_velocity": 0.18,
 					"max_elbow_shoulder_xy_distance": 0.140,
+					"max_wrist_shoulder_xy_distance": float((((straight_threshold.get("thresholds", {}) as Dictionary)).get("max_wrist_shoulder_xy_distance", 1.0))),
 					"min_wrist_lateral_angle_from_elbow_vertical_deg": 15.0,
 				},
 				"timing": {
@@ -116,12 +117,12 @@ func test_boxing_profile_bundle_keeps_straight_punch_trigger_truth_visible_at_pu
 		trigger_timestamp_ms + published_state_interval_ms
 	)
 	var left_debug: Dictionary = published_snapshot.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
-	assert_eq(_straight_punch_state_names(published_snapshot.get("events", []), "left"), [])
+	assert_eq(_straight_punch_state_names(published_snapshot.get("events", []), "left"), ["not_ready"])
 	assert_false(_event_names(published_snapshot.get("events", [])).has("punch_left"))
-	assert_eq(String(left_debug.get("state", "")), "triggered")
-	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 140)
-	assert_eq(int(left_debug.get("triggered_grace_ms", -1)), 240)
-	assert_eq(int(left_debug.get("pose_only_rearm_ms", -1)), 250)
+	assert_eq(String(left_debug.get("state", "")), "not_ready")
+	assert_eq(int(left_debug.get("grace_ms_remaining", -1)), 0)
+	assert_eq(int(left_debug.get("triggered_grace_ms", -1)), 1)
+	assert_eq(int(left_debug.get("pose_only_rearm_ms", -1)), 1)
 
 func test_boxing_straight_punch_missing_hands_config_falls_back_to_pose_only_truth() -> void:
 	config.tracker_profile_document = {
@@ -492,6 +493,44 @@ func test_straight_punch_requires_elbow_shoulder_xy_gate_before_triggering() -> 
 	assert_true(float(left_debug.get("elbow_shoulder_xy_distance", 0.0)) > float(left_debug.get("max_elbow_shoulder_xy_distance", 0.0)))
 	assert_false(bool(left_debug.get("elbow_shoulder_xy_gate_passed", true)))
 
+func test_straight_punch_requires_wrist_shoulder_xy_gate_before_triggering() -> void:
+	config.gesture_profile_document = {
+		"straight_punch": {
+			"thresholds": {
+				"min_velocity": 0.18,
+				"min_bbox_area_growth": 0.003,
+				"max_elbow_shoulder_xy_distance": 0.09,
+				"max_wrist_shoulder_xy_distance": 0.10,
+			},
+		},
+	}
+	substrate = PoseDetectorSubstrate.new().configure(config)
+	_calibrate_stance()
+	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.020), _tracked_hand_payload_physical("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_SHOULDER: {"x": 0.40, "y": 0.70, "z": 0.0},
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.36, "y": 0.66, "z": -0.01},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.54, "y": 0.66, "z": -0.04},
+	}), 1180, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.021), _tracked_hand_payload_physical("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_SHOULDER: {"x": 0.40, "y": 0.70, "z": 0.0},
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.36, "y": 0.66, "z": -0.02},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.57, "y": 0.64, "z": -0.12},
+	}), 1260, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.0240), _tracked_hand_payload_physical("right", 0.020)))
+	state = substrate.process_landmarks(_make_pose_frame({
+		PoseLandmarkIds.LEFT_SHOULDER: {"x": 0.40, "y": 0.70, "z": 0.0},
+		PoseLandmarkIds.LEFT_ELBOW: {"x": 0.36, "y": 0.66, "z": -0.03},
+		PoseLandmarkIds.LEFT_WRIST: {"x": 0.60, "y": 0.62, "z": -0.20},
+	}), 1340, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.0272), _tracked_hand_payload_physical("right", 0.020)))
+	assert_false(_event_names(state.get("events", [])).has("punch_left"))
+	var left_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("left", {})
+	assert_eq(String(left_debug.get("state", "")), "ready")
+	assert_true(float(left_debug.get("wrist_velocity", 0.0)) >= float(left_debug.get("min_velocity", 0.0)))
+	assert_true(float(left_debug.get("bbox_area_growth", 0.0)) >= float(left_debug.get("min_bbox_area_growth", 0.0)))
+	assert_true(bool(left_debug.get("elbow_shoulder_xy_gate_passed", false)))
+	assert_true(float(left_debug.get("wrist_shoulder_xy_distance", 0.0)) > float(left_debug.get("max_wrist_shoulder_xy_distance", 0.0)))
+	assert_false(bool(left_debug.get("wrist_shoulder_xy_gate_passed", true)))
+
 func test_straight_punch_requires_wrist_lateral_angle_from_elbow_vertical_gate_before_triggering() -> void:
 	config.gesture_profile_document = {
 		"straight_punch": {
@@ -827,6 +866,9 @@ func test_straight_punch_debug_surfaces_elbow_shoulder_xy_gate_truth() -> void:
 	assert_true(is_equal_approx(float(left_debug.get("max_elbow_shoulder_xy_distance", 0.0)), 0.09))
 	assert_true(is_equal_approx(float(left_debug.get("elbow_shoulder_xy_distance", 0.0)), sqrt(0.0005)))
 	assert_true(bool(left_debug.get("elbow_shoulder_xy_gate_passed", false)))
+	assert_true(is_equal_approx(float(left_debug.get("max_wrist_shoulder_xy_distance", 0.0)), 1.0))
+	assert_true(is_equal_approx(float(left_debug.get("wrist_shoulder_xy_distance", 0.0)), 0.0))
+	assert_true(bool(left_debug.get("wrist_shoulder_xy_gate_passed", false)))
 
 func test_straight_punch_wrist_velocity_averages_all_samples_inside_configured_time_window() -> void:
 	config.gesture_profile_document = {

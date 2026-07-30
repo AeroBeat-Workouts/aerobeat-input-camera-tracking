@@ -102,6 +102,8 @@ straight_punch:
       min_velocity: 0.5
       # Maximum allowed elbow-to-shoulder XY distance while evaluating a straight. Lower values keep the elbow tucked more strictly; higher values allow wider arm positions. input/runtime.
       max_elbow_shoulder_xy_distance: 0.140
+      # Maximum allowed wrist-to-shoulder XY distance while evaluating a straight. Lower values keep the wrist traveling closer to the shoulder line; higher values allow wider hand positions. input/runtime.
+      max_wrist_shoulder_xy_distance: 0.180
       # Minimum sideways wrist angle away from elbow-vertical needed to count as a straight path. Lower values allow more vertical alignment; higher values require a more clearly lateral-forward line. input/runtime.
       min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
     timing:
