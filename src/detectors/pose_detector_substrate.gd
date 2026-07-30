@@ -53,10 +53,10 @@ const HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG := 25.0
 
 const UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG := 25.0
 const GRID_DETECTION_DEFAULT_MIN_CELL_DELTA := 1
-const GRID_VARIANT_BASE_GRID := "base_grid"
-const GRID_VARIANT_STRIKE_SUBGRID := "strike_subgrid"
-const STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER := 2
-const STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER := 2
+const GRID_VARIANT_BASE_GRID := "grid"
+const GRID_VARIANT_SUBGRID := "subgrid"
+const SUBGRID_DEFAULT_COLUMNS_MULTIPLIER := 2
+const SUBGRID_DEFAULT_ROWS_MULTIPLIER := 2
 const GRID_AVOIDANCE_MODE_DISCRETE_CELLS := "discrete_cells"
 const GRID_AVOIDANCE_MODE_ATHLETE_SPACE_HEIGHT_RATIO := "athlete_space_height_ratio"
 const GRID_AVOIDANCE_BLOCKED_FROM_TOP := "top"
@@ -1432,11 +1432,9 @@ func _build_pose_strike_side_debug(family: String, side: String, measurements: D
 		"grid_direction_gate_passed": bool(state.get("grid_direction_gate_passed", false)),
 		"grid_cell_delta_gate_passed": bool(state.get("grid_cell_delta_gate_passed", false)),
 		"grid_accumulated_progress": int(state.get("grid_accumulated_progress", 0)),
-		"grid_progress_mode": String(state.get("grid_progress_mode", "directional_run_excursion")),
 		"grid_progress_threshold": int(state.get("grid_progress_threshold", 0)),
 		"grid_progress_ready": bool(state.get("grid_progress_ready", false)),
-		"grid_progress_window_ms": int(state.get("grid_progress_window_ms", 0)),
-		"grid_progress_transition_count": int((state.get("grid_progress_history", []) as Array).size()),
+		"grid_progress_transition_count": int(state.get("grid_progress_transition_count", 0)),
 		"grid_run_transition_count": int(state.get("grid_run_transition_count", 0)),
 		"grid_run_anchor_cell": int(state.get("grid_run_anchor_cell", -1)),
 		"grid_run_anchor_column": int(state.get("grid_run_anchor_column", -1)),
@@ -1610,9 +1608,9 @@ func _build_flow_grid_debug() -> Dictionary:
 		"padding": padding.duplicate(true),
 		"cell_rects": cell_rects,
 	}
-	var strike_subgrid := _build_strike_subgrid_debug(grid_rect, is_calibrated)
-	if not strike_subgrid.is_empty():
-		grid_debug["strike_subgrid"] = strike_subgrid
+	var subgrid := _build_subgrid_debug(grid_rect, is_calibrated)
+	if not subgrid.is_empty():
+		grid_debug["subgrid"] = subgrid
 	return grid_debug
 
 func _get_flow_grid_rect() -> Dictionary:
@@ -2223,15 +2221,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 		state["not_ready_started_timestamp_ms"] = -1
 		state["buffered_grid_transition"] = {}
 		state["buffered_grid_transition_key"] = ""
-		state["grid_progress_history"] = []
-		state["grid_accumulated_progress"] = 0
-		state["grid_progress_mode"] = "directional_run_excursion"
-		state["grid_progress_ready"] = false
-		state["grid_run_transition_count"] = 0
-		state["grid_run_anchor_cell"] = -1
-		state["grid_run_anchor_column"] = -1
-		state["grid_run_anchor_row"] = -1
-		state["grid_run_reset_reason"] = "tracking_lost"
+		_reset_pose_strike_grid_progress(state, "tracking_lost")
 		_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_TRACKING_LOST)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -2265,15 +2255,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["reacquire_started_timestamp_ms"] = -1
 			state["buffered_grid_transition"] = {}
 			state["buffered_grid_transition_key"] = ""
-			state["grid_progress_history"] = []
-			state["grid_accumulated_progress"] = 0
-			state["grid_progress_mode"] = "directional_run_excursion"
-			state["grid_progress_ready"] = false
-			state["grid_run_transition_count"] = 0
-			state["grid_run_anchor_cell"] = -1
-			state["grid_run_anchor_column"] = -1
-			state["grid_run_anchor_row"] = -1
-			state["grid_run_reset_reason"] = "tracking_lost"
+			_reset_pose_strike_grid_progress(state, "tracking_lost")
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -2291,7 +2273,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["grid_direction_gate_passed"] = grid_column_delta > 0 if side == "left" else grid_column_delta < 0
 		else:
 			state["grid_direction_gate_passed"] = grid_row_delta < 0
-		var grid_progress := _update_pose_strike_grid_progress(state, family, side, grid_transition, timestamp_ms, int(config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS)), grid_overflow_accumulation_frozen)
+		var grid_progress := _update_pose_strike_grid_progress(state, family, side, grid_transition, grid_overflow_accumulation_frozen)
 		accumulated_grid_progress = int(grid_progress.get("accumulated_progress", 0))
 		grid_progress_ready = accumulated_grid_progress >= min_axis_delta
 		state["grid_accumulated_progress"] = accumulated_grid_progress
@@ -2335,15 +2317,7 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 			state["depth_closeness_history"] = []
 			_reset_depth_analysis_state(state)
 			state["not_ready_started_timestamp_ms"] = -1
-			state["grid_progress_history"] = []
-			state["grid_accumulated_progress"] = 0
-			state["grid_progress_mode"] = "directional_run_excursion"
-			state["grid_progress_ready"] = false
-			state["grid_run_transition_count"] = 0
-			state["grid_run_anchor_cell"] = -1
-			state["grid_run_anchor_column"] = -1
-			state["grid_run_anchor_row"] = -1
-			state["grid_run_reset_reason"] = "rearm"
+			_reset_pose_strike_grid_progress(state, "rearm")
 			_transition_pose_strike_state(events, family, side, state, POSE_STRIKE_STATE_READY)
 		_set_pose_strike_state(family, side, state)
 		return
@@ -3175,40 +3149,46 @@ func _get_grid_detection_document() -> Dictionary:
 	var gesture_profile_document := _get_gesture_profile_document()
 	return gesture_profile_document.get("grid_detection", {}) if gesture_profile_document.get("grid_detection", {}) is Dictionary else {}
 
-func _get_strike_subgrid_config() -> Dictionary:
+func _get_subgrid_config() -> Dictionary:
 	var config := {
 		"enabled": true,
-		"columns_multiplier": STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER,
-		"rows_multiplier": STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER,
+		"columns_multiplier": SUBGRID_DEFAULT_COLUMNS_MULTIPLIER,
+		"rows_multiplier": SUBGRID_DEFAULT_ROWS_MULTIPLIER,
 		"draw_dashed_overlay": true,
 	}
 	var grid_detection_document := _get_grid_detection_document()
-	var strike_subgrid: Dictionary = grid_detection_document.get("strike_subgrid", {}) if grid_detection_document.get("strike_subgrid", {}) is Dictionary else {}
-	var visual: Dictionary = strike_subgrid.get("visual", {}) if strike_subgrid.get("visual", {}) is Dictionary else {}
-	config["enabled"] = bool(strike_subgrid.get("enabled", config.get("enabled", true)))
-	config["columns_multiplier"] = max(1, int(strike_subgrid.get("columns_multiplier", config.get("columns_multiplier", STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))))
-	config["rows_multiplier"] = max(1, int(strike_subgrid.get("rows_multiplier", config.get("rows_multiplier", STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER))))
+	var subgrid: Dictionary = {}
+	if grid_detection_document.get("subgrid", {}) is Dictionary:
+		subgrid = grid_detection_document.get("subgrid", {})
+	elif grid_detection_document.get("strike_subgrid", {}) is Dictionary:
+		subgrid = grid_detection_document.get("strike_subgrid", {})
+	var visual: Dictionary = subgrid.get("visual", {}) if subgrid.get("visual", {}) is Dictionary else {}
+	config["enabled"] = bool(subgrid.get("enabled", config.get("enabled", true)))
+	config["columns_multiplier"] = max(1, int(subgrid.get("columns_multiplier", config.get("columns_multiplier", SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))))
+	config["rows_multiplier"] = max(1, int(subgrid.get("rows_multiplier", config.get("rows_multiplier", SUBGRID_DEFAULT_ROWS_MULTIPLIER))))
 	config["draw_dashed_overlay"] = bool(visual.get("draw_dashed_overlay", config.get("draw_dashed_overlay", true)))
 	return config
 
 func _normalize_grid_variant_name(grid_variant: String) -> String:
 	var normalized := grid_variant.strip_edges().to_lower()
-	if normalized == GRID_VARIANT_STRIKE_SUBGRID:
-		return GRID_VARIANT_STRIKE_SUBGRID
+	if normalized == "" or normalized == GRID_VARIANT_BASE_GRID or normalized == "base_grid" or normalized == "grid":
+		return GRID_VARIANT_BASE_GRID
+	if normalized == GRID_VARIANT_SUBGRID or normalized == "strike_subgrid":
+		return GRID_VARIANT_SUBGRID
 	return GRID_VARIANT_BASE_GRID
 
 func _resolve_grid_variant_spec(grid_variant: String) -> Dictionary:
 	var normalized := _normalize_grid_variant_name(grid_variant)
-	if normalized == GRID_VARIANT_STRIKE_SUBGRID:
-		var strike_subgrid := _get_strike_subgrid_config()
-		if bool(strike_subgrid.get("enabled", true)):
+	if normalized == GRID_VARIANT_SUBGRID:
+		var subgrid := _get_subgrid_config()
+		if bool(subgrid.get("enabled", true)):
 			return {
-				"variant": GRID_VARIANT_STRIKE_SUBGRID,
-				"columns": FLOW_GRID_COLUMNS * max(1, int(strike_subgrid.get("columns_multiplier", STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))),
-				"rows": FLOW_GRID_ROWS * max(1, int(strike_subgrid.get("rows_multiplier", STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER))),
-				"columns_multiplier": max(1, int(strike_subgrid.get("columns_multiplier", STRIKE_SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))),
-				"rows_multiplier": max(1, int(strike_subgrid.get("rows_multiplier", STRIKE_SUBGRID_DEFAULT_ROWS_MULTIPLIER))),
-				"draw_dashed_overlay": bool(strike_subgrid.get("draw_dashed_overlay", true)),
+				"variant": GRID_VARIANT_SUBGRID,
+				"columns": FLOW_GRID_COLUMNS * max(1, int(subgrid.get("columns_multiplier", SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))),
+				"rows": FLOW_GRID_ROWS * max(1, int(subgrid.get("rows_multiplier", SUBGRID_DEFAULT_ROWS_MULTIPLIER))),
+				"columns_multiplier": max(1, int(subgrid.get("columns_multiplier", SUBGRID_DEFAULT_COLUMNS_MULTIPLIER))),
+				"rows_multiplier": max(1, int(subgrid.get("rows_multiplier", SUBGRID_DEFAULT_ROWS_MULTIPLIER))),
+				"draw_dashed_overlay": bool(subgrid.get("draw_dashed_overlay", true)),
 			}
 	return {
 		"variant": GRID_VARIANT_BASE_GRID,
@@ -3219,15 +3199,15 @@ func _resolve_grid_variant_spec(grid_variant: String) -> Dictionary:
 		"draw_dashed_overlay": false,
 	}
 
-func _build_strike_subgrid_debug(grid_rect: Dictionary, is_calibrated: bool) -> Dictionary:
-	var spec := _resolve_grid_variant_spec(GRID_VARIANT_STRIKE_SUBGRID)
+func _build_subgrid_debug(grid_rect: Dictionary, is_calibrated: bool) -> Dictionary:
+	var spec := _resolve_grid_variant_spec(GRID_VARIANT_SUBGRID)
 	if not bool(spec.get("draw_dashed_overlay", false)):
 		return {}
 	var columns_multiplier := max(1, int(spec.get("columns_multiplier", 1)))
 	var rows_multiplier := max(1, int(spec.get("rows_multiplier", 1)))
 	return {
-		"enabled": String(spec.get("variant", GRID_VARIANT_BASE_GRID)) == GRID_VARIANT_STRIKE_SUBGRID,
-		"variant": GRID_VARIANT_STRIKE_SUBGRID,
+		"enabled": String(spec.get("variant", GRID_VARIANT_BASE_GRID)) == GRID_VARIANT_SUBGRID,
+		"variant": GRID_VARIANT_SUBGRID,
 		"columns": int(spec.get("columns", FLOW_GRID_COLUMNS)),
 		"rows": int(spec.get("rows", FLOW_GRID_ROWS)),
 		"columns_multiplier": columns_multiplier,
@@ -3503,7 +3483,7 @@ func _build_pose_strike_grid_transition(side: String, timestamp_ms: int, grid_va
 	var variant := _resolve_grid_variant_spec(grid_variant)
 	var previous_cell := int(previous.get("cell", -1))
 	var current_cell := int(latest.get("cell", -1))
-	if String(variant.get("variant", GRID_VARIANT_BASE_GRID)) == GRID_VARIANT_STRIKE_SUBGRID:
+	if String(variant.get("variant", GRID_VARIANT_BASE_GRID)) == GRID_VARIANT_SUBGRID:
 		var previous_position: Vector2 = previous.get("position", Vector2.ZERO)
 		var current_position: Vector2 = latest.get("position", Vector2.ZERO)
 		previous_cell = _grid_cell_index_from_position(previous_position, int(variant.get("columns", FLOW_GRID_COLUMNS)), int(variant.get("rows", FLOW_GRID_ROWS)))
@@ -3574,63 +3554,76 @@ func _consume_pose_strike_grid_transition(state: Dictionary, transition: Diction
 		state["buffered_grid_transition"] = {}
 		state["buffered_grid_transition_key"] = ""
 
-func _update_pose_strike_grid_progress(state: Dictionary, family: String, side: String, transition: Dictionary, timestamp_ms: int, window_ms: int, freeze_accumulation: bool = false) -> Dictionary:
-	var history: Array = (state.get("grid_progress_history", []) as Array).duplicate(true)
-	var clamped_window_ms := max(1, window_ms)
-	while history.size() > 0 and timestamp_ms - int((history[0] as Dictionary).get("timestamp_ms", timestamp_ms)) > clamped_window_ms:
-		history.remove_at(0)
-	if not freeze_accumulation and not transition.is_empty():
-		var transition_copy := transition.duplicate(true)
-		var transition_key := _pose_strike_grid_transition_key(transition_copy)
-		var last_key := _pose_strike_grid_transition_key(history[history.size() - 1] as Dictionary) if history.size() > 0 else ""
-		if not transition_key.is_empty() and transition_key != last_key:
-			history.append(transition_copy)
-	var accumulated_progress := 0
-	var direction_sign := 1 if side == "left" else -1
-	var run_transition_count := 0
-	var run_anchor_cell := -1
-	var run_anchor_column := -1
-	var run_anchor_row := -1
-	var run_reset_reason := ""
-	var run_started := false
-	for entry in history:
-		var typed_entry := entry as Dictionary
-		if not run_started:
-			run_anchor_cell = int(typed_entry.get("previous_cell", -1))
-			run_anchor_column = int(typed_entry.get("previous_column", -1))
-			run_anchor_row = int(typed_entry.get("previous_row", -1))
-			run_started = true
-		var family_axis_delta := int(typed_entry.get("column_delta", 0)) * direction_sign if family == "hook" else -int(typed_entry.get("row_delta", 0))
-		if family_axis_delta < 0:
-			run_anchor_cell = int(typed_entry.get("current_cell", -1))
-			run_anchor_column = int(typed_entry.get("current_column", -1))
-			run_anchor_row = int(typed_entry.get("current_row", -1))
-			run_transition_count = 0
-			run_reset_reason = "reversal"
-			continue
+func _reset_pose_strike_grid_progress(state: Dictionary, reset_reason: String = "") -> void:
+	state["grid_accumulated_progress"] = 0
+	state["grid_progress_ready"] = false
+	state["grid_progress_transition_count"] = 0
+	state["grid_run_transition_count"] = 0
+	state["grid_run_anchor_cell"] = -1
+	state["grid_run_anchor_column"] = -1
+	state["grid_run_anchor_row"] = -1
+	state["grid_run_reset_reason"] = reset_reason
+
+func _pose_strike_grid_excursion_from_anchor(family: String, side: String, anchor_column: int, anchor_row: int, current_column: int, current_row: int) -> int:
+	if family == "hook":
+		if anchor_column < 0 or current_column < 0:
+			return 0
+		var direction_sign := 1 if side == "left" else -1
+		return (current_column - anchor_column) * direction_sign
+	if anchor_row < 0 or current_row < 0:
+		return 0
+	return anchor_row - current_row
+
+func _update_pose_strike_grid_progress(state: Dictionary, family: String, side: String, transition: Dictionary, freeze_accumulation: bool = false) -> Dictionary:
+	if freeze_accumulation or transition.is_empty():
+		return {
+			"accumulated_progress": int(state.get("grid_accumulated_progress", 0)),
+			"run_transition_count": int(state.get("grid_run_transition_count", 0)),
+			"run_anchor_cell": int(state.get("grid_run_anchor_cell", -1)),
+			"run_anchor_column": int(state.get("grid_run_anchor_column", -1)),
+			"run_anchor_row": int(state.get("grid_run_anchor_row", -1)),
+			"run_reset_reason": String(state.get("grid_run_reset_reason", "")),
+		}
+	var anchor_cell := int(state.get("grid_run_anchor_cell", -1))
+	var anchor_column := int(state.get("grid_run_anchor_column", -1))
+	var anchor_row := int(state.get("grid_run_anchor_row", -1))
+	if anchor_cell < 0 or anchor_column < 0 or anchor_row < 0:
+		anchor_cell = int(transition.get("previous_cell", -1))
+		anchor_column = int(transition.get("previous_column", -1))
+		anchor_row = int(transition.get("previous_row", -1))
+	var accumulated_progress := int(state.get("grid_accumulated_progress", 0))
+	var run_transition_count := int(state.get("grid_run_transition_count", 0))
+	var transition_count := int(state.get("grid_progress_transition_count", 0))
+	var run_reset_reason := String(state.get("grid_run_reset_reason", ""))
+	var current_column := int(transition.get("current_column", anchor_column))
+	var current_row := int(transition.get("current_row", anchor_row))
+	var current_excursion := _pose_strike_grid_excursion_from_anchor(family, side, anchor_column, anchor_row, current_column, current_row)
+	if current_excursion < 0:
+		anchor_cell = int(transition.get("current_cell", -1))
+		anchor_column = current_column
+		anchor_row = current_row
+		accumulated_progress = 0
+		run_transition_count = 0
+		transition_count = 0
+		run_reset_reason = "reversal"
+	else:
+		accumulated_progress = current_excursion
 		run_transition_count += 1
-		var current_excursion := 0
-		if family == "hook":
-			current_excursion = maxi(0, (int(typed_entry.get("current_column", run_anchor_column)) - run_anchor_column) * direction_sign)
-		else:
-			current_excursion = maxi(0, run_anchor_row - int(typed_entry.get("current_row", run_anchor_row)))
-		accumulated_progress = maxi(accumulated_progress, current_excursion)
-	state["grid_progress_history"] = history
+		transition_count += 1
+		run_reset_reason = ""
 	state["grid_accumulated_progress"] = accumulated_progress
-	state["grid_progress_mode"] = "directional_run_excursion"
-	state["grid_progress_window_ms"] = clamped_window_ms
+	state["grid_progress_transition_count"] = transition_count
 	state["grid_run_transition_count"] = run_transition_count
-	state["grid_run_anchor_cell"] = run_anchor_cell
-	state["grid_run_anchor_column"] = run_anchor_column
-	state["grid_run_anchor_row"] = run_anchor_row
+	state["grid_run_anchor_cell"] = anchor_cell
+	state["grid_run_anchor_column"] = anchor_column
+	state["grid_run_anchor_row"] = anchor_row
 	state["grid_run_reset_reason"] = run_reset_reason
 	return {
-		"history": history,
 		"accumulated_progress": accumulated_progress,
 		"run_transition_count": run_transition_count,
-		"run_anchor_cell": run_anchor_cell,
-		"run_anchor_column": run_anchor_column,
-		"run_anchor_row": run_anchor_row,
+		"run_anchor_cell": anchor_cell,
+		"run_anchor_column": anchor_column,
+		"run_anchor_row": anchor_row,
 		"run_reset_reason": run_reset_reason,
 	}
 
@@ -3748,11 +3741,9 @@ func _build_pose_strike_state(phase: String = POSE_STRIKE_STATE_TRACKING_LOST) -
 		"grid_direction_gate_passed": false,
 		"grid_cell_delta_gate_passed": false,
 		"grid_accumulated_progress": 0,
-		"grid_progress_mode": "directional_run_excursion",
 		"grid_progress_threshold": 0,
 		"grid_progress_ready": false,
-		"grid_progress_window_ms": 0,
-		"grid_progress_history": [],
+		"grid_progress_transition_count": 0,
 		"grid_run_transition_count": 0,
 		"grid_run_anchor_cell": -1,
 		"grid_run_anchor_column": -1,
@@ -3784,7 +3775,7 @@ func _get_hook_config() -> Dictionary:
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"max_wrist_angle_from_elbow_horizontal_deg": HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG,
-		"grid_variant": GRID_VARIANT_STRIKE_SUBGRID,
+		"grid_variant": GRID_VARIANT_SUBGRID,
 		"min_column_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"overflow_protection_enabled": false,
@@ -3807,7 +3798,7 @@ func _get_hook_config() -> Dictionary:
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["max_wrist_angle_from_elbow_horizontal_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_horizontal_deg", config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))), 0.0, 90.0)
-	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_STRIKE_SUBGRID))))
+	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_SUBGRID))))
 	config["min_column_delta"] = max(1, int(evaluation.get("min_column_delta", evaluation.get("min_cell_delta", config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 	config["min_cell_delta"] = int(config.get("min_column_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
 	config["overflow_protection_enabled"] = bool(evaluation.get("overflow_protection_enabled", config.get("overflow_protection_enabled", false)))
@@ -3824,7 +3815,7 @@ func _get_uppercut_config() -> Dictionary:
 		"window_ms": POSE_STRIKE_DEFAULT_WINDOW_MS,
 		"min_velocity": POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY,
 		"max_wrist_angle_from_elbow_vertical_deg": UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG,
-		"grid_variant": GRID_VARIANT_STRIKE_SUBGRID,
+		"grid_variant": GRID_VARIANT_SUBGRID,
 		"min_row_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"min_cell_delta": GRID_DETECTION_DEFAULT_MIN_CELL_DELTA,
 		"overflow_protection_enabled": false,
@@ -3847,7 +3838,7 @@ func _get_uppercut_config() -> Dictionary:
 	config["window_ms"] = max(1, int(evaluation.get("window_ms", config.get("window_ms", POSE_STRIKE_DEFAULT_WINDOW_MS))))
 	config["min_velocity"] = maxf(0.0, float(thresholds.get("min_velocity", thresholds.get("min_punch_velocity", config.get("min_velocity", POSE_STRIKE_DEFAULT_MIN_PUNCH_VELOCITY)))))
 	config["max_wrist_angle_from_elbow_vertical_deg"] = clampf(float(thresholds.get("max_wrist_angle_from_elbow_vertical_deg", config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))), 0.0, 90.0)
-	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_STRIKE_SUBGRID))))
+	config["grid_variant"] = _normalize_grid_variant_name(String(evaluation.get("grid_variant", config.get("grid_variant", GRID_VARIANT_SUBGRID))))
 	config["min_row_delta"] = max(1, int(evaluation.get("min_row_delta", evaluation.get("min_cell_delta", config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA)))))
 	config["min_cell_delta"] = int(config.get("min_row_delta", GRID_DETECTION_DEFAULT_MIN_CELL_DELTA))
 	config["overflow_protection_enabled"] = bool(evaluation.get("overflow_protection_enabled", config.get("overflow_protection_enabled", false)))

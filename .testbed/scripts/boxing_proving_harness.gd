@@ -1424,10 +1424,13 @@ func _build_custom_inspector_model(target_type: String, target_key: String) -> D
 	if target_type != "gesture":
 		return super._build_custom_inspector_model(target_type, target_key)
 	var hover_model := _build_hover_card_model(target_key)
+	var body := _build_gesture_inspector_body(hover_model)
+	if ["hook_left", "hook_right", "uppercut_left", "uppercut_right"].has(target_key):
+		body = _build_compact_pose_strike_inspector_body(hover_model)
 	return {
 		"title": HOVER_CARD_TITLE,
 		"subtitle": String(hover_model.get("title", _display_name_for_card_key(target_key))),
-		"body": _build_gesture_inspector_body(hover_model),
+		"body": body,
 		"footer": INSPECTOR_FOOTER_TEXT,
 	}
 
@@ -1456,6 +1459,32 @@ func _build_gesture_inspector_body(model: Dictionary) -> String:
 	if not footer.is_empty():
 		body_lines.append("")
 		body_lines.append(footer)
+	return "\n".join(body_lines)
+
+func _build_compact_pose_strike_inspector_body(model: Dictionary) -> String:
+	var wanted_row_ids := {
+		"current_state": true,
+		"tracking_status": true,
+		"velocity_window": true,
+		"averaged_velocity": true,
+		"dominance_ratio": true,
+		"directionality_ratio": true,
+		"grid_progress_truth": true,
+		"buffered_transition_truth": true,
+		"grace_timer": true,
+		"rearm_status": true,
+	}
+	var body_lines: Array[String] = []
+	for row_variant: Variant in model.get("rows", []):
+		if not row_variant is Dictionary:
+			continue
+		var row: Dictionary = row_variant
+		var row_id := String(row.get("id", ""))
+		if not wanted_row_ids.has(row_id):
+			continue
+		if row_id == "buffered_transition_truth" and String(row.get("current_text", "")) == "none":
+			continue
+		body_lines.append("• %s" % _build_requirement_row_text(row))
 	return "\n".join(body_lines)
 
 func _build_hover_card_model(card_key: String) -> Dictionary:
@@ -2046,24 +2075,24 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 			passed = pose_tracking_valid
 		"velocity_window":
 			if using_grid_detection:
-				current_text = "%dms configured, %dms sampled span, %s, %s -> %s" % [
-					window_ms,
-					window_span_ms,
+				label = "Selected grid"
+				current_text = "%s, %s -> %s" % [
 					_pose_strike_grid_variant_summary(side_debug),
 					_fmt_flow_cell(int(side_debug.get("grid_previous_cell", -1))),
 					_fmt_flow_cell(int(side_debug.get("grid_current_cell", -1))),
 				]
+				passed = true
 			else:
 				current_text = "%dms configured, %dms averaged span" % [window_ms, window_span_ms]
-			passed = window_ms > 0
+				passed = window_ms > 0
 		"averaged_velocity":
 			if using_grid_detection:
 				var min_axis_delta := int(side_debug.get("min_column_delta", side_debug.get("min_row_delta", side_debug.get("min_cell_delta", 0))))
-				var axis_delta := int(side_debug.get("grid_column_delta", 0)) if family == "hook" else int(side_debug.get("grid_row_delta", 0))
+				var accumulated_progress := int(side_debug.get("grid_accumulated_progress", 0))
 				threshold_text = str(min_axis_delta)
-				current_text = _fmt_signed_int(axis_delta)
-				passed = bool(side_debug.get("grid_cell_delta_gate_passed", false))
-				label = "Absolute %s delta >= {threshold} subcells" % ["column" if family == "hook" else "row"]
+				current_text = str(accumulated_progress)
+				passed = bool(side_debug.get("grid_progress_ready", false))
+				label = "Passed %s travel >= {threshold} subcells" % ["column" if family == "hook" else "row"]
 			else:
 				threshold_text = _fmt_float(min_velocity)
 				current_text = _fmt_float(averaged_velocity)
@@ -2075,7 +2104,7 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 				threshold_text = required_direction_label
 				current_text = _fmt_signed_int(signed_axis_delta)
 				passed = bool(side_debug.get("grid_direction_gate_passed", false))
-				label = "Signed %s delta follows {threshold}" % ["column" if family == "hook" else "row"]
+				label = "Latest %s step follows {threshold}" % ["column" if family == "hook" else "row"]
 			elif family == "hook":
 				threshold_text = _fmt_float(hook_max_alignment_angle)
 				current_text = _fmt_float(hook_alignment_angle)
@@ -2108,15 +2137,13 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 			var progress_threshold := int(side_debug.get("grid_progress_threshold", 0))
 			var progress_ready := bool(side_debug.get("grid_progress_ready", false))
 			var transition_count := int(side_debug.get("grid_progress_transition_count", 0))
-			var run_transition_count := int(side_debug.get("grid_run_transition_count", 0))
-			var progress_mode := String(side_debug.get("grid_progress_mode", "directional_run_excursion"))
-			current_text = "%d/%d subcells, ready=%s, history=%d, run=%d, mode=%s" % [
+			current_text = "%s -> %s, %d/%d subcells, transitions=%d, ready=%s" % [
+				_fmt_flow_cell(int(side_debug.get("grid_run_anchor_cell", -1))),
+				_fmt_flow_cell(int(side_debug.get("grid_current_cell", -1))),
 				accumulated_progress,
 				progress_threshold,
-				_fmt_bool(progress_ready),
 				transition_count,
-				run_transition_count,
-				progress_mode,
+				_fmt_bool(progress_ready),
 			]
 			var run_reset_reason := String(side_debug.get("grid_run_reset_reason", ""))
 			if not run_reset_reason.is_empty():
@@ -2526,15 +2553,14 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Hook tuning")
 	lines.append("-----------")
 	lines.append("Backend: %s" % hook_backend)
-	lines.append("Motion window: %dms" % int(hook_eval.get("window_ms", 0)))
 	if hook_backend == "grid_detection":
-		var strike_subgrid: Dictionary = gesture_document.get("grid_detection", {}).get("strike_subgrid", {}) if gesture_document.get("grid_detection", {}) is Dictionary and gesture_document.get("grid_detection", {}).get("strike_subgrid", {}) is Dictionary else {}
-		lines.append("Grid variant: %s" % String(hook_eval.get("grid_variant", "strike_subgrid")))
-		lines.append("Strike subgrid: %dx%d inside the calibrated 4x3 bounds" % [
-			4 * int(strike_subgrid.get("columns_multiplier", 2)),
-			3 * int(strike_subgrid.get("rows_multiplier", 2)),
+		var subgrid: Dictionary = gesture_document.get("grid_detection", {}).get("subgrid", {}) if gesture_document.get("grid_detection", {}) is Dictionary and gesture_document.get("grid_detection", {}).get("subgrid", {}) is Dictionary else {}
+		lines.append("Grid selection: %s" % String(hook_eval.get("grid_variant", "subgrid")))
+		lines.append("Subgrid: %dx%d inside the calibrated 4x3 bounds" % [
+			4 * int(subgrid.get("columns_multiplier", 2)),
+			3 * int(subgrid.get("rows_multiplier", 2)),
 		])
-		lines.append("Minimum horizontal column travel: %d subcells" % int(hook_eval.get("min_column_delta", hook_eval.get("min_cell_delta", 0))))
+		lines.append("Trigger rule: fire once the wrist crosses %d hook columns in the required direction" % int(hook_eval.get("min_column_delta", hook_eval.get("min_cell_delta", 0))))
 		lines.append("Hook direction reference: athlete-space horizontal columns (left hook = athlete_right with positive signed delta, right hook = athlete_left with negative signed delta)")
 	else:
 		lines.append("Min velocity: %s" % _fmt_float(hook_thresholds.get("min_velocity", hook_thresholds.get("min_punch_velocity", 0.0))))
@@ -2551,15 +2577,14 @@ func _build_boxing_event_feed_text() -> String:
 	lines.append("Uppercut tuning")
 	lines.append("---------------")
 	lines.append("Backend: %s" % uppercut_backend)
-	lines.append("Motion window: %dms" % int(uppercut_eval.get("window_ms", 0)))
 	if uppercut_backend == "grid_detection":
-		var strike_subgrid: Dictionary = gesture_document.get("grid_detection", {}).get("strike_subgrid", {}) if gesture_document.get("grid_detection", {}) is Dictionary and gesture_document.get("grid_detection", {}).get("strike_subgrid", {}) is Dictionary else {}
-		lines.append("Grid variant: %s" % String(uppercut_eval.get("grid_variant", "strike_subgrid")))
-		lines.append("Strike subgrid: %dx%d inside the calibrated 4x3 bounds" % [
-			4 * int(strike_subgrid.get("columns_multiplier", 2)),
-			3 * int(strike_subgrid.get("rows_multiplier", 2)),
+		var subgrid: Dictionary = gesture_document.get("grid_detection", {}).get("subgrid", {}) if gesture_document.get("grid_detection", {}) is Dictionary and gesture_document.get("grid_detection", {}).get("subgrid", {}) is Dictionary else {}
+		lines.append("Grid selection: %s" % String(uppercut_eval.get("grid_variant", "subgrid")))
+		lines.append("Subgrid: %dx%d inside the calibrated 4x3 bounds" % [
+			4 * int(subgrid.get("columns_multiplier", 2)),
+			3 * int(subgrid.get("rows_multiplier", 2)),
 		])
-		lines.append("Minimum upward row travel: %d subcells" % int(uppercut_eval.get("min_row_delta", uppercut_eval.get("min_cell_delta", 0))))
+		lines.append("Trigger rule: fire once the wrist crosses %d uppercut rows upward" % int(uppercut_eval.get("min_row_delta", uppercut_eval.get("min_cell_delta", 0))))
 		lines.append("Uppercut direction reference: athlete-space upward rows (negative signed delta)")
 	else:
 		lines.append("Min velocity: %s" % _fmt_float(uppercut_thresholds.get("min_velocity", uppercut_thresholds.get("min_punch_velocity", 0.0))))

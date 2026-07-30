@@ -34,7 +34,7 @@ func clear_grid_debug() -> void:
 func get_overlay_snapshot() -> Dictionary:
 	var cell_rects: Array = _grid_debug.get("cell_rects", []) as Array
 	var render_snapshot := _build_render_snapshot()
-	var strike_subgrid: Dictionary = _grid_debug.get("strike_subgrid", {}) if _grid_debug.get("strike_subgrid", {}) is Dictionary else {}
+	var subgrid: Dictionary = _grid_debug.get("subgrid", {}) if _grid_debug.get("subgrid", {}) is Dictionary else {}
 	var padding: Dictionary = _grid_debug.get("padding", {}) if _grid_debug.get("padding", {}) is Dictionary else {}
 	return {
 		"is_calibrated": bool(_grid_debug.get("is_calibrated", false)),
@@ -51,7 +51,7 @@ func get_overlay_snapshot() -> Dictionary:
 		"effective_grid_width": float(_grid_debug.get("effective_grid_width", _grid_debug.get("width", 0.0))),
 		"effective_grid_height": float(_grid_debug.get("effective_grid_height", _grid_debug.get("height", 0.0))),
 		"line_count": maxi(0, int(_grid_debug.get("columns", 0)) + 1) + maxi(0, int(_grid_debug.get("rows", 0)) + 1),
-		"dashed_line_count": maxi(0, int(strike_subgrid.get("columns", 0)) - 1 - (int(_grid_debug.get("columns", 0)) - 1)) + maxi(0, int(strike_subgrid.get("rows", 0)) - 1 - (int(_grid_debug.get("rows", 0)) - 1)),
+		"dashed_line_count": maxi(0, int(subgrid.get("columns", 0)) - 1 - (int(_grid_debug.get("columns", 0)) - 1)) + maxi(0, int(subgrid.get("rows", 0)) - 1 - (int(_grid_debug.get("rows", 0)) - 1)),
 		"cell_count": cell_rects.size(),
 		"left_boundary": float(_grid_debug.get("left_boundary", 0.0)),
 		"top_boundary": float(_grid_debug.get("top_boundary", 0.0)),
@@ -62,7 +62,7 @@ func get_overlay_snapshot() -> Dictionary:
 		"base_right_boundary": float(_grid_debug.get("base_right_boundary", 0.0)),
 		"base_bottom_boundary": float(_grid_debug.get("base_bottom_boundary", 0.0)),
 		"padding": padding.duplicate(true),
-		"strike_subgrid": strike_subgrid.duplicate(true),
+		"subgrid": subgrid.duplicate(true),
 		"render_top_left": render_snapshot.get("top_left", Vector2.ZERO),
 		"render_bottom_right": render_snapshot.get("bottom_right", Vector2.ZERO),
 		"render_cell_width_px": float(render_snapshot.get("cell_width_px", 0.0)),
@@ -100,15 +100,15 @@ func _draw() -> void:
 		var width := GRID_BORDER_WIDTH if row == 0 or row == rows else GRID_STROKE_WIDTH
 		var color := GRID_BORDER_COLOR if row == 0 or row == rows else GRID_STROKE_COLOR
 		draw_line(start, finish, color, width, true)
-	_draw_strike_subgrid_dashes(render_snapshot)
+	_draw_subgrid_dashes(render_snapshot)
 
 
-func _draw_strike_subgrid_dashes(render_snapshot: Dictionary) -> void:
-	var strike_subgrid: Dictionary = _grid_debug.get("strike_subgrid", {}) if _grid_debug.get("strike_subgrid", {}) is Dictionary else {}
-	if strike_subgrid.is_empty() or not bool(strike_subgrid.get("draw_dashed_overlay", false)):
+func _draw_subgrid_dashes(render_snapshot: Dictionary) -> void:
+	var subgrid: Dictionary = _grid_debug.get("subgrid", {}) if _grid_debug.get("subgrid", {}) is Dictionary else {}
+	if subgrid.is_empty() or not bool(subgrid.get("draw_dashed_overlay", false)):
 		return
-	var columns_multiplier: int = max(1, int(strike_subgrid.get("columns_multiplier", 1)))
-	var rows_multiplier: int = max(1, int(strike_subgrid.get("rows_multiplier", 1)))
+	var columns_multiplier: int = max(1, int(subgrid.get("columns_multiplier", 1)))
+	var rows_multiplier: int = max(1, int(subgrid.get("rows_multiplier", 1)))
 	if columns_multiplier <= 1 and rows_multiplier <= 1:
 		return
 	var columns := int(render_snapshot.get("columns", 0))

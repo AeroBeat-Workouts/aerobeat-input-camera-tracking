@@ -2331,7 +2331,7 @@ func test_hook_grid_detection_uses_athlete_space_side_specific_horizontal_transi
 	assert_eq(String(left_debug.get("backend", "")), "grid_detection")
 	assert_eq(String(left_debug.get("direction_reference_frame", "")), "athlete_space_columns")
 	assert_eq(String(left_debug.get("required_direction_label", "")), "athlete_right")
-	assert_eq(String(left_debug.get("grid_variant", "")), "strike_subgrid")
+	assert_eq(String(left_debug.get("grid_variant", "")), "subgrid")
 	assert_eq(int(left_debug.get("grid_columns", 0)), 8)
 	assert_eq(int(left_debug.get("grid_rows", 0)), 6)
 	assert_eq(int(left_debug.get("grid_previous_cell", -1)), 16)
@@ -2551,14 +2551,13 @@ func test_hook_grid_detection_reversal_clears_stale_pretrigger_credit() -> void:
 	assert_false(_event_names(state.get("events", [])).has("hook_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("hook", {}).get("left", {})
 	assert_eq(String(left_debug.get("state", "")), "ready")
-	assert_eq(String(left_debug.get("grid_progress_mode", "")), "directional_run_excursion")
 	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 1)
 	assert_eq(int(left_debug.get("grid_progress_threshold", 0)), 2)
 	assert_false(bool(left_debug.get("grid_progress_ready", false)))
 	assert_false(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), 3)
-	assert_eq(int(left_debug.get("grid_run_transition_count", 0)), 1)
-	assert_eq(String(left_debug.get("grid_run_reset_reason", "")), "reversal")
+	assert_eq(int(left_debug.get("grid_run_transition_count", 0)), 3)
+	assert_eq(String(left_debug.get("grid_run_reset_reason", "")), "")
 
 func test_uppercut_grid_detection_reversal_clears_stale_pretrigger_credit() -> void:
 	config.gesture_profile_document = {
@@ -2603,14 +2602,13 @@ func test_uppercut_grid_detection_reversal_clears_stale_pretrigger_credit() -> v
 	assert_false(_event_names(state.get("events", [])).has("uppercut_left"))
 	var left_debug: Dictionary = state.get("gesture_debug", {}).get("uppercut", {}).get("left", {})
 	assert_eq(String(left_debug.get("state", "")), "ready")
-	assert_eq(String(left_debug.get("grid_progress_mode", "")), "directional_run_excursion")
 	assert_eq(int(left_debug.get("grid_accumulated_progress", 0)), 1)
 	assert_eq(int(left_debug.get("grid_progress_threshold", 0)), 2)
 	assert_false(bool(left_debug.get("grid_progress_ready", false)))
 	assert_false(bool(left_debug.get("grid_cell_delta_gate_passed", false)))
 	assert_eq(int(left_debug.get("grid_progress_transition_count", 0)), 3)
-	assert_eq(int(left_debug.get("grid_run_transition_count", 0)), 1)
-	assert_eq(String(left_debug.get("grid_run_reset_reason", "")), "reversal")
+	assert_eq(int(left_debug.get("grid_run_transition_count", 0)), 3)
+	assert_eq(String(left_debug.get("grid_run_reset_reason", "")), "")
 
 func test_hook_grid_detection_buffers_fast_same_wrist_repeat_until_rearmed() -> void:
 	config.gesture_profile_document = {

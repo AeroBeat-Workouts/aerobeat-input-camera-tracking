@@ -1273,8 +1273,8 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	assert_string_contains(text_body, "Straight-punch tuning")
 	assert_string_contains(text_body, "Max wrist-shoulder XY distance: 0.100")
 	assert_string_contains(text_body, "Hook tuning")
-	assert_string_contains(text_body, "Grid variant: strike_subgrid")
-	assert_string_contains(text_body, "Minimum horizontal column travel: 1 subcells")
+	assert_string_contains(text_body, "Grid selection: subgrid")
+	assert_string_contains(text_body, "Trigger rule: fire once the wrist crosses 1 hook columns in the required direction")
 	assert_string_contains(text_body, "Hook direction reference: athlete-space horizontal columns (left hook = athlete_right with positive signed delta, right hook = athlete_left with negative signed delta)")
 	assert_string_contains(text_body, "Depth loader truth: enabled; artifact resolved to FastDepth/ONNX but adapter is still staged")
 	assert_string_contains(text_body, "Depth runtime status / stage: blocked / adapter_load")
@@ -1284,7 +1284,7 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	assert_string_contains(text_body, "Depth live metrics (L): available=true, fresh=true, source=placeholder, closeness=0.020")
 	assert_string_contains(text_body, "Depth thresholds: max_closeness_delta=0.030, max_peak_closeness=0.060")
 	assert_string_contains(text_body, "Uppercut tuning")
-	assert_string_contains(text_body, "Minimum upward row travel: 1 subcells")
+	assert_string_contains(text_body, "Trigger rule: fire once the wrist crosses 1 uppercut rows upward")
 	assert_string_contains(text_body, "Uppercut direction reference: athlete-space upward rows (negative signed delta)")
 	assert_string_contains(text_body, "Depth artifact path: res://assets/depth_models/midas/openvino_midas_v21_small_256/")
 	assert_string_contains(text_body, "Depth backend/family: openvino / midas_openvino_v21_small_256")
@@ -1364,7 +1364,7 @@ func test_pose_strike_grid_hover_card_and_inspector_surface_buffered_progress_an
 					"sample_source": "pose",
 					"window_ms": 250,
 					"window_span_ms": 180,
-					"grid_variant": "strike_subgrid",
+					"grid_variant": "subgrid",
 					"direction_reference_frame": "athlete_space_columns",
 					"grid_transition_available": true,
 					"grid_previous_cell": 16,
@@ -1376,10 +1376,12 @@ func test_pose_strike_grid_hover_card_and_inspector_surface_buffered_progress_an
 					"grid_accumulated_progress": 2,
 					"grid_progress_threshold": 1,
 					"grid_progress_ready": true,
-					"grid_progress_mode": "directional_run_excursion",
 					"grid_progress_transition_count": 3,
-					"grid_run_transition_count": 1,
-					"grid_run_reset_reason": "reversal",
+					"grid_run_transition_count": 3,
+					"grid_run_anchor_cell": 16,
+					"grid_run_anchor_column": 0,
+					"grid_run_anchor_row": 4,
+					"grid_run_reset_reason": "",
 					"grid_overflow_protection_enabled": true,
 					"grid_overflow_accumulation_frozen": true,
 					"buffered_grid_transition_available": true,
@@ -1400,7 +1402,7 @@ func test_pose_strike_grid_hover_card_and_inspector_surface_buffered_progress_an
 	var model: Dictionary = harness._build_hover_card_model("hook_left")
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(rows[8].get("label", "")), "Grid progress")
-	assert_eq(String(rows[8].get("current_text", "")), "2/1 subcells, ready=true, history=3, run=1, mode=directional_run_excursion, reset=reversal")
+	assert_eq(String(rows[8].get("current_text", "")), "cell 16 [r4 c0] -> cell 18 [r4 c2], 2/1 subcells, transitions=3, ready=true")
 	assert_eq(String(rows[9].get("label", "")), "Buffered repeat transition")
 	assert_eq(String(rows[9].get("current_text", "")), "cell 18 [r4 c2] -> cell 20 [r5 c0], Δcol +2, Δrow 0, progress 2")
 	assert_eq(String(rows[10].get("label", "")), "Overflow protection")
@@ -1408,9 +1410,9 @@ func test_pose_strike_grid_hover_card_and_inspector_surface_buffered_progress_an
 
 	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
 	var body := String(inspector.get("body", ""))
-	assert_string_contains(body, "Grid progress - 2/1 subcells, ready=true, history=3, run=1, mode=directional_run_excursion, reset=reversal")
+	assert_string_contains(body, "Grid progress - cell 16 [r4 c0] -> cell 18 [r4 c2], 2/1 subcells, transitions=3, ready=true")
 	assert_string_contains(body, "Buffered repeat transition - cell 18 [r4 c2] -> cell 20 [r5 c0], Δcol +2, Δrow 0, progress 2")
-	assert_string_contains(body, "Overflow protection - enabled, frozen=true")
+	assert_false(body.contains("Overflow protection - enabled, frozen=true"))
 
 func test_punch_family_inspectors_keep_only_compact_depth_backend_and_thresholds() -> void:
 	var harness = _new_harness()
@@ -1715,9 +1717,9 @@ func _shared_flow_grid_truth_state(capture_source: String = "calibration_session
 					"top_boundary": 0.84,
 					"right_boundary": 0.66,
 					"bottom_boundary": 0.414061433447099,
-					"strike_subgrid": {
+					"subgrid": {
 						"enabled": true,
-						"variant": "strike_subgrid",
+						"variant": "subgrid",
 						"columns": 8,
 						"rows": 6,
 						"columns_multiplier": 2,
@@ -1775,8 +1777,8 @@ func test_proving_scenes_share_grid_truth_panel_and_preview_overlay() -> void:
 		assert_eq(float(overlay_snapshot.get("cell_width", 0.0)), 0.08)
 		assert_eq(float(overlay_snapshot.get("cell_height", 0.0)), 0.14197952218430035)
 		assert_eq(int(overlay_snapshot.get("dashed_line_count", 0)), 7)
-		assert_eq(int(overlay_snapshot.get("strike_subgrid", {}).get("columns", 0)), 8)
-		assert_eq(int(overlay_snapshot.get("strike_subgrid", {}).get("rows", 0)), 6)
+		assert_eq(int(overlay_snapshot.get("subgrid", {}).get("columns", 0)), 8)
+		assert_eq(int(overlay_snapshot.get("subgrid", {}).get("rows", 0)), 6)
 		assert_eq(int(nose_chart.get("active_index")), 6)
 		if packed_scene == FlowProvingScene:
 			assert_eq(int(nose_direction_chart.get("active_index")), 2)

@@ -56,7 +56,7 @@ squat:
       blocked_height_ratio: 0.50
 
 grid_detection:
-  strike_subgrid:
+  subgrid:
     # Turn the denser strike-only subgrid on or off. True lets punch detectors resolve shorter travel inside each base cell; false makes them use only the coarse 4x3 grid. input/runtime.
     enabled: true
     # Multiply base-grid columns for strike detection only. Higher values create narrower strike columns and require less coarse lateral travel; lower values collapse back toward the base grid. input/runtime.
@@ -64,7 +64,7 @@ grid_detection:
     # Multiply base-grid rows for strike detection only. Higher values create shorter strike rows and make vertical travel checks more fine-grained; lower values collapse back toward the base grid. input/runtime.
     rows_multiplier: 2
     visual:
-      # Draw the strike subgrid as dashed overlay lines in debug/preview views. True helps reviewers see the finer runtime strike map; false keeps overlays less busy. input debug/runtime.
+      # Draw the subgrid as dashed overlay lines in debug/preview views. True helps reviewers see the finer runtime strike map; false keeps overlays less busy. input debug/runtime.
       draw_dashed_overlay: true
 
 weave:
@@ -119,7 +119,7 @@ straight_punch:
       lost_tracking_reacquire_stable_ms: 40
 
 hook:
-  # Allowed options: [grid_detection, threshold]. Pick the hook detector backend. Grid detection uses calibrated cell travel, including the strike subgrid when selected below. input/runtime.
+  # Allowed options: [grid_detection, threshold]. Pick the hook detector backend. Grid detection uses calibrated cell travel, including the subgrid when selected below. input/runtime.
   backend: grid_detection
   threshold:
     evaluation:
@@ -143,10 +143,8 @@ hook:
       lost_tracking_reacquire_stable_ms: 40
   grid_detection:
     evaluation:
-      # Time span of recent cell-travel history considered by the active grid-based hook detector. Smaller windows require a tighter/faster lateral move; larger windows allow slower motion to count. input/runtime.
-      window_ms: 250
-      # Allowed options: [grid, strike_subgrid]. Select which calibrated grid to evaluate against. strike_subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
-      grid_variant: strike_subgrid
+      # Allowed options: [grid, subgrid]. Select which calibrated grid to evaluate against. subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
+      grid_variant: subgrid
       # Minimum signed horizontal column travel required to count as a hook. Lower values allow shorter left-to-right/right-to-left moves; higher values require crossing more strike-subgrid columns in the side-specific hook direction. input/runtime.
       min_column_delta: 1
       # Freeze fresh hook grid-progress accumulation while that same hook side is already active inside its triggered/rearm window. False preserves today's accumulating/buffering behavior; true protects against in-window progress overflow. input/runtime/debug.
@@ -164,7 +162,7 @@ hook:
       lost_tracking_reacquire_stable_ms: 40
 
 uppercut:
-  # Allowed options: [grid_detection, threshold]. Pick the uppercut detector backend. Grid detection uses calibrated upward cell travel, including the strike subgrid when selected below. input/runtime.
+  # Allowed options: [grid_detection, threshold]. Pick the uppercut detector backend. Grid detection uses calibrated upward cell travel, including the subgrid when selected below. input/runtime.
   backend: grid_detection
   threshold:
     evaluation:
@@ -188,10 +186,8 @@ uppercut:
       lost_tracking_reacquire_stable_ms: 40
   grid_detection:
     evaluation:
-      # Time span of recent cell-travel history considered by the active grid-based uppercut detector. Smaller windows require a tighter/faster rise; larger windows allow slower motion to count. input/runtime.
-      window_ms: 250
-      # Allowed options: [grid, strike_subgrid]. Select which calibrated grid to evaluate against. strike_subgrid means runtime uppercut travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
-      grid_variant: strike_subgrid
+      # Allowed options: [grid, subgrid]. Select which calibrated grid to evaluate against. subgrid means runtime uppercut travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
+      grid_variant: subgrid
       # Minimum signed upward row travel required to count as an uppercut. Lower values allow shorter rises; higher values require crossing more strike-subgrid rows toward the athlete-space top. input/runtime.
       min_row_delta: 1
       # Freeze fresh uppercut grid-progress accumulation while that same uppercut side is already active inside its triggered/rearm window. False preserves today's accumulating/buffering behavior; true protects against in-window progress overflow. input/runtime/debug.
