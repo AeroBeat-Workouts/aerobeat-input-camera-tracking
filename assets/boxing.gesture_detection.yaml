@@ -106,12 +106,12 @@ straight_punch:
       min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
     timing:
       # Keep the straight-punch triggered state alive for this long after detection. Shorter values clear faster; longer values make the trigger linger longer for downstream consumers. input/runtime.
-      triggered_grace_ms: 240
+      triggered_grace_ms: 1
       # Allow a brand-new straight punch to be captured even while the previous straight is still inside triggered grace. False preserves the old grace-window suppression; true supports faster same-arm repeats and left/right straight chains. input/runtime/debug.
       allow_next_gesture_capture_during_grace: true
     rearm:
       # Minimum pose-only cooldown before another straight can arm again. Shorter values permit faster repeat punches; longer values reduce retrigger spam. input/runtime.
-      pose_only_rearm_ms: 250
+      pose_only_rearm_ms: 1
     state_machine:
       # Stable-tracking time required after loss before this detector trusts reacquired data again. Lower values recover faster but risk noisy resumes; higher values wait for steadier reacquisition. input/runtime.
       lost_tracking_reacquire_stable_ms: 40
@@ -151,12 +151,12 @@ hook:
       overflow_protection_enabled: true
     timing:
       # Keep the grid-based hook triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
-      triggered_grace_ms: 500
+      triggered_grace_ms: 1
       # Allow a brand-new hook to be captured while the previous hook is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
       allow_next_gesture_capture_during_grace: true
     rearm:
       # Minimum cooldown before another grid-based hook can arm. Shorter values allow faster combinations; longer values reduce retrigger spam. input/runtime.
-      pose_only_rearm_ms: 50
+      pose_only_rearm_ms: 1
     state_machine:
       # Stable-tracking time required after loss before the grid-based hook trusts reacquired data again. Lower values recover faster but can reintroduce noisy frames; higher values wait longer for stable tracking. input/runtime.
       lost_tracking_reacquire_stable_ms: 40
@@ -196,12 +196,12 @@ uppercut:
       overflow_protection_enabled: true
     timing:
       # Keep the grid-based uppercut triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
-      triggered_grace_ms: 500
+      triggered_grace_ms: 1
       # Allow a brand-new uppercut to be captured while the previous uppercut is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
       allow_next_gesture_capture_during_grace: true
     rearm:
       # Minimum cooldown before another grid-based uppercut can arm. Shorter values allow faster combinations; longer values reduce retrigger spam. input/runtime.
-      pose_only_rearm_ms: 50
+      pose_only_rearm_ms: 1
     state_machine:
       # Stable-tracking time required after loss before the grid-based uppercut trusts reacquired data again. Lower values recover faster but can reintroduce noisy frames; higher values wait longer for stable tracking. input/runtime.
       lost_tracking_reacquire_stable_ms: 40
