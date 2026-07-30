@@ -99,16 +99,16 @@ straight_punch:
       window_ms: 250
     thresholds:
       # Minimum punch velocity needed to trigger. Lower values make straights easier/noisier; higher values require a more forceful forward drive. input/runtime.
-      min_velocity: 0.5
+      min_velocity: 0.1 #0.3
       # Maximum allowed elbow-to-shoulder XY distance while evaluating a straight. Lower values keep the elbow tucked more strictly; higher values allow wider arm positions. input/runtime.
       max_elbow_shoulder_xy_distance: 0.140
       # Maximum allowed wrist-to-shoulder XY distance while evaluating a straight. Lower values keep the wrist traveling closer to the shoulder line; higher values allow wider hand positions. input/runtime.
-      max_wrist_shoulder_xy_distance: 0.180
+      max_wrist_shoulder_xy_distance: 0.100
       # Minimum sideways wrist angle away from elbow-vertical needed to count as a straight path. Lower values allow more vertical alignment; higher values require a more clearly lateral-forward line. input/runtime.
       min_wrist_lateral_angle_from_elbow_vertical_deg: 15.0
     timing:
       # Keep the straight-punch triggered state alive for this long after detection. Shorter values clear faster; longer values make the trigger linger longer for downstream consumers. input/runtime.
-      triggered_grace_ms: 1
+      triggered_grace_ms: 250
       # Allow a brand-new straight punch to be captured even while the previous straight is still inside triggered grace. False preserves the old grace-window suppression; true supports faster same-arm repeats and left/right straight chains. input/runtime/debug.
       allow_next_gesture_capture_during_grace: true
     rearm:
@@ -148,12 +148,12 @@ hook:
       # Allowed options: [grid, strike_subgrid]. Select which calibrated grid to evaluate against. strike_subgrid means runtime hook travel uses the finer strike-only subdivision instead of the coarse base 4x3 grid. input/runtime.
       grid_variant: strike_subgrid
       # Minimum signed horizontal column travel required to count as a hook. Lower values allow shorter left-to-right/right-to-left moves; higher values require crossing more strike-subgrid columns in the side-specific hook direction. input/runtime.
-      min_column_delta: 2
+      min_column_delta: 1
       # Freeze fresh hook grid-progress accumulation while that same hook side is already active inside its triggered/rearm window. False preserves today's accumulating/buffering behavior; true protects against in-window progress overflow. input/runtime/debug.
       overflow_protection_enabled: true
     timing:
       # Keep the grid-based hook triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
-      triggered_grace_ms: 1
+      triggered_grace_ms: 250
       # Allow a brand-new hook to be captured while the previous hook is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
       allow_next_gesture_capture_during_grace: true
     rearm:
@@ -198,7 +198,7 @@ uppercut:
       overflow_protection_enabled: true
     timing:
       # Keep the grid-based uppercut triggered state alive for this long after detection. Shorter values clear faster; longer values linger longer for downstream consumers. input/runtime.
-      triggered_grace_ms: 1
+      triggered_grace_ms: 250
       # Allow a brand-new uppercut to be captured while the previous uppercut is still inside triggered grace. False preserves the old grace-window block; true supports faster same-family combinations. input/runtime/debug.
       allow_next_gesture_capture_during_grace: true
     rearm:
