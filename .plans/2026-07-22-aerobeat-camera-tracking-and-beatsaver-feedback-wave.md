@@ -1,9 +1,9 @@
 # AeroBeat camera tracking + BeatSaver feedback wave
 
-**Date:** 2026-07-22  
-**Status:** In Progress  
-**Last Updated:** 2026-07-28 21:52 EDT  
-**Blocked Reason:** Waiting on Derrick’s next manual AeroBeat testing wave. Tonight’s approved cleanup seams through Task 95 are landed/pushed, the canonical handoff is written at `/home/derrick/.openclaw/workspace/projects/openclaw-pico/handoffs/handoff-2026-07-28T21-50-00-04-00-aerobeat.md`, and no further narrow approved seam is exposed until Derrick returns with the next repro or feedback.  
+**Date:** 2026-07-22
+**Status:** In Progress
+**Last Updated:** 2026-07-30 08:35 EDT
+**Blocked Reason:** None. Derrick has now explicitly approved fixing both newly exposed boxing seams before the next manual retest: (1) the proving-scene Punch / Hook / Uppercut tile linger, which is primarily UI truth in `.testbed/scripts/boxing_proving_harness.gd`, and (2) the residual opposite-side straight `NOT_READY` runtime blocker in `src/detectors/pose_detector_substrate.gd`. Active next seam: land both fixes, commit, and push for Derrick’s follow-up retest.
 **Agent:** `pico`
 
 ---
@@ -60,6 +60,12 @@ After reviewing the new strike-subgrid YAML, Derrick identified an important des
 
 Manual playtest then surfaced a narrower implementation bug: the new hook direction gating is currently reversed in athlete space. Left hook is firing on right-to-left strike-subgrid travel and right hook is firing on left-to-right travel, which is the opposite of the intended behavior. The next narrow seam is to invert only that athlete-space hook-direction mapping so left hook requires left-to-right travel and right hook requires right-to-left travel, while leaving the rest of the strike-subgrid architecture untouched.
 
+### 2026-07-30 boxing grace-vs-UI mismatch update
+
+Derrick has now resumed this approved lane from the latest canonical AeroBeat handoff with a fresh boxing playtest result after manually setting the new grace-capture controls to their most aggressive values. User-truth from the test wave: enabling `allow_next_gesture_capture_during_grace` and setting both `triggered_grace_ms` and `pose_only_rearm_ms` to `1` for straight punch, hook, and uppercut successfully allowed very fast same-arm and multi-arm repeat punches to capture. However, the boxing proving-scene gesture UI still remained visibly active for a perceptible amount of time instead of only flashing briefly, which strongly suggests a mismatch between config/runtime timing truth and the proving/debug presentation layer, or a deeper runtime state-hold bug that the current UI happens to expose.
+
+The next approved seam is intentionally narrow: trace the exact active/hold timing path for straight/hook/uppercut from YAML config through detector state transitions and into the boxing proving-scene UI/debug surface, determine whether the mismatch is in the detector/runtime logic, the proving-scene hookup, or both, and identify the smallest truthful fix seam before widening back into broader retuning. This seam should also explicitly check Derrick’s suspicion that an older punch may still be visually or logically eating newer punches despite the new grace-window next-capture settings.
+
 ---
 
 ## REFERENCES
@@ -86,10 +92,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 1: Recover repo-plan truth and map the affected code/docs seams
 
-**Bead ID:** `oc-izq`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-01`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-09`  
+**Bead ID:** `oc-izq`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-01`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-09`
 **Prompt:** In the AeroBeat repos, recover the exact current truth for this new feedback wave: confirm the latest handoff state, identify the active code paths/docs for camera calibration, BeatSaver search/detail/download/conversion, package manifests, and testbed sync tooling, and flag any stale plan-status mismatch that should be cleaned up as part of this lane. Claim the bead at start and close it when the investigation map is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -107,10 +113,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 2: Audit how camera calibration and the 4x3 Flow grid currently work
 
-**Bead ID:** `oc-uyo`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-02`, `REF-03`, `REF-07`, `REF-08`  
+**Bead ID:** `oc-uyo`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-02`, `REF-03`, `REF-07`, `REF-08`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, inspect the current athlete-calibration and 4x3 Flow grid code path, explain exactly how grid position/width/height are derived today, compare that behavior against Derrick’s screenshot and the intended wrist-span-based sizing expectation, and produce a human-readable review packet before any code changes are made. Claim the bead at start and close it when the review packet is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -129,10 +135,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 3: Audit BeatSaver difficulty/stats truth from API → model → testbed UI → downloaded package
 
-**Bead ID:** `oc-gy5`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-gy5`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-beatsaver`, trace the full path from BeatSaver API responses through local models/facade/testbed UI and package conversion outputs to determine why only one difficulty appears in the search/testbed UI while converted packages can contain more, and why stats render as zero downloads/plays for maps that obviously have usage. Produce a source-truth diagnosis with concrete fix points before implementation begins. Claim the bead at start and close it when the diagnosis is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -151,10 +157,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 3b: Clean stale plan/archive truth uncovered by the research pass
 
-**Bead ID:** `oc-jln`  
-**SubAgent:** `primary` (for `primary`)  
-**Role:** `primary`  
-**References:** `REF-01`, `REF-03`, `REF-04`, `REF-09`  
+**Bead ID:** `oc-jln`
+**SubAgent:** `primary` (for `primary`)
+**Role:** `primary`
+**References:** `REF-01`, `REF-03`, `REF-04`, `REF-09`
 **Prompt:** In the affected AeroBeat repos, clean up the stale plan/archive truth uncovered by the research pass without widening scope: update and archive the completed BeatSaver warning-cleanup plan, classify the top-level camera-tracking plans against current handoff truth, and leave the planning state unambiguous for the rest of this lane. Claim the bead at start and close it when the plan/archive housekeeping is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -173,10 +179,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 4: Design package validation commands and download-time validation hooks
 
-**Bead ID:** `oc-7fe`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-7fe`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Identify where AeroBeat content-package validation should live, define the validation command surface Derrick asked for, specify the checks for manifest/schema/content existence/chart validity, and propose exactly how those validations should run automatically when a BeatSaver package is downloaded and converted in the `.testbed` scene. Keep this as a design/ownership packet unless Derrick approves implementation. Claim the bead at start and close it when the proposal is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -194,10 +200,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 5: Design the preferred package-layout + manifest migration and sync impact
 
-**Bead ID:** `oc-ndq`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-ndq`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Translate Derrick’s preferred package shape into a precise migration/design packet: identify the current package writers/readers, define the new folder/manifest contract including `.artifacts/beatsaver/`, `conversion-report.json`, media/cover relocation, and manifest field condensation, then map the dependency repos and `godotenv-sync` update required to refresh the `.testbed` consumer locally once implementation is approved. Do not implement yet; produce the review-ready design first. Claim the bead at start and close it when the proposal is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -215,10 +221,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 6: Implement the approved fixes and package-contract changes across owning repos
 
-**Bead ID:** `oc-9f4`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-9f4`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After Derrick approves the reviewed design findings, implement the approved camera-calibration/grid fixes, BeatSaver difficulty/stats fixes, package validation commands/hooks, package-layout/manifest migration, and any required dependency + `godotenv-sync` updates across the owning repos. Run relevant repo-local validation, commit and push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -235,10 +241,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 6a: Implement BeatSaver UI truth and clean-break package contract foundation
 
-**Bead ID:** `oc-kzi`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-kzi`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Implement the first approved coder slice under Derrick’s clean-break policy. Scope: (1) fix the BeatSaver `.testbed` difficulty presentation seam in `aerobeat-vendor-beatsaver` so version entries are not duplicated and the UI truthfully exposes the available difficulty labels without pretending the package is single-difficulty; (2) do the package-contract clean break in `aerobeat-content-core` and `aerobeat-tool-content-authoring` by moving to `song.package.yaml`, embedded root song metadata, root `charts[]`, `media/cover/`, `/.artifacts/conversion-report.json`, and removal of canonical `songs/`, `sets/`, and package-owned `environments/` from the default imported contract; (3) surface package validation on the new shape using the existing validation stack and the BeatSaver testbed hook points; (4) fix directly exposed downstream breakage in the affected owning repos instead of preserving legacy compatibility. Do not work on the camera-calibration/grid seam in this slice. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -258,10 +264,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 6b: Fix BeatSaver bridge empty-beats validation regression
 
-**Bead ID:** `oc-9s7`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-9s7`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Fix the newly exposed conversion/bridge bug from Task 6a: current BeatSaver-generated chart slices still serialize with empty `beats` arrays in the surfaced package-validation path. Trace whether the loss happens in stage inspection, BeatSaver stage conversion, chart-family bridge generation, or validation expectations; repair it in the owning repo(s) under the clean-break package contract; and keep the seam tightly focused on producing truthful non-empty beat payloads or, if the source legitimately cannot populate them, on correcting the bridge/validation contract so the surfaced validation result matches real package truth. Do not widen scope into camera-calibration work. Run relevant repo-local validation, commit/push by default, and close the bead only when the bug is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -280,10 +286,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 7: QA the end-to-end AeroBeat testbed behavior and package outputs
 
-**Bead ID:** `oc-7z7`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-7z7`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After implementation lands, independently verify the camera-calibration/grid behavior against Derrick’s intended wrist-span semantics, verify BeatSaver search/detail/download/package behavior end to end in the `.testbed` scene, verify validation hooks and command surfaces, and confirm the new package layout/manifest outputs are truthful. Close the bead only if the full feature slice is actually QA-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -300,10 +306,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 7a: QA BeatSaver clean-break package lane
 
-**Bead ID:** `oc-04q`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-04q`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Independently verify the completed BeatSaver/package clean-break slice only: confirm the `.testbed` no longer duplicates version rows, difficulty labels are surfaced truthfully, staged-source inspection and package-validation surfacing behave correctly, `song.package.yaml` outputs and saved chart YAMLs match the new clean-break contract, and the non-empty-beat vendor fixture path now validates successfully. Do not widen into the camera-calibration/grid seam, which remains a separate later implementation lane. Close the bead only if the package/BeatSaver slice is actually QA-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -320,10 +326,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 7b: Fix BeatSaver false-green delegated validation surfacing
 
-**Bead ID:** `oc-7i4`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-7i4`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Fix the narrowed QA failure from Task 7a. Trace why delegated content-core package validation becomes unavailable in the BeatSaver/package flow and either restore truthful validator availability/loadability in the clean-break path or, if that cannot be restored inside the narrow seam, make validator unavailability degrade honestly instead of surfacing `valid: true`, advancing the CTA to `Inspect`, or letting the vendor validation harness finish green. Keep the seam tightly focused on false-green validation surfacing and the shared validation-path load/parse errors named by QA; do not widen into the camera-calibration/grid lane. Run relevant repo-local validation, commit/push by default, and close the bead only when the package-validation result is trustworthy enough to rerun QA.
 
 **Folders Created/Deleted/Modified:**
@@ -343,10 +349,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 7c: Re-run QA for BeatSaver clean-break package lane after false-green fix
 
-**Bead ID:** `oc-h06`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-h06`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Re-run the narrowed BeatSaver/package QA seam after Task 7b. Confirm the `.testbed` still surfaces truthful difficulty labels and non-duplicated version rows, confirm the clean-break `song.package.yaml` / saved chart outputs remain correct, and re-check package-validation surfacing now that delegated-validator unavailability should degrade honestly instead of surfacing a false green. Close the bead only if the narrowed package/BeatSaver slice is now QA-ready for audit.
 
 **Folders Created/Deleted/Modified:**
@@ -363,10 +369,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8: Audit final truth, repo cleanliness, and closure readiness
 
-**Bead ID:** `oc-6mm`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-09`  
+**Bead ID:** `oc-6mm`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-01`, `REF-02`, `REF-03`, `REF-04`, `REF-05`, `REF-06`, `REF-09`
 **Prompt:** After QA passes, independently audit the final cross-repo landing against Derrick’s feedback, the approved design decisions, the resulting package outputs, and repo cleanliness/push state. Confirm the work is truthful rather than papered over, then close the bead only if the slice is genuinely done.
 
 **Folders Created/Deleted/Modified:**
@@ -383,10 +389,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8a: Audit BeatSaver clean-break package lane
 
-**Bead ID:** `oc-eg2`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-eg2`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Independently audit the narrowed BeatSaver/package clean-break lane only. Verify the final state against Derrick’s approved package-contract decisions, the BeatSaver `.testbed` behavior, the clean-break `song.package.yaml` outputs, the non-empty-beat fixture path, the honest-invalid validation surfacing, repo cleanliness, and pushed commit truth across the touched repos. Do not widen into the still-unimplemented camera-calibration/grid seam. Close the bead only if this narrowed BeatSaver/package slice is genuinely audit-ready and not papered over.
 
 **Folders Created/Deleted/Modified:**
@@ -403,10 +409,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8b: Align song.package.yaml with approved clean-break manifest shape
 
-**Bead ID:** `oc-qhb`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-qhb`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Fix the narrowed manifest-contract audit failure. Align the emitted `song.package.yaml`, the package writer/loader, and the validator truth with Derrick’s approved final manifest shape: remove deprecated top-level/package fields (`songPackageId`, `songPackageName`, `description`, and `recordVersion` unless a concrete kept-reason emerges); promote `songId` and `songName` to top level; move cover metadata to a top-level `cover:` block; change `charts[]` descriptors to the approved leaner shape using `chartId`, explicit `difficulty`, `path`, and an explicit feature/mode field if needed to preserve Boxing vs Flow truth; remove deprecated `setName`; and add nested `artifacts:` entries for the conversion log and individual preserved BeatSaver artifacts where practical. Keep the seam tightly focused on manifest-shape alignment across emitter, validator, fixtures/tests, and the resulting generated package artifacts. Do not widen into the camera-calibration/grid lane. Run relevant repo-local validation, commit/push by default, and close the bead only when the new contract is actually emitted and validated truthfully.
 
 **Folders Created/Deleted/Modified:**
@@ -426,10 +432,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8c: Re-run QA for BeatSaver clean-break package lane after manifest alignment
 
-**Bead ID:** `oc-2ak`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-2ak`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Re-run the narrowed BeatSaver/package QA seam after Task 8b. Confirm the `.testbed` still surfaces truthful difficulty labels and non-duplicated version rows, confirm the emitted `song.package.yaml` and saved chart outputs now match Derrick’s approved final manifest shape, and re-check honest invalid/unavailable validation surfacing after the manifest alignment. Close the bead only if the narrowed BeatSaver/package slice is again QA-ready for audit.
 
 **Folders Created/Deleted/Modified:**
@@ -446,10 +452,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8d: Remove leaked legacy setIds from clean-break song package artifacts
 
-**Bead ID:** `oc-85n`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-85n`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Remove remaining leaked legacy non-canonical linkage metadata from the clean-break package lane, specifically emitted root `setIds` and any similar old set-era carryovers that still surface in saved package artifacts or validation truth. Preserve the approved canonical `charts[]` descriptor shape with explicit `feature` and `difficulty`. Keep the seam tightly focused on emitter/validator/artifact cleanup for this last legacy package concept; do not widen into camera-calibration/grid work. Run relevant repo-local validation, commit/push by default, and close the bead only when saved package artifacts no longer leak the removed legacy concept.
 
 **Folders Created/Deleted/Modified:**
@@ -468,10 +474,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8e: Re-run QA for BeatSaver clean-break package lane after setIds cleanup
 
-**Bead ID:** `oc-8do`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-8do`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Re-run the narrowed BeatSaver/package QA seam after Task 8d. Confirm the `.testbed` still surfaces truthful difficulty labels and non-duplicated version rows, confirm the emitted `song.package.yaml` and saved chart outputs still match Derrick’s approved final manifest shape, and verify leaked legacy root `setIds` no longer appear in saved clean-break package artifacts or validator truth. Close the bead only if the narrowed BeatSaver/package slice remains QA-ready for audit after this final legacy-linkage cleanup.
 
 **Folders Created/Deleted/Modified:**
@@ -488,10 +494,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8f: Fix remaining red authoring tests in broad tool suite
 
-**Bead ID:** `oc-vqb`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-05`, `REF-06`  
+**Bead ID:** `oc-vqb`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-05`, `REF-06`
 **Prompt:** Repair the actual remaining red tests in the broad `aerobeat-tool-content-authoring` test suite that intersect this package/BeatSaver lane, while explicitly ignoring the known Godot shutdown/leak exit-noise issue as non-blocking. Start by rerunning and isolating the real failing test cases in `.testbed/scripts/tests/run_tool_tests.gd`, then fix the substantive failures—especially around package validation failure modes and BeatSaver stage conversion tests—without widening into unrelated camera/grid work. Preserve the approved clean-break manifest contract, the truthful BeatSaver UI/validation behavior, and the removal of leaked legacy linkage concepts. Run relevant repo-local validation, commit/push by default, and close the bead only when the previously red substantive tests are genuinely green or narrowed to a documented non-package-lane issue.
 
 **Folders Created/Deleted/Modified:**
@@ -510,10 +516,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8g: Fix remaining broad-suite reds: chart authoring and song timing contract
 
-**Bead ID:** `oc-gk0`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-05`, `REF-06`  
+**Bead ID:** `oc-gk0`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-05`, `REF-06`
 **Prompt:** Fix the last remaining substantive broad-suite reds before we move forward: `test_chart_authoring_service` and `test_validate_song_timing_contract`. Start by isolating whether each failure is stale expectation from the clean-break refactor or a real code/validation bug, then repair the owning code/tests so the broad authoring suite has no remaining substantive red tests for this lane. Treat the known Godot shutdown/resource-leak exit noise as non-blocking background chatter, not the target. Preserve the approved clean-break manifest/package behavior and do not widen into camera-calibration/grid work. Run relevant repo-local validation, commit/push by default, and close the bead only when those remaining substantive reds are genuinely green or narrowed to a documented non-package-lane issue.
 
 **Folders Created/Deleted/Modified:**
@@ -531,10 +537,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 8h: Re-run audit for BeatSaver clean-break package lane after full cleanup
 
-**Bead ID:** `oc-gt4`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-gt4`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Re-run the narrowed BeatSaver/package audit after the full package-lane cleanup, including manifest alignment, legacy `setIds` removal, and the final broad authoring test red fixes. Verify the final state against Derrick’s approved package-contract decisions, the truthful BeatSaver `.testbed` behavior, emitted `song.package.yaml` outputs, non-empty beat charts, honest invalid/unavailable validation surfacing, absence of leaked legacy linkage concepts, and pushed commit/repo truth across the touched repos. Do not widen into the still-unimplemented camera-calibration/grid seam. Close the bead only if this narrowed BeatSaver/package slice is now genuinely audit-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -551,10 +557,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9: Implement camera calibration and Flow grid corrections
 
-**Bead ID:** `oc-3q1`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-02`, `REF-03`, `REF-07`, `REF-08`  
+**Bead ID:** `oc-3q1`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-02`, `REF-03`, `REF-07`, `REF-08`
 **Prompt:** Implement the approved camera-tracking seam using the earlier research packet as truth. Tighten athlete calibration readiness so it no longer effectively calibrates on merely visible wrists + tracking, correct the Flow 4x3 grid behavior so it better matches Derrick’s intended wrist-span semantics instead of the current overly tall/offset algorithm, and update the proving/runtime code path and tests together. Keep the seam focused on camera calibration/grid truth only; do not reopen the BeatSaver/package lane except for direct integration fallout. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -572,10 +578,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9a: QA camera calibration and Flow grid corrections
 
-**Bead ID:** `oc-gnw`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-02`, `REF-03`, `REF-07`, `REF-08`  
+**Bead ID:** `oc-gnw`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-02`, `REF-03`, `REF-07`, `REF-08`
 **Prompt:** Independently verify the narrowed camera seam only. Confirm the stricter centered T-pose calibration gate behaves truthfully, the Flow 4x3 grid now follows the intended wrist-span-based square-cell semantics instead of the older tall/offset algorithm, and the updated proving/runtime messaging matches the new calibration requirements. Use the highest-fidelity checks available within repo access, including the updated unit coverage and any direct proving/runtime inspection you can do headlessly. Close the bead only if the camera seam is genuinely QA-ready for audit.
 
 **Folders Created/Deleted/Modified:**
@@ -592,10 +598,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9b: Audit camera calibration and Flow grid corrections
 
-**Bead ID:** `oc-wu5`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-02`, `REF-03`, `REF-07`, `REF-08`  
+**Bead ID:** `oc-wu5`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-02`, `REF-03`, `REF-07`, `REF-08`
 **Prompt:** Independently audit the narrowed camera seam only. Verify the landed calibration gate and Flow 4x3 grid behavior against Derrick’s approved intent and the earlier research packet: stricter centered T-pose gating, wrist-span-driven square-cell grid semantics, truthful proving/runtime messaging, clean pushed repo truth, and no papered-over regressions in the touched seam. Treat the unrelated real-depth preview-descriptor test failures in `test_camera_tracking_provider.gd` as an out-of-scope caveat unless they prove to intersect the landed seam. Close the bead only if the narrowed camera slice is genuinely audit-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -624,10 +630,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 10: Investigate manual-review BeatSaver validation failure and stats mismatch (`3D44B`)
 
-**Bead ID:** `oc-9st`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-9st`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Investigate the new manual-review feedback from Derrick on `aerobeat-vendor-beatsaver/.testbed/`: a real song-pack download failed validation, and map `3D44B` still shows downloads/plays locked at zero even though Derrick believes those stats should be non-zero. Trace the exact failure seam for the validation failure in the live vendor testbed flow, inspect the uploaded screenshots if useful, and independently verify whether the zeroed stats are coming from the current BeatSaver API payload for `3D44B`, from a stale local mapping, or from an AeroBeat-side reduction bug. Keep this as a narrow truth-finding packet first; do not widen into unrelated package/camera work. Return exact file/code paths, concrete root causes, and the narrowest implementation seam(s).
 
 **Folders Created/Deleted/Modified:**
@@ -644,10 +650,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9c: Fix camera calibration timing and simplify grid anchoring contract
 
-**Bead ID:** `oc-5t6`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-02`, `REF-03`  
+**Bead ID:** `oc-5t6`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-02`, `REF-03`
 **Prompt:** Fix the camera seam based on Derrick’s manual-review correction. The internal logic should be simplified to this exact contract: (1) pressing calibrate starts a true 10000 ms / 10 second countdown that decrements at real one-second intervals; (2) when that countdown completes, calibration samples the left and right wrist X positions in pose/camera space; (3) the absolute delta between those wrist X values becomes the grid width; (4) the grid is anchored using nose X and left-shoulder Y. Remove or bypass the extra fancy gating/geometry that prevents calibration from succeeding under this simple intended behavior. Keep the seam narrow to camera calibration timing, wrist-width sampling, and grid anchoring/runtime messaging/tests. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -664,10 +670,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9f: Replace T-pose wrist-span calibration with joint-chain distance calibration
 
-**Bead ID:** `aerobeat-input-camera-tracking-2whv`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-2whv`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, replace the current wrist-X/T-pose-style athlete calibration basis with Derrick’s newly approved joint-chain accumulation contract. Width should be computed as the sum of the visible pose-space segment lengths across the upper-body chain: left wrist→left elbow, left elbow→left shoulder, left shoulder→right shoulder, right shoulder→right elbow, right elbow→right wrist. Height should be computed from the sum of left wrist→left elbow, left elbow→left shoulder, right wrist→right elbow, and right elbow→right shoulder. Keep the seam narrow to the camera calibration/grid contract and any directly coupled proving/runtime/test updates. Preserve the existing approved desire that calibration can be called whenever the pose is visible instead of requiring a T-pose. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -687,10 +693,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9g: Use camera-space joint distances and fix flipped inspector grid rows
 
-**Bead ID:** `aerobeat-input-camera-tracking-w4ob`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-w4ob`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, fix the two new camera follow-up bugs Derrick reported during live review. (1) Keep the approved joint-chain calibration formula, but compute those segment distances in camera space rather than pose space so the calibrated 4x3 grid size matches the visible athlete width/height better in the live camera view. (2) Fix the right-inspector/debug grid-cell readout so nose/wrist cell values are not vertically flipped relative to the live camera view; bottom-row live positions should not report as top-row cells and vice versa. Keep the seam narrow to calibration measurement space, grid/inspector row indexing truth, and directly coupled proving/runtime/test updates. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -710,10 +716,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9h: Fix inspector horizontal facing without changing intended 0→11 numbering
 
-**Bead ID:** `aerobeat-input-camera-tracking-eo47`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-eo47`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, fix the newest camera follow-up bug Derrick found in live testing. The right-side visual inspector/debug cell view is still flipped horizontally relative to athlete-space/facing-the-camera truth, but the recent change also unintentionally changed the displayed numbering contract. Restore the intended inspector numbering contract exactly as Derrick expects (0 through 11 without the recent top-row-first remap), while fixing only the horizontal facing/mirroring so the cell positions match athlete-space truth. Keep the seam narrow to inspector/debug presentation and any directly coupled mapping/tests; do not change the underlying gameplay grid numbering unless the trace proves the bug is only present in the inspector layer. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -731,10 +737,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9i: Fix inspector cell labels against athlete-space and audit height calibration space
 
-**Bead ID:** `aerobeat-input-camera-tracking-eaj5`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-eaj5`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, fix the newest camera follow-up seam from Derrick’s live testing. The right-side visual inspector/debug grid labels are still wrong against athlete-space truth: in the reported case, raising the right wrist over intended cell 0 is surfacing as cell 8, and the displayed cell labels/layout shown in the screenshots are not the intended contract. Trace the inspector/ring-chart/debug presentation contract versus the underlying grid truth and fix the label/mapping layer so the visual inspector matches athlete-space truth exactly. Also audit the calibrated grid height basis and determine whether height is still being derived from the wrong measurement space or wrong axis basis; if the trace proves height is indeed wrong and the fix is narrow, correct it in the same seam, otherwise record the exact truth and leave a precise follow-up note in the plan. Keep the seam narrow to inspector/debug presentation, camera-space calibration sizing truth, and directly coupled tests/messages. Use these screenshots as reference data if helpful: `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/23/image-e0050687.png` and `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/23/image-7bdac350.png`. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -754,10 +760,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9j: Fix inspector cell contract and asymmetric wrist visibility tracking
 
-**Bead ID:** `aerobeat-input-camera-tracking-1ktd`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-1ktd`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, fix the newest camera follow-up seam from Derrick’s live testing. The screenshot truth is now explicit: the visual inspector still does not match the intended athlete-space 0→11 contract (`right wrist` over athlete-space cell `0` is surfacing as `8`, and top-left still shows `11`), so trace the underlying cell quantization truth versus the inspector/ring-chart/debug presentation and fix the contract exactly as intended. Also investigate and fix the newly reported asymmetric wrist-visibility bug: when the right wrist goes off-screen, the left wrist appears to stop tracking in the right inspector/grid system even though the reverse case does not happen. Keep the seam narrow to cell quantization/mapping truth, inspector/debug presentation, single-wrist visibility handling, and directly coupled tests/messages. Use this screenshot as reference truth if helpful: `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/23/image-faca0921.png`. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -776,10 +782,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9k: Decide and implement athlete-space horizontal grid contract
 
-**Bead ID:** `aerobeat-input-camera-tracking-7rrb`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-7rrb`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick-approved athlete-space horizontal grid truth end-to-end. Make the underlying live/replay/gameplay grid itself horizontally reversed into athlete-space so top-left remains cell `0`, top-right becomes `3`, bottom-left becomes `8`, and bottom-right remains `11`, aligning BeatSaver/AeroBeat gameplay expectations with the athlete’s body perspective. Update the narrowest required runtime quantization/mapping/debug/live-view/inspector truth together so all layers agree. In the same seam, fix the coupled runtime bug where loss of right-wrist tracking appears to drop nose and left-wrist grid tracking even though those landmarks remain visible. Keep the seam narrow to camera-tracking grid truth, directly coupled debug/rendering/messaging/tests, and any obstacle/chart-facing indexing assumptions that must change to keep the contract honest. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -801,10 +807,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9l: Invert athlete-space horizontal grid contract to match validated body-left/body-right truth
 
-**Bead ID:** `aerobeat-input-camera-tracking-zrlj`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-zrlj`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, correct the latest camera grid contract mistake revealed by Derrick’s live validation. Current runtime/live-view/inspector truth is still horizontally reversed from the intended athlete body-left/body-right contract: athlete left/top is surfacing as cell `3` and athlete right/top as cell `0`, but the approved intended truth is the opposite (`left/top = 0`, `right/top = 3`, with the rest of the 0→11 numbering following that same left-to-right athlete-space order). Keep the recent work that aligned runtime + inspector + live-view and preserve the recent right-wrist dropout fix; only invert the horizontal contract to the validated intended athlete-space truth across the narrowest required runtime quantization/mapping/presentation/config/tests. Use this screenshot as reference truth if helpful: `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/23/image-9a52d735.png`. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -824,10 +830,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9m: Fix remaining wrist-dropout grid tracking bug after grid contract alignment
 
-**Bead ID:** `aerobeat-input-camera-tracking-pl2v`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-pl2v`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, fix the remaining live runtime bug Derrick just confirmed after the athlete-space grid-contract correction landed. The grid/indexing contract is now correct, but the wrist-dropout issue still reproduces in live behavior: when right-wrist tracking is lost, other landmarks that remain visible still lose grid tracking unexpectedly. Trace the actual live runtime dependency causing this dropout coupling, fix it narrowly at the real in-path seam, and refresh directly coupled tests so the live behavior matches the intended independent-landmark tracking truth. Keep the seam narrow to wrist/landmark visibility handling, grid tracking continuity, and directly coupled debug/runtime/test updates; do not reopen the now-correct horizontal contract work except for direct fallout if required. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -844,10 +850,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9n: Log calibrated grid width and height in bottom-left event log
 
-**Bead ID:** `aerobeat-input-camera-tracking-xpk1`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-xpk1`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, add a narrow observability aid for the remaining grid-height seam. When athlete calibration succeeds, print the calibrated grid width and grid height values into the existing bottom-left event log in a copy/paste-friendly text format so Derrick can capture the exact runtime values from a live test. Keep the seam narrow to event-log/debug observability and any directly coupled test updates; do not change the actual calibration formulas yet. Also record in the task results that Derrick observed the current joint-chain width formula still effectively depends on a T-pose because compact stances shrink the measured chain, making a future formula simplification/reversion seam likely after the logging data is reviewed. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for live retest.
 
 **Folders Created/Deleted/Modified:**
@@ -864,10 +870,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9o: Echo calibrated grid dimensions to Godot console log
 
-**Bead ID:** `aerobeat-input-camera-tracking-i90s`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-i90s`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, add a tiny follow-up observability aid for the remaining grid-height debugging seam. Keep the existing bottom-left event-log `calibrated_grid width=... height=...` line, but also echo that same copy/paste-friendly line into the Godot console output when athlete calibration succeeds so Derrick cannot miss it even if the on-screen log scrolls away under gesture spam in the boxing scene. Keep the seam narrow to logging/observability and directly coupled test updates; do not change calibration formulas. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for live retest.
 
 **Folders Created/Deleted/Modified:**
@@ -884,10 +890,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9p: Reconcile calibrated grid dimensions with rendered grid rectangle
 
-**Bead ID:** `aerobeat-input-camera-tracking-n26y`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-n26y`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, investigate and fix the mismatch between the calibrated baseline dimensions and the actual visible grid rectangle. Derrick now has live runtime values (`calibrated_grid width=0.551393 height=0.500998`), but the screenshot shows the rendered grid does not visually match those proportions, which strongly suggests a render-space conversion or overlay-rect truth gap rather than a raw calibration-number gap. Trace the narrowest real seam between baseline/runtime grid dimensions and the rectangle actually drawn in the boxing-scene live view; add whatever directly useful logging is needed to compare normalized/runtime values against the rendered/preview-space rectangle, then fix the distortion at the true in-path layer. Keep the seam narrow to grid render/overlay truth, debug observability, and directly coupled tests/runtime plumbing; do not change the underlying calibration formulas unless the trace proves the render path is already honest and the formula itself is still the immediate cause. Use this screenshot as reference truth if helpful: `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/23/image-df1abded.png`. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for live retest.
 
 **Folders Created/Deleted/Modified:**
@@ -905,10 +911,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9q: Revert grid width to wrist span and force square flow cells
 
-**Bead ID:** `aerobeat-input-camera-tracking-5y7a`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-5y7a`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick-approved calibration-contract simplification. Revert flow grid width back to the original wrist-span basis instead of the newer joint-chain width formula, and make flow cell height equal flow cell width so the 4x3 grid uses square cells again. Keep the now-correct athlete-space horizontal contract, the wrist-dropout fix, and the honest overlay/render-space path intact. Update only the narrow runtime/calibration/grid/overlay/debug/tests/config/docs seams required to make this simplified contract truthful end to end. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for live retest.
 
 **Folders Created/Deleted/Modified:**
@@ -927,10 +933,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9r: Aspect-compensate grid height for dynamic preview surfaces
 
-**Bead ID:** `aerobeat-input-camera-tracking-ajyc`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-ajyc`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the next approved grid-height correction seam. Keep the current wrist-span width contract, athlete-space indexing, wrist-dropout fix, and honest overlay/render-space observability, but change normalized grid height so the 4x3 grid renders with visually square cells against the actual preview/content rect the athlete sees, even when the preview surface is not effectively a clean 16:9 box. Use the same content-rect truth the overlay render path uses, and update only the narrow runtime/calibration/render/debug/tests plumbing required to make the pixel-space result square and honest. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for live retest.
 
 **Folders Created/Deleted/Modified:**
@@ -949,10 +955,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 10a: Mount aerobeat-content-core into vendor testbed and restore direct validation
 
-**Bead ID:** `oc-jb9`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-jb9`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** Implement Option A for the vendor validation seam. Wire `aerobeat-content-core` into `aerobeat-vendor-beatsaver/.testbed` through the normal Godotenv/addons dependency path, restore direct runtime availability of the shared content-core package/chart validators there, and verify that a real downloaded/conversion package can validate in-place without surfacing `content_core_package_validator_unavailable` / `flow_validator_unavailable` purely because the addon is missing. Keep the seam narrow to dependency mounting/runtime validation availability and any direct testbed expectation updates required by that change. Do not treat BeatSaver’s upstream zero downloads/plays for `3D44B` as a local bug.
 
 **Folders Created/Deleted/Modified:**
@@ -971,10 +977,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9d: Fix camera grid overlay vertical alignment and square-cell display sync
 
-**Bead ID:** `oc-4ka`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-02`, `REF-03`  
+**Bead ID:** `oc-4ka`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-02`, `REF-03`
 **Prompt:** Fix the two camera follow-up bugs found during Derrick’s manual retest after the simplified calibration contract landed. (1) After calibration, the visual grid displayed on screen does not match the actual runtime grid because it appears vertically flipped downward or shifted downward relative to the logic the game is actually using. (2) The displayed cell height is about half of the width even though the intended contract is perfect square cells (`height == width`), suggesting the visual/proving layer is not updating height from the current calibrated width. Trace the actual runtime grid payload versus the proving/overlay rendering path, correct the overlay/visual mapping so it matches the real runtime grid, and ensure displayed cell height stays synchronized with the calibrated square-cell semantics. Keep the seam narrow to the camera proving/runtime display path and related tests/messages. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -991,10 +997,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 9e: Fix underlying camera grid logic to match calibrated display grid
 
-**Bead ID:** `oc-skm`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-02`, `REF-03`  
+**Bead ID:** `oc-skm`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-02`, `REF-03`
 **Prompt:** Fix the remaining camera seam mismatch from Derrick’s latest manual retest: the visual grid overlay now updates, but the underlying gameplay/runtime grid logic it is tied to was not updated to the same coordinate/shape truth. Trace the actual grid quantization/runtime hit logic versus the overlay/debug payload and make the underlying grid use the same calibrated anchor, width, square-cell height, and vertical orientation as the displayed grid. Keep the seam narrow to the real camera/grid runtime logic and any coupled tests/debug payload updates needed to keep the overlay and gameplay logic in sync. Do not reopen unrelated BeatSaver/package work. Run relevant repo-local validation, commit/push by default, and close the bead only when the gameplay grid and visual grid are genuinely aligned.
 
 **Folders Created/Deleted/Modified:**
@@ -1012,10 +1018,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 11: Investigate BeatSaver advanced search/filter capabilities for the vendor testbed
 
-**Bead ID:** `oc-op8`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-op8`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-beatsaver`, investigate whether the current BeatSaver API and our wrapper can support a broader search surface similar to other BeatSaver-powered games. Specifically truth-check four requested capabilities: (1) genres filtering with require-all/selected-genre semantics if the upstream API supports it; (2) difficulty filtering with require-results-have-these-difficulties semantics; (3) infinite-scroll/paged result loading for the search scene; and (4) ordering controls for most relevant, latest, rating, and most played. Trace the live upstream API/query parameters, our wrapper/request-builder/parser seams, and the `.testbed` UI/state seams needed to expose the capability. Keep this as a narrow research/design packet first: return exact API constraints, any upstream limitations, any mismatches with what apps like Shadowboxr may be doing, and the narrowest implementation plan across wrapper + testbed.
 
 **Folders Created/Deleted/Modified:**
@@ -1033,10 +1039,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 12: Land BeatSaver singleton search controls for sort, difficulty filtering, and infinite scroll
 
-**Bead ID:** `oc-cjf`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-cjf`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-beatsaver`, implement the newly approved BeatSaver search-surface expansion with the singleton as the complexity-hiding seam for the UI layer. Scope: add truthful search ordering controls for `Relevance`, `Latest`, and `Rating`; add explicit difficulty filtering support in the singleton/wrapper layer so the `.testbed` UI can consume it without owning the filtering logic; and add infinite-scroll/paged result loading for the `.testbed` search scene. Keep `Most Played` out of scope. The end state should let the UI layer talk to the singleton cleanly while the singleton hides upstream query details, local difficulty post-filtering, and pagination mechanics. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -1058,10 +1064,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 12a: QA BeatSaver singleton search controls in the vendor testbed
 
-**Bead ID:** `oc-jq5`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-jq5`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After implementation lands, independently verify the narrowed BeatSaver search-surface slice in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-beatsaver/.testbed`. Confirm the UI can reorder by `Relevance`, `Latest`, and `Rating`, confirm difficulty filtering is exposed through the singleton and behaves truthfully in the UI, and confirm infinite scroll appends additional pages correctly without reintroducing stale replacement behavior. Keep `Most Played` out of scope. Close the bead only if this search-control slice is genuinely QA-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1078,10 +1084,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 12b: Audit BeatSaver singleton search controls landing
 
-**Bead ID:** `oc-9xj`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-9xj`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After QA passes, independently audit the narrowed BeatSaver search-controls slice. Verify the singleton cleanly hides search-order, difficulty-filter, and pagination/infinite-scroll complexity from the UI layer; confirm the `.testbed` behavior matches Derrick’s approved scope; and confirm the final repo/push truth is clean. Keep `Most Played` out of scope. Close the bead only if this slice is genuinely audit-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1098,10 +1104,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 13: Refine BeatSaver search/filter UI and fix infinite scroll behavior
 
-**Bead ID:** `oc-9z2`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-9z2`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-beatsaver`, implement Derrick’s latest BeatSaver search/testbed feedback. Scope: replace the current `Tag Filter` input with a multi-select genres dropdown; make the `Difficulty` control multi-select; remove the local text filter input entirely; and fix the infinite-scroll bug so page 2+ actually loads/appends when the search UI says more results are available. Preserve the approved singleton contract: the UI should stay thin while the singleton/state layer hides local difficulty/tag filtering mechanics and pagination details. Keep `Most Played` out of scope. Use Derrick’s screenshot at `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/24/image-a126e423.png` as reference truth for the current UI state if useful. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -1122,10 +1128,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 13a: QA BeatSaver search/filter UI refinement and infinite scroll fix
 
-**Bead ID:** `oc-7sz`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-7sz`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After implementation lands, independently verify the narrowed BeatSaver follow-up slice in the vendor `.testbed`. Confirm the old `Tag Filter` text box is replaced by a multi-select genres dropdown, confirm `Difficulty` is now multi-select, confirm the local text filter input is gone, and confirm infinite scroll really loads/appends page 2+ when more search results are available instead of stalling at the first 24 fetched items. Keep `Most Played` out of scope. Close the bead only if this follow-up slice is genuinely QA-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1142,10 +1148,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 13b: Audit BeatSaver search/filter UI refinement landing
 
-**Bead ID:** `oc-qin`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-qin`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After QA passes, independently audit the narrowed BeatSaver follow-up slice. Verify the singleton/UI contract still holds after the UI refinement, verify the genres and multi-difficulty controls match Derrick’s approved scope, verify the local text filter is removed, verify infinite scroll truly advances past the first page when more results exist, and confirm final repo/push truth is clean. Keep `Most Played` out of scope. Close the bead only if this slice is genuinely audit-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1162,10 +1168,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 14: Audit BeatSaver search freezes/hangs and evaluate loading/threading options
 
-**Bead ID:** `oc-6si`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-6si`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-beatsaver`, investigate Derrick’s latest BeatSaver follow-up feedback. Scope: (1) audit the singleton/testbed search flow for places where the system can lock/freeze, with special attention to the recent infinite-scroll seam and any newly introduced loops/hangs; (2) identify the narrowest truthful fixes or guardrails for those freeze paths; (3) evaluate whether loading can be moved partly onto a separate thread in Godot, what must remain on the main thread (for example texture/GPU upload concerns), and whether streaming/incremental loading patterns would reduce UI stalls; and (4) note the tiny UI cleanup request to remove the text ` (BeatSaver tags)` from the Genres selector so it can be folded into the next implementation slice. Keep this as a narrow research/design packet first: return exact code seams, probable freeze root causes, threading feasibility/constraints, and the recommended next execution slices.
 
 **Folders Created/Deleted/Modified:**
@@ -1183,10 +1189,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 15: Fix BeatSaver freezes, guard infinite scroll, and move heavy loading behind the singleton async boundary
 
-**Bead ID:** `oc-glh`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-glh`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-beatsaver`, implement the approved BeatSaver freeze-fix follow-up seam. Scope: (1) change the Genres selector text from `Genres (BeatSaver tags)` to `Genres`; (2) add load-more success/failure guardrails so infinite scroll cannot auto-retry failed pages forever or chain unbounded page loads in one near-bottom state; (3) switch paging append from full-grid rebuild churn to incremental card append where truthful; and (4) move the heaviest feasible BeatSaver loading work behind an async/worker-backed singleton boundary while keeping scene/UI logic thin and unaware of those implementation details. Preserve the architecture rule Derrick just clarified: threading, pagination mechanics, local filter mechanics, and loading/streaming optimizations are singleton implementation details and must not leak into scene logic or UI code that does not need to know about them. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -1209,10 +1215,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 15a: QA BeatSaver freeze fixes and singleton abstraction boundary
 
-**Bead ID:** `oc-5sc`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-5sc`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After implementation lands, independently verify the narrowed BeatSaver freeze-fix slice in the vendor `.testbed`. Confirm the `Genres` label cleanup landed, confirm infinite scroll no longer hangs/retries the same page or chains uncontrollably, confirm append paging avoids the old full replacement behavior, and confirm the singleton abstraction boundary still holds: scene/UI code should not need to know about threading, worker transport, retry suppression, or other loading optimizations that belong inside the BeatSaver singleton/state layer. QA should explicitly check for abstraction leaks into scene logic/UI that do not need to know or care about them. Close the bead only if this slice is genuinely QA-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1229,10 +1235,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 15b: Audit BeatSaver freeze-fix and async-loading landing
 
-**Bead ID:** `oc-5h3`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-5h3`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After QA passes, independently audit the narrowed BeatSaver freeze-fix slice. Verify the final implementation resolves the identified hang/freeze vectors truthfully, verify the approved singleton abstraction boundary still holds after any async/loading optimization work, verify the UI/scenes remain thin and free of implementation-detail leakage, and confirm final repo/push truth is clean. Close the bead only if this slice is genuinely audit-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1249,10 +1255,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 16: Investigate BeatSaver startup query state, result-count discrepancies, infinite-scroll reality, and reload warnings
 
-**Bead ID:** `oc-vpz`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-vpz`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-vendor-beatsaver`, investigate Derrick’s latest BeatSaver follow-up findings before implementation. Scope: (1) determine why the search bar starts with `fitbeat` instead of being blank, and whether that is cached state or a preset/default UI value; (2) trace the discrepancy between BeatSaver web search result counts and the vendor testbed counts, including Derrick’s `megaman` example (`37` on BeatSaver web relevance/all vs `24` in our scene) and the `linkin park` case that still only exposes the first `24` fetched/visible results; (3) trace the three `CONFUSABLE_LOCAL_DECLARATION` warnings in `beatsaver_testbed_state.gd` and identify the exact fix seam; and (4) return the narrowest truthful implementation plan across singleton/state/UI/validation. Use Derrick’s screenshot at `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/24/image-00389ef1.png` as reference truth if useful. Keep this as a research/design packet first.
 
 **Folders Created/Deleted/Modified:**
@@ -1270,10 +1276,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 16a: Fix BeatSaver startup query, search discrepancy, infinite scroll, and reload warnings
 
-**Bead ID:** `oc-6f6`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-6f6`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After the research packet lands, implement the narrowest truthful fix seam for Derrick’s latest BeatSaver findings: clear the startup query so the search bar is blank on scene start unless a deliberate state restore is actually intended; resolve the result-count discrepancy and remaining page-2 visibility issue for searches like `megaman` and `linkin park`; and fix the `CONFUSABLE_LOCAL_DECLARATION` warnings in `beatsaver_testbed_state.gd` without leaking implementation details into UI/scenes. Preserve the singleton abstraction boundary. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -1292,10 +1298,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 16b: QA BeatSaver discrepancy/freeze follow-up
 
-**Bead ID:** `oc-000`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-000`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After implementation lands, independently verify the narrowed BeatSaver follow-up slice. Confirm the search bar starts blank, confirm the result-count/paging discrepancy is resolved truthfully for the investigated searches, confirm page 2+ really becomes reachable for the affected cases, and confirm the reload warnings are gone. Also keep checking that singleton implementation details remain hidden from scene/UI logic. Close the bead only if this slice is genuinely QA-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1312,10 +1318,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 16c: Audit BeatSaver discrepancy/freeze follow-up landing
 
-**Bead ID:** `oc-blh`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-04`, `REF-05`, `REF-06`  
+**Bead ID:** `oc-blh`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-04`, `REF-05`, `REF-06`
 **Prompt:** After QA passes, independently audit the narrowed BeatSaver discrepancy/freeze follow-up slice. Verify the startup query/default-state truth, the result-count/paging fix truth, the warning cleanup, the singleton abstraction boundary, and final repo/push truth. Close the bead only if this slice is genuinely audit-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1332,10 +1338,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 17: Settle the next camera-tracking contract from Derrick’s latest playtest notes
 
-**Bead ID:** `aerobeat-input-camera-tracking-0p7g`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-0p7g`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, turn Derrick’s latest playtest notes into a precise implementation contract before code changes begin. Scope: (1) add the missing nose-direction inspector element in the existing empty flow-scene UI slot; (2) replace manual calibrate-button flow with automatic T-pose-triggered calibration using a new commented `calibration:` config block in an existing YAML, including configurable hold time plus T-pose heuristic thresholds; (3) restate weave truth so nose left/right athlete-space cells always imply left/right weave unless the nose leaves the grid; (4) design a new YAML-swappable `grid-detection` system for boxing hooks and uppercuts based on wrist cell-entry direction changes while reusing existing gesture-duration timing where appropriate; and (5) investigate whether pose-skeleton tracking can be reduced to only the gameplay-relevant anchors (`wrists`, `elbows`, `shoulders`, `nose`) for compute savings without breaking current provider/runtime assumptions. Produce a review-ready contract that translates Derrick’s intent into discrete engineering rules, exact YAML/config ownership, and the narrowest implementation seams. Claim the bead at start and close it when the design packet is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -1354,10 +1360,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 18a: Implement flow inspector nose-direction UI and auto-calibration UX/config seam
 
-**Bead ID:** `aerobeat-input-camera-tracking-l61b`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-l61b`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** After Derrick’s final Task 17 contract approval, implement the first narrowed camera-tracking coder slice in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`: add the flow-scene `NoseDirectionChart` below the nose position chart in the first slot of the second row, add the new commented top-level `calibration:` blocks to the gesture-profile YAML surfaces, replace the proving/testbed manual calibration-start UX with automatic T-pose auto-calibration status UX, and implement the automatic T-pose-triggered calibration timing/heuristic contract including configurable hold time, configurable cooldown, immediate fire at hold completion, and re-fire after cooldown without requiring the pose to be fully broken. Keep the seam narrow to the nose-direction inspector, calibration config ownership, calibration heuristics/timing, and directly coupled proving/runtime/test coverage. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -1383,10 +1389,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 18b: Implement continuous weave truth and grid-detection backend for hook/uppercut
 
-**Bead ID:** `aerobeat-input-camera-tracking-qd7k`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-qd7k`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** After Derrick’s final Task 17 contract approval, implement the second narrowed camera-tracking coder slice in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`: switch weave to the approved continuous inside-grid athlete-space side truth, add the new YAML-swappable `grid_detection` backend for boxing hook and uppercut families, preserve the threshold backend as fallback, and ensure all hook/uppercut transition checks remain athlete-space-true against Derrick’s approved cell-transition rules. Keep the seam narrow to gesture semantics, YAML/backend wiring, runtime detection, and directly coupled tests/debug truth. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -1407,10 +1413,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 18c: Document and contain reduced-anchor performance boundary
 
-**Bead ID:** `aerobeat-input-camera-tracking-lgxi`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-lgxi`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** After Derrick’s final Task 17 contract approval, implement the third narrowed camera-tracking coder slice in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`: make only the directly approved local helper/runtime cleanup needed around the reduced-anchor investigation, explicitly document that meaningful landmark-count performance reduction belongs upstream in the dependency repo rather than this repo’s current provider/runtime contract, and avoid any misleading in-repo “compute win” claim or broad provider contract shrink. Keep the seam narrow to honest boundary-setting, local helper reuse if justified, and directly coupled docs/tests only. Run relevant repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -1431,10 +1437,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 18d: QA the split camera-tracking follow-up slices together
 
-**Bead ID:** `aerobeat-input-camera-tracking-rwg7`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-rwg7`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-03`
 **Prompt:** After coder slices 18a–18c land, independently verify the combined narrowed camera-tracking follow-up. Confirm the nose-direction chart placement/truth, confirm T-pose auto-calibration requires both horizontal alignment and extension, confirm immediate fire at hold completion plus cooldown-based refire behavior, confirm weave stays continuously left/right while the nose remains inside the grid, confirm hook/uppercut `grid_detection` matches the approved athlete-space cell transitions while threshold fallback still works, and confirm the reduced-anchor performance boundary is documented honestly without fake in-repo compute-win claims. Close the bead only if the combined slice is genuinely QA-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1451,10 +1457,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 18e: Audit the split camera-tracking follow-up slices together
 
-**Bead ID:** `aerobeat-input-camera-tracking-y14y`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-y14y`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-03`
 **Prompt:** After QA passes, independently audit the combined narrowed camera-tracking follow-up. Confirm config ownership stayed in the gesture YAML surface, confirm the nose-direction UI placement and gesture truth, confirm the T-pose auto-calibration contract/cooldown behavior, confirm weave/hook/uppercut athlete-space truth and backend boundaries, confirm no misleading reduced-anchor compute-savings claim or provider-contract shrink landed, and verify clean pushed repo truth plus adequate slice-specific test coverage. Close the bead only if the combined slice is genuinely audit-ready.
 
 **Folders Created/Deleted/Modified:**
@@ -1471,10 +1477,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 19: Plan upstream landmark-detail replacement for the local gameplay-anchor helper
 
-**Bead ID:** `aerobeat-tool-camera-tracking-bbr`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-tool-camera-tracking-bbr`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat`, plan the replacement/removal of the local `GAMEPLAY_ANCHOR_LANDMARKS` helper in `aerobeat-input-camera-tracking` by moving the real landmark-set reduction seam upstream into the GodotEnv-managed dependency path (`aerobeat-tool-camera-tracking` and the underlying MediaPipe vendor/runtime lane) instead of pretending the input repo achieved a true compute win. Inspect the existing camera-tracking YAML/config enums and determine whether an existing detail/quality enum should be extended or whether a new pose-specific enum should be introduced. Produce a coder-ready design that names the exact owning repos/files, config surface, backwards-compatibility strategy, and validation path before implementation begins.
 
 **Folders Created/Deleted/Modified:**
@@ -1493,10 +1499,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 23: Add T-pose calibration badge and live debug inspector in proving scenes
 
-**Bead ID:** `aerobeat-input-camera-tracking-rmfc`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-rmfc`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s new T-pose calibration-debugging seam in the proving scenes. Sync to latest `main`, use the new `.testbed/assets/icons/boxing-tpose-1.svg` asset, place a 75x75 semi-transparent gray circular T-pose badge at the top-right of the live/preview video area, fill that circle green while T-pose auto-calibration hold is actively progressing, reset it back to gray when calibration fires, and make clicking the badge open an inspector panel similar to the boxing gesture inspectors that exposes the current auto-calibration/T-pose variables and thresholds so Derrick can see exactly which requirements are/aren’t passing and when the timer starts/cuts off. Keep the seam narrow to proving-scene UI, calibration-progress visualization, live inspector/debug truth, and directly coupled tests/runtime validation. Claim the bead at start, run relevant validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -1514,10 +1520,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 24: Remove stale depth-runtime tests and fix boxing hover-card expectation drift
 
-**Bead ID:** `aerobeat-input-camera-tracking-zdwx`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-zdwx`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s newly approved narrow cleanup seam: remove the two stale real-depth provider tests that still assume the retired depth-runtime path (`test_camera_tracking_provider_live_frame_merges_preview_descriptor_for_real_depth_runtime` and `test_camera_tracking_provider_replay_polling_merges_preview_descriptor_for_real_depth_runtime`), then investigate `test_boxing_punch_hover_card_merges_latest_state_change_signal_snapshot` and resolve it honestly as stale-expectation cleanup versus real regression after the proving-harness/T-pose refactors. Keep the seam narrow to those tests plus the minimum directly coupled harness/debug truth update needed if the hover-card expectation is outdated. Run relevant repo-local validation, commit/push to `main` by default, and update this task with exact results/caveats for Derrick’s manual follow-up.
 
 **Folders Created/Deleted/Modified:**
@@ -1537,10 +1543,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 25: Trim T-pose inspector to requirement truth only and fix badge typing warning
 
-**Bead ID:** `aerobeat-input-camera-tracking-9y9j`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-9y9j`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s narrow post-Task-23 polish seam: remove all extra text from the T-pose calibration inspector so it only shows the `Requirement truth` section with current-vs-needed values, and fix the current proving-scene warning `Variable "_t_pose_calibration_badge" has no static type` at `.testbed/scripts/proving_harness.gd:288` by adding the correct static type instead of leaving the declaration untyped. Keep the seam narrow to the inspector copy/content and the typed warning fix only. Run relevant repo-local validation, commit/push to `main` by default, and update this task with exact results/caveats for Derrick’s manual follow-up.
 
 **Folders Created/Deleted/Modified:**
@@ -1559,10 +1565,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 26: Remove pre-calibration arm-extension ratio gate and clarify T-pose threshold comments
 
-**Bead ID:** `aerobeat-input-camera-tracking-1cfw`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-1cfw`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s narrow T-pose calibration-config cleanup seam: remove the `min_arm_extension_ratio` threshold/gate from the T-pose auto-calibration requirement path if it is indeed using a pre-calibration heuristic rather than something baseline-derived, keep or tighten any remaining straight-arm truth through the elbow-angle gate as appropriate, and rewrite the T-pose threshold comments in the gesture YAML so Derrick can tell what lower vs higher values mean for each threshold without guessing. Keep the seam narrow to the T-pose readiness logic, directly coupled tests, and the YAML/comment/docs truth only. Run relevant repo-local validation, commit/push to `main` by default, and update this task with exact results/caveats for Derrick’s manual follow-up.
 
 **Folders Created/Deleted/Modified:**
@@ -1588,10 +1594,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 27: Fix Flow proving-scene nose-direction card live update truth
 
-**Bead ID:** `aerobeat-input-camera-tracking-qnmq`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-qnmq`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s newly exposed narrow follow-up seam from manual QA: in the Flow proving scene, the nose-direction arrows/card UI is present but does not update live as the nose moves, unlike the wrist-direction cards. Trace the existing nose-direction debug truth through the proving harness/card wiring, restore truthful live updates in the Flow proving scene, and keep the seam narrow to the nose-direction card/binding/debug update path plus directly coupled tests. Run relevant repo-local validation, commit/push to `main` by default, and update this task with exact results/caveats for Derrick’s next manual feedback loop.
 
 **Folders Created/Deleted/Modified:**
@@ -1609,10 +1615,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 28: Smooth T-pose badge fill and add calibration grid size/height controls
 
-**Bead ID:** `aerobeat-input-camera-tracking-wjsr`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-wjsr`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s next narrow manual-QA follow-up seam: (1) keep the existing radial T-pose badge fill behavior but drive it with a smooth tween so the green fill animates visually instead of stepping; (2) add a new calibration YAML variable for grid size multiplier with default `1.0` semantics where higher values like `1.1` make the calibrated grid larger and lower values like `0.9` make it smaller; and (3) add a new calibration YAML variable for camera-space grid height offset where the current behavior is the default `0.0`, higher positive values raise the grid in camera space, and negative values lower it. Thread both new calibration controls through the runtime calibration/grid computation path, preserve current behavior at the defaults, refresh the proving inspector/debug/config truth if directly coupled, and keep the seam narrow to the badge animation plus calibration YAML/runtime/test surfaces only. Run relevant repo-local validation, commit/push to `main` by default, and update this task with exact results/caveats for Derrick’s next manual feedback loop.
 
 **Folders Created/Deleted/Modified:**
@@ -1635,10 +1641,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 29: Fix T-pose cooldown lockout truth and gray badge during cooldown
 
-**Bead ID:** `aerobeat-input-camera-tracking-slc8`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-slc8`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s next manual-QA follow-up seam: the T-pose auto-calibration cooldown/lockout behavior is not acting truthfully. After a calibration fires, holding the arms out while moving around appears to keep updating/re-firing calibration instead of staying locked until cooldown fully passes and then requiring the hold timer to be satisfied again. Fix that runtime cooldown contract so the calibration result stays locked during cooldown, the auto-calibration cannot re-fire during cooldown, and after cooldown the hold must accumulate again before another fire. Also set the T-pose badge visual to transparent/gray while cooldown is active so the UI truthfully shows it is locked out. Keep the seam narrow to cooldown state/runtime readiness, badge cooldown visual truth, directly coupled inspector/debug truth if needed, and focused tests only. Run relevant repo-local validation, commit/push to `main` by default, and update this task with exact results/caveats for Derrick’s next manual feedback loop.
 
 **Folders Created/Deleted/Modified:**
@@ -1658,10 +1664,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 30: Persist last selected proving-scene camera locally per machine
 
-**Bead ID:** `aerobeat-input-camera-tracking-l6bg`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-l6bg`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s local QA quality-of-life seam: remember the last selected live camera in the hidden `/.testbed/` proving-scene workflow so restarting the scene does not force him to re-pick the non-slot-0 camera every time. This persistence must be local/per-machine only (cached state, not a committed shared config default) and should restore the last chosen camera when the proving scene restarts if that device is still available. Keep the seam narrow to proving-scene camera selection persistence, local cache/read-write behavior, and directly coupled tests only. Run relevant repo-local validation, commit/push to `main` by default, and update this task with exact results/caveats for Derrick’s next manual feedback loop.
 
 **Folders Created/Deleted/Modified:**
@@ -1679,10 +1685,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 31: Investigate recurring .testbed performance spikes from live profiler evidence
 
-**Bead ID:** `aerobeat-input-camera-tracking-1a40`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-1a40`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, investigate Derrick’s newly reported recurring performance spike in the hidden `/.testbed/` proving-scene workflow. Use the attached profiler screenshot (`/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/27/image-9fbe06ac.png`) and current source truth to identify the most likely causes of a regular ~1.6s process-time spike. Focus on likely recurring main-thread work in the proving harness / profiling scene path (timers, UI refreshes, polling, camera/runtime bootstrap, debug serialization, replay/preview sync, file IO, or other repeated whole-frame work), and produce a narrow review-ready diagnosis with the most likely culprit(s), exact owning file/function seams, and the minimum next implementation slices to verify/fix them. Keep this as investigation/design only unless a tiny directly coupled truth-maintenance change is necessary. Update this task with exact findings/caveats.
 
 **Folders Created/Deleted/Modified:**
@@ -1710,10 +1716,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 32: Optimize proving-scene debug refresh by avoiding full detector-state deep copies
 
-**Bead ID:** `aerobeat-input-camera-tracking-edne`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-edne`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s explicitly approved next performance optimization seam from Task 31 Slice B: reduce recurring `.testbed` proving-scene Process Time spikes by stopping the debug refresh loop from deep-copying the entire detector state every refresh. Keep the seam narrow to `.testbed/scripts/proving_harness.gd:_sync_latest_detector_state()` plus the minimum provider/substrate state-export changes needed so the proving HUD reads a lighter summary snapshot or stable reduced export instead of `duplicate(true)` on the full runtime model each refresh. Preserve debug truth for the currently surfaced proving panels, avoid widening into unrelated optimization work, run focused validation, commit/push to `main` by default, and update this task with exact results/caveats for Derrick’s manual follow-up. Derrick may also temporarily set the debug refresh interval to 1000 ms on his side as an independent proof, but this task should land the code-path optimization regardless.
 
 **Folders Created/Deleted/Modified:**
@@ -1735,10 +1741,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 33: Reduce proving-scene fixture snapshot churn after shallow state export optimization
 
-**Bead ID:** `aerobeat-input-camera-tracking-redh`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-redh`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the next narrow performance seam after Task 32. Derrick re-tested on the latest build and the recurring large Process Time spike is still present (new profiler screenshot at `/home/derrick/.openclaw/workspace/.temp/nerve-uploads/2026/07/27/image-95cf954c.png`), so tackle Task 31 Slice C now: reduce proving-scene fixture snapshot churn during interactive proving runs. Keep the seam narrow to `.testbed/scripts/proving_harness.gd` snapshot capture/sampling/gating and the minimum directly coupled test truth needed. The goal is to stop or drastically reduce repeated heavy `landmarks_by_id` / `metrics` duplication during live proving while preserving whatever snapshot behavior is actually required outside explicit fixture-capture workflows. Avoid widening into unrelated optimization work. Run focused validation, commit/push to `main` by default, and update this task with exact results/caveats plus what snapshot work was reduced or gated.
 
 **Folders Created/Deleted/Modified:**
@@ -1756,10 +1762,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 20: Implement upstream landmark-detail control and remove the local helper seam
 
-**Bead ID:** `Pending`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `Pending`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** After Derrick approves the finalized contract from Task 19, implement the upstream landmark-detail control in the owning dependency repos, thread the approved YAML enum through the GodotEnv-managed tool/vendor stack, plan and land the required input-side cleanup so lower-body landmarks are no longer required by the underlying consumer path that wants to adopt `gameplay_anchors`, then remove/replace the local `GAMEPLAY_ANCHOR_LANDMARKS` helper seam in `aerobeat-input-camera-tracking` once that lower-body coupling is truly separated or retired. Refresh directly coupled tests/docs/consumer config truth. Keep the seam honest: only claim a real compute/runtime win if the upstream implementation actually reduces emitted or processed landmarks at the tool/vendor layer, and do not flip profiles to `gameplay_anchors` until the lower-body dependency cleanup is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -1776,10 +1782,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 21: Fix stale auto-calibration panel, unused-parameter warning, and preview-start regression in proving scenes
 
-**Bead ID:** `aerobeat-input-camera-tracking-6vbb`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-10`, `REF-11`  
+**Bead ID:** `aerobeat-input-camera-tracking-6vbb`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-10`, `REF-11`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, investigate the latest proving-scene regressions Derrick reported after the `18a`–`18e` landing. Scope: (1) remove or replace the leftover UI element still occupying the old calibration-button area in both boxing/flow proving scenes if it is no longer needed; (2) trace and settle the `UNUSED_PARAMETER` warning at `proving_harness.gd:608` for `_calibration_status_text(session)` and narrow the fix seam; (3) investigate the live-preview startup regression in the boxing/flow proving scenes, including Derrick’s suspicion that preview may now be incorrectly waiting on calibration before starting; and (4) investigate the new shutdown/lifecycle regression where leaving the test scenes no longer stops the MediaPipe camera session cleanly and the physical USB camera remains active until `./kill-cameras.py` is run manually. Produce a review-ready design/implementation packet that identifies the real owning files, whether the stale panel should be removed outright versus moved/repurposed, the exact preview-start and camera-stop regression seams, the narrowest implementation path, and directly coupled validation needed before code changes begin.
 
 **Folders Created/Deleted/Modified:**
@@ -1798,10 +1804,10 @@ Manual playtest then surfaced a narrower implementation bug: the new hook direct
 
 ### Task 22: Implement the proving-scene cleanup and preview-start regression fix
 
-**Bead ID:** `aerobeat-input-camera-tracking-qe8q`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-10`, `REF-11`  
+**Bead ID:** `aerobeat-input-camera-tracking-qe8q`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-10`, `REF-11`
 **Prompt:** After Derrick approves the finalized contract from Task 21, implement the narrow proving-scene cleanup/regression fix in `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`: remove the stale UI element over the old calibration-button slot entirely, clean up the unused-parameter warning in `proving_harness.gd`, restore live preview to start immediately on play mode unless a contrary contract is explicitly re-approved, add the explicit full-release singleton teardown path needed so leaving the boxing/flow proving scenes actually stops the MediaPipe camera session cleanly, and refresh directly coupled tests/runtime proof. Keep the seam narrow to the proving-scene UI/status path, preview-start plumbing, scene teardown plumbing, and directly coupled validation.
 
 **Folders Created/Deleted/Modified:**
@@ -1830,10 +1836,10 @@ Audit rerun on 2026-07-24 passed for the narrowed Task 22 seam. Independent audi
 
 ### Task 34: Reproduce and classify chip performance spikes outside vs inside Godot
 
-**Bead ID:** `oc-9ra`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-9ra`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** On and around `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, resume the post-Task-33 chip performance investigation with a strict host-vs-Godot isolation pass. Prepare and run a reproducible evidence workflow that compares chip CPU/process behavior in at least these states: (1) idle/desktop without Godot proving running, (2) Godot open but proving scene not actively running if feasible, and (3) the proving scene actively running during the recurring spike window. The goal is to determine whether the spike clearly exists outside Godot, strongly implicates Godot/the proving scene, or remains ambiguous. Capture concrete process-level evidence if unrelated host activity is the likely culprit, with Nerve explicitly considered as a suspect but not assumed. Keep the seam narrow to measurement, classification, and the minimum harness/support steps needed to gather trustworthy evidence; do not widen into unrelated optimization or code changes unless a tiny instrumentation tweak is absolutely required for truthful measurement. Claim the bead at start and close it when the evidence packet and recommendation are complete.
 
 **Folders Created/Deleted/Modified:**
@@ -1852,10 +1858,10 @@ Audit rerun on 2026-07-24 passed for the narrowed Task 22 seam. Independent audi
 
 ### Task 35: Audit boxing weave hold semantics against the current grid contract
 
-**Bead ID:** `oc-3fy`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-07`, `REF-08`  
+**Bead ID:** `oc-3fy`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-07`, `REF-08`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, truth-check current Boxing weave gesture hold behavior against Derrick’s explicit contract. Verify whether left weave stays active until the nose crosses to the right side of the calibrated grid, right weave stays active until the nose crosses to the left side, and neither weave remains active while the nose is outside the grid. Trace the exact runtime code path, identify any existing tests/fixtures that already prove or contradict this behavior, and produce a concise source-truth audit before implementation. If the current behavior is wrong, isolate the narrowest follow-up coder seam rather than silently fixing it in this research slice. Claim the bead at start and close it when the audit is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -1874,10 +1880,10 @@ Audit rerun on 2026-07-24 passed for the narrowed Task 22 seam. Independent audi
 
 ### Task 36: Trace the hot OpenClaw Python process on chip and classify the CPU spike source
 
-**Bead ID:** `oc-49d`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-49d`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Continue the chip-side performance lane after Task 34. On `chip`, identify exactly what the hot OpenClaw gateway-scoped `python3 -` process is doing, what launched it, whether it corresponds to an expected current task, and whether the near-100% CPU behavior indicates a stuck loop, runaway measurement path, or other runtime bug. Gather concrete process/cgroup/cmdline/parent/working-directory evidence and, if possible without risky intervention, correlate the hot process to the responsible OpenClaw action or script. Keep the seam narrow to host-runtime forensics and classification; do not restart services or kill the hot process unless explicitly approved later. Claim the bead at start and close it when the evidence packet and next recommendation are complete.
 
 **Folders Created/Deleted/Modified:**
@@ -1907,10 +1913,10 @@ Current classification/verdict: this does **not** look like an expected current 
 
 ### Task 37: Reconcile live weave-drop behavior against the passing audit/tests
 
-**Bead ID:** `oc-du6`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-07`, `REF-08`  
+**Bead ID:** `oc-du6`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-07`, `REF-08`
 **Prompt:** Reconcile Derrick’s live proving report with the passing weave audit/tests. Investigate how the weave-hold contract could pass repo-level tests yet still feel like it drops early in real use. Compare the audited runtime logic with proving-scene wiring, cooldown/neutralization behavior, nose tracking stability, grid-readiness transitions, event-consumer semantics, and any UI/debug indicators that could make a held weave appear inactive. If the discrepancy is real, isolate the narrowest truthful follow-up coder seam; if the discrepancy is presentation/instrumentation-only, prove that clearly. Claim the bead at start and close it when the discrepancy analysis is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -1929,10 +1935,10 @@ Current classification/verdict: this does **not** look like an expected current 
 
 ### Task 38: Restart OpenClaw gateway on chip and verify whether the CPU spike clears
 
-**Bead ID:** `oc-sfk`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-12`  
+**Bead ID:** `oc-sfk`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-12`
 **Prompt:** On `chip`, use the canonical OpenClaw gateway restart command, then re-run the narrow CPU/process evidence checks from the prior perf investigation to determine whether the near-100% hot `python3 -` process and/or the host spike disappear. If the spike persists, classify the next likely branch without widening scope: config-driven issue versus upstream OpenClaw runtime/release bug, and note whether GitHub issue/PR research is the next seam. Keep the work narrow to restart + verification + classification. Claim the bead at start and close it when the post-restart evidence packet is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -1955,10 +1961,10 @@ Current classification: this evidence points much more strongly at an orphaned/s
 
 ### Task 39: Verify whether weave behavior is using stale UI semantics or an old public-YAML logic path
 
-**Bead ID:** `oc-5ym`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-07`, `REF-08`  
+**Bead ID:** `oc-5ym`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-07`, `REF-08`
 **Prompt:** In `aerobeat-input-camera-tracking`, go deeper than the prior weave discrepancy investigation. Determine whether the current live weave experience could be explained by stale proving/UI surfaces only, or whether a public YAML enum/boolean/profile path still selects older pre-grid weave logic. Trace the configuration path from public YAML through runtime behavior, identify whether multiple weave modes still exist, and state exactly which mode the current proving setup uses. If the current configuration is wrong, isolate the narrowest truthful fix seam; if the runtime mode is already correct and only the UI is stale, prove that clearly. Claim the bead at start and close it when the config/runtime truth packet is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -1983,10 +1989,10 @@ Minimal next seam: treat this as a stale-surface/truth-hardening issue, not a we
 
 ### Task 40: Investigate preferred-webcam persistence and why chip still chooses webcam 0
 
-**Bead ID:** `oc-ye2`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-ye2`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking` and on `chip`, investigate why the previously landed preferred-camera persistence path did not keep the proving flow on webcam 1. Trace the saved-preference path, auto-selection precedence, device enumeration behavior, and proving-scene startup behavior to determine whether the bug is persistence not being written, persistence not being loaded, preference being overridden by auto-selection, or device indexing/name matching drifting on chip. Keep the seam narrow to truthful diagnosis and the minimum evidence needed to define the next coder slice. Claim the bead at start and close it when the regression packet is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -2005,10 +2011,10 @@ Minimal next seam: treat this as a stale-surface/truth-hardening issue, not a we
 
 ### Task 41: Implement weave proving-state truth and preferred-webcam startup fix
 
-**Bead ID:** `oc-0f4`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-0f4`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, implement the two now-approved narrow fixes from Tasks 39 and 40 without widening scope: (1) make the Boxing proving weave surface reflect held left/right weave state instead of a short pulse-only start event, and clean up stale weave wording that still implies an older runtime contract; (2) fix preferred-webcam startup behavior so a persisted device such as `/dev/video1` survives the pre-start empty-enumeration phase and is actually applied once the provider/camera inventory is live, rather than being coerced back to `/dev/video0`. Keep the seam narrow to the proving-harness/UI/state/config truth and the camera-selection startup ordering/preference logic. Run focused repo-local validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2033,10 +2039,10 @@ Minimal next seam: treat this as a stale-surface/truth-hardening issue, not a we
 
 ### Task 42: QA the weave-state and preferred-webcam fixes in the highest-fidelity proving path available
 
-**Bead ID:** `oc-daj`  
-**SubAgent:** Manual by Derrick on cookie  
-**Role:** `qa`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-daj`
+**SubAgent:** Manual by Derrick on cookie
+**Role:** `qa`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After Task 41 coder work lands, Derrick will sync down on cookie and manually verify the weave-state/proving UI fix and the preferred-webcam startup fix in the highest-fidelity proving path available for `aerobeat-input-camera-tracking`. Confirm the weave indicator now stays truthful while the held state remains active, and confirm the saved preferred camera survives startup and selects webcam 1 instead of falling back to webcam 0 on chip or the best available equivalent proving environment. Record explicit pass/fail evidence from that manual verification.
 
 **Folders Created/Deleted/Modified:**
@@ -2053,10 +2059,10 @@ Minimal next seam: treat this as a stale-surface/truth-hardening issue, not a we
 
 ### Task 43: Audit the implemented AeroBeat fixes against the plan and evidence
 
-**Bead ID:** `oc-c2m`  
-**SubAgent:** Manual by Derrick on cookie  
-**Role:** `auditor`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-c2m`
+**SubAgent:** Manual by Derrick on cookie
+**Role:** `auditor`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After QA completes, Derrick will manually audit the weave-state/proving UI fix and preferred-webcam startup fix against the approved plan, diff, coder validation, and QA evidence. Confirm the fixes actually address the previously observed false pulse-only weave truth and the persisted-camera override bug. If they do not, record the exact gap and keep the lane active.
 
 **Folders Created/Deleted/Modified:**
@@ -2073,10 +2079,10 @@ Minimal next seam: treat this as a stale-surface/truth-hardening issue, not a we
 
 ### Task 44: Investigate cookie live video jitter and whether recent camera-tracking changes caused it
 
-**Bead ID:** `oc-3v7`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-3v7`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking` and, where feasible, on cookie, investigate Derrick’s new manual-playtest report that the live video feed is jittering in a way he has not seen before on that machine. Focus on whether recently introduced changes in this repo could plausibly cause the jitter, while also checking whether cookie had notable background load that could confound the result. Compare the recent camera/proving-related commits against the symptom, inspect the relevant live-feed/render/update paths, and produce the narrowest truthful diagnosis plus the next fix seam if a repo regression is likely. Claim the bead at start and close it when the investigation packet is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -2099,10 +2105,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 45: Live-probe cookie editor-wide jitter during manual reproduction
 
-**Bead ID:** `oc-kie`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-kie`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** During Derrick's next manual reproduction on cookie, investigate the broader jitter symptom live. Capture evidence across (a) Godot editor UI jitter while the project is stopped, (b) Profiler-scroll jitter in the editor, (c) `.testbed` scene jitter while running, and (d) host-side confounders such as CPU/GPU/compositor/background load at the same time. The goal is to separate repo/runtime issues from editor-wide or host/display-path issues. Keep the seam investigative and synchronized with Derrick's reproduction timing; do not widen into speculative fixes before the live evidence is gathered.
 
 **Folders Created/Deleted/Modified:**
@@ -2121,10 +2127,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 46: Freeze squat threshold and hook/uppercut half-step grid design before coding
 
-**Bead ID:** `oc-pi4`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-pi4`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, inspect the current squat, hook, and uppercut gesture-detection paths and prepare a design-freeze packet before any new coding starts. Specifically: verify whether hook and uppercut are already on the grid-based detection system or still rely on the old pose-threshold path visible in the inspector UI; evaluate Derrick's proposed squat change from row-threshold logic to a YAML-controlled percentage-of-grid-height threshold (starting at 60%); and evaluate the proposal for hook/uppercut-only half-step grid lines (double rows/columns, same outer bounds as the current 4x3 grid, dashed visually, used only by hook/uppercut activation logic). The output should be a discussion-ready design packet with concrete variable names/options/tradeoffs, not implementation.
 
 **Folders Created/Deleted/Modified:**
@@ -2143,10 +2149,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 47: Implement the frozen squat threshold + hook/uppercut strike-subgrid update
 
-**Bead ID:** `oc-d47`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-d47`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, implement the now-frozen design for squat, hook, and uppercut without widening scope. Scope: (1) keep squat on the grid backend but replace the current coarse row/block logic with a single YAML-controlled top-origin height percentage threshold starting at `0.60`, with comments that clearly explain what smaller and larger values do to the line; (2) switch boxing hook and uppercut defaults from threshold to the existing grid-detection family using a derived strike-only subgrid that keeps the same outer bounds as the canonical 4x3 grid but doubles the internal rows/columns for those gestures only; (3) make hook/uppercut minimum travel YAML-configurable so Derrick can later tune from `1` to `2` subcells; and (4) update the relevant inspector/proving UI/debug surfaces so they truthfully reflect the new squat threshold and hook/uppercut strike-subgrid behavior, including dashed visual half-step lines in the live grid overlay. Run focused validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2169,10 +2175,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 48: Clean pre-existing untracked AeroBeat review docs before manual review
 
-**Bead ID:** `oc-3yh`  
-**SubAgent:** `primary` (for `primary`)  
-**Role:** `primary`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-3yh`
+**SubAgent:** `primary` (for `primary`)
+**Role:** `primary`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, remove the two pre-existing untracked docs that the coder intentionally left out so Derrick can review the latest gesture changes against a cleaner repo state. Keep scope narrow to those specific untracked docs only, prefer recoverable trash/delete behavior where practical, and update the coordination plan with the exact cleanup result. Close the bead when the repo is left cleaner for manual review.
 
 **Folders Created/Deleted/Modified:**
@@ -2192,10 +2198,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 49: Normalize comment quality across all six camera-tracking asset YAMLs
 
-**Bead ID:** `oc-7z8`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-7z8`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking/assets`, normalize the comment quality across all six asset YAML files so the variable documentation is as clear and consistent as the well-commented calibration block at the top of `boxing.gesture_detection.yaml`. Focus on making every exposed variable understandable during manual playtest/debug review: explain what the variable controls, what smaller/larger values do when relevant, and how newer grid-detection / strike-subgrid settings map to runtime behavior. Keep scope narrow to comment/documentation quality in the YAMLs only unless a tiny adjacent wording cleanup is required for consistency. Run focused validation for YAML parse sanity, update the coordination plan with the exact files touched, and commit/push by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -2214,10 +2220,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 50: Commit and push the YAML comment-normalization pass in the correct repo
 
-**Bead ID:** `oc-26w`  
-**SubAgent:** `primary` (for `primary`)  
-**Role:** `primary`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-26w`
+**SubAgent:** `primary` (for `primary`)
+**Role:** `primary`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Correct the repo-handling mistake from Task 49. The six YAML comment-normalization edits live inside the real git repo at `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, and they must be committed/pushed there. Verify the modified files in that repo, stage only the intended YAML comment-quality changes (and directly coupled plan truth if needed), commit with a truthful message, push to `origin/main`, and update the coordination plan with the exact repo/commit result. Keep scope narrow to converting the already-landed local YAML documentation pass into a proper repo commit.
 
 **Folders Created/Deleted/Modified:**
@@ -2236,10 +2242,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 51: Implement the frozen hook/uppercut grid-direction correction
 
-**Bead ID:** `oc-js7`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-js7`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, implement the now-frozen correction to the new hook/uppercut strike-subgrid behavior without widening scope. Remove the erroneous `direction_dominance_ratio` concept from the hook and uppercut `grid_detection` configuration/runtime path for this behavior family. Hook should trigger from explicit signed strike-subgrid crossing distance in the hooking direction using the configured YAML delta and the observed previous/current subcell transition, without adding any arbitrary requirement that the wrist be on a particular side of the athlete/grid first. Uppercut should trigger from explicit upward strike-subgrid row crossing distance using the configured YAML delta, with left/right wrist determining which uppercut fires. Update the YAML comments, inspector/proving/debug surfaces, and directly coupled tests so they match the corrected behavior truth. Run focused validation, commit/push by default, and close the bead only when coder work is genuinely ready for review.
 
 **Folders Created/Deleted/Modified:**
@@ -2263,10 +2269,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 52: Normalize enum option comments across all six camera-tracking asset YAMLs
 
-**Bead ID:** `oc-sel`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-sel`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After the current hook/uppercut correction slice lands, do a narrow YAML comment follow-up across all six `aerobeat-input-camera-tracking/assets` files so every enum-like variable explicitly lists its allowed options in the comments. Treat this as a required documentation standard, not optional polish. Example: `grid_variant` comments should clearly enumerate values like `[grid, strike_subgrid]` instead of implying the choices indirectly. Use the same clarity wherever enum-shaped settings exist, and keep scope narrow to comment quality / enum-option discoverability only.
 
 **Folders Created/Deleted/Modified:**
@@ -2290,10 +2296,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 53: Fix the stale replay auto-bootstrap grid-truth proving-harness test before sync/playtest
 
-**Bead ID:** `oc-6ts`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-6ts`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After Task 52 lands, fix the pre-existing failing proving-harness test `test_proving_scenes_hide_replay_auto_bootstrap_grid_truth` in `aerobeat-input-camera-tracking` so Derrick can sync down into a cleaner test state before manual playtest. Keep scope narrow to the stale/failing replay auto-bootstrap grid-truth test and the minimum directly coupled code/test truth needed to make it honest again; do not widen into unrelated proving-harness cleanup. Run focused validation, commit/push by default when ready, and update the coordination plan with the exact result.
 
 **Folders Created/Deleted/Modified:**
@@ -2312,10 +2318,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 54: Fix the reversed athlete-space hook direction mapping
 
-**Bead ID:** `oc-02z`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-02z`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, fix the newly observed hook-direction inversion bug without widening scope. Current bad behavior: left hook is firing on right-to-left strike-subgrid travel in athlete space, and right hook is firing on left-to-right travel. Intended behavior: left hook must require left-to-right travel in athlete space, and right hook must require right-to-left travel in athlete space. Keep the strike-subgrid architecture and the rest of the hook/uppercut correction intact; only correct the signed athlete-space direction mapping, update any directly coupled comments/debug text/tests, run focused validation, and commit/push by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -2338,10 +2344,10 @@ Verdict: no convincing evidence of a fresh recent repo regression in the last fe
 
 ### Task 55: Investigate fast repeated uppercut gating versus `pose_only_rearm_ms`
 
-**Bead ID:** `oc-0ii`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-0ii`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, inspect the current uppercut detection/rearm path to explain why repeated fast uppercuts may still fail even when `pose_only_rearm_ms` is set to `1ms`. Treat this as a code-reading and truth-check seam first: verify whether `pose_only_rearm_ms` is actually the effective gating variable for uppercut grid-detection repeats, identify any additional cooldown/rearm/state/transition requirements that can still block fast same-wrist repeats, and explain what in the current runtime path is most likely causing Derrick to see the wrist cross the strike-subgrid without a second fast trigger. Do not implement a fix yet; produce the narrowest truthful diagnosis and next fix seam.
 
 **Folders Created/Deleted/Modified:**
@@ -2364,10 +2370,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 56: Freeze fast repeated strike design for hook/uppercut grid detection
 
-**Bead ID:** `oc-0ii`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-0ii`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, take the completed repeated-uppercut investigation and freeze the next implementation contract before coding. Compare the narrowest viable options for fast repeated same-family strike handling after a grid-detected hook/uppercut fires: shortening/removing `triggered_grace_ms`, allowing emits during grace, or preserving/consuming qualifying strike-subgrid transitions that occur during `TRIGGERED` / `NOT_READY`. Pick one approach that keeps external triggered-state truth stable while still allowing fast same-wrist and opposite-wrist same-family repeat chains, then record the exact runtime rules and coder seam in the plan.
 
 **Folders Created/Deleted/Modified:**
@@ -2385,10 +2391,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 57: Implement buffered repeat strike consumption for hook/uppercut grid detection
 
-**Bead ID:** `aerobeat-input-camera-tracking-858w`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-858w`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, implement the frozen fast-repeat strike fix without widening scope. Preserve the existing hook/uppercut `grid_detection` triggered-grace hold semantics, but stop losing qualifying strike-subgrid transitions that happen during `TRIGGERED` or `NOT_READY`. Add the minimum runtime state needed so each hook/uppercut side can retain the latest fresh qualifying unconsumed grid transition seen during grace/rearm, then consume that buffered transition once the side becomes eligible again (`READY`, not blocked by the opposite same-family side, tracking still valid) even if the crossing happened a little earlier. Prevent duplicate infinite re-fires from a static pose by clearing/invalidating buffered transitions after consumption and on tracking-loss/reacquire reset, and make sure older already-consumed transitions cannot be replayed. Keep scope narrow to the pose-strike state machine, directly coupled debug truth, YAML/runtime comments only if needed for honesty, and focused unit coverage for: (a) fast same-wrist repeated uppercuts, (b) fast opposite-side same-family hook/uppercut chains, and (c) no repeated fire from holding the later subcell without a new crossing. Run focused validation, commit/push to `main` by default, and close the bead only when the coder slice is genuinely ready for Derrick’s manual QA on cookie.
 
 **Folders Created/Deleted/Modified:**
@@ -2410,10 +2416,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 58: Derrick manual QA/audit on cookie for buffered repeat strike consumption
 
-**Bead ID:** `aerobeat-input-camera-tracking-lkwo` (manual QA) / `aerobeat-input-camera-tracking-g62q` (manual audit)  
-**SubAgent:** Derrick on cookie  
-**Role:** `qa` / `auditor`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-lkwo` (manual QA) / `aerobeat-input-camera-tracking-g62q` (manual audit)
+**SubAgent:** Derrick on cookie
+**Role:** `qa` / `auditor`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After the coder slice lands on `main`, Derrick will sync to cookie and manually verify the fast repeat strike behavior in the proving workflow. QA focus: same-wrist repeated uppercuts can fire again after grace/rearm without requiring a brand-new post-ready crossing, opposite-side same-family chains behave honestly, and static held postures do not spam repeated fires. Audit focus: confirm the live behavior on cookie matches the frozen contract rather than merely passing unit tests.
 
 **Folders Created/Deleted/Modified:**
@@ -2430,10 +2436,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 59: Compare hook/uppercut windowed directional-history options before next coder slice
 
-**Bead ID:** `Pending`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `Pending`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Compare the two leading replacements for the current single-transition hook/uppercut `grid_detection` logic before any new code lands: (2) max directional excursion over `window_ms`, versus (3) accumulated directional progress over `window_ms`. Evaluate them against Derrick’s actual design intent that hooks/uppercuts should be able to ignore orthogonal row/column travel and fire when recent wrist history within the chosen `grid_variant` shows enough in-family travel. Focus on false-positive risk, tolerance to curved/real human punches, behavior under jitter, explainability in the live inspector, and whether either approach would need extra anti-jitter or anti-replay safeguards beyond the existing grace/rearm/state-machine shell.
 
 **Folders Created/Deleted/Modified:**
@@ -2450,10 +2456,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 60: Freeze accumulated directional-progress hook/uppercut contract
 
-**Bead ID:** `Pending`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `Pending`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Freeze the approved replacement for hook/uppercut `grid_detection`. Replace the current single-transition delta trigger with option 3: accumulated directional progress over `window_ms` within the selected `grid_variant`. For hooks, accumulate only signed in-family horizontal progress; for uppercuts, accumulate only signed upward row progress. Orthogonal travel should not cancel a candidate. Use the simple version first: no additional anti-jitter guardrails beyond the existing grace/rearm/state-machine shell, and no new complexity unless later live testing proves it necessary.
 
 **Folders Created/Deleted/Modified:**
@@ -2470,10 +2476,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 61: Implement accumulated directional-progress window detection for hook/uppercut
 
-**Bead ID:** `aerobeat-input-camera-tracking-na2f`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-na2f`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, implement the now-frozen hook/uppercut detector rewrite without widening scope. Replace the current grid-detection single-transition delta trigger path for hook and uppercut with **accumulated directional progress over `window_ms`** in the chosen `grid_variant`. Hook should accumulate only signed in-family horizontal progress; uppercut should accumulate only signed upward row progress. Orthogonal row/column movement should not cancel a candidate. Keep the initial implementation intentionally simple: do not add new anti-jitter guardrails yet beyond the existing `triggered_grace_ms`, `pose_only_rearm_ms`, tracking-loss/reacquire reset, and same-family blocking shell. Preserve truthful debug state so the inspector can expose the accumulated progress values that actually drove the trigger. Keep scope narrow to the hook/uppercut grid-detection runtime path, directly coupled debug truth, YAML/comments only if needed for honesty, and focused tests. Run focused validation, commit/push to `main` by default, and close the bead only when the slice is ready for Derrick’s manual cookie-side QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2495,10 +2501,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 62: Derrick manual QA/audit on cookie for accumulated directional-progress hook/uppercut detection
 
-**Bead ID:** `aerobeat-input-camera-tracking-ivzz` (manual QA) / `aerobeat-input-camera-tracking-4d06` (manual audit)  
-**SubAgent:** Derrick on cookie  
-**Role:** `qa` / `auditor`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-ivzz` (manual QA) / `aerobeat-input-camera-tracking-4d06` (manual audit)
+**SubAgent:** Derrick on cookie
+**Role:** `qa` / `auditor`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After the coder slice lands on `main`, Derrick will sync to cookie and manually verify the simple accumulated-directional-progress hook/uppercut behavior. QA focus: curved/organic punches that travel enough in-family direction within `window_ms` now fire even if the motion passes through orthogonal cells along the way, while the existing grace/rearm shell still behaves honestly. Audit focus: confirm the live feel matches the frozen simple option-3 contract and note whether extra anti-jitter guardrails are actually needed.
 
 **Folders Created/Deleted/Modified:**
@@ -2515,10 +2521,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 63: Freeze hook/uppercut overflow-protection toggle contract
 
-**Bead ID:** `Pending`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `Pending`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Freeze the new hook/uppercut `grid_detection` overflow-protection toggle before coding. Derrick’s requested semantics: add a new variable under hook and uppercut `grid_detection` that enables or disables overflow protection for the cell-travel history window while a gesture is active across its `window_ms`. With overflow protection **enabled**, the detector should stop accumulating fresh cell-travel history/progress for that gesture while the gesture is active inside its protected window; with overflow protection **disabled**, it should continue accumulating/allowing in-window gesture registration the way the current simple accumulated-progress implementation does. Default the new variable to the current behavior (`false`) so today’s behavior is preserved unless explicitly turned on.
 
 **Folders Created/Deleted/Modified:**
@@ -2535,10 +2541,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 64: Add hook/uppercut overflow-protection toggle for grid progress detection
 
-**Bead ID:** `aerobeat-input-camera-tracking-ljz4`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-ljz4`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, add the new hook/uppercut `grid_detection` overflow-protection toggle without widening scope. Add a per-family boolean config variable under hook and uppercut `grid_detection` that enables or disables overflow protection for the cell-travel history/progress window while the gesture is active. Default it to `false` so the current accumulated-progress behavior is preserved. When the toggle is `true`, stop accumulating fresh cell-travel/progress for that family/side while the gesture is active inside its protected window; when `false`, keep the current behavior. Update the runtime, YAML/comment truth, and directly coupled debug/unit coverage so the surfaced state makes it clear whether overflow protection is enabled and whether accumulation is currently frozen by it. Keep scope narrow to hook/uppercut grid-detection config/runtime/debug/tests only. Run focused validation, commit/push to `main` by default, and close the bead only when ready for Derrick’s manual cookie-side QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2563,10 +2569,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 65: Derrick manual QA/audit on cookie for hook/uppercut overflow-protection toggle
 
-**Bead ID:** `aerobeat-input-camera-tracking-j50e` (manual QA) / `aerobeat-input-camera-tracking-144d` (manual audit)  
-**SubAgent:** Derrick on cookie  
-**Role:** `qa` / `auditor`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-j50e` (manual QA) / `aerobeat-input-camera-tracking-144d` (manual audit)
+**SubAgent:** Derrick on cookie
+**Role:** `qa` / `auditor`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After the coder slice lands on `main`, Derrick will sync to cookie and manually compare hook/uppercut feel with overflow protection on versus off. QA focus: verify `false` preserves the current behavior, verify `true` freezes in-window accumulation for active gestures as intended, and check whether that actually improves or worsens missed/duplicate trigger behavior. Audit focus: confirm the runtime behavior matches the frozen toggle contract rather than a looser approximation.
 
 **Folders Created/Deleted/Modified:**
@@ -2583,10 +2589,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 66: Freeze directional per-edge flow grid multipliers for fine tuning
 
-**Bead ID:** `Pending`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `Pending`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Freeze the next flow-grid fine-tuning contract before implementation. Derrick’s latest playtest direction is that the flow grid should stay shifted downward for better neutral gameplay placement, but the current uniform multiplier is too blunt because it also controls headroom and side reach. The proposed replacement is to split the effective grid expansion into independent per-edge controls (`top`, `bottom`, `left`, `right`) so the gameplay box can stay shifted down while only the needed edges expand to keep hands in bounds during normal flow play. Capture the intended semantics, likely config shape, and guardrails so the next coder slice can implement it narrowly.
 
 **Folders Created/Deleted/Modified:**
@@ -2603,10 +2609,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 67: Freeze per-edge grid bounds padding block for flow and boxing
 
-**Bead ID:** `Pending`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `Pending`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Freeze the exact replacement contract for `size_multiplier` in both flow and boxing. Derrick has approved replacing the old single multiplier with a new directional per-edge padding block that gives separate control over the top, bottom, left, and right bounds expansions. Capture the config shape, how it replaces `size_multiplier`, and the runtime meaning: the calibrated base box stays the reference, while per-edge padding expands the effective gameplay bounds outward independently on each side.
 
 **Folders Created/Deleted/Modified:**
@@ -2623,10 +2629,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 68: Replace size_multiplier with per-edge grid bounds padding for flow/boxing
 
-**Bead ID:** `aerobeat-input-camera-tracking-sexl`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-sexl`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, replace the old `size_multiplier` model with a new per-edge grid bounds padding block for both flow and boxing without widening scope. Add the new config block in the appropriate flow/boxing gesture/config surfaces, remove or replace `size_multiplier` usage in the runtime path, and make the calibrated base box the reference while the new `top`, `bottom`, `left`, and `right` values expand the effective bounds outward independently on each side. Keep anchor/placement logic separate from padding logic. Update runtime/debug/overlay truth and directly coupled tests so the surfaced bounds information honestly reflects the new per-edge model. Run focused validation, commit/push to `main` by default, and close the bead only when ready for Derrick’s manual cookie-side QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2647,10 +2653,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 69: Derrick manual QA/audit on cookie for per-edge grid bounds padding
 
-**Bead ID:** `aerobeat-input-camera-tracking-4i6t` (manual QA) / `aerobeat-input-camera-tracking-9ifo` (manual audit)  
-**SubAgent:** Derrick on cookie  
-**Role:** `qa` / `auditor`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-4i6t` (manual QA) / `aerobeat-input-camera-tracking-9ifo` (manual audit)
+**SubAgent:** Derrick on cookie
+**Role:** `qa` / `auditor`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After the coder slice lands on `main`, Derrick will sync to cookie and manually verify the new per-edge bounds padding model in flow and boxing. QA focus: confirm the downward-shifted neutral placement can be preserved while top/bottom/left/right reach are tuned independently, and confirm the old single `size_multiplier` no longer limits that tuning. Audit focus: confirm the runtime/overlay truth matches the frozen per-edge padding contract.
 
 **Folders Created/Deleted/Modified:**
@@ -2667,10 +2673,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 70: Investigate Flow diagonal-direction simplification for gameplay-facing wrist directions
 
-**Bead ID:** Pending  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** Pending
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Freeze the next Flow direction-semantics problem before implementation. Derrick’s latest manual finding: diagonal swipes (top-left, top-right, bottom-left, bottom-right) can currently appear in the direction inspector as multiple simultaneously plausible directions across neighboring moments or entry frames — often a mix of diagonal, vertical, and horizontal truth. For Flow gameplay, Derrick wants the gameplay-facing contract to be simpler and more reliable: when a beat expects a direction like top-left at a given cell, the gameplay repo should be able to use a simplified trustworthy direction output from `aerobeat-input-camera-tracking` instead of having to reason about ambiguous mixtures like `left`, `up-left`, or `up` at the exact moment the wrist enters the cell. Compare the likely options for collapsing/locking raw motion into a gameplay-facing direction signal at cell entry or over a short local window, and capture the narrowest truthful contract for the next coder slice.
 
 **Folders Created/Deleted/Modified:**
@@ -2687,10 +2693,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 71: Freeze Flow gameplay-facing cardinal direction contract and remove diagonal Flow UI
 
-**Bead ID:** `Pending`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `Pending`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Freeze the next Flow gameplay-direction contract before implementation. Derrick has approved simplifying gameplay-facing Flow direction truth to cardinal-only motion for nose/wrists, while keeping diagonal beat arrows as chart semantics that map to allowed cardinal approach sets. Example: a top-left beat for the left wrist should accept either `up` or `left` from the left wrist at the target cell, while all other directions or the wrong wrist fail. Because gameplay no longer depends on raw diagonal wrist/nose direction truth, remove the unnecessary diagonal direction UI from the Flow nose/wrist scene surfaces as part of the same narrow slice.
 
 **Folders Created/Deleted/Modified:**
@@ -2707,10 +2713,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 72: Simplify Flow gameplay directions to cardinals and remove diagonal Flow UI
 
-**Bead ID:** `aerobeat-input-camera-tracking-qvw7`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-qvw7`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, implement the frozen Flow direction simplification without widening scope. Simplify gameplay-facing Flow wrist/nose direction truth to cardinals only (`up`, `down`, `left`, `right`). Keep diagonal beat semantics at the gameplay contract layer by mapping each diagonal beat direction to an allowed set of cardinals rather than requiring low-level diagonal motion truth. Preserve correct-wrist and correct-cell constraints. Remove or simplify the now-unnecessary diagonal direction UI from the Flow nose/wrist scene surfaces so the displayed contract matches the new gameplay-facing truth. Keep scope narrow to the Flow direction/runtime/event/UI/debug seams and directly coupled tests. Run focused validation, commit/push to `main` by default, and close the bead only when ready for Derrick’s manual cookie-side QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2730,10 +2736,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 73: Derrick manual QA/audit on cookie for Flow cardinal gameplay direction simplification
 
-**Bead ID:** `aerobeat-input-camera-tracking-jhbg` (manual QA) / `aerobeat-input-camera-tracking-ftyb` (manual audit)  
-**SubAgent:** Derrick on cookie  
-**Role:** `qa` / `auditor`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-jhbg` (manual QA) / `aerobeat-input-camera-tracking-ftyb` (manual audit)
+**SubAgent:** Derrick on cookie
+**Role:** `qa` / `auditor`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After the coder slice lands on `main`, Derrick will sync to cookie and manually verify the new Flow gameplay-facing cardinal direction contract. QA focus: diagonal beats should now accept the intended allowed cardinal approaches from the correct wrist at the correct cell, while wrong wrist/wrong opposing directions still fail; the Flow UI should no longer imply low-level diagonal wrist/nose direction truth that gameplay does not need. Audit focus: confirm the simplified visible/debug contract matches the implemented gameplay-facing behavior.
 
 **Folders Created/Deleted/Modified:**
@@ -2750,10 +2756,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 74: Freeze Flow direction contract around previous entered cell instead of dynamic motion
 
-**Bead ID:** `Pending`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `Pending`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Freeze the updated Flow direction contract before any further implementation. Derrick wants to replace the current dynamic motion-based direction interpretation with a simpler cell-transition contract: determine direction from the previous cell the wrist/nose entered from, rather than from velocity/dominant-axis/dynamic motion analysis. The key benefit is that direction no longer depends on entry speed or short-window motion ambiguity; it depends only on which neighboring cell the current cell was entered from. Capture the allowed semantics, likely neighbor-to-direction mapping, and implications for cardinal/diagonal beat interpretation so the next coder slice can replace the fresh motion-based simplification cleanly.
 
 **Folders Created/Deleted/Modified:**
@@ -2770,10 +2776,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 75: Replace Flow motion-based direction with previous-cell-entry direction
 
-**Bead ID:** `aerobeat-input-camera-tracking-gf5o`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-gf5o`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, replace the just-landed Flow motion-based direction simplification with the newly frozen previous-cell-entry direction contract, without widening scope. Gameplay/debug-facing Flow direction should now resolve from the previously entered cell relative to the current entered cell, rather than from dynamic motion quantization, velocity windows, or dominant-axis selection. Preserve correct wrist/cell semantics and update the Flow UI/debug surfaces so they describe/show the new transition-based contract honestly. Keep scope narrow to Flow direction/runtime/event/UI/debug seams and directly coupled tests. Run focused validation, commit/push to `main` by default, and close the bead only when ready for Derrick’s manual cookie-side QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2793,10 +2799,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 76: Derrick manual QA/audit on cookie for previous-cell-entry Flow direction
 
-**Bead ID:** `aerobeat-input-camera-tracking-lfq2` (manual QA) / `aerobeat-input-camera-tracking-h617` (manual audit)  
-**SubAgent:** Derrick on cookie  
-**Role:** `qa` / `auditor`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-lfq2` (manual QA) / `aerobeat-input-camera-tracking-h617` (manual audit)
+**SubAgent:** Derrick on cookie
+**Role:** `qa` / `auditor`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After the coder slice lands on `main`, Derrick will sync to cookie and manually verify that Flow direction now resolves from the previous entered cell rather than dynamic motion truth. QA focus: confirm direction no longer depends on swing speed/short-window ambiguity and instead matches the actual cell transition path. Audit focus: confirm the visible/debug contract matches the new previous-cell-entry rule honestly.
 
 **Folders Created/Deleted/Modified:**
@@ -2813,10 +2819,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 77: Apply previous-cell-entry Flow direction contract to nose
 
-**Bead ID:** `aerobeat-input-camera-tracking-dg0z`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-dg0z`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `aerobeat-input-camera-tracking`, extend the just-landed previous-cell-entry Flow direction contract from wrists to nose without widening scope. Flow nose direction should now resolve from previous entered cell -> current entered cell, matching the same transition-based truth already adopted for wrists, instead of depending on live motion analysis as the primary contract. Update Flow UI/debug text so nose and wrist direction seams describe the same entry-truth contract honestly. Keep scope narrow to Flow direction/runtime/event/UI/debug seams and directly coupled tests. Run focused validation, commit/push to `main` by default, and close the bead only when ready for Derrick’s manual cookie-side QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2836,10 +2842,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 78: Derrick manual QA/audit on cookie for previous-cell-entry Flow nose direction
 
-**Bead ID:** `aerobeat-input-camera-tracking-9ynf` (manual QA) / `aerobeat-input-camera-tracking-6pe3` (manual audit)  
-**SubAgent:** Derrick on cookie  
-**Role:** `qa` / `auditor`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `aerobeat-input-camera-tracking-9ynf` (manual QA) / `aerobeat-input-camera-tracking-6pe3` (manual audit)
+**SubAgent:** Derrick on cookie
+**Role:** `qa` / `auditor`
+**References:** `REF-03`, `REF-12`
 **Prompt:** After the coder slice lands on `main`, Derrick will sync to cookie and manually verify that Flow nose direction now resolves from previous entered cell rather than live motion analysis. QA focus: confirm the nose uses the same stable transition-based contract as wrists. Audit focus: confirm the visible/debug contract matches that new shared rule honestly.
 
 **Folders Created/Deleted/Modified:**
@@ -2856,10 +2862,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 79: Log post-validation lane truth for Flow vs Boxing input status
 
-**Bead ID:** Pending  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** Pending
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Record Derrick’s latest manual validation truth for the lane so future continuation is accurate. Flow input is now in a good spot after the previous-cell-entry direction work; only small YAML iteration remains for perfect grid size/position tuning. Boxing input test scene is functionally working overall, with straight punches, guard, squat, and weave in a good spot, but meaningful design/implementation work still remains for hook and uppercut detection improvements.
 
 **Folders Created/Deleted/Modified:**
@@ -2876,10 +2882,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 80: Record latest manual tuning truth for Flow/Boxing camera input
 
-**Bead ID:** Pending  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** Pending
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Record Derrick’s latest manual tuning truth so the lane state stays accurate. Flow grid calibration is now finalized on size/position with a slight multiplier across each dimension and no vertical offset. Boxing uppercut has landed on `strike_subgrid` with `min_row_delta: 1`, which makes short quick uppercuts workable, though repeated fast uppercuts may still need future fine tuning. For both Boxing and Flow, `tracking.smoothing_style = lite_raw` remains the chosen tradeoff: minimal delay with visible jitter, after prior smoothing experiments failed to reduce jitter without adding unacceptable lag.
 
 **Folders Created/Deleted/Modified:**
@@ -2896,10 +2902,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 81: Freeze boxing gameplay contract around beat-local event acceptance instead of detector exclusivity
 
-**Bead ID:** Pending  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** Pending
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Record the updated boxing gameplay contract before gameplay implementation begins. Derrick’s latest conclusion is that there is no reasonable low-level detector rule that can perfectly block a straight punch from also looking like a hook or uppercut, or vice versa, because a single real punch can plausibly trip multiple boxing gesture families. Therefore the gameplay layer should not depend on detector exclusivity. Instead, when checking a beat, gameplay should treat the beat as successful if the proper expected boxing gesture event occurred within the beat’s gameplay timing/range window, while ignoring other simultaneously co-occurring boxing gesture events that may have been emitted by the same physical punch.
 
 **Folders Created/Deleted/Modified:**
@@ -2916,10 +2922,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 82: Land-the-plane wrap-up for current AeroBeat input state
 
-**Bead ID:** Pending  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** Pending
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** Record the end-of-session truth after Derrick’s latest cookie validation and design discussion.
 
 **Folders Created/Deleted/Modified:**
@@ -2934,10 +2940,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 83: Design the next boxing hook/uppercut improvement seam before gameplay-repo work
 
-**Bead ID:** `oc-ay6`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`, `REF-13`  
+**Bead ID:** `oc-ay6`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, review the latest validated boxing state and design the next narrow hook/uppercut improvement seam before gameplay feature-repo work begins. Focus on concrete detector/runtime/design options, constraints from the frozen beat-local gameplay contract, and the minimum next implementation slice worth assigning. Claim bead `oc-ay6` at start and close it when the design packet is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -2954,10 +2960,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 84: Implement directional-run excursion scoring for hook/uppercut pre-trigger progress
 
-**Bead ID:** `oc-ay6.1`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `oc-ay6.1`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the now-frozen next narrow hook/uppercut improvement seam from `REF-13` without widening scope. Replace the current hook/uppercut `grid_detection` pre-trigger accumulated-positive-progress model with directional-run excursion scoring so stale credit is cleared by family-axis reversal before trigger while orthogonal drift remains allowed. Preserve the current YAML shape for the first pass, preserve grace/rearm/buffered-repeat/overflow behavior, update only directly coupled debug truth as needed, and add focused unit coverage for reversal-reset plus curved-punch preservation. Run focused validation, commit/push by default, and close the bead only when the coder slice is genuinely ready for manual QA.
 
 **Folders Created/Deleted/Modified:**
@@ -2973,10 +2979,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 85: QA directional-run excursion scoring for hook and uppercut
 
-**Bead ID:** `oc-0ws`  
-**SubAgent:** `primary` (for `qa`)  
-**Role:** `qa`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `oc-0ws`
+**SubAgent:** `primary` (for `qa`)
+**Role:** `qa`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, independently QA the new directional-run excursion scoring seam from Task 84. Verify that family-axis reversal no longer preserves stale hook/uppercut pre-trigger credit, that curved punches still remain viable because orthogonal drift is allowed, and that the focused repo-local validation truth is honest. Use the highest-fidelity QA path available within repo-local scope, record exact evidence, and close bead `oc-0ws` only if the slice is genuinely ready for audit or clearly fails with a concrete gap.
 
 **Folders Created/Deleted/Modified:**
@@ -2993,10 +2999,10 @@ Most likely explanation for Derrick’s observed repro: the wrist is indeed cros
 
 ### Task 86: Audit directional-run excursion scoring for hook and uppercut
 
-**Bead ID:** `oc-war`  
-**SubAgent:** `primary` (for `auditor`)  
-**Role:** `auditor`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `oc-war`
+**SubAgent:** `primary` (for `auditor`)
+**Role:** `auditor`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, independently audit the directional-run excursion scoring seam from Tasks 84-85. Truth-check the implementation, QA evidence, pushed repo state, and plan claims against the frozen design in `REF-13`. Confirm whether the slice is actually done or identify the narrow concrete gap if not. Close bead `oc-war` only if the seam is genuinely audit-complete.
 
 **Folders Created/Deleted/Modified:**
@@ -3017,10 +3023,10 @@ Pushed repo truth also matches the plan claims: `HEAD == origin/main == 6515f03`
 
 ### Task 87: Investigate Flow nose athlete-space mismatch in proving scene vs canonical contract
 
-**Bead ID:** `oc-76b`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-12`  
+**Bead ID:** `oc-76b`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-12`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, investigate Derrick’s latest playtest report that the Flow proving scene shows the nose cell in camera space instead of athlete space, while the boxing scene appears correct. Determine whether this mismatch is confined to proving/UI presentation or whether the canonical Flow runtime contract is also wrong. Trace the relevant flow nose cell/runtime/debug/proving paths, compare them against the boxing scene’s working athlete-space behavior, and identify the narrowest truthful fix seam. Claim bead `oc-76b` at start and close it when the investigation packet is complete.
 
 **Folders Created/Deleted/Modified:**
@@ -3192,10 +3198,10 @@ The narrow mismatch seam is therefore in the proving layer, not the detector con
 
 ### Task 91: Fix repeated straight/hook/uppercut misses caused by grace-window capture blocking
 
-**Bead ID:** `aerobeat-input-camera-tracking-6jq0`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `aerobeat-input-camera-tracking-6jq0`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, investigate Derrick’s latest manual Boxing repro and land the narrowest truthful fix without widening scope. Current user-truth: back-to-back opposite-side straight punches can miss the second left/right gesture, very fast same-arm repeated straights may miss too, and Derrick suspects the same grace-window capture problem also affects hook and uppercut. Inspect the current straight/hook/uppercut state machines to confirm exactly where `triggered_grace_ms`, rearm, same-family blocking, and buffered repeat handling still suppress fresh capture while a gesture is active. Then implement Derrick’s preferred configuration seam: add per-family booleans that control whether the detector may keep capturing the next qualifying gesture while grace is still active, while preserving existing triggered-state hold semantics unless the new config explicitly changes capture behavior. Apply the seam consistently across straight punch, hook, and uppercut; cover both same-side rapid repeats and opposite-side same-family chains; keep YAML comments/debug truth honest; run focused validation; commit/push by default; and close the bead only when the coder slice is genuinely ready for follow-up QA/manual playtest.
 
 **Folders Created/Deleted/Modified:**
@@ -3216,10 +3222,10 @@ The narrow mismatch seam is therefore in the proving layer, not the detector con
 
 ### Task 92: Determine why straight-punch inspector only updates on punch events and identify the config seam
 
-**Bead ID:** `aerobeat-input-camera-tracking-2125`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-2125`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, inspect the straight-punch proving inspector update path and the boxing profile YAMLs to explain Derrick’s latest chip QA report: the left straight inspector appeared to update only while a punch was being thrown, which makes debugging missed activations difficult. Determine whether the truthful next change is config-only (for example hand tracking disabled in the boxing camera profile), inspector-surface behavior, or both. Keep scope narrow: do not land a broad refactor unless the cause is unambiguous. Report the exact YAML field(s) or code path(s) that control this behavior, the most likely change Derrick should try first, and any side effects/perf/behavior tradeoffs.
 
 **Folders Created/Deleted/Modified:**
@@ -3238,10 +3244,10 @@ The narrow mismatch seam is therefore in the proving layer, not the detector con
 
 ### Task 93: Fix straight-punch live inspector truth and remove obsolete hand-tracking config seams
 
-**Bead ID:** `aerobeat-input-camera-tracking-woyg`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-woyg`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the next approved Boxing seam. Derrick’s chip QA confirmed the straight-punch inspector looks event-driven between punches, and he explicitly does not want hand tracking brought back as the workaround. Patch the proving harness so straight-punch live rows stay current in the pose-only path like the other gesture inspectors, while transition-only rows keep using transition snapshots where appropriate. In the same slice, remove obsolete hand-tracking config seams/booleans that should no longer exist for this path (Derrick noticed an old wrist enabled/disabled style knob; find and remove or retire the stale surface truthfully rather than papering over it). Keep scope narrow to proving-inspector/live-debug truth, boxing config cleanup for dead hand-tracking seams, and directly coupled tests/debug text/docs. Commit and push to `main` by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -3262,10 +3268,10 @@ The narrow mismatch seam is therefore in the proving layer, not the detector con
 
 ### Task 94: Remove boxing depth-debug test orphan/leak warnings
 
-**Bead ID:** `aerobeat-input-camera-tracking-jcff`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-jcff`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, clean up the existing depth-debug warning noise surfaced by the recent focused GUT suite. Current truth from the last run: the targeted suite passed, but still emitted 4 orphan `TextureRect` warnings in boxing depth-debug tests plus CanvasItem/dummy texture/object leak warnings at exit. Keep scope narrow to truthful test cleanup and directly coupled fixture/UI teardown behavior—do not widen into unrelated depth-debug feature work. Identify the owning teardown/lifecycle problem, fix it, rerun the focused suite, and commit/push to `main` by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -3285,10 +3291,10 @@ The narrow mismatch seam is therefore in the proving layer, not the detector con
 
 ### Task 95: Remove bogus replay-without-source warning for live-camera mode
 
-**Bead ID:** `aerobeat-input-camera-tracking-p0o3`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-p0o3`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, clean up the remaining startup warning seam. Current truth: tests still emit `[AeroCameraTracking] Replay start requested without a source path`, but Derrick clarified that a blank replay/source path in this case should simply mean live-camera mode, not a warning-worthy error path. Keep scope narrow to truthful replay/live-camera startup semantics, directly coupled tests, and warning behavior. Identify the owning startup path, stop the bogus warning when blank means live camera, rerun the relevant focused tests, and commit/push to `main` by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -3303,6 +3309,76 @@ The narrow mismatch seam is therefore in the proving layer, not the detector con
 **Status:** ✅ Complete
 
 **Results:** Landed and pushed as commit `7aabf0b` (`Treat blank replay source as live camera`). The owning warning seam was `_start_provider()` in `.testbed/scripts/proving_harness.gd`, which could call `provider.start_replay(_get_scene_camera_source_override(), runtime_config)` with a blank replay/source string; the bogus warning itself came from `src/AeroCameraTracking.gd` when `start_replay()` treated that blank string as warning-worthy. The fix stays narrow in `src/AeroCameraTracking.gd`: blank/whitespace replay source now truthfully routes through live-camera startup semantics without warning or hard-failing, while non-blank replay starts still follow replay config construction and preserve legitimate deeper failures. Added regression coverage in `.testbed/tests/unit/test_aero_camera_tracking.gd` to assert blank replay source becomes `source.kind == "live_camera"` with the configured camera id and no replay vendor source block. Focused validation passed: `test_aero_camera_tracking.gd` ✅ (`19/19`) and `test_boxing_proving_harness_profiles_and_debug.gd` ✅ (`56/56`), for `75/75` targeted passing tests overall.
+
+---
+
+### Task 96: Investigate boxing proving grace-window UI/runtime mismatch after 1ms timing test
+
+**Bead ID:** `aerobeat-input-camera-tracking-95m6`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-13`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, investigate Derrick’s latest 2026-07-30 manual Boxing repro after Task 95. Current user-truth: with `allow_next_gesture_capture_during_grace` enabled and `triggered_grace_ms` plus `pose_only_rearm_ms` manually set to `1` for straight punch, hook, and uppercut, rapid same-arm and multi-arm repeat punches now capture correctly, but the boxing proving-scene gesture UI still stays visibly active for a perceptible amount of time instead of only flashing briefly. Trace the timing/active-state path for straight/hook/uppercut from YAML config through detector/runtime state handling into the boxing proving-scene UI/debug layer. Determine whether the mismatch lives in detector/runtime timing truth, the proving-scene UI hookup, or both, and explicitly check whether older punches can still visually or logically eat newer punches despite the new grace-window next-capture seam. Keep scope investigative and narrow; identify the smallest truthful fix seam for the next coder slice.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- likely none for the investigative pass unless a tiny documentation/plan note is needed
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Completed the investigation as a source-truth research pass without changing runtime code. Exact timing path traced: `assets/boxing.gesture_detection.yaml` supplies per-family `triggered_grace_ms`, `allow_next_gesture_capture_during_grace`, and `pose_only_rearm_ms`; `src/config/profile_config_loader.gd` preserves `straight_punch` as `threshold` and `hook`/`uppercut` as `grid_detection`; then `src/detectors/pose_detector_substrate.gd` reads those timing knobs via `_get_straight_punch_config()`, `_get_hook_config()`, and `_get_uppercut_config()`, drives live side phases through `_process_straight_punch()` / `_process_pose_strike()`, and emits both power events (`punch_left/right`, `hook_left/right`, `uppercut_left/right`) plus per-side state-change events carrying `grace_ms_remaining` and phase truth. Those detector events are forwarded unchanged through `src/providers/camera_tracking_provider.gd`, and the boxing proving scene consumes them in two different ways: (1) hover-card / inspector truth reads live `gesture_debug.*.<side>.state` plus relayed `*_state_changed` detail, but (2) the visible board tiles for Punch / Hook / Uppercut in `.testbed/scripts/boxing_proving_harness.gd` are configured as `mode: "pulse_lr"` and light their L/R pills from recent power-event timestamps only, not from detector phase truth. The visible linger is therefore real proving-UI behavior: `_any_recent_event()` keeps those tiles active for a fixed `TILE_PULSE_MS := 420`, so even with manual `1ms` grace + `1ms` pose-only rearm the board still glows for ~0.42s after every emitted punch/hook/uppercut. That means the main mismatch is **UI hookup truth**, not a detector hold bug for hook/uppercut.
+
+Runtime truth is still worth splitting by family. For hook and uppercut, the Task 91 grace-capture seam is behaving as intended: while a side is still `TRIGGERED`, `_process_pose_strike()` can call `_try_trigger_pose_strike(..., true)` and `_get_same_family_threshold_blocking_state()` only blocks the opposite side while it is also `TRIGGERED`, not during `NOT_READY`, so the old grace-window swallow bug is no longer the primary explanation for the lingering visual. For straight punch, however, one narrow runtime asymmetry remains: `_get_same_family_threshold_blocking_state("straight_punch", ...)` still treats the opposite side’s `NOT_READY` as blocking. Because `_process_straight_punch()` transitions `TRIGGERED -> NOT_READY` on one frame and cannot rearm until a later frame, an older straight can still logically eat a newer opposite-side straight if the new qualifying sample lands after the `1ms` grace already expired but before that next-frame rearm completes. The existing unit truth in `.testbed/tests/unit/test_pose_detector_substrate.gd` already documents this exact seam in `test_straight_same_family_trigger_exposes_threshold_blocking_truth_while_blocking_side_is_not_ready()`. So the current bug split is: **Punch / Hook / Uppercut board linger is UI-only; a separate remaining runtime edge case still exists for straight cross-side `NOT_READY` blocking.** Smallest truthful next coder seam: first fix the proving surface by replacing the Punch / Hook / Uppercut board tiles in `.testbed/scripts/boxing_proving_harness.gd` so their visible active state is driven by live detector phase / grace truth (or a deliberately named short flash tied to runtime timestamps) instead of the hard-coded `420ms` recent-event pulse; optionally add a focused proving-harness unit test that fails unless near-zero-runtime timing no longer shows a long board hold. If Derrick also wants the residual straight runtime edge removed, do it as a separate narrow follow-up in `src/detectors/pose_detector_substrate.gd` by reconciling straight’s opposite-side `NOT_READY` blocking with the newer grace-window next-capture contract rather than mixing that logic change into the UI fix.
+
+---
+
+### Task 97: Fix boxing proving tiles to reflect live grace/active truth instead of fixed pulse linger
+
+**Bead ID:** `aerobeat-input-camera-tracking-jrhc`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-13`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the next narrow boxing seam confirmed by Task 96. Current truth: the visible Punch / Hook / Uppercut linger in the boxing proving scene is primarily UI-only because `.testbed/scripts/boxing_proving_harness.gd` renders those tiles via recent event timestamps and fixed `TILE_PULSE_MS := 420` pulse behavior instead of live detector phase/grace truth. Implement the smallest truthful fix so the boxing proving tiles reflect live detector active/grace state honestly, or otherwise clearly separate decorative pulse from active-state truth without misleading Derrick during tuning. Preserve the recent grace-window next-capture behavior, keep boxing debug surfaces truthful, update only directly coupled tests/debug text/docs, and leave the residual opposite-side straight `NOT_READY` runtime blocker out of scope for this slice unless directly required for accurate UI wiring. Run focused validation, commit/push by default, and close the bead only when coder work is genuinely ready for QA.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Replaced the Boxing Punch / Hook / Uppercut board tiles’ fixed recent-event linger with live detector phase truth only. `.testbed/scripts/boxing_proving_harness.gd` now configures those three tiles as `phase_lr` families (`straight_punch`, `hook`, `uppercut`) and lights the left/right pills from the live `gesture_debug.<family>.<side>.state == "triggered"` snapshot instead of the old `pulse_lr` event timestamp path. The old recent-event pulse helper remains only as generic fallback wiring for any future pulse-mode tile, but these boxing strike tiles no longer use it, so near-zero `triggered_grace_ms` tuning no longer produces a misleading ~420ms board linger. Direct proving coverage was updated in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` to prove (a) punch tiles go active from live triggered state, (b) stale punch events do not keep the tile lit once the live state is already `not_ready`, and (c) hook/uppercut family wiring also resolves through the same live-state path. Focused validation: `test_boxing_punch_tile_uses_live_triggered_state_instead_of_event_pulse` ✅, `test_boxing_punch_tile_does_not_linger_on_old_event_once_live_state_is_not_ready` ✅, `test_boxing_hook_tile_uses_live_triggered_state_instead_of_event_pulse` ✅, `test_boxing_uppercut_tile_uses_live_triggered_state_instead_of_event_pulse` ✅, `godot --headless --path .testbed --check-only --script res://scripts/boxing_proving_harness.gd` ✅. Code commit: `54427a2` (`Fix boxing tile truth and straight blocker`). Caveat: this keeps tile truth intentionally phase-only; power events still remain available in the event feed/history, but the visible badges no longer double as a decorative linger.
+
+---
+
+### Task 98: Fix residual opposite-side straight NOT_READY blocker after grace-window capture change
+
+**Bead ID:** `aerobeat-input-camera-tracking-nz07`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-13`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the paired runtime seam confirmed by Task 96. Current truth: opposite-side straight capture can still be blocked while the older straight remains in `NOT_READY`, so an older straight can still logically eat a newer opposite-side straight in a narrow frame window even after the grace-window next-capture changes. Land the narrowest truthful runtime fix in `src/detectors/pose_detector_substrate.gd` so straight-punch same-family blocking matches the newer opposite-side chaining contract, update only directly coupled tests/debug truth, and keep hook/uppercut behavior unchanged unless a shared helper must be touched without behavior drift. Commit/push by default when ready.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Landed the narrow runtime follow-up in `src/detectors/pose_detector_substrate.gd` without widening into hook/uppercut logic. `_get_same_family_threshold_blocking_state("straight_punch", ...)` now treats only an opposite-side `TRIGGERED` straight as blocking; the older opposite-side `NOT_READY` window no longer suppresses a new straight, which brings straight-punch chaining into line with the newer grace-window next-capture contract already expected by Task 96. The directly coupled substrate proof in `.testbed/tests/unit/test_pose_detector_substrate.gd` was flipped from documenting the old blocker to proving the new behavior: `test_straight_opposite_side_trigger_is_not_blocked_while_older_side_is_not_ready` now asserts the newer opposite-side punch fires, the receiving side enters `triggered`, and the stale `same_family_blocked`/`blocking_*` debug fields stay clear. Focused validation: `test_straight_opposite_side_trigger_is_not_blocked_while_older_side_is_not_ready` ✅ and `godot --headless --path .testbed --check-only --script res://addons/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd` ✅. Code commit: `54427a2` (`Fix boxing tile truth and straight blocker`). Caveat: same-side straight rearm behavior is unchanged here; this slice only removes the residual opposite-side `NOT_READY` swallow window.
 
 ---
 
@@ -3329,6 +3405,7 @@ The narrow mismatch seam is therefore in the proving layer, not the detector con
 - `adb944e` - Align runtime flow grid with displayed calibration
 - `abc87dc` - Restore wrist-span flow grid calibration
 - `0288b17` - Fix hook and uppercut grid direction gating
+- `54427a2` - Fix boxing tile truth and straight blocker
 - `a7c3808` - Clarify asset enum option comments
 - `2a12244` - Allow boxing grace-window next-capture chains
 - `bccfe4f` - Fix boxing straight-punch debug truth
