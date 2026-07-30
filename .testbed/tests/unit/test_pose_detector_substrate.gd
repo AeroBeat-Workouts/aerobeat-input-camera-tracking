@@ -2859,7 +2859,7 @@ func test_hook_threshold_backend_remains_available_as_fallback() -> void:
 	assert_eq(String(state.get("gesture_debug", {}).get("hook", {}).get("left", {}).get("backend", "")), "threshold")
 	assert_true(_event_names(state.get("events", [])).has("hook_left"))
 
-func test_straight_same_family_trigger_exposes_threshold_blocking_truth_while_blocking_side_is_not_ready() -> void:
+func test_straight_opposite_side_trigger_is_not_blocked_while_older_side_is_not_ready() -> void:
 	_calibrate_stance()
 	var state := substrate.process_landmarks(_make_pose_frame(), 1100, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.020), _tracked_hand_payload_physical("right", 0.020)))
 	state = substrate.process_landmarks(_make_pose_frame({
@@ -2879,14 +2879,14 @@ func test_straight_same_family_trigger_exposes_threshold_blocking_truth_while_bl
 	state = substrate.process_landmarks(_make_pose_frame({
 		PoseLandmarkIds.RIGHT_WRIST: {"z": -0.20},
 	}), 1340, _make_tracking_frame(_tracked_hand_payload_physical("left", 0.0275), _tracked_hand_payload_physical("right", 0.0272)))
-	assert_false(_event_names(state.get("events", [])).has("punch_right"))
+	assert_true(_event_names(state.get("events", [])).has("punch_right"))
 	var right_debug: Dictionary = state.get("gesture_debug", {}).get("straight_punch", {}).get("right", {})
-	assert_eq(String(right_debug.get("state", "")), "ready")
-	assert_true(bool(right_debug.get("same_family_blocked", false)))
-	assert_eq(String(right_debug.get("blocking_family", "")), "straight_punch")
-	assert_eq(String(right_debug.get("blocking_side", "")), "left")
-	assert_eq(String(right_debug.get("blocking_event_name", "")), "punch_left")
-	assert_eq(String(right_debug.get("blocking_phase", "")), "not_ready")
+	assert_eq(String(right_debug.get("state", "")), "triggered")
+	assert_false(bool(right_debug.get("same_family_blocked", false)))
+	assert_eq(String(right_debug.get("blocking_family", "")), "")
+	assert_eq(String(right_debug.get("blocking_side", "")), "")
+	assert_eq(String(right_debug.get("blocking_event_name", "")), "")
+	assert_eq(String(right_debug.get("blocking_phase", "")), "")
 
 func test_hook_same_family_trigger_exposes_threshold_blocking_truth() -> void:
 	_calibrate_stance()

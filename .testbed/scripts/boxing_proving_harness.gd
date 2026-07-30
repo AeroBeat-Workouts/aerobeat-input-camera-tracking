@@ -4,7 +4,7 @@ const DepthDebugViewerScript = preload("res://scripts/depth_debug_viewer.gd")
 
 const BACKGROUND_TEXTURE_PATH := "res://assets/backgrounds/perfect-hue-may-08-2026-hd.png"
 const HEADER_ICON_PATH := "res://assets/icons/boxing-glove-1.svg"
-const TILE_PULSE_MS := 420
+const RECENT_EVENT_PULSE_MS := 420
 const MAX_BOXING_FEED_ROWS := 8
 const ACTIVE_PILL_FILL := Color8(0x3d, 0xdc, 0xdc, 0xff)
 const ACTIVE_PILL_TEXT := Color8(0x05, 0x22, 0x28, 0xff)
@@ -44,25 +44,22 @@ const TILE_CONFIGS := [
 		"id": "punch",
 		"label": "Punch",
 		"icon": BOARD_ICON_PATHS["punch"],
-		"mode": "pulse_lr",
-		"left_events": ["punch_left"],
-		"right_events": ["punch_right"],
+		"mode": "phase_lr",
+		"family": "straight_punch",
 	},
 	{
 		"id": "hook",
 		"label": "Hook",
 		"icon": BOARD_ICON_PATHS["hook"],
-		"mode": "pulse_lr",
-		"left_events": ["hook_left"],
-		"right_events": ["hook_right"],
+		"mode": "phase_lr",
+		"family": "hook",
 	},
 	{
 		"id": "uppercut",
 		"label": "Uppercut",
 		"icon": BOARD_ICON_PATHS["uppercut"],
-		"mode": "pulse_lr",
-		"left_events": ["uppercut_left"],
-		"right_events": ["uppercut_right"],
+		"mode": "phase_lr",
+		"family": "uppercut",
 	},
 	{
 		"id": "guard",
@@ -1311,6 +1308,7 @@ func _create_tile(config: Dictionary) -> Dictionary:
 	return {
 		"panel": panel,
 		"mode": mode,
+		"family": String(config.get("family", "")),
 		"left_events": config.get("left_events", []),
 		"right_events": config.get("right_events", []),
 		"left_states": config.get("left_states", []),
@@ -1357,7 +1355,7 @@ func _card_key_for_target(tile_id: String, target: String) -> String:
 	match mode:
 		"state_center":
 			return tile_id if target == "center" else ""
-		"state_lr", "pulse_lr":
+		"state_lr", "pulse_lr", "phase_lr":
 			if target == "left":
 				return "%s_left" % tile_id
 			if target == "right":
@@ -2310,6 +2308,11 @@ func _update_tile_states() -> void:
 				var right_active := _any_state_active(tile.get("right_states", []))
 				_update_lr_badges(tile, left_active, right_active)
 				_update_tile_shell(tile, left_active or right_active)
+			"phase_lr":
+				var left_phase_active := _boxing_phase_tile_active(String(tile.get("family", "")), "left")
+				var right_phase_active := _boxing_phase_tile_active(String(tile.get("family", "")), "right")
+				_update_lr_badges(tile, left_phase_active, right_phase_active)
+				_update_tile_shell(tile, left_phase_active or right_phase_active)
 			_:
 				var left_pulse := _any_recent_event(tile.get("left_events", []))
 				var right_pulse := _any_recent_event(tile.get("right_events", []))
@@ -2680,12 +2683,23 @@ func _any_state_active(names_variant: Variant) -> bool:
 			return true
 	return false
 
+func _boxing_phase_tile_active(family: String, side: String) -> bool:
+	if family.is_empty():
+		return false
+	var latest_state := _boxing_latest_state_snapshot()
+	var gesture_debug: Dictionary = (latest_state.get("gesture_debug", {}) as Dictionary)
+	var family_debug: Dictionary = (gesture_debug.get(family, {}) as Dictionary)
+	var side_debug: Dictionary = (family_debug.get(side, {}) as Dictionary)
+	if side_debug.is_empty():
+		return false
+	return String(side_debug.get("state", side_debug.get("phase", "tracking_lost"))) == "triggered"
+
 func _any_recent_event(names_variant: Variant) -> bool:
 	var names: Array = names_variant if names_variant is Array else []
 	for name_variant: Variant in names:
 		var event_name := String(name_variant)
 		var timestamp_ms := int(_last_event_timestamps_ms.get(event_name, 0))
-		if timestamp_ms > 0 and Time.get_ticks_msec() - timestamp_ms <= TILE_PULSE_MS:
+		if timestamp_ms > 0 and Time.get_ticks_msec() - timestamp_ms <= RECENT_EVENT_PULSE_MS:
 			return true
 	return false
 

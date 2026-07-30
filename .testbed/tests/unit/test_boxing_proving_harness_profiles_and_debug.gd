@@ -2141,7 +2141,7 @@ func test_clicking_t_pose_badge_opens_live_calibration_inspector_truth() -> void
 	assert_false(body_label.text.contains("Hold progress:"))
 	assert_false(body_label.text.contains("max_wrist_shoulder_y_ratio=0.120"))
 
-func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void:
+func test_boxing_punch_tile_uses_live_triggered_state_instead_of_event_pulse() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
 	var harness := scene_root as Object
 	harness.set("_latest_state", {
@@ -2163,22 +2163,78 @@ func test_boxing_pose_only_punch_event_still_activates_left_tile_badge() -> void
 			}
 		}
 	})
-	harness._on_straight_punch_state_changed("left", "triggered", {
-		"state": "triggered",
-		"previous_state": "ready",
-		"tracking_state": "pose_tracked",
-		"tracking_valid": true,
-		"sample_source": "pose",
-		"wrist_velocity": 0.42,
-		"bbox_area": 0.0,
-		"bbox_area_growth": 0.0,
+	harness._update_tile_states()
+	var punch_tile: Dictionary = harness.get("_tile_refs").get("punch", {})
+	var left_badge: Dictionary = punch_tile.get("left", {})
+	assert_eq(String(left_badge.get("style_key", "")), "active")
+
+func test_boxing_punch_tile_does_not_linger_on_old_event_once_live_state_is_not_ready() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness := scene_root as Object
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"straight_punch": {
+				"left": {
+					"state": "not_ready",
+					"hand_tracking_enabled": false,
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"tracking_valid": true,
+					"sample_source": "pose",
+				}
+			}
+		}
 	})
 	harness._record_event("punch_left", {"power": 0.75})
 	harness._update_tile_states()
 	var punch_tile: Dictionary = harness.get("_tile_refs").get("punch", {})
 	var left_badge: Dictionary = punch_tile.get("left", {})
-	assert_eq(String(left_badge.get("style_key", "")), "active")
+	assert_eq(String(left_badge.get("style_key", "")), "idle")
 	assert_eq(harness._event_count("punch_left"), 1)
+
+func test_boxing_hook_tile_uses_live_triggered_state_instead_of_event_pulse() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness := scene_root as Object
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"hook": {
+				"right": {
+					"state": "triggered",
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"tracking_valid": true,
+					"sample_source": "pose",
+				}
+			}
+		}
+	})
+	harness._record_event("hook_right", {"power": 0.80})
+	harness._update_tile_states()
+	var hook_tile: Dictionary = harness.get("_tile_refs").get("hook", {})
+	var right_badge: Dictionary = hook_tile.get("right", {})
+	assert_eq(String(right_badge.get("style_key", "")), "active")
+
+func test_boxing_uppercut_tile_uses_live_triggered_state_instead_of_event_pulse() -> void:
+	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
+	var harness := scene_root as Object
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"uppercut": {
+				"left": {
+					"state": "triggered",
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"tracking_valid": true,
+					"sample_source": "pose",
+				}
+			}
+		}
+	})
+	harness._record_event("uppercut_left", {"power": 0.78})
+	harness._update_tile_states()
+	var uppercut_tile: Dictionary = harness.get("_tile_refs").get("uppercut", {})
+	var left_badge: Dictionary = uppercut_tile.get("left", {})
+	assert_eq(String(left_badge.get("style_key", "")), "active")
 
 func test_boxing_weave_tile_uses_held_state_instead_of_entry_pulse() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control

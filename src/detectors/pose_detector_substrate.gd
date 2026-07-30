@@ -2797,9 +2797,9 @@ func _get_same_family_threshold_blocking_state(family: String, side: String, tim
 	var blocking_state := _get_straight_punch_state(blocking_side) if family == "straight_punch" else _get_pose_strike_state(family, blocking_side)
 	var blocking_phase := String(blocking_state.get("phase", ""))
 	if family == "straight_punch":
-		if blocking_phase == STRAIGHT_PUNCH_STATE_TRIGGERED and allow_capture_during_triggered_grace:
+		if blocking_phase != STRAIGHT_PUNCH_STATE_TRIGGERED:
 			return {}
-		if blocking_phase != STRAIGHT_PUNCH_STATE_TRIGGERED and blocking_phase != STRAIGHT_PUNCH_STATE_NOT_READY:
+		if allow_capture_during_triggered_grace:
 			return {}
 	else:
 		if blocking_phase != POSE_STRIKE_STATE_TRIGGERED:
