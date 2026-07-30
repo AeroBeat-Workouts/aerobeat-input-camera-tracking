@@ -1271,10 +1271,10 @@ func test_boxing_event_feed_text_lists_hook_uppercut_and_guard_tuning_sections()
 	})
 	var text_body := String(harness._build_boxing_event_feed_text())
 	assert_string_contains(text_body, "Straight-punch tuning")
-	assert_string_contains(text_body, "Max wrist-shoulder XY distance: 0.180")
+	assert_string_contains(text_body, "Max wrist-shoulder XY distance: 0.100")
 	assert_string_contains(text_body, "Hook tuning")
 	assert_string_contains(text_body, "Grid variant: strike_subgrid")
-	assert_string_contains(text_body, "Minimum horizontal column travel: 2 subcells")
+	assert_string_contains(text_body, "Minimum horizontal column travel: 1 subcells")
 	assert_string_contains(text_body, "Hook direction reference: athlete-space horizontal columns (left hook = athlete_right with positive signed delta, right hook = athlete_left with negative signed delta)")
 	assert_string_contains(text_body, "Depth loader truth: enabled; artifact resolved to FastDepth/ONNX but adapter is still staged")
 	assert_string_contains(text_body, "Depth runtime status / stage: blocked / adapter_load")
@@ -1348,6 +1348,69 @@ func test_hook_hover_card_reports_simplified_pose_trigger_contract() -> void:
 	assert_string_contains(body, "Wrist angle from elbow horizontal ray <= 20.000° - 18.000")
 	assert_string_contains(body, "Preview-space wrist stays on required mirrored hook side - true (left_of_elbow)")
 	assert_string_contains(body, "Pose-only rearm - ")
+
+func test_pose_strike_grid_hover_card_and_inspector_surface_buffered_progress_and_overflow_truth() -> void:
+	var harness = _new_harness()
+	harness.set("_latest_state", {
+		"gesture_debug": {
+			"hook": {
+				"left": {
+					"backend": "grid_detection",
+					"state": "not_ready",
+					"previous_state": "triggered",
+					"timestamp_ms": Time.get_ticks_msec() - 260,
+					"pose_tracking_valid": true,
+					"tracking_state": "pose_tracked",
+					"sample_source": "pose",
+					"window_ms": 250,
+					"window_span_ms": 180,
+					"grid_variant": "strike_subgrid",
+					"direction_reference_frame": "athlete_space_columns",
+					"grid_transition_available": true,
+					"grid_previous_cell": 16,
+					"grid_current_cell": 18,
+					"grid_column_delta": 2,
+					"grid_row_delta": 0,
+					"grid_cell_delta_gate_passed": true,
+					"grid_direction_gate_passed": true,
+					"grid_accumulated_progress": 2,
+					"grid_progress_threshold": 1,
+					"grid_progress_ready": true,
+					"grid_progress_mode": "directional_run_excursion",
+					"grid_progress_transition_count": 3,
+					"grid_run_transition_count": 1,
+					"grid_run_reset_reason": "reversal",
+					"grid_overflow_protection_enabled": true,
+					"grid_overflow_accumulation_frozen": true,
+					"buffered_grid_transition_available": true,
+					"buffered_grid_previous_cell": 18,
+					"buffered_grid_current_cell": 20,
+					"buffered_grid_column_delta": 2,
+					"buffered_grid_row_delta": 0,
+					"buffered_grid_accumulated_progress": 2,
+					"grace_ms_remaining": 0,
+					"triggered_grace_ms": 250,
+					"pose_only_rearm_ms": 1,
+					"reacquire_stable_ms_required": 40,
+				},
+			},
+		}
+	})
+
+	var model: Dictionary = harness._build_hover_card_model("hook_left")
+	var rows: Array = model.get("rows", [])
+	assert_eq(String(rows[8].get("label", "")), "Grid progress")
+	assert_eq(String(rows[8].get("current_text", "")), "2/1 subcells, ready=true, history=3, run=1, mode=directional_run_excursion, reset=reversal")
+	assert_eq(String(rows[9].get("label", "")), "Buffered repeat transition")
+	assert_eq(String(rows[9].get("current_text", "")), "cell 18 [r4 c2] -> cell 20 [r5 c0], Δcol +2, Δrow 0, progress 2")
+	assert_eq(String(rows[10].get("label", "")), "Overflow protection")
+	assert_eq(String(rows[10].get("current_text", "")), "enabled, frozen=true")
+
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "hook_left")
+	var body := String(inspector.get("body", ""))
+	assert_string_contains(body, "Grid progress - 2/1 subcells, ready=true, history=3, run=1, mode=directional_run_excursion, reset=reversal")
+	assert_string_contains(body, "Buffered repeat transition - cell 18 [r4 c2] -> cell 20 [r5 c0], Δcol +2, Δrow 0, progress 2")
+	assert_string_contains(body, "Overflow protection - enabled, frozen=true")
 
 func test_punch_family_inspectors_keep_only_compact_depth_backend_and_thresholds() -> void:
 	var harness = _new_harness()

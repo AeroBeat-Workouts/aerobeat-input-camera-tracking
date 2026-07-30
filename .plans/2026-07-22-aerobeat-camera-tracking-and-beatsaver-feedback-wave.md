@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-22
 **Status:** In Progress
-**Last Updated:** 2026-07-30 09:38 EDT
-**Blocked Reason:** None. Task 100 landed the proving-scene straight-punch wrist/shoulder XY threshold truth, so the active feedback plan stays open only for Derrick’s next manual tuning pass.  
+**Last Updated:** 2026-07-30 10:42 EDT
+**Blocked Reason:** None. Task 100 landed the straight-punch wrist/shoulder inspector truth, and Derrick’s current manual tuning pass has now exposed a shared repeated same-side pose-strike follow-up seam: fast same-arm hooks and uppercuts are not reliably firing even when he expects the configured grid/subgrid requirement to qualify, and the hook proving inspector screenshot suggests some trigger-input rows may not reflect live truth. Active next seam: sync current repo truth, inspect Derrick’s live hook/uppercut variables plus the relevant pose-strike grid-detection and proving-scene inspector code paths, and determine whether the misses are runtime gating, proving-scene UI staleness, or both.  
 **Agent:** `pico`
 
 ---
@@ -3430,6 +3430,76 @@ Runtime truth is still worth splitting by family. For hook and uppercut, the Tas
 
 ---
 
+### Task 101: Investigate repeated same-side hook/uppercut misses and proving inspector truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-f6f0` + `aerobeat-input-camera-tracking-4kg4`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-03`, `REF-13`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, investigate Derrick’s latest repeated same-side pose-strike tuning repro after Task 100. Current user-truth: the first left hook fires, but a quick repeated left hook does not seem to trigger even though Derrick believes it is crossing the configured single strike-subgrid requirement; Derrick has now also reported the same same-arm repeat miss pattern for uppercuts even though they definitely pass through the configured grid/subgrid requirement. The attached proving-scene hook screenshot also shows the bottom two left-hook trigger-input checks never firing, which may indicate either a real runtime/grid-transition gating issue or stale/unused proving-scene inspector truth. Sync current repo truth, inspect Derrick’s current hook and uppercut variables/config, trace the active pose-strike grid-detection runtime path for repeated same-side hooks and uppercuts, inspect the proving-scene inspector/debug path, and determine the narrowest truthful fix seam. Keep this investigative and narrow; explicitly say whether the misses are runtime gating, proving-scene UI staleness, or both, and whether hook and uppercut share the same root cause.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- likely none for the investigative pass unless a tiny documentation/plan note is needed
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Investigation completed across both same-arm hook and same-arm uppercut repros. First repo-truth sync finding: the local checkout for this research pass is still at `f92cb0e` and is **behind `origin/main` by one commit** (`ad59c1f`, `Update boxing.gesture_detection.yaml`). That latest Derrick tuning commit changes the live boxing config in `assets/boxing.gesture_detection.yaml` from the older Task 100 values to: straight punch `min_velocity: 0.1`, `max_wrist_shoulder_xy_distance: 0.100`, `triggered_grace_ms: 250`; hook `grid_detection.evaluation.min_column_delta: 1` and `triggered_grace_ms: 250`; uppercut `grid_detection.evaluation.min_row_delta: 1` and `triggered_grace_ms: 250`; all three still keep `allow_next_gesture_capture_during_grace: true`, `pose_only_rearm_ms: 1`, and hook/uppercut still keep `overflow_protection_enabled: true`. The directly coupled profile-truth test file `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` is now stale relative to that latest commit because it still asserts the older hook `min_column_delta: 2` and `triggered_grace_ms: 1` values.
+
+Shared runtime-path truth for both families lives in `src/detectors/pose_detector_substrate.gd`: `_process_hook()` / `_process_uppercut()` both route into `_process_pose_strike()`, which builds a single-frame grid transition via `_build_pose_strike_grid_transition()`, scores progress via `_update_pose_strike_grid_progress()`, and attempts retrigger through `_try_trigger_pose_strike()`. For grid-based hook/uppercut, same-side repeat behavior is therefore controlled by the same state machine ingredients: current phase (`ready` / `triggered` / `not_ready`), `triggered_grace_ms`, `pose_only_rearm_ms`, `allow_next_gesture_capture_during_grace`, `overflow_protection_enabled`, `grid_progress_ready`, and the presence of a **fresh observed grid transition** or a buffered qualifying transition. Important source-truth nuance: same-side repeats are **not** blocked by `_get_same_family_threshold_blocking_state()` because that helper only checks the opposite side; same-side refires depend on whether the same side still has a qualifying fresh/buffered transition when its own side state is in `triggered` or returns to `ready`.
+
+Uppercut and hook do appear to share the same core runtime seam. The repo already has explicit source-truth coverage that uppercut same-wrist repeat can work when the runtime actually sees the second qualifying subgrid crossing during grace (`.testbed/tests/unit/test_pose_detector_substrate.gd`, `test_uppercut_grid_detection_allows_same_wrist_repeat_during_grace_when_enabled()`), and that a static held later subcell does **not** retrigger after rearm without a new transition (`test_uppercut_grid_detection_does_not_retrigger_from_static_held_later_subcell()`). Hook uses the same shared pose-strike implementation, but there is currently **no matching same-side hook repeat regression test**; hook only has opposite-side chain coverage (`test_hook_grid_detection_allows_opposite_side_same_family_chain_during_grace_when_enabled()`). That leaves the most truthful current runtime diagnosis as: both repros are governed by the same shared fresh-transition/buffer/rearm path, and the likely runtime miss is not a hook-only direction bug but a shared "second strike finished while no publishable fresh transition survived state timing" seam. In the stale local `f92cb0e` checkout that seam is worsened by the still-old `triggered_grace_ms: 1` settings for hook and uppercut, which make fast same-arm repeats much easier to miss once the hand reaches the later subcell before the side returns to `ready`.
+
+Proving-scene inspector truth is also stale/incomplete for this repro family, so the answer is **both runtime timing truth and proving UI truth**, not UI-only. The bottom two hook rows Derrick called out in the screenshot are built in `.testbed/scripts/boxing_proving_harness.gd` by `_build_pose_strike_requirement_row()`: “Signed column/row delta follows {threshold}” is driven only by the current single-frame `grid_column_delta` / `grid_row_delta` and `grid_direction_gate_passed`, and “Observed grid transition available” is driven only by the current single-frame `grid_transition_available`. Those rows do **not** surface the more durable runtime truth already tracked in detector debug state such as `grid_accumulated_progress`, `grid_progress_ready`, `buffered_grid_transition_available`, `buffered_grid_accumulated_progress`, `grid_run_transition_count`, or `grid_overflow_accumulation_frozen`. Because boxing profile publishing is also throttled through `assets/boxing.camera_tracking.yaml` with `tracking.state_update_max_fps: 10`, and the proving scene separately refreshes UI at `assets/boxing.testbed_debug.yaml` intervals (`debug_panel_refresh_interval_ms: 160`, `inspector_live_refresh_interval_ms: 120`), a very brief qualifying transition can absolutely happen in runtime without those bottom two proving rows ever visibly going true in a published inspector snapshot.
+
+Truthful split by family today:
+- **Hook:** runtime = likely affected by the shared pose-strike transition/buffer/rearm timing seam, especially if the running checkout still has old 1 ms grace; UI = definitely stale/incomplete because the proving rows only show instantaneous transition truth and not buffered/progress truth.
+- **Uppercut:** runtime = same shared pose-strike transition/buffer/rearm seam, with explicit unit-test proof that refire works only when a new qualifying transition is actually observed during grace and does not refire from a static held later subcell after rearm; UI = same stale/incomplete proving-surface problem if inspected the same way.
+- **Shared root cause or split?:** shared. No evidence here of separate hook-vs-uppercut detector families; both route through the same grid-detection pose-strike state machine. The present split is between runtime transition timing/buffering truth and proving-scene UI truth, not between hook and uppercut architecture.
+
+Smallest truthful next fix seam: keep implementation narrow and shared. First, sync the checkout to Derrick’s latest config commit so the active repo/runtime matches his intended 250 ms hook/uppercut grace and hook `min_column_delta: 1` truth. Then add focused same-side **hook** regression coverage parallel to the existing uppercut repeat tests in `.testbed/tests/unit/test_pose_detector_substrate.gd`, using the shared pose-strike path to prove whether same-side hook repeat is actually failing under the intended config. In the same narrow slice, update `.testbed/scripts/boxing_proving_harness.gd` so grid-based hook/uppercut inspectors surface buffered/progress truth (`grid_progress_ready`, accumulated progress, buffered transition availability/progress, and/or overflow freeze state) instead of only the instantaneous single-frame transition rows. That is the smallest seam that can distinguish a real remaining shared runtime bug from proving-scene snapshot staleness without widening into full retuning.
+
+---
+
+### Task 102: Sync latest hook tuning commit and fix repeated pose-strike proving/runtime truth
+
+**Bead ID:** `aerobeat-input-camera-tracking-274d`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-13`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the narrow follow-up seam exposed by Task 101. Current truth: repeated same-side hooks and uppercuts appear to share a pose-strike repeat seam, and the proving inspector is definitely stale/incomplete because it only shows instantaneous transition rows rather than the buffered/progress/overflow truth the detector actually uses. Also, local checkout was one commit behind `origin/main`, and the latest `ad59c1f` config commit updates the active hook/uppercut tuning (`min_column_delta`/`min_row_delta` 1, `triggered_grace_ms` 250, `pose_only_rearm_ms` 1, `allow_next_gesture_capture_during_grace` true, `overflow_protection_enabled` true), so sync that truth first. Then keep scope narrow to: (1) sync latest repo/config truth, (2) add same-side hook repeat regression coverage parallel to existing uppercut repeat coverage, (3) update stale config-profile test expectations, and (4) improve the proving inspector for hook/uppercut so it surfaces buffered/progress/overflow truth instead of only instantaneous transition rows. Commit and push to `main` by default when ready.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/boxing_proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Synced the repo to `origin/main` first, which pulled Derrick’s live boxing config truth from `ad59c1f` before any local changes. The actual narrow implementation stayed on the shared proving/runtime seam and did **not** widen into retuning or detector logic edits: no production detector code changed because the shared pose-strike runtime already had the buffered repeat path Task 101 described. Instead, the coder pass added missing same-side **hook** repeat regression coverage parallel to the existing uppercut repeat coverage in `.testbed/tests/unit/test_pose_detector_substrate.gd`, covering both the buffered fast-repeat path and the in-grace same-wrist retrigger path so hook now has the same shared-seam protection uppercut already had.
+
+The stale published-config truth was then refreshed in `.testbed/tests/unit/test_camera_tracking_config_profiles.gd` and the coupled boxing proving/event-feed expectations were updated in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` and `.testbed/tests/unit/test_pose_detector_substrate.gd` so they match current source truth: straight-punch `min_velocity: 0.1`, `max_wrist_shoulder_xy_distance: 0.100`, `triggered_grace_ms: 250`; hook/uppercut grid grace `250ms`; hook `min_column_delta: 1`; hook/uppercut `allow_next_gesture_capture_during_grace: true`; hook/uppercut `pose_only_rearm_ms: 1`; and the published straight-punch snapshot still truthfully shows the left side as `triggered` while grace is active.
+
+The proving inspector seam was tightened in `.testbed/scripts/boxing_proving_harness.gd` by adding grid-only live truth rows for `Grid progress`, `Buffered repeat transition`, and `Overflow protection`. Those rows now surface the buffered/progress/overflow fields the detector actually uses (`grid_accumulated_progress`, `grid_progress_ready`, `grid_progress_transition_count`, `grid_run_transition_count`, `grid_run_reset_reason`, `buffered_grid_transition_available`, `buffered_grid_*`, and `grid_overflow_accumulation_frozen`) instead of leaving hook/uppercut debugging to the old instantaneous transition-only rows. Matching harness coverage was added in `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd` so the hover card and full inspector both lock this source truth.
+
+**Validation:** `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_camera_tracking_config_profiles.gd,res://tests/unit/test_boxing_proving_harness_profiles_and_debug.gd -gexit` → **172/172 passed**.
+
+**Commit:** `7ae565f` - Add hook repeat seam coverage and inspector truth
+
+**Caveats / follow-up seam exposed:** this coder pass intentionally did **not** retune or change `src/detectors/pose_detector_substrate.gd`; it proved the shared repeat seam with hook-parity tests and made the proving surface truthful about buffered/progress/overflow state. If Derrick still sees missed same-side repeats after this, the next seam is no longer “inspector rows might be lying” — it is a tighter manual/runtime timing question about whether the real performed motion is producing a qualifying fresh or buffered transition before the side exits `triggered`/`not_ready` under the current 250ms grace + 1ms pose-only rearm settings.
+
+---
+
 ## Final Results
 
 **Status:** ⚠️ Partial - active feedback plan remains open for Derrick's next manual testing wave
@@ -3459,6 +3529,7 @@ Runtime truth is still worth splitting by family. For hook and uppercut, the Tas
 - `bccfe4f` - Fix boxing straight-punch debug truth
 - `8fa0a8f` - Test: clean up boxing depth debug preview fixtures
 - `7aabf0b` - Treat blank replay source as live camera
+- `7ae565f` - Add hook repeat seam coverage and inspector truth
 
 **Lessons Learned:**
 - The trickiest package-lane failures were mostly contract drift, stale tests, and missing shared-validator runtime dependencies; once the manifest was treated as the source of truth and the vendor testbed loaded `aerobeat-content-core` directly, the remaining package seams became narrow and mechanical.

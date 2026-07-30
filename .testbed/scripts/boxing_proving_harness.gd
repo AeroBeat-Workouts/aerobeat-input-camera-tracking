@@ -196,6 +196,21 @@ const POSE_STRIKE_REQUIREMENT_ROWS := [
 		"label": "Signed direction share >= {threshold}",
 	},
 	{
+		"id": "grid_progress_truth",
+		"label": "Grid progress",
+		"row_kind": "info",
+	},
+	{
+		"id": "buffered_transition_truth",
+		"label": "Buffered repeat transition",
+		"row_kind": "info",
+	},
+	{
+		"id": "overflow_truth",
+		"label": "Overflow protection",
+		"row_kind": "info",
+	},
+	{
 		"id": "rearm_section",
 		"label": "Hold / rearm",
 		"row_kind": "section",
@@ -1532,8 +1547,12 @@ func _build_pose_strike_hover_card_model(spec: Dictionary, family: String, side:
 	var family_debug: Dictionary = (gesture_debug.get(family, {}) as Dictionary)
 	var side_debug: Dictionary = ((family_debug.get(side, {}) as Dictionary)).duplicate(true)
 	var rows: Array[Dictionary] = []
+	var using_grid_detection := String(side_debug.get("backend", "threshold")) == "grid_detection"
 	for row_spec_variant: Variant in spec.get("rows", []):
 		var row_spec: Dictionary = row_spec_variant
+		var row_id := String(row_spec.get("id", ""))
+		if not using_grid_detection and ["grid_progress_truth", "buffered_transition_truth", "overflow_truth"].has(row_id):
+			continue
 		rows.append(_build_pose_strike_requirement_row(row_spec, side_debug, family, side))
 	return {
 		"title": spec.get("title", _display_name_for_card_key("%s_%s" % [family, side])),
@@ -2084,6 +2103,43 @@ func _build_pose_strike_requirement_row(row_spec: Dictionary, side_debug: Dictio
 				current_text = _fmt_bool(uppercut_above_elbow_gate_passed)
 				passed = uppercut_above_elbow_gate_passed
 				label = "Preview-space wrist stays above elbow"
+		"grid_progress_truth":
+			var accumulated_progress := int(side_debug.get("grid_accumulated_progress", 0))
+			var progress_threshold := int(side_debug.get("grid_progress_threshold", 0))
+			var progress_ready := bool(side_debug.get("grid_progress_ready", false))
+			var transition_count := int(side_debug.get("grid_progress_transition_count", 0))
+			var run_transition_count := int(side_debug.get("grid_run_transition_count", 0))
+			var progress_mode := String(side_debug.get("grid_progress_mode", "directional_run_excursion"))
+			current_text = "%d/%d subcells, ready=%s, history=%d, run=%d, mode=%s" % [
+				accumulated_progress,
+				progress_threshold,
+				_fmt_bool(progress_ready),
+				transition_count,
+				run_transition_count,
+				progress_mode,
+			]
+			var run_reset_reason := String(side_debug.get("grid_run_reset_reason", ""))
+			if not run_reset_reason.is_empty():
+				current_text += ", reset=%s" % run_reset_reason
+			passed = progress_ready
+		"buffered_transition_truth":
+			var buffered_available := bool(side_debug.get("buffered_grid_transition_available", false))
+			if buffered_available:
+				current_text = "%s -> %s, Δcol %s, Δrow %s, progress %d" % [
+					_fmt_flow_cell(int(side_debug.get("buffered_grid_previous_cell", -1))),
+					_fmt_flow_cell(int(side_debug.get("buffered_grid_current_cell", -1))),
+					_fmt_signed_int(int(side_debug.get("buffered_grid_column_delta", 0))),
+					_fmt_signed_int(int(side_debug.get("buffered_grid_row_delta", 0))),
+					int(side_debug.get("buffered_grid_accumulated_progress", 0)),
+				]
+			else:
+				current_text = "none"
+			passed = buffered_available
+		"overflow_truth":
+			var overflow_enabled := bool(side_debug.get("grid_overflow_protection_enabled", false))
+			var overflow_frozen := bool(side_debug.get("grid_overflow_accumulation_frozen", false))
+			current_text = "%s, frozen=%s" % ["enabled" if overflow_enabled else "disabled", _fmt_bool(overflow_frozen)]
+			passed = not overflow_enabled or not overflow_frozen
 		"grace_timer":
 			current_text = "%d/%dms remaining" % [grace_ms_remaining, triggered_grace_ms]
 			if state_name == "triggered":
