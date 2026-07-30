@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-22
 **Status:** In Progress
-**Last Updated:** 2026-07-30 11:50 EDT
-**Blocked Reason:** None. Derrick explicitly reversed the order of the next hook/uppercut wave: simplify the actual runtime/code path first, handle the `strike_subgrid` → `subgrid` refactor across code and both proving-scene UIs while inside that seam, and then simplify the boxing proving inspector toward the smaller decision-critical surface. Active next seam: land that implementation-first simplification wave, preserving the now-good straight-punch path while focusing the runtime/UI cleanup on hooks and uppercuts.  
+**Last Updated:** 2026-07-30 15:59 EDT
+**Blocked Reason:** None. Derrick approved immediate execution of the cleanup/contracts wave with four explicit decisions: remove Flow’s unused boxing concepts entirely, update docs/tests to current runtime truth, remove threshold legacy codepaths completely rather than preserving fallback behavior, and tighten/bless the shared profile-specific gameplay contracts for downstream boxing and flow feature repos. Active next seam: implement those contract hardening and cleanup changes now.  
 **Agent:** `pico`
 
 ---
@@ -3557,6 +3557,103 @@ The boxing proving UI was simplified in two places for this slice: the boxing ev
 
 ---
 
+### Task 105: Audit cleanup candidates and downstream gameplay contract alignment
+
+**Bead ID:** `aerobeat-input-camera-tracking-5zy2`  
+**SubAgent:** `primary` (for `research`)  
+**Role:** `research`  
+**References:** `REF-03`, `REF-13`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, audit the current codebase after the boxing/flow input stabilization wave. Identify dead or retired code/config surfaces we should remove (for example, hook/uppercut `threshold` paths that are no longer intended to be used, dead `flow:` config blocks in `flow.gesture_detection.yaml`, and any stale proving/debug/runtime branches left behind by the recent simplifications). In parallel, verify that the repo’s shared contracts for downstream boxing and flow gameplay feature repos expose the actual information those consumers need, and identify any contract mismatches, missing fields, or stale payloads that would cause downstream gameplay repos to read something different from what this repo actually uses at runtime.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- to be determined after the audit/design pass
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audit complete. Source-truth summary plus the requested maps:
+
+- **Cleanup map**
+  1. **Flow-only dead config block:** `assets/flow.gesture_detection.yaml` still carries a `flow.backend: threshold` + empty `flow.threshold: {}` placeholder, but current runtime flow occupancy/direction does not read any `flow` family config block. Runtime flow truth comes from calibration + shared flow history/grid code instead (`src/detectors/pose_detector_substrate.gd` flow debug/build path), so this block is now a dead config surface unless a real configurable flow backend is intentionally coming back.
+  2. **Flow profile hidden punch-family fallback risk:** hook/uppercut family backend lookup falls back to `threshold` when a family document is missing (`src/detectors/pose_detector_substrate.gd`), and `_detect_intent_events()` still evaluates hook/uppercut whenever the backend is not `disabled`. Because `assets/flow.gesture_detection.yaml` omits `hook` and `uppercut`, the flow profile currently inherits live threshold defaults for both families instead of explicitly disabling them. That is not just dead config; it is an accidental live surface.
+  3. **Retired hook/uppercut threshold path is now a cleanup candidate, not yet proven safe to delete:** boxing defaults are `grid_detection`, but repo truth still preserves threshold fallback intentionally in runtime/tests (`.testbed/tests/unit/test_pose_detector_substrate.gd` still proves `test_hook_threshold_backend_remains_available_as_fallback`). Recommendation: do **not** delete threshold code first. First decide whether fallback comparison is still a supported product/debug surface. If not, remove it in a dedicated cleanup slice after flow-profile safety is fixed.
+  4. **Stale contract docs/tests to clean with the runtime:** `docs/cross-repo-config-contract.md` still documents boxing hook/uppercut as `backend: threshold` and flow as a tunable `flow.threshold` schema, which no longer matches the shipped boxing YAML or the actual flow runtime. Any cleanup pass must include doc/test realignment so new drift is not reintroduced by “helpful” future edits.
+  5. **Profile-agnostic superset signal wiring is an ambiguity seam:** `AeroCameraTracking.gd`, `src/input_provider.gd`, and `src/providers/camera_tracking_provider.gd` all expose/wire the full boxing + flow signal superset regardless of active profile. That may be acceptable as an internal convenience seam, but it is too wide for a profile-specific public contract and should either be explicitly documented as a superset API or narrowed.
+
+- **Contract-alignment map**
+  1. **Actual gameplay-facing event surface from this repo:**
+     - Top-level camera-tracking singleton/provider surface currently exposes boxing attack/state signals (`punch_*`, `hook_*`, `uppercut_*`, `*_state_changed`, `guard_*`, `squat_*`, `weave_*`) plus flow cell-entry signals (`flow_left_cell_entered`, `flow_right_cell_entered`) and state accessors (`get_detector_state()`, `get_detector_state_view()`, `get_tracking_frame()`, `get_selected_profile_bundle()`).
+     - State-change payloads are emitted from detector event dictionaries with `name` stripped by `camera_tracking_provider.gd`, so downstream consumers receive the full detail payload minus only `name`.
+  2. **Actual flow gameplay contract consumed downstream:** `aerobeat-input-core/src/interfaces/flow_input.gd` and `input_manager.gd` only treat `flow_left_cell_entered`, `flow_right_cell_entered`, and optional `squat_*` as Flow gameplay signals. No downstream gameplay contract in input-core consumes hook/uppercut/guard/weave on the Flow path.
+  3. **Actual boxing gameplay contract consumed downstream:** `aerobeat-input-core/src/interfaces/boxing_input.gd` and `input_manager.gd` still expect the full boxing authored vocabulary, including `hook_*` and `uppercut_*`, so removing those families outright would break boxing/content contract alignment even if threshold fallback becomes retired.
+  4. **Critical mismatch:** Flow profile runtime currently still has live hook/uppercut detection via default-threshold fallback, while downstream flow gameplay contract does not expect those signals. That means runtime truth and exported top-level camera-tracking surface are broader than the intended Flow contract.
+  5. **Secondary mismatch:** Flow interface in input-core still advertises optional `squat_start` / `squat_end`, but this repo intentionally suppresses squat for flow profile via `_supports_squat_surface()`. That is survivable because the signals are optional, but the contract is ambiguous and should be documented or narrowed.
+  6. **Debug/state contract that appears stable/useful for downstream proving tooling:**
+     - `gesture_debug.flow.grid`
+     - `gesture_debug.flow.tracked_landmarks.{nose,left_wrist,right_wrist}` plus shorthand `left`/`right`
+     - `gesture_debug.punch_detection.family_backends` / `straight_backend` / `hook_backend` / `uppercut_backend`
+     - `gesture_states` booleans for currently active stateful gestures
+     - state-change detail payloads for `straight_punch_state_changed`, `hook_state_changed`, `uppercut_state_changed`
+     These look like the real shared observability seams today; if kept public, they should be documented from code truth instead of stale prose.
+
+- **Recommended narrow next implementation order**
+  1. **Safety/contract fix first:** explicitly disable hook + uppercut in `assets/flow.gesture_detection.yaml` and/or harden detector backend resolution so omitted punch families do not silently fall back to live threshold behavior in Flow.
+  2. **Then align docs/tests:** update `docs/cross-repo-config-contract.md`, profile-loader tests, and any contract prose that still teaches `flow.threshold` as active runtime tuning or teaches hook/uppercut threshold as the default boxing surface.
+  3. **Then decide threshold retirement scope:** if Derrick no longer wants hook/uppercut threshold as a supported fallback/debug surface, remove it in one dedicated cleanup slice across runtime, YAML, tests, and proving docs. If Derrick still wants fallback comparison, keep it but mark it explicitly as boxing-only legacy fallback so it stops masquerading as a general shared contract.
+  4. **Finally narrow/clarify the superset API:** either keep `AeroCameraTracking` as an explicitly documented all-signals superset facade, or introduce profile-aware public contract docs/helpers so downstream repos are not encouraged to probe inactive-family signals opportunistically.
+
+---
+
+### Task 106: Remove flow boxing leakage, delete threshold legacy paths, and tighten blessed gameplay contracts
+
+**Bead ID:** `aerobeat-input-camera-tracking-0u24`  
+**SubAgent:** `primary` (for `coder`)  
+**Role:** `coder`  
+**References:** `REF-03`, `REF-13`  
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s approved cleanup/contracts wave after Task 105. Scope decisions are explicit: (1) remove Flow’s unused boxing concepts entirely so Flow only exposes wrists/nose grid-cell + direction truth and does not keep hook/uppercut concepts alive; (2) update docs/tests to current runtime truth; (3) remove threshold concepts completely rather than preserving legacy codepaths; and (4) tighten/bless the shared gameplay contracts so downstream boxing and flow feature repos read the intended profile-specific truth without mismatch. Keep scope focused on flow contract hardening, threshold-path deletion, stale config/doc/test cleanup, and public/shared contract clarification for boxing vs flow. Commit and push to `main` by default when ready.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `assets/flow.gesture_detection.yaml`
+- `assets/boxing.gesture_detection.yaml`
+- `src/config/profile_config_loader.gd`
+- `src/detectors/pose_detector_substrate.gd`
+- `.testbed/scripts/boxing_proving_harness.gd`
+- `.testbed/tests/unit/test_camera_tracking_config_profiles.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `docs/cross-repo-config-contract.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Claimed bead `aerobeat-input-camera-tracking-0u24` and landed the approved cleanup/contracts wave in commit `52fdd12` (`Remove flow boxing leakage and retire pose-strike thresholds`). Flow’s authored gesture YAML now contains only shared calibration truth; the stale `flow.backend` / `flow.threshold` block and flow boxing-family config leakage are gone. Boxing hook/uppercut authored config is now grid-detection only, and the runtime no longer falls back to retired threshold hook/uppercut behavior when a family is omitted or a threshold-only hook/uppercut block is supplied.
+
+Profile loading + runtime/debug contracts were tightened so Flow only publishes `ready` + `flow` surfaces, while boxing keeps the boxing families plus shared flow/grid truth. The blessed contract doc now explicitly separates tracker config ownership from gesture config ownership and locks the profile-specific public surfaces for downstream boxing vs flow consumers.
+
+Docs/tests/proving surfaces were updated to current runtime truth: hook/uppercut proving text now describes calibrated grid travel rather than threshold/depth tuning, stale flow boxing assertions were removed, and the focused validation passes succeeded via:
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_camera_tracking_config_profiles -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_pose_detector_substrate -gexit`
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gselect=test_boxing_proving_harness_profiles_and_debug -gexit`
+
+**Contract/Cleanup Decisions Landed:**
+- Flow config/runtime/docs/tests no longer expose boxing families or a dead `flow.backend` authoring surface.
+- Missing Flow punch families no longer inherit fallback threshold behavior.
+- Hook/uppercut threshold + depth authoring surfaces are retired; boxing hook/uppercut are grid-detection families only.
+- Flow public debug truth is now explicitly non-boxing; boxing public debug truth still includes boxing families plus shared calibrated flow/grid truth.
+- Any future flow-specific authored tuning must land as an explicit new contract slice, not as boxing fallback behavior.
+
+**Follow-up seam exposed:** historical design/review docs still describe the now-retired hook/uppercut threshold/depth era. They are no longer runtime source-of-truth, but if Derrick wants the archive/history docs normalized too, that can be a separate documentation-only cleanup.
+
+---
+
 ## Final Results
 
 **Status:** ⚠️ Partial - active feedback plan remains open for Derrick's next manual testing wave
@@ -3565,10 +3662,12 @@ The boxing proving UI was simplified in two places for this slice: the boxing ev
 - BeatSaver/package lane: corrected the `.testbed` difficulty presentation, surfaced package validation honestly, adopted the clean-break `song.package.yaml` contract, aligned emitted manifests to the approved final shape, removed leaked legacy linkage like root `setIds`, brought the package-lane broad authoring tests back to substantive green, and restored direct validator availability in `aerobeat-vendor-beatsaver/.testbed` by mounting `aerobeat-content-core` through the normal GodotEnv/addons path.
 - Camera/calibration lane: corrected the runtime countdown/wrist-span sampling flow to Derrick's simpler calibration contract, fixed the proving overlay Y mapping and square-cell display sync, aligned the underlying runtime grid quantization/orientation so the gameplay grid and visual grid use the same calibrated truth, and simplified the remaining calibration math so grid width is back on wrist-span X distance and flow cell height again matches cell width end to end.
 - Boxing/debug lane from today's testing wave: landed repeated-punch grace-capture controls for straight/hook/uppercut, fixed the straight-punch proving inspector so live pose-only rows stay current between punches, retired the stale explicit boxing hand-toggle seam, cleaned up the boxing depth-debug test fixture leaks/orphans, made blank replay source truthfully mean live-camera startup without bogus warning noise, and then simplified hook/uppercut grid runtime + proving surfaces around the new anchor-to-current `grid`/`subgrid` crossing rule.
+- Cleanup/contracts lane after Task 105: removed Flow boxing leakage from authored/runtime public surfaces, deleted the dead `flow.backend` / `flow.threshold` authoring seam, retired hook/uppercut threshold+depth public config/runtime fallback behavior, blessed boxing-vs-flow profile contracts in `docs/cross-repo-config-contract.md`, and updated proving/unit tests so the current source of truth is explicit: Flow is calibration + wrists/nose grid truth only, while boxing keeps boxing families plus shared grid truth.
 
 **Reference Check:**
-- `REF-02` / `REF-03`: camera/boxing seam now targets Derrick's intended truth: simple countdown + calibration contract, straight-punch inspector rows that stay live in pose-only mode, no fake hand-toggle workaround, and no bogus replay warning when blank source means live camera.
+- `REF-02` / `REF-03`: camera/boxing seam now targets Derrick's intended truth: simple countdown + calibration contract, straight-punch inspector rows that stay live in pose-only mode, no fake hand-toggle workaround, no bogus replay warning when blank source means live camera, and a hook/uppercut/flow contract that no longer leaks retired threshold or boxing-only concepts into the wrong profile.
 - `REF-04` / `REF-05` / `REF-06`: BeatSaver/package seam now matches the approved clean-break manifest contract and truthful validation/UI behavior, with direct shared-validator availability in the vendor `.testbed`.
+- `REF-13`: blessed cross-repo config/runtime truth is now explicit: Flow depends on shared calibration + wrists/nose grid truth only, while boxing remains the only profile that publishes boxing gesture families.
 
 **Commits:**
 - `3253058` - Mount content-core into vendor testbed validation
@@ -3588,6 +3687,7 @@ The boxing proving UI was simplified in two places for this slice: the boxing ev
 - `7aabf0b` - Treat blank replay source as live camera
 - `3b9183c` - Add hook repeat seam coverage and inspector truth
 - `fab80a8` - Simplify hook and uppercut grid travel
+- `52fdd12` - Remove flow boxing leakage and retire pose-strike thresholds
 
 **Lessons Learned:**
 - The trickiest package-lane failures were mostly contract drift, stale tests, and missing shared-validator runtime dependencies; once the manifest was treated as the source of truth and the vendor testbed loaded `aerobeat-content-core` directly, the remaining package seams became narrow and mechanical.
