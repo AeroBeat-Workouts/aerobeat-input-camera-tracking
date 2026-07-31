@@ -153,6 +153,19 @@ const BOXING_ATTACK_EVENTS := [
 	"uppercut_right",
 ]
 
+const BOXING_ACTIVATION_EVENTS := [
+	"straight_left",
+	"straight_right",
+	"hook_left",
+	"hook_right",
+	"uppercut_left",
+	"uppercut_right",
+	"guard_enabled",
+	"squat_enabled",
+	"weave_left_enabled",
+	"weave_right_enabled",
+]
+
 const BOXING_STATE_ROWS := [
 	{"label": "guard", "state": "guard", "start": "guard_enabled", "end": "guard_disabled"},
 	{"label": "squat", "state": "squat", "start": "squat_enabled", "end": "squat_disabled"},
@@ -1655,8 +1668,18 @@ func _connect_calibration_signal(signal_name: String) -> void:
 	if _provider_mode_signal_relays.has(signal_name):
 		return
 	var relay := func(session: Dictionary) -> void:
-		_record_event(signal_name, {"state": String(session.get("state", "idle")), "progress": float(session.get("hold_progress", session.get("progress", 0.0)))})
+		_record_calibration_signal_update(signal_name, session)
 	_remember_mode_signal_relay(signal_name, relay)
+
+func _record_calibration_signal_update(signal_name: String, session: Dictionary) -> void:
+	var timestamp_ms := Time.get_ticks_msec()
+	var payload := {
+		"state": String(session.get("state", "idle")),
+		"progress": float(session.get("hold_progress", session.get("progress", 0.0))),
+	}
+	_event_counts[signal_name] = int(_event_counts.get(signal_name, 0)) + 1
+	_last_event_payloads[signal_name] = payload.duplicate(true)
+	_last_event_timestamps_ms[signal_name] = timestamp_ms
 
 func _on_pose_updated(landmarks: Array) -> void:
 	if _is_preview_only_mode():
@@ -2994,6 +3017,8 @@ func _record_event(event_name: String, payload: Dictionary) -> void:
 	_refresh_debug_panels()
 
 func _append_event_feed_lines(event_name: String, payload: Dictionary) -> void:
+	if not _should_publish_runtime_log_event(event_name):
+		return
 	var lines := _build_event_feed_lines(event_name, payload)
 	for line: String in lines:
 		_event_sequence += 1
@@ -3001,6 +3026,13 @@ func _append_event_feed_lines(event_name: String, payload: Dictionary) -> void:
 	while _event_lines.size() > MAX_EVENT_LINES:
 		_event_lines.remove_at(0)
 	_echo_console_event_feed_lines(event_name, lines)
+
+func _should_publish_runtime_log_event(event_name: String) -> bool:
+	if event_name == "calibration_session_updated":
+		return false
+	if harness_mode == HarnessMode.BOXING and BOXING_EVENT_ORDER.has(event_name):
+		return BOXING_ACTIVATION_EVENTS.has(event_name)
+	return true
 
 func _echo_console_event_feed_lines(event_name: String, lines: Array[String]) -> void:
 	if event_name != "athlete_calibration_succeeded":

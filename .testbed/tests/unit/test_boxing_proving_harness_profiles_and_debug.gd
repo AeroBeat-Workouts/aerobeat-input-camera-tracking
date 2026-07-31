@@ -2080,6 +2080,29 @@ func test_calibration_success_echoes_copy_paste_grid_line_to_console() -> void:
 	var event_lines: Array = harness.get("_event_lines")
 	assert_true(String(event_lines[event_lines.size() - 1]).ends_with("calibrated_grid width=0.520000 height=0.520000"))
 
+func test_calibration_signal_updates_increment_status_count_without_spamming_runtime_log() -> void:
+	var harness = _new_base_harness()
+	harness._reset_event_tracking()
+	harness._record_calibration_signal_update("calibration_session_updated", {
+		"state": "holding",
+		"hold_progress": 0.5,
+	})
+	assert_eq(harness._event_count("calibration_session_updated"), 1)
+	assert_eq_deep(harness.get("_event_lines"), [])
+	assert_eq(String(harness.get("_last_event_payloads").get("calibration_session_updated", {}).get("state", "")), "holding")
+
+func test_boxing_runtime_log_only_keeps_activation_events() -> void:
+	var harness = _new_harness()
+	harness._reset_event_tracking()
+	harness._record_event("guard_disabled", {})
+	assert_eq_deep(harness.get("_event_lines"), [])
+	harness._record_event("guard_enabled", {})
+	harness._record_event("straight_left", {"power": 0.75})
+	var event_lines: Array = harness.get("_event_lines")
+	assert_eq(event_lines.size(), 2)
+	assert_true(String(event_lines[0]).contains("guard_enabled"))
+	assert_true(String(event_lines[1]).contains("straight_left"))
+
 func test_proving_scenes_mount_t_pose_badge_in_preview_overlay_and_show_live_hold_progress() -> void:
 	for packed_scene_variant: Variant in [BoxingProvingScene, FlowProvingScene]:
 		var packed_scene := packed_scene_variant as PackedScene
