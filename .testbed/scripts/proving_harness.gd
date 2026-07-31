@@ -122,30 +122,31 @@ const LANDMARK_BODY_PART_HINTS := {
 }
 
 const BOXING_EVENT_ORDER := [
-	"punch_left",
-	"punch_right",
+	"straight_left",
+	"straight_right",
 	"hook_left",
 	"hook_right",
 	"uppercut_left",
 	"uppercut_right",
-	"guard_start",
-	"guard_end",
-	"squat_start",
-	"squat_end",
-	"weave_left_start",
-	"weave_left_end",
-	"weave_right_start",
-	"weave_right_end",
+	"guard_enabled",
+	"guard_disabled",
+	"squat_enabled",
+	"squat_disabled",
+	"weave_left_enabled",
+	"weave_left_disabled",
+	"weave_right_enabled",
+	"weave_right_disabled",
 ]
 
 const FLOW_EVENT_ORDER := [
-	"flow_left_cell_entered",
-	"flow_right_cell_entered",
+	"left_wrist_cell_entered",
+	"right_wrist_cell_entered",
+	"nose_cell_entered",
 ]
 
 const BOXING_ATTACK_EVENTS := [
-	"punch_left",
-	"punch_right",
+	"straight_left",
+	"straight_right",
 	"hook_left",
 	"hook_right",
 	"uppercut_left",
@@ -153,10 +154,10 @@ const BOXING_ATTACK_EVENTS := [
 ]
 
 const BOXING_STATE_ROWS := [
-	{"label": "guard", "state": "guard", "start": "guard_start", "end": "guard_end"},
-	{"label": "squat", "state": "squat", "start": "squat_start", "end": "squat_end"},
-	{"label": "weave_left", "state": "weave_left", "start": "weave_left_start", "end": "weave_left_end"},
-	{"label": "weave_right", "state": "weave_right", "start": "weave_right_start", "end": "weave_right_end"},
+	{"label": "guard", "state": "guard", "start": "guard_enabled", "end": "guard_disabled"},
+	{"label": "squat", "state": "squat", "start": "squat_enabled", "end": "squat_disabled"},
+	{"label": "weave_left", "state": "weave_left", "start": "weave_left_enabled", "end": "weave_left_disabled"},
+	{"label": "weave_right", "state": "weave_right", "start": "weave_right_enabled", "end": "weave_right_disabled"},
 ]
 
 enum HarnessMode {
@@ -413,7 +414,7 @@ func _sync_calibration_overlay_parent() -> void:
 		_position_t_pose_calibration_badge()
 
 func _on_athlete_recalibrate_pressed() -> void:
-	if _start_athlete_calibration_request():
+	if _start_calibration_request():
 		_sync_latest_detector_state()
 		_refresh_calibration_flow_ui()
 		_refresh_debug_panels()
@@ -423,7 +424,7 @@ func _on_athlete_recalibrate_pressed() -> void:
 	_update_status("Athlete calibration unavailable", Color(1.0, 0.75, 0.44, 1.0))
 
 func _on_athlete_calibration_secondary_pressed() -> void:
-	if _cancel_athlete_calibration_request():
+	if _cancel_calibration_request():
 		_sync_latest_detector_state()
 		_refresh_calibration_flow_ui()
 		_refresh_debug_panels()
@@ -463,26 +464,20 @@ func _resolve_baseline_state() -> Dictionary:
 	var baseline: Dictionary = _latest_state.get("baseline", {}) if _latest_state.get("baseline", {}) is Dictionary else {}
 	return baseline.duplicate(true)
 
-func _start_athlete_calibration_request() -> bool:
-	if provider != null:
-		if provider.has_method("start_athlete_calibration"):
-			return bool(provider.start_athlete_calibration())
-		if provider.has_method("request_athlete_recalibration"):
-			return bool(provider.request_athlete_recalibration())
+func _start_calibration_request() -> bool:
+	if provider != null and provider.has_method("start_calibration"):
+		return bool(provider.start_calibration())
 	var tracking_singleton := _resolve_camera_tracking_singleton()
-	if tracking_singleton != null:
-		if tracking_singleton.has_method("start_athlete_calibration"):
-			return bool(tracking_singleton.start_athlete_calibration())
-		if tracking_singleton.has_method("request_athlete_recalibration"):
-			return bool(tracking_singleton.request_athlete_recalibration())
+	if tracking_singleton != null and tracking_singleton.has_method("start_calibration"):
+		return bool(tracking_singleton.start_calibration())
 	return false
 
-func _cancel_athlete_calibration_request() -> bool:
-	if provider != null and provider.has_method("cancel_athlete_calibration"):
-		return bool(provider.cancel_athlete_calibration())
+func _cancel_calibration_request() -> bool:
+	if provider != null and provider.has_method("cancel_calibration"):
+		return bool(provider.cancel_calibration())
 	var tracking_singleton := _resolve_camera_tracking_singleton()
-	if tracking_singleton != null and tracking_singleton.has_method("cancel_athlete_calibration"):
-		return bool(tracking_singleton.cancel_athlete_calibration())
+	if tracking_singleton != null and tracking_singleton.has_method("cancel_calibration"):
+		return bool(tracking_singleton.cancel_calibration())
 	return false
 
 func _refresh_calibration_flow_ui() -> void:
@@ -620,16 +615,16 @@ func _humanize_calibration_failure_reason(reason: String) -> String:
 			return reason.replace("_", " ")
 
 func provider_has_start_calibration() -> bool:
-	if provider != null and (provider.has_method("start_athlete_calibration") or provider.has_method("request_athlete_recalibration")):
+	if provider != null and provider.has_method("start_calibration"):
 		return true
 	var tracking_singleton := _resolve_camera_tracking_singleton()
-	return tracking_singleton != null and (tracking_singleton.has_method("start_athlete_calibration") or tracking_singleton.has_method("request_athlete_recalibration"))
+	return tracking_singleton != null and tracking_singleton.has_method("start_calibration")
 
 func provider_has_cancel_calibration() -> bool:
-	if provider != null and provider.has_method("cancel_athlete_calibration"):
+	if provider != null and provider.has_method("cancel_calibration"):
 		return true
 	var tracking_singleton := _resolve_camera_tracking_singleton()
-	return tracking_singleton != null and tracking_singleton.has_method("cancel_athlete_calibration")
+	return tracking_singleton != null and tracking_singleton.has_method("cancel_calibration")
 
 func _shared_calibration_supported_for_active_source() -> bool:
 	return provider_has_start_calibration()
@@ -1612,13 +1607,13 @@ func _uses_camera_tracking_contract_path() -> bool:
 
 func _connect_mode_signals() -> void:
 	if harness_mode == HarnessMode.BOXING:
-		for signal_name: String in ["punch_left", "punch_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right"]:
+		for signal_name: String in ["straight_left", "straight_right", "hook_left", "hook_right", "uppercut_left", "uppercut_right"]:
 			_connect_power_signal(signal_name)
-		for signal_name: String in ["guard_start", "guard_end", "squat_start", "squat_end", "weave_left_start", "weave_left_end", "weave_right_start", "weave_right_end"]:
+		for signal_name: String in ["guard_enabled", "guard_disabled", "squat_enabled", "squat_disabled", "weave_left_enabled", "weave_left_disabled", "weave_right_enabled", "weave_right_disabled"]:
 			_connect_simple_signal(signal_name)
-	else:
-		for signal_name: String in FLOW_EVENT_ORDER:
-			_connect_flow_signal(signal_name)
+	for signal_name: String in FLOW_EVENT_ORDER:
+		_connect_flow_signal(signal_name)
+	_connect_calibration_signal("calibration_session_updated")
 
 func _connect_simple_signal(signal_name: String) -> void:
 	if provider == null or not provider.has_signal(signal_name):
@@ -1653,6 +1648,15 @@ func _connect_flow_signal(signal_name: String) -> void:
 			"side": _flow_side_from_event_name(signal_name),
 		}
 		_record_event(signal_name, {"cell": cell, "direction": direction})
+	_remember_mode_signal_relay(signal_name, relay)
+
+func _connect_calibration_signal(signal_name: String) -> void:
+	if provider == null or not provider.has_signal(signal_name):
+		return
+	if _provider_mode_signal_relays.has(signal_name):
+		return
+	var relay := func(session: Dictionary) -> void:
+		_record_event(signal_name, {"state": String(session.get("state", "idle")), "progress": float(session.get("hold_progress", session.get("progress", 0.0)))})
 	_remember_mode_signal_relay(signal_name, relay)
 
 func _on_pose_updated(landmarks: Array) -> void:
@@ -2730,11 +2734,12 @@ func _build_quick_stats_text() -> String:
 			_fmt_float(left_flow.get("grid_cell_width", left_flow.get("grid_cell_size", right_flow.get("grid_cell_width", right_flow.get("grid_cell_size", 0.0))))),
 			_fmt_float(left_flow.get("grid_cell_height", right_flow.get("grid_cell_height", 0.0))),
 		])
-		lines.append("Cell entries: L=%d R=%d" % [_event_count("flow_left_cell_entered"), _event_count("flow_right_cell_entered")])
+		lines.append("Cell entries: L=%d R=%d N=%d" % [_event_count("left_wrist_cell_entered"), _event_count("right_wrist_cell_entered"), _event_count("nose_cell_entered")])
 		lines.append("Live cell/direction L: %s / %s" % [_fmt_flow_candidate(left_flow), _fmt_flow_direction_candidate(left_flow)])
 		lines.append("Live cell/direction R: %s / %s" % [_fmt_flow_candidate(right_flow), _fmt_flow_direction_candidate(right_flow)])
-		lines.append("Last entry L: %s" % _describe_last_flow_event("flow_left_cell_entered"))
-		lines.append("Last entry R: %s" % _describe_last_flow_event("flow_right_cell_entered"))
+		lines.append("Last entry L: %s" % _describe_last_flow_event("left_wrist_cell_entered"))
+		lines.append("Last entry R: %s" % _describe_last_flow_event("right_wrist_cell_entered"))
+		lines.append("Last entry N: %s" % _describe_last_flow_event("nose_cell_entered"))
 		lines.append("Trail L points/duration: %d / %dms" % [_left_trail.size(), _trail_duration_ms(_left_trail)])
 		lines.append("Trail R points/duration: %d / %dms" % [_right_trail.size(), _trail_duration_ms(_right_trail)])
 	return "\n".join(lines)
@@ -2775,8 +2780,9 @@ func _build_summary_text() -> String:
 		lines.append("")
 		lines.append("Direct 4x3 Flow summary")
 		lines.append("-----------------------")
-		lines.append("left entry: %s" % _describe_last_flow_event("flow_left_cell_entered"))
-		lines.append("right entry: %s" % _describe_last_flow_event("flow_right_cell_entered"))
+		lines.append("left entry: %s" % _describe_last_flow_event("left_wrist_cell_entered"))
+		lines.append("right entry: %s" % _describe_last_flow_event("right_wrist_cell_entered"))
+		lines.append("nose entry: %s" % _describe_last_flow_event("nose_cell_entered"))
 		lines.append("grid anchor: %s" % _fmt_vec2(left_flow.get("grid_anchor", right_flow.get("grid_anchor", Vector2.ZERO))))
 		lines.append("grid cell size: %s x %s" % [
 			_fmt_float(left_flow.get("grid_cell_width", left_flow.get("grid_cell_size", right_flow.get("grid_cell_width", right_flow.get("grid_cell_size", 0.0))))),
@@ -2848,15 +2854,26 @@ func _build_flow_signal_text() -> String:
 		"",
 		"Left wrist",
 		"----------",
-		_format_flow_event_row("flow_left_cell_entered", left_flow),
+		_format_flow_event_row("left_wrist_cell_entered", left_flow),
 		_format_flow_landmark_row("left wrist", left_flow),
 		"",
 		"Right wrist",
 		"-----------",
-		_format_flow_event_row("flow_right_cell_entered", right_flow),
+		_format_flow_event_row("right_wrist_cell_entered", right_flow),
 		_format_flow_landmark_row("right wrist", right_flow),
+		"",
+		"Shared calibration",
+		"------------------",
+		_calibration_signal_status_line(),
 	]
 	return "\n".join(lines)
+
+func _calibration_signal_status_line() -> String:
+	var session := _resolve_calibration_session()
+	var state_name := String(session.get("state", "idle"))
+	var progress := float(session.get("hold_progress", session.get("progress", 0.0)))
+	var instruction := String(session.get("instruction_key", session.get("instruction_text", "idle")))
+	return "state=%s progress=%s instruction=%s updates=%d" % [state_name, _fmt_float(progress), instruction, _event_count("calibration_session_updated")]
 
 func _build_metrics_text() -> String:
 	var state: Dictionary = _latest_state
@@ -3088,12 +3105,17 @@ func _trail_duration_ms(trail: Array) -> int:
 
 func _reset_last_flow_events() -> void:
 	_last_flow_events = {
-		"flow_left_cell_entered": {},
-		"flow_right_cell_entered": {},
+		"left_wrist_cell_entered": {},
+		"right_wrist_cell_entered": {},
+		"nose_cell_entered": {},
 	}
 
 func _flow_side_from_event_name(event_name: String) -> String:
-	return "left" if event_name.contains("left") else "right"
+	if event_name.contains("left"):
+		return "left"
+	if event_name.contains("right"):
+		return "right"
+	return "nose"
 
 func _flow_label_from_event_name(event_name: String) -> String:
 	return "Left wrist" if _flow_side_from_event_name(event_name) == "left" else "Right wrist"
@@ -3130,7 +3152,7 @@ func _reset_event_tracking() -> void:
 	_fixture_pose_state_snapshots_seen = 0
 	_fixture_pose_state_snapshots_retained = 0
 	_fixture_pose_state_snapshots_dropped = 0
-	for event_name: String in BOXING_EVENT_ORDER + FLOW_EVENT_ORDER + ["provider_started", "tracking_lost", "tracking_restored", "camera_stream_failed", "server_failed", "preview_only_provider_disabled", "preview_only_invalid"]:
+	for event_name: String in BOXING_EVENT_ORDER + FLOW_EVENT_ORDER + ["calibration_session_updated", "provider_started", "tracking_lost", "tracking_restored", "camera_stream_failed", "server_failed", "preview_only_provider_disabled", "preview_only_invalid"]:
 		_event_counts[event_name] = 0
 
 func _maybe_anchor_fixture_time_origin_to_provider_ready() -> void:
@@ -3210,7 +3232,7 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 			"own_half_lock": bool(measurements.get("left_own_half_lock", false)),
 			"lateral_speed": absf(left_hand_velocity.x),
 			"vertical_speed": absf(left_hand_velocity.y),
-			"ready": bool(ready_map.get("punch_left", false)),
+			"ready": bool(ready_map.get("straight_left", false)),
 			"phase": String((straight_punch_debug.get("left", {}) as Dictionary).get("phase", "recovering")),
 			"armed_forward_distance": float((straight_punch_debug.get("left", {}) as Dictionary).get("armed_forward_distance", 0.0)),
 			"peak_forward_distance": float((straight_punch_debug.get("left", {}) as Dictionary).get("peak_forward_distance", 0.0)),
@@ -3228,7 +3250,7 @@ func _build_fixture_boxing_debug_snapshot() -> Dictionary:
 			"own_half_lock": bool(measurements.get("right_own_half_lock", false)),
 			"lateral_speed": absf(right_hand_velocity.x),
 			"vertical_speed": absf(right_hand_velocity.y),
-			"ready": bool(ready_map.get("punch_right", false)),
+			"ready": bool(ready_map.get("straight_right", false)),
 			"phase": String((straight_punch_debug.get("right", {}) as Dictionary).get("phase", "recovering")),
 			"armed_forward_distance": float((straight_punch_debug.get("right", {}) as Dictionary).get("armed_forward_distance", 0.0)),
 			"peak_forward_distance": float((straight_punch_debug.get("right", {}) as Dictionary).get("peak_forward_distance", 0.0)),
@@ -3384,14 +3406,15 @@ func _build_console_snapshot() -> String:
 	var flow_debug: Dictionary = (state.get("gesture_debug", {}) as Dictionary).get("flow", {})
 	var left_flow: Dictionary = flow_debug.get("left", {})
 	var right_flow: Dictionary = flow_debug.get("right", {})
-	return "%s left=%s/%s right=%s/%s entries=%d/%d latest=%s" % [
+	return "%s left=%s/%s right=%s/%s entries=%d/%d/%d latest=%s" % [
 		base,
 		_fmt_flow_candidate(left_flow),
 		_fmt_flow_direction_candidate(left_flow),
 		_fmt_flow_candidate(right_flow),
 		_fmt_flow_direction_candidate(right_flow),
-		_event_count("flow_left_cell_entered"),
-		_event_count("flow_right_cell_entered"),
+		_event_count("left_wrist_cell_entered"),
+		_event_count("right_wrist_cell_entered"),
+		_event_count("nose_cell_entered"),
 		(_latest_event_name() if _latest_event_name() != "" else "none"),
 	]
 

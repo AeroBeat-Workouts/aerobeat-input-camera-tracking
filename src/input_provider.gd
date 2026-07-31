@@ -21,9 +21,7 @@ const TRACKING_SESSION_NODE_NAME := "CameraTracking"
 const TRACKING_SINGLETON_NODE_NAME := "AeroCameraTracking"
 const PROVIDER_LANE_CAMERA_TRACKING := "camera_tracking"
 
-signal flow_left_cell_entered(cell: int, direction: int)
-signal flow_right_cell_entered(cell: int, direction: int)
-signal straight_punch_state_changed(side: String, state: String, detail: Dictionary)
+signal straight_state_changed(side: String, state: String, detail: Dictionary)
 signal hook_state_changed(side: String, state: String, detail: Dictionary)
 signal uppercut_state_changed(side: String, state: String, detail: Dictionary)
 
@@ -176,6 +174,24 @@ func set_selected_camera_device_id(device_id: String) -> bool:
 	_republish_shared_session_if_needed()
 	camera_devices_changed.emit(get_available_camera_devices(), get_selected_camera_device_id())
 	return ok
+
+func start_calibration() -> bool:
+	_ensure_provider()
+	if _provider == null or not _provider.has_method("start_calibration"):
+		return false
+	return bool(_provider.start_calibration())
+
+func cancel_calibration() -> bool:
+	_ensure_provider()
+	if _provider == null or not _provider.has_method("cancel_calibration"):
+		return false
+	return bool(_provider.cancel_calibration())
+
+func get_calibration_session() -> Dictionary:
+	_ensure_provider()
+	if _provider == null or not _provider.has_method("get_calibration_session"):
+		return {}
+	return _provider.get_calibration_session()
 
 func get_head_position(mode: TrackingMode = TrackingMode.MODE_2D) -> Vector3:
 	return _to_vector3(_provider.get_head_position(_to_provider_mode(mode))) if _provider != null else Vector3.ZERO
@@ -412,25 +428,27 @@ func _connect_provider_tracking_lost_signal() -> void:
 func _connect_provider_signals() -> void:
 	if _provider == null:
 		return
-	_connect_provider_signal("punch_left", _on_provider_punch_left)
-	_connect_provider_signal("punch_right", _on_provider_punch_right)
-	_connect_provider_signal("straight_punch_state_changed", _on_provider_straight_punch_state_changed)
+	_connect_provider_signal("straight_left", _on_provider_straight_left)
+	_connect_provider_signal("straight_right", _on_provider_straight_right)
+	_connect_provider_signal("straight_state_changed", _on_provider_straight_state_changed)
 	_connect_provider_signal("hook_state_changed", _on_provider_hook_state_changed)
 	_connect_provider_signal("uppercut_state_changed", _on_provider_uppercut_state_changed)
 	_connect_provider_signal("uppercut_left", _on_provider_uppercut_left)
 	_connect_provider_signal("uppercut_right", _on_provider_uppercut_right)
 	_connect_provider_signal("hook_left", _on_provider_hook_left)
 	_connect_provider_signal("hook_right", _on_provider_hook_right)
-	_connect_provider_signal("flow_left_cell_entered", _on_provider_flow_left_cell_entered)
-	_connect_provider_signal("flow_right_cell_entered", _on_provider_flow_right_cell_entered)
-	_connect_provider_signal("guard_start", _on_provider_guard_start)
-	_connect_provider_signal("guard_end", _on_provider_guard_end)
-	_connect_provider_signal("squat_start", _on_provider_squat_start)
-	_connect_provider_signal("squat_end", _on_provider_squat_end)
-	_connect_provider_signal("weave_left_start", _on_provider_weave_left_start)
-	_connect_provider_signal("weave_left_end", _on_provider_weave_left_end)
-	_connect_provider_signal("weave_right_start", _on_provider_weave_right_start)
-	_connect_provider_signal("weave_right_end", _on_provider_weave_right_end)
+	_connect_provider_signal("left_wrist_cell_entered", _on_provider_left_wrist_cell_entered)
+	_connect_provider_signal("right_wrist_cell_entered", _on_provider_right_wrist_cell_entered)
+	_connect_provider_signal("nose_cell_entered", _on_provider_nose_cell_entered)
+	_connect_provider_signal("calibration_session_updated", _on_provider_calibration_session_updated)
+	_connect_provider_signal("guard_enabled", _on_provider_guard_enabled)
+	_connect_provider_signal("guard_disabled", _on_provider_guard_disabled)
+	_connect_provider_signal("squat_enabled", _on_provider_squat_enabled)
+	_connect_provider_signal("squat_disabled", _on_provider_squat_disabled)
+	_connect_provider_signal("weave_left_enabled", _on_provider_weave_left_enabled)
+	_connect_provider_signal("weave_left_disabled", _on_provider_weave_left_disabled)
+	_connect_provider_signal("weave_right_enabled", _on_provider_weave_right_enabled)
+	_connect_provider_signal("weave_right_disabled", _on_provider_weave_right_disabled)
 
 func _connect_provider_signal(signal_name: StringName, callback: Callable) -> void:
 	if _provider == null or not _provider.has_signal(String(signal_name)):
@@ -566,14 +584,14 @@ func _resolve_local_path(relative_path: String) -> String:
 func _on_provider_tracking_lost() -> void:
 	failed.emit("Tracking lost")
 
-func _on_provider_punch_left(power: float) -> void:
-	punch_left.emit(power)
+func _on_provider_straight_left(power: float) -> void:
+	straight_left.emit(power)
 
-func _on_provider_punch_right(power: float) -> void:
-	punch_right.emit(power)
+func _on_provider_straight_right(power: float) -> void:
+	straight_right.emit(power)
 
-func _on_provider_straight_punch_state_changed(side: String, state: String, detail: Dictionary) -> void:
-	straight_punch_state_changed.emit(side, state, detail.duplicate(true))
+func _on_provider_straight_state_changed(side: String, state: String, detail: Dictionary) -> void:
+	straight_state_changed.emit(side, state, detail.duplicate(true))
 
 func _on_provider_hook_state_changed(side: String, state: String, detail: Dictionary) -> void:
 	hook_state_changed.emit(side, state, detail.duplicate(true))
@@ -593,35 +611,41 @@ func _on_provider_hook_left(power: float) -> void:
 func _on_provider_hook_right(power: float) -> void:
 	hook_right.emit(power)
 
-func _on_provider_flow_left_cell_entered(cell: int, direction: int) -> void:
-	flow_left_cell_entered.emit(cell, direction)
+func _on_provider_left_wrist_cell_entered(cell: int, direction: int) -> void:
+	left_wrist_cell_entered.emit(cell, direction)
 
-func _on_provider_flow_right_cell_entered(cell: int, direction: int) -> void:
-	flow_right_cell_entered.emit(cell, direction)
+func _on_provider_right_wrist_cell_entered(cell: int, direction: int) -> void:
+	right_wrist_cell_entered.emit(cell, direction)
 
-func _on_provider_guard_start() -> void:
-	guard_start.emit()
+func _on_provider_nose_cell_entered(cell: int, direction: int) -> void:
+	nose_cell_entered.emit(cell, direction)
 
-func _on_provider_guard_end() -> void:
-	guard_end.emit()
+func _on_provider_calibration_session_updated(session: Dictionary) -> void:
+	calibration_session_updated.emit(session.duplicate(true))
 
-func _on_provider_squat_start() -> void:
-	squat_start.emit()
+func _on_provider_guard_enabled() -> void:
+	guard_enabled.emit()
 
-func _on_provider_squat_end() -> void:
-	squat_end.emit()
+func _on_provider_guard_disabled() -> void:
+	guard_disabled.emit()
 
-func _on_provider_weave_left_start() -> void:
-	weave_left_start.emit()
+func _on_provider_squat_enabled() -> void:
+	squat_enabled.emit()
 
-func _on_provider_weave_left_end() -> void:
-	weave_left_end.emit()
+func _on_provider_squat_disabled() -> void:
+	squat_disabled.emit()
 
-func _on_provider_weave_right_start() -> void:
-	weave_right_start.emit()
+func _on_provider_weave_left_enabled() -> void:
+	weave_left_enabled.emit()
 
-func _on_provider_weave_right_end() -> void:
-	weave_right_end.emit()
+func _on_provider_weave_left_disabled() -> void:
+	weave_left_disabled.emit()
+
+func _on_provider_weave_right_enabled() -> void:
+	weave_right_enabled.emit()
+
+func _on_provider_weave_right_disabled() -> void:
+	weave_right_disabled.emit()
 
 
 func _to_provider_mode(mode: TrackingMode) -> int:

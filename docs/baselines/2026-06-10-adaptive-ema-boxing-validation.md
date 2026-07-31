@@ -76,7 +76,7 @@ Read: adaptive EMA stayed essentially flat versus current `lite_raw` on the repl
 
 ### First-hit responsiveness proxy
 
-Using `provider_started -> first punch_left` from the captured event timeline:
+Using `provider_started -> first straight_left` from the captured event timeline:
 
 - `lite_raw`: `635.0 ms`
 - `exponential_moving_average`: `575.0 ms` (`-60.0 ms` vs raw)

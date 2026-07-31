@@ -237,7 +237,8 @@ Flow consumers must only rely on flow/grid surfaces, not boxing families:
 - `gesture_debug.flow.tracked_landmarks.right_wrist`
 - `gesture_debug.flow.left`
 - `gesture_debug.flow.right`
-- flow events `flow_left_cell_entered` and `flow_right_cell_entered`
+- shared body-cell events `left_wrist_cell_entered`, `right_wrist_cell_entered`, and `nose_cell_entered`
+- shared calibration session updates via `calibration_session_updated(session)` plus `start_calibration()`, `cancel_calibration()`, and `get_calibration_session()`
 
 Flow profile config/docs/tests must not rely on `guard`, `squat`, `weave`, `straight_punch`, `hook`, `uppercut`, `punch_detection`, or `depth_runtime` surfaces.
 

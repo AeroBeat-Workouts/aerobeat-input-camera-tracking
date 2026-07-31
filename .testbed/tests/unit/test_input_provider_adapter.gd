@@ -26,23 +26,43 @@ func test_input_provider_adapter_reports_boxing_velocity_and_lower_body_capabili
 	assert_true(provider.has_capability(provider.Capability.VELOCITY))
 	assert_true(provider.has_capability(provider.Capability.LOWER_BODY))
 
-func test_input_provider_adapter_reemits_flow_signals_from_provider() -> void:
+func test_input_provider_adapter_reemits_shared_body_cell_signals_from_provider() -> void:
 	var adapter = _make_started_tracking_adapter()["adapter"] as Node
 	var flow_calls: Array = []
-	adapter.flow_left_cell_entered.connect(func(cell: int, direction: int) -> void:
-		flow_calls.append([cell, direction])
+	adapter.left_wrist_cell_entered.connect(func(cell: int, direction: int) -> void:
+		flow_calls.append(["left", cell, direction])
 	)
-	adapter._provider.flow_left_cell_entered.emit(12, 5)
-	assert_eq(flow_calls, [[12, 5]])
+	adapter.right_wrist_cell_entered.connect(func(cell: int, direction: int) -> void:
+		flow_calls.append(["right", cell, direction])
+	)
+	adapter.nose_cell_entered.connect(func(cell: int, direction: int) -> void:
+		flow_calls.append(["nose", cell, direction])
+	)
+	adapter._provider.left_wrist_cell_entered.emit(12, 5)
+	adapter._provider.right_wrist_cell_entered.emit(4, 1)
+	adapter._provider.nose_cell_entered.emit(7, 0)
+	assert_eq(flow_calls, [["left", 12, 5], ["right", 4, 1], ["nose", 7, 0]])
 
 func test_input_provider_adapter_reemits_boxing_signals_from_provider() -> void:
 	var adapter = _make_started_tracking_adapter()["adapter"] as Node
 	var punch_calls: Array = []
-	adapter.punch_left.connect(func(power: float) -> void:
+	adapter.straight_left.connect(func(power: float) -> void:
 		punch_calls.append(power)
 	)
-	adapter._provider.punch_left.emit(0.75)
+	adapter._provider.straight_left.emit(0.75)
 	assert_eq(punch_calls, [0.75])
+
+func test_input_provider_adapter_proxies_shared_calibration_controls() -> void:
+	var adapter = _make_started_tracking_adapter()["adapter"] as Node
+	var sessions: Array = []
+	adapter.calibration_session_updated.connect(func(session: Dictionary) -> void:
+		sessions.append(session)
+	)
+	adapter._provider.calibration_session_updated.emit({"state": "capturing", "hold_progress": 0.5})
+	assert_eq(String(sessions[0].get("state", "")), "capturing")
+	assert_true(adapter.has_method("start_calibration"))
+	assert_true(adapter.has_method("cancel_calibration"))
+	assert_true(adapter.has_method("get_calibration_session"))
 
 func test_input_provider_adapter_publishes_started_session_for_shared_reuse() -> void:
 	var setup := _make_started_tracking_adapter({

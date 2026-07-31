@@ -50,7 +50,7 @@ Practical read: `median_of_3` is cheap enough. Runtime cost was effectively flat
 
 ### Responsiveness proxy
 
-Using the same `provider_started -> first punch_left` proxy:
+Using the same `provider_started -> first straight_left` proxy:
 
 - `lite_raw`: **625.0 ms** mean
 - `exponential_moving_average`: **647.5 ms** mean

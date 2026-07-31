@@ -60,7 +60,7 @@ Read: `median_of_3` stayed close to the existing replay runtime envelope. It did
 
 ### First-hit responsiveness proxy
 
-Using `provider_started -> first punch_left` from the captured event timeline:
+Using `provider_started -> first straight_left` from the captured event timeline:
 
 - `lite_raw`: `688 ms`
 - `exponential_moving_average`: `739 ms` (`+51 ms` vs raw)

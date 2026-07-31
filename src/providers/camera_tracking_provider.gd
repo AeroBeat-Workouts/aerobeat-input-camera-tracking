@@ -17,25 +17,27 @@ signal multi_pose_updated(poses: Array)
 signal tracking_lost()
 signal tracking_restored()
 
-signal punch_left(power: float)
-signal punch_right(power: float)
-signal straight_punch_state_changed(side: String, state: String, detail: Dictionary)
+signal straight_left(power: float)
+signal straight_right(power: float)
+signal straight_state_changed(side: String, state: String, detail: Dictionary)
 signal hook_state_changed(side: String, state: String, detail: Dictionary)
 signal uppercut_state_changed(side: String, state: String, detail: Dictionary)
 signal uppercut_left(power: float)
 signal uppercut_right(power: float)
 signal hook_left(power: float)
 signal hook_right(power: float)
-signal flow_left_cell_entered(cell: int, direction: int)
-signal flow_right_cell_entered(cell: int, direction: int)
-signal guard_start()
-signal guard_end()
-signal squat_start()
-signal squat_end()
-signal weave_left_start()
-signal weave_left_end()
-signal weave_right_start()
-signal weave_right_end()
+signal left_wrist_cell_entered(cell: int, direction: int)
+signal right_wrist_cell_entered(cell: int, direction: int)
+signal nose_cell_entered(cell: int, direction: int)
+signal calibration_session_updated(session: Dictionary)
+signal guard_enabled()
+signal guard_disabled()
+signal squat_enabled()
+signal squat_disabled()
+signal weave_left_enabled()
+signal weave_left_disabled()
+signal weave_right_enabled()
+signal weave_right_disabled()
 
 @export var config = null
 @export var manage_tracking_session_lifecycle := false
@@ -110,25 +112,27 @@ func reset_runtime_state() -> void:
 	if _detector_substrate != null:
 		_detector_substrate.reset()
 
-func start_athlete_calibration() -> bool:
-	if _detector_substrate == null:
+func start_calibration() -> bool:
+	if _detector_substrate == null or not _detector_substrate.has_method("start_calibration"):
 		return false
-	_detector_substrate.request_athlete_recalibration()
+	_detector_substrate.start_calibration()
+	_emit_calibration_session_updated()
 	return true
 
-func request_athlete_recalibration() -> bool:
-	return start_athlete_calibration()
-
-func cancel_athlete_calibration() -> bool:
-	if _detector_substrate == null or not _detector_substrate.has_method("cancel_athlete_recalibration"):
+func cancel_calibration() -> bool:
+	if _detector_substrate == null or not _detector_substrate.has_method("cancel_calibration"):
 		return false
-	_detector_substrate.cancel_athlete_recalibration()
+	_detector_substrate.cancel_calibration()
+	_emit_calibration_session_updated()
 	return true
 
 func get_calibration_session() -> Dictionary:
 	if _detector_substrate == null or not _detector_substrate.has_method("get_calibration_session"):
 		return {}
 	return _detector_substrate.get_calibration_session()
+
+func _emit_calibration_session_updated() -> void:
+	calibration_session_updated.emit(get_calibration_session().duplicate(true))
 
 func get_num_poses() -> int:
 	return _all_poses.size()
@@ -271,6 +275,7 @@ func ingest_tracking_frame(frame: Dictionary) -> void:
 	else:
 		_clear_tracking_runtime_state(active)
 		_multi_pose_from_current_landmarks([])
+	_emit_calibration_session_updated()
 	_emit_tracking_edge_signals(active)
 
 func _process(_delta: float) -> void:
@@ -521,14 +526,14 @@ func _emit_detector_events(events: Array) -> void:
 		if event_name == StringName():
 			continue
 		match String(event_name):
-			"punch_left":
-				punch_left.emit(float(event_data.get("power", 0.0)))
-			"punch_right":
-				punch_right.emit(float(event_data.get("power", 0.0)))
-			"straight_punch_state_changed":
+			"straight_left":
+				straight_left.emit(float(event_data.get("power", 0.0)))
+			"straight_right":
+				straight_right.emit(float(event_data.get("power", 0.0)))
+			"straight_state_changed":
 				var detail := event_data.duplicate(true)
 				detail.erase("name")
-				straight_punch_state_changed.emit(String(event_data.get("side", "")), String(event_data.get("state", "")), detail)
+				straight_state_changed.emit(String(event_data.get("side", "")), String(event_data.get("state", "")), detail)
 			"hook_state_changed":
 				var hook_detail := event_data.duplicate(true)
 				hook_detail.erase("name")
@@ -545,26 +550,28 @@ func _emit_detector_events(events: Array) -> void:
 				hook_left.emit(float(event_data.get("power", 0.0)))
 			"hook_right":
 				hook_right.emit(float(event_data.get("power", 0.0)))
-			"flow_left_cell_entered":
-				flow_left_cell_entered.emit(int(event_data.get("cell", -1)), int(event_data.get("direction", -1)))
-			"flow_right_cell_entered":
-				flow_right_cell_entered.emit(int(event_data.get("cell", -1)), int(event_data.get("direction", -1)))
-			"guard_start":
-				guard_start.emit()
-			"guard_end":
-				guard_end.emit()
-			"squat_start":
-				squat_start.emit()
-			"squat_end":
-				squat_end.emit()
-			"weave_left_start":
-				weave_left_start.emit()
-			"weave_left_end":
-				weave_left_end.emit()
-			"weave_right_start":
-				weave_right_start.emit()
-			"weave_right_end":
-				weave_right_end.emit()
+			"left_wrist_cell_entered":
+				left_wrist_cell_entered.emit(int(event_data.get("cell", -1)), int(event_data.get("direction", -1)))
+			"right_wrist_cell_entered":
+				right_wrist_cell_entered.emit(int(event_data.get("cell", -1)), int(event_data.get("direction", -1)))
+			"nose_cell_entered":
+				nose_cell_entered.emit(int(event_data.get("cell", -1)), int(event_data.get("direction", -1)))
+			"guard_enabled":
+				guard_enabled.emit()
+			"guard_disabled":
+				guard_disabled.emit()
+			"squat_enabled":
+				squat_enabled.emit()
+			"squat_disabled":
+				squat_disabled.emit()
+			"weave_left_enabled":
+				weave_left_enabled.emit()
+			"weave_left_disabled":
+				weave_left_disabled.emit()
+			"weave_right_enabled":
+				weave_right_enabled.emit()
+			"weave_right_disabled":
+				weave_right_disabled.emit()
 
 func _augment_tracking_frame_runtime_context(frame: Dictionary) -> Dictionary:
 	var enriched := frame.duplicate(true)

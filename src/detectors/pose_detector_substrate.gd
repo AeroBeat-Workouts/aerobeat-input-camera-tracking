@@ -9,7 +9,7 @@ const BACKEND_GRID_AVOIDANCE := "grid_avoidance"
 const BACKEND_GRID_DETECTION := "grid_detection"
 const PUNCH_FAMILIES := ["straight_punch", "hook", "uppercut"]
 const PUNCH_FAMILY_EVENT_NAMES := {
-	"straight_punch": ["punch_left", "punch_right"],
+	"straight_punch": ["straight_left", "straight_right"],
 	"hook": ["hook_left", "hook_right"],
 	"uppercut": ["uppercut_left", "uppercut_right"],
 }
@@ -194,7 +194,7 @@ func reset() -> void:
 	_latest_state = _build_empty_state()
 	_configure_depth_runtime_managers()
 
-func request_athlete_recalibration() -> void:
+func start_calibration() -> void:
 	_reset_baseline_calibration()
 	_clear_transient_gesture_state()
 	_reset_calibration_session()
@@ -203,7 +203,7 @@ func request_athlete_recalibration() -> void:
 		return
 	_sync_calibration_state_into_latest_state()
 
-func cancel_athlete_recalibration() -> void:
+func cancel_calibration() -> void:
 	_clear_transient_gesture_state()
 	_reset_baseline_calibration()
 	_calibration_session = _build_calibration_session(CALIBRATION_SESSION_CANCELLED)
@@ -1688,8 +1688,8 @@ func _reset_gesture_state() -> void:
 			"weave_right": false,
 		},
 		"ready": {
-			"punch_left": false,
-			"punch_right": false,
+			"straight_left": false,
+			"straight_right": false,
 			"hook_left": true,
 			"hook_right": true,
 			"uppercut_left": true,
@@ -1835,11 +1835,9 @@ func _detect_intent_events(landmarks_by_id: Dictionary, metrics: Dictionary, tim
 	if _get_punch_backend_for_family("uppercut") != BACKEND_DISABLED:
 		_process_uppercut(events, "left", left_shoulder, left_elbow, left_wrist, float(measurements.get("left_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
 		_process_uppercut(events, "right", right_shoulder, right_elbow, right_wrist, float(measurements.get("right_elbow_bend_deg", 0.0)), shoulder_width, timestamp_ms, tracking_frame)
-	_process_flow_nose_cell_entry(timestamp_ms)
-	if not _has_any_event(events, ["punch_left", "hook_left", "uppercut_left"]):
-		_process_flow_cell_entry(events, "left", timestamp_ms)
-	if not _has_any_event(events, ["punch_right", "hook_right", "uppercut_right"]):
-		_process_flow_cell_entry(events, "right", timestamp_ms)
+	_process_flow_nose_cell_entry(events, timestamp_ms)
+	_process_flow_cell_entry(events, "left", timestamp_ms)
+	_process_flow_cell_entry(events, "right", timestamp_ms)
 	return events
 
 func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, elbow: Dictionary, wrist: Dictionary, measurements: Dictionary, shoulder_width: float, timestamp_ms: int, tracking_frame: Dictionary = {}) -> void:
@@ -2318,11 +2316,15 @@ func _process_flow_cell_entry(events: Array, side: String, timestamp_ms: int) ->
 	var entry := _update_flow_cell_meta_from_history(history_name, meta_name, analysis, timestamp_ms)
 	if entry.is_empty():
 		return
-	_emit_flow_cell_event(events, side, int(entry.get("current_cell", -1)), int(entry.get("direction", -1)))
+	var event_name := "left_wrist_cell_entered" if side == "left" else "right_wrist_cell_entered"
+	_emit_body_cell_event(events, event_name, int(entry.get("current_cell", -1)), int(entry.get("direction", -1)))
 
-func _process_flow_nose_cell_entry(timestamp_ms: int) -> void:
+func _process_flow_nose_cell_entry(events: Array, timestamp_ms: int) -> void:
 	var analysis := _analyze_flow_landmark_motion("nose", FLOW_DIRECTION_WINDOW_MAX_MS)
-	_update_flow_cell_meta_from_history("nose", "flow_nose_cell", analysis, timestamp_ms)
+	var entry := _update_flow_cell_meta_from_history("nose", "flow_nose_cell", analysis, timestamp_ms)
+	if entry.is_empty():
+		return
+	_emit_body_cell_event(events, "nose_cell_entered", int(entry.get("current_cell", -1)), int(entry.get("direction", -1)))
 
 func _update_flow_cell_meta_from_history(history_name: String, meta_name: String, analysis: Dictionary, timestamp_ms: int) -> Dictionary:
 	var history: Array = _get_flow_history(history_name)
@@ -2513,21 +2515,12 @@ func _flow_direction_index_from_cell_transition(previous_cell: int, current_cell
 		return 0 if row_delta < 0 else 1
 	return 2 if column_delta > 0 else 3
 
-func _emit_flow_cell_event(events: Array, side: String, cell: int, direction: int) -> void:
+func _emit_body_cell_event(events: Array, event_name: String, cell: int, direction: int) -> void:
 	events.append({
-		"name": StringName("flow_%s_cell_entered" % side),
+		"name": StringName(event_name),
 		"cell": cell,
 		"direction": direction,
 	})
-
-func _has_any_event(events: Array, event_names: Array) -> bool:
-	for event_variant: Variant in events:
-		if not event_variant is Dictionary:
-			continue
-		var event_name := String(event_variant.get("name", ""))
-		if event_names.has(event_name):
-			return true
-	return false
 
 func _get_flow_history(history_name: String) -> Array:
 	return (_gesture_state.get("flow", {}).get(history_name, []) as Array).duplicate(true)
@@ -4181,7 +4174,7 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 	state["previous_state"] = previous_phase
 	state["timestamp_ms"] = int(state.get("current_timestamp_ms", _last_processed_timestamp_ms))
 	events.append({
-		"name": StringName("straight_punch_state_changed"),
+		"name": StringName("straight_state_changed"),
 		"side": side,
 		"state": next_phase,
 		"previous_state": previous_phase,

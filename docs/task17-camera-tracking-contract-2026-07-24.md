@@ -175,8 +175,8 @@ When the nose leaves the grid or required tracking drops out:
 - `weave_right = false`
 
 ### Event semantics
-- Entering the left half emits `weave_left_start` and ends `weave_right` if needed.
-- Entering the right half emits `weave_right_start` and ends `weave_left` if needed.
+- Entering the left half emits `weave_left_enabled` and ends `weave_right` if needed.
+- Entering the right half emits `weave_right_enabled` and ends `weave_left` if needed.
 - Exiting the grid ends whichever weave state is active.
 - Remaining in the same half does not retrigger start spam.
 
@@ -346,10 +346,10 @@ For the next coder slice:
    - If `calibration:` lands in only one gesture YAML, boxing vs flow can silently diverge.
    - Recommendation: mirror the block in both profile gesture YAMLs unless Derrick explicitly wants asymmetry.
 
-2. **Manual-calibration API removal may widen scope**
-   - The runtime/provider wrappers currently expose `start/request/cancel_athlete_calibration`.
-   - Removing those methods is wider than necessary.
-   - Recommendation: keep wrapper compatibility for now even if the proving UI stops using it.
+2. **Shared calibration API naming should stay generic**
+   - The runtime/provider wrappers now expose `start_calibration()`, `cancel_calibration()`, `get_calibration_session()`, and `calibration_session_updated(session)`.
+   - Keep the shared lane generic rather than re-introducing athlete-specific verbs.
+   - Recommendation: future calibration UI work should continue using this shared naming.
 
 3. **Weave backend naming vs meaning drift**
    - Keeping `grid_avoidance` while changing meaning to continuous side occupancy is slightly conceptually awkward.

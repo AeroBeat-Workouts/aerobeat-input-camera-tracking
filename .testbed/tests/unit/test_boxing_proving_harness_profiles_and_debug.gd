@@ -124,7 +124,7 @@ class FakeAthleteRecalibrateProvider:
 	var calibration_session := _make_session("waiting")
 	var baseline := {"is_calibrated": false, "sample_frames": 0}
 
-	func start_athlete_calibration() -> bool:
+	func start_calibration() -> bool:
 		request_count += 1
 		baseline = {"is_calibrated": false, "sample_frames": 0}
 		calibration_session = _make_session("holding", {
@@ -134,10 +134,10 @@ class FakeAthleteRecalibrateProvider:
 		})
 		return true
 
-	func request_athlete_recalibration() -> bool:
-		return start_athlete_calibration()
+	func start_calibration() -> bool:
+		return start_calibration()
 
-	func cancel_athlete_calibration() -> bool:
+	func cancel_calibration() -> bool:
 		cancel_count += 1
 		calibration_session = _make_session("cancelled", {"result": "cancelled", "failure_reason": "cancelled"})
 		return true
@@ -1051,7 +1051,7 @@ func test_boxing_punch_hover_card_uses_pose_threshold_state_machine_debug_fields
 		}
 	})
 
-	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var model: Dictionary = harness._build_hover_card_model("straight_left")
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(model.get("title", "")), "Straight Punch L")
 	assert_eq(String(rows[1].get("current_text", "")), "not_ready")
@@ -1110,7 +1110,7 @@ func test_boxing_punch_inspector_body_calls_out_live_pose_inputs() -> void:
 		}
 	})
 
-	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_right")
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "straight_right")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Current state - triggered")
 	assert_string_contains(body, "Tracking status - tracked, valid=true, source=carried_forward, stale=0ms (0 frames), grace=0ms (0 frames), stable=160ms")
@@ -1163,12 +1163,12 @@ func test_boxing_punch_hover_card_shows_extra_precision_when_rounding_would_fake
 		}
 	})
 
-	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var model: Dictionary = harness._build_hover_card_model("straight_left")
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(rows[8].get("threshold_text", "")), "0.060")
 	assert_eq(String(rows[8].get("current_text", "")), "0.040")
 
-	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "straight_left")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Recent punch velocity peak >= 0.500 - 0.474")
 	assert_false(body.contains("Recent forward depth spike"))
@@ -1458,7 +1458,7 @@ func test_punch_family_inspectors_keep_only_compact_depth_backend_and_thresholds
 		}
 	})
 
-	var straight_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var straight_inspector: Dictionary = harness._build_custom_inspector_model("gesture", "straight_left")
 	var straight_body := String(straight_inspector.get("body", ""))
 	assert_false(straight_body.contains("Depth tuning"))
 	assert_false(straight_body.contains("Depth backend - onnx / depth_anything_v2_small_onnx"))
@@ -1526,7 +1526,7 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 		}
 	})
 
-	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var model: Dictionary = harness._build_hover_card_model("straight_left")
 	var rows: Array = model.get("rows", [])
 	assert_eq(String(rows[1].get("current_text", "")), "pose_tracked")
 	assert_eq(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
@@ -1536,7 +1536,7 @@ func test_boxing_pose_only_punch_hover_card_and_inspector_report_skipped_hand_in
 	assert_eq(String(rows[9].get("current_text", "")), "0.140")
 	assert_eq(String(rows[11].get("current_text", "")), "waiting for pose-only rearm timer")
 
-	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "punch_left")
+	var inspector: Dictionary = harness._build_custom_inspector_model("gesture", "straight_left")
 	var body := String(inspector.get("body", ""))
 	assert_string_contains(body, "Current state - pose_tracked")
 	assert_string_contains(body, "Tracking status - pose_valid=true, tracking=pose_tracked, source=pose, shoulder_width=0.000 (missing)")
@@ -1690,13 +1690,13 @@ func test_proving_harness_removes_stale_calibration_overlay_but_keeps_calibratio
 	assert_null(scene_root.find_child("CalibrationInstructionLabel", true, false))
 	assert_null(scene_root.find_child("CalibrationStatusLabel", true, false))
 
-	provider.start_athlete_calibration()
+	provider.start_calibration()
 	assert_eq(provider.request_count, 1)
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
 	assert_eq(scene_root.call("_event_count", "athlete_calibration_started"), 1)
 
-	provider.cancel_athlete_calibration()
+	provider.cancel_calibration()
 	assert_eq(provider.cancel_count, 1)
 	scene_root.set("_latest_state", provider.get_detector_state())
 	scene_root.call("_refresh_calibration_flow_ui")
@@ -2295,12 +2295,12 @@ func test_boxing_punch_tile_does_not_linger_on_old_event_once_live_state_is_not_
 			}
 		}
 	})
-	harness._record_event("punch_left", {"power": 0.75})
+	harness._record_event("straight_left", {"power": 0.75})
 	harness._update_tile_states()
 	var punch_tile: Dictionary = harness.get("_tile_refs").get("punch", {})
 	var left_badge: Dictionary = punch_tile.get("left", {})
 	assert_eq(String(left_badge.get("style_key", "")), "idle")
-	assert_eq(harness._event_count("punch_left"), 1)
+	assert_eq(harness._event_count("straight_left"), 1)
 
 func test_boxing_hook_tile_uses_live_triggered_state_instead_of_event_pulse() -> void:
 	var scene_root: Control = add_child_autoqfree(BoxingProvingScene.instantiate()) as Control
@@ -2421,7 +2421,7 @@ func test_boxing_punch_inspector_freezes_paused_values_for_gesture_popups() -> v
 	})
 
 	harness._capture_paused_boxing_snapshot()
-	harness._open_shared_inspector("gesture", "punch_right")
+	harness._open_shared_inspector("gesture", "straight_right")
 	var frozen_model: Dictionary = harness._resolve_shared_inspector_model(true)
 	var frozen_body := String(frozen_model.get("body", ""))
 
@@ -2599,7 +2599,7 @@ func test_boxing_punch_hover_card_keeps_live_rows_fresh_while_preserving_latest_
 		"right": {},
 	})
 
-	var model: Dictionary = harness._build_hover_card_model("punch_left")
+	var model: Dictionary = harness._build_hover_card_model("straight_left")
 	var rows: Array = model.get("rows", [])
 	assert_string_contains(String(rows[1].get("current_text", "")), "ready")
 	assert_string_contains(String(rows[2].get("current_text", "")), "pose_valid=true, tracking=pose_tracked, source=pose")

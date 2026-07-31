@@ -176,14 +176,21 @@ func test_aero_camera_tracking_starts_live_camera_and_reemits_tracking_and_flow_
 	var tracking_frames: Array = []
 	var pose_frames: Array = []
 	var flow_events: Array = []
+	var calibration_updates: Array = []
 	singleton.tracking_updated.connect(func(frame: Dictionary) -> void:
 		tracking_frames.append(frame)
 	)
 	singleton.pose_updated.connect(func(landmarks: Array) -> void:
 		pose_frames.append(landmarks)
 	)
-	singleton.flow_left_cell_entered.connect(func(cell: int, direction: int) -> void:
-		flow_events.append([cell, direction])
+	singleton.left_wrist_cell_entered.connect(func(cell: int, direction: int) -> void:
+		flow_events.append(["left", cell, direction])
+	)
+	singleton.nose_cell_entered.connect(func(cell: int, direction: int) -> void:
+		flow_events.append(["nose", cell, direction])
+	)
+	singleton.calibration_session_updated.connect(func(session: Dictionary) -> void:
+		calibration_updates.append(session)
 	)
 
 	assert_true(singleton.start_live_camera("/dev/video7", {
@@ -219,8 +226,11 @@ func test_aero_camera_tracking_starts_live_camera_and_reemits_tracking_and_flow_
 	assert_eq(singleton.get_num_poses(), 1)
 	assert_eq(singleton.get_all_poses().size(), 1)
 
-	singleton.get_provider().flow_left_cell_entered.emit(9, 3)
-	assert_eq(flow_events, [[9, 3]])
+	singleton.get_provider().left_wrist_cell_entered.emit(9, 3)
+	singleton.get_provider().nose_cell_entered.emit(5, 1)
+	singleton.get_provider().calibration_session_updated.emit({"state": "capturing", "hold_progress": 0.5})
+	assert_eq(flow_events, [["left", 9, 3], ["nose", 5, 1]])
+	assert_eq(String(calibration_updates[calibration_updates.size() - 1].get("state", "")), "capturing")
 
 func test_aero_camera_tracking_loads_selected_flow_profile_bundle_during_start() -> void:
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
@@ -594,7 +604,7 @@ func test_aero_camera_tracking_exposes_shared_calibration_session_wrappers() -> 
 	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
 	await get_tree().process_frame
 	assert_eq(String(singleton.get_calibration_session().get("state", "")), "waiting")
-	assert_true(singleton.start_athlete_calibration())
+	assert_true(singleton.start_calibration())
 	assert_eq(String(singleton.get_calibration_session().get("state", "")), "waiting")
-	assert_true(singleton.cancel_athlete_calibration())
+	assert_true(singleton.cancel_calibration())
 	assert_eq(String(singleton.get_calibration_session().get("state", "")), "cancelled")
