@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-22
 **Status:** In Progress
-**Last Updated:** 2026-07-30 15:59 EDT
-**Blocked Reason:** None. Derrick approved immediate execution of the cleanup/contracts wave with four explicit decisions: remove Flow’s unused boxing concepts entirely, update docs/tests to current runtime truth, remove threshold legacy codepaths completely rather than preserving fallback behavior, and tighten/bless the shared profile-specific gameplay contracts for downstream boxing and flow feature repos. Active next seam: implement those contract hardening and cleanup changes now.  
+**Last Updated:** 2026-07-30 21:16 EDT
+**Blocked Reason:** None. Derrick approved immediate execution of the hard-cut canonical event-contract wave after Task 107. Active next seam: replace legacy gameplay event names outright, add the generic wrist/nose + calibration contract lanes, and fix downstream breakage across `aerobeat-input-camera-tracking` and `aerobeat-input-core` without preserving aliases.
 **Agent:** `pico`
 
 ---
@@ -3384,10 +3384,10 @@ Runtime truth is still worth splitting by family. For hook and uppercut, the Tas
 
 ### Task 99: Add max_wrist_shoulder_xy_distance gate for straight punch threshold backend
 
-**Bead ID:** `aerobeat-input-camera-tracking-ycna`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-ycna`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, add a new straight-punch threshold gate alongside the existing `max_elbow_shoulder_xy_distance` check. New config field: `straight_punch.threshold.thresholds.max_wrist_shoulder_xy_distance`. It should work the same general way as the elbow/shoulder XY-distance gate, but compare wrist-to-shoulder XY distance instead. Update the runtime loader/use sites, boxing YAML with a parallel explanatory comment, and directly coupled tests/debug truth as needed. Keep scope narrow to straight-punch threshold config/runtime/comment/test support, then commit and push to `main` by default.
 
 **Folders Created/Deleted/Modified:**
@@ -3409,10 +3409,10 @@ Runtime truth is still worth splitting by family. For hook and uppercut, the Tas
 
 ### Task 100: Wire straight-punch proving inspector to max_wrist_shoulder_xy_distance truth
 
-**Bead ID:** `aerobeat-input-camera-tracking-bll5`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`  
+**Bead ID:** `aerobeat-input-camera-tracking-bll5`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, fix the next narrow follow-up seam after Task 99. Current user-truth: the new straight-punch threshold variable `straight_punch.threshold.thresholds.max_wrist_shoulder_xy_distance` is landed in runtime/config/tests, but the boxing proving scene straight-punch gesture inspector UI is not hooked up to it. Wire the proving inspector/debug surface so the new wrist/shoulder XY threshold and its pass/fail truth are surfaced alongside the existing straight-punch threshold fields, using actual runtime/debug data rather than stale or missing labels. Keep scope narrow to the proving-scene inspector/debug surface, directly coupled debug payload wiring if needed, tests, and plan updates. Commit and push to `main` by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -3432,10 +3432,10 @@ Runtime truth is still worth splitting by family. For hook and uppercut, the Tas
 
 ### Task 101: Investigate repeated same-side hook/uppercut misses and proving inspector truth
 
-**Bead ID:** `aerobeat-input-camera-tracking-f6f0` + `aerobeat-input-camera-tracking-4kg4`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `aerobeat-input-camera-tracking-f6f0` + `aerobeat-input-camera-tracking-4kg4`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, investigate Derrick’s latest repeated same-side pose-strike tuning repro after Task 100. Current user-truth: the first left hook fires, but a quick repeated left hook does not seem to trigger even though Derrick believes it is crossing the configured single strike-subgrid requirement; Derrick has now also reported the same same-arm repeat miss pattern for uppercuts even though they definitely pass through the configured grid/subgrid requirement. The attached proving-scene hook screenshot also shows the bottom two left-hook trigger-input checks never firing, which may indicate either a real runtime/grid-transition gating issue or stale/unused proving-scene inspector truth. Sync current repo truth, inspect Derrick’s current hook and uppercut variables/config, trace the active pose-strike grid-detection runtime path for repeated same-side hooks and uppercuts, inspect the proving-scene inspector/debug path, and determine the narrowest truthful fix seam. Keep this investigative and narrow; explicitly say whether the misses are runtime gating, proving-scene UI staleness, or both, and whether hook and uppercut share the same root cause.
 
 **Folders Created/Deleted/Modified:**
@@ -3467,10 +3467,10 @@ Smallest truthful next fix seam: keep implementation narrow and shared. First, s
 
 ### Task 102: Sync latest hook tuning commit and fix repeated pose-strike proving/runtime truth
 
-**Bead ID:** `aerobeat-input-camera-tracking-274d`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `aerobeat-input-camera-tracking-274d`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement the narrow follow-up seam exposed by Task 101. Current truth: repeated same-side hooks and uppercuts appear to share a pose-strike repeat seam, and the proving inspector is definitely stale/incomplete because it only shows instantaneous transition rows rather than the buffered/progress/overflow truth the detector actually uses. Also, local checkout was one commit behind `origin/main`, and the latest `ad59c1f` config commit updates the active hook/uppercut tuning (`min_column_delta`/`min_row_delta` 1, `triggered_grace_ms` 250, `pose_only_rearm_ms` 1, `allow_next_gesture_capture_during_grace` true, `overflow_protection_enabled` true), so sync that truth first. Then keep scope narrow to: (1) sync latest repo/config truth, (2) add same-side hook repeat regression coverage parallel to existing uppercut repeat coverage, (3) update stale config-profile test expectations, and (4) improve the proving inspector for hook/uppercut so it surfaces buffered/progress/overflow truth instead of only instantaneous transition rows. Commit and push to `main` by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -3502,10 +3502,10 @@ The proving inspector seam was tightened in `.testbed/scripts/boxing_proving_har
 
 ### Task 103: Review hook/uppercut inspector minimal surface and subgrid terminology cleanup
 
-**Bead ID:** `aerobeat-input-camera-tracking-a7so`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `aerobeat-input-camera-tracking-a7so`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, review Derrick’s latest proving-scene screenshot and feedback after Task 102. Current user-truth: the hook inspector is still too vertically large, hides the hook/uppercut gesture icons, and includes values whose relationship to actual hook/uppercut firing is unclear; Derrick specifically questions `Signed column delta` and `Observed grid transition`, wants the minimal useful info set for hook/uppercut debugging, suspects hidden logic is still blocking repeated same-side hooks/uppercuts, and wants to rename `strike_subgrid` to `subgrid` across code/flow/proving UI where practical. Keep this pass investigative/design-first: explain what the screenshot currently means, identify which rows are decision-critical vs removable/noisy, propose a minimal inspector UI, and map the narrowest implementation seam (including the naming cleanup) without widening into implementation yet.
 
 **Folders Created/Deleted/Modified:**
@@ -3524,10 +3524,10 @@ The proving inspector seam was tightened in `.testbed/scripts/boxing_proving_har
 
 ### Task 104: Simplify hook/uppercut subgrid runtime and proving UI; rename strike_subgrid to subgrid
 
-**Bead ID:** `aerobeat-input-camera-tracking-3jva`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `aerobeat-input-camera-tracking-3jva`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s approved simplification-first hook/uppercut wave. Current user-truth: straight punches are working well, but hooks and uppercuts still feel overcomplicated, the boxing proving inspector is too tall and hides the gesture icons, and Derrick wants the system simplified before more review prose. Simplify the actual hook/uppercut runtime/code path toward the intended model where the chosen grid/subgrid crossing requirement is the primary firing truth, refactor `strike_subgrid` user-facing and code terminology toward `subgrid`, update both proving-scene UIs accordingly, and then simplify the boxing proving inspector toward the minimal decision-critical hook/uppercut surface while culling dead code made obsolete by the simplification. Keep scope focused on hooks/uppercuts plus the shared naming/UI cleanup; preserve the now-good straight-punch behavior. Commit and push to `main` by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -3559,10 +3559,10 @@ The boxing proving UI was simplified in two places for this slice: the boxing ev
 
 ### Task 105: Audit cleanup candidates and downstream gameplay contract alignment
 
-**Bead ID:** `aerobeat-input-camera-tracking-5zy2`  
-**SubAgent:** `primary` (for `research`)  
-**Role:** `research`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `aerobeat-input-camera-tracking-5zy2`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, audit the current codebase after the boxing/flow input stabilization wave. Identify dead or retired code/config surfaces we should remove (for example, hook/uppercut `threshold` paths that are no longer intended to be used, dead `flow:` config blocks in `flow.gesture_detection.yaml`, and any stale proving/debug/runtime branches left behind by the recent simplifications). In parallel, verify that the repo’s shared contracts for downstream boxing and flow gameplay feature repos expose the actual information those consumers need, and identify any contract mismatches, missing fields, or stale payloads that would cause downstream gameplay repos to read something different from what this repo actually uses at runtime.
 
 **Folders Created/Deleted/Modified:**
@@ -3610,10 +3610,10 @@ The boxing proving UI was simplified in two places for this slice: the boxing ev
 
 ### Task 106: Remove flow boxing leakage, delete threshold legacy paths, and tighten blessed gameplay contracts
 
-**Bead ID:** `aerobeat-input-camera-tracking-0u24`  
-**SubAgent:** `primary` (for `coder`)  
-**Role:** `coder`  
-**References:** `REF-03`, `REF-13`  
+**Bead ID:** `aerobeat-input-camera-tracking-0u24`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`, `REF-13`
 **Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s approved cleanup/contracts wave after Task 105. Scope decisions are explicit: (1) remove Flow’s unused boxing concepts entirely so Flow only exposes wrists/nose grid-cell + direction truth and does not keep hook/uppercut concepts alive; (2) update docs/tests to current runtime truth; (3) remove threshold concepts completely rather than preserving legacy codepaths; and (4) tighten/bless the shared gameplay contracts so downstream boxing and flow feature repos read the intended profile-specific truth without mismatch. Keep scope focused on flow contract hardening, threshold-path deletion, stale config/doc/test cleanup, and public/shared contract clarification for boxing vs flow. Commit and push to `main` by default when ready.
 
 **Folders Created/Deleted/Modified:**
@@ -3651,6 +3651,114 @@ Docs/tests/proving surfaces were updated to current runtime truth: hook/uppercut
 - Any future flow-specific authored tuning must land as an explicit new contract slice, not as boxing fallback behavior.
 
 **Follow-up seam exposed:** historical design/review docs still describe the now-retired hook/uppercut threshold/depth era. They are no longer runtime source-of-truth, but if Derrick wants the archive/history docs normalized too, that can be a separate documentation-only cleanup.
+
+---
+
+### Task 107: Audit and freeze gameplay gesture event naming against map beat event scheme
+
+**Bead ID:** `aerobeat-input-camera-tracking-pzed`
+**SubAgent:** `primary` (for `research`)
+**Role:** `research`
+**References:** `REF-03`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, revisit and freeze the emitted gameplay gesture event naming contract for downstream feature repos. Audit the current Flow and Boxing gesture events exposed by this repo, compare them against the AeroBeat map beat event naming scheme, identify where names already align vs drift, and propose a frozen contract Derrick can approve or modify. Flow cares about nose/wrist cells and directions. Boxing cares about three punches with left/right handedness, guard enabled/disabled, squat enabled/disabled, and weave left/right. Prefer matching map beat event naming unless there is a strong reason not to. Keep this pass investigative/design-first: produce the naming alignment map, the recommended frozen naming contract, and the narrowest implementation plan for any renames or compatibility shims.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- likely none for the audit/design pass unless a tiny documentation/plan note is needed
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Audited the current public gameplay-facing event surface in `aerobeat-input-camera-tracking`, `aerobeat-input-core`, and the shared AeroBeat chart/docs truth. Findings:
+- **Current emitted Flow events:** `flow_left_cell_entered(cell, direction)` and `flow_right_cell_entered(cell, direction)` are the only public Flow gameplay events today; Flow nose state exists only in debug surfaces (`gesture_debug.flow.tracked_landmarks.nose` / internal `flow_nose_cell` data), not as a published gameplay signal.
+- **Current emitted Boxing strike events:** `punch_left`, `punch_right`, `hook_left`, `hook_right`, `uppercut_left`, `uppercut_right`.
+- **Current emitted Boxing state-edge events:** `guard_start`, `guard_end`, `squat_start`, `squat_end`, `weave_left_start`, `weave_left_end`, `weave_right_start`, `weave_right_end`.
+- **Current emitted Boxing diagnostic state-change events:** `straight_punch_state_changed(side, state, detail)`, `hook_state_changed(side, state, detail)`, `uppercut_state_changed(side, state, detail)`.
+- **Canonical map-beat/source truth inspected:** Boxing chart/event naming is frozen in `aerobeat-content-core/data_types/chart.gd` and the Boxing docs as `straight_left/right`, `hook_left/right`, `uppercut_left/right`, `guard`, `squat`, `weave_left/right`, with `punch_left/right` explicitly treated as legacy aliases. Flow authored types are `note`, `burst`, `bomb`, `obstacle`, and `arc`; the Flow conversion docs lock the runtime hit model around wrist **cell entry** plus optional direction matching, and obstacle semantics around nose/head occupancy.
+- **Alignment map — already aligned:** `hook_left/right`, `uppercut_left/right`, and the base Boxing families `guard`, `squat`, `weave_left/right` are semantically aligned to chart naming even though some published signals add lifecycle suffixes.
+- **Alignment map — drifted/mismatched:** `punch_left/right` drift from the canonical Boxing chart family `straight_left/right`; `straight_punch_state_changed` drifts from the same `straight_*` naming; `guard_start/end`, `squat_start/end`, and `weave_*_start/end` drift from Derrick's preferred `*_enabled` / `*_disabled` state wording and from the bare chart beat nouns.
+- **Alignment map — ambiguous:** Flow has no one-to-one authored beat names for the live input signal split because chart truth uses generic `note` objects plus `hand`, `placement`, and optional `direction` fields. The current per-hand cell-entry signals are semantically truthful, but not textually identical to chart beat type names. Public Flow nose event naming is also still unresolved because authored truth is `obstacle` semantics, not a named `nose_*` beat family.
+- **Recommended frozen naming contract:**
+  - Boxing strikes should freeze on `straight_left`, `straight_right`, `hook_left`, `hook_right`, `uppercut_left`, `uppercut_right`.
+  - Boxing state edges should freeze on `guard_enabled` / `guard_disabled`, `squat_enabled` / `squat_disabled`, `weave_left_enabled` / `weave_left_disabled`, `weave_right_enabled` / `weave_right_disabled`.
+  - Boxing diagnostic family names should freeze on `straight_state_changed`, `hook_state_changed`, and `uppercut_state_changed` (keeping `side`, `state`, `detail` payloads if those remain useful).
+  - Flow should keep the existing per-wrist cell-entry semantics but freeze the naming around the body-part truth rather than old generic flow wording: preferred contract is `flow_left_wrist_cell_entered(cell, direction)` and `flow_right_wrist_cell_entered(cell, direction)`. If a public head/nose event is promoted later for obstacle/window consumers, prefer `flow_nose_cell_entered(cell, direction)` so the body-part truth stays explicit.
+- **Derrick-approved replacement for the compatibility/alias plan:** do **not** keep any compatibility aliases. Delete legacy names/codepaths and fix downstream consumers to the new contract in the same wave.
+- **Updated frozen contract direction from Derrick:**
+  - Boxing strikes freeze on `straight_left/right`, `hook_left/right`, `uppercut_left/right`.
+  - Boxing state edges freeze on `guard_enabled/disabled`, `squat_enabled/disabled`, `weave_left_enabled/disabled`, `weave_right_enabled/disabled`.
+  - Generic body-part cell-entry emitters should be feature-agnostic and shared across profiles: `left_wrist_cell_entered(cell, direction)`, `right_wrist_cell_entered(cell, direction)`, `nose_cell_entered(cell, direction)`.
+  - Boxing should expose those same wrist/nose cell-entry emissions in addition to its boxing-specific families.
+  - A third shared-contract lane should exist in `aerobeat-input-core` for generic wrist/nose-driven consumers such as menus, parallax, and future non-Flow/non-Boxing features.
+  - Calibration control and calibration-driving emitters used by the proving-scene UI should also become part of the shared contract surface.
+- **Narrowest next implementation seam:** do a hard-cut contracts follow-up across `aerobeat-input-core` + `aerobeat-input-camera-tracking` that replaces old event names outright, adds the generic wrist/nose lane, blesses profile-specific Boxing/Flow/generic contracts, and exposes calibration control/events without keeping legacy aliases alive.
+
+---
+
+### Task 108: Hard-cut canonical gameplay event contract plus generic wrist/nose and calibration lanes
+
+**Bead ID:** `aerobeat-input-camera-tracking-iull`
+**SubAgent:** `primary` (for `coder`)
+**Role:** `coder`
+**References:** `REF-03`
+**Prompt:** In `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking`, implement Derrick’s final post-Task-107 contract decisions with **no** compatibility aliases. Replace old boxing event names with the canonical frozen names, normalize generic body-part cell-entry emitters to `left_wrist_cell_entered(cell, direction)`, `right_wrist_cell_entered(cell, direction)`, and `nose_cell_entered(cell, direction)`, expose those generic emitters for boxing in addition to flow, add a third generic contract lane in `aerobeat-input-core` for menus/parallax/non-Flow/non-Boxing consumers, and expose calibration control plus calibration-driving emitters used by proving-scene-style UIs. Fix downstream breakage in the affected input-core/camera-tracking contract surfaces rather than preserving old names. Keep scope centered on contract hardening and downstream alignment.
+
+**Folders Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/`
+- likely `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-core/`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/.plans/`
+
+**Files Created/Deleted/Modified:**
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-core/src/interfaces/body_cell_input.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-core/src/interfaces/flow_input.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-core/src/interfaces/boxing_input.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-core/src/input_manager.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-core/.testbed/tests/unit/test_input_provider.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-core/README.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/detectors/pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/providers/camera_tracking_provider.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/input_provider.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/src/AeroCameraTracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/scripts/proving_harness.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_aero_camera_tracking.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_camera_tracking_provider.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_input_provider_adapter.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/unit/test_boxing_proving_harness_profiles_and_debug.gd`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/cross-repo-config-contract.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/task17-camera-tracking-contract-2026-07-24.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/2026-06-10-adaptive-ema-boxing-validation.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/2026-06-10-boxing-median-of-3-validation.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/2026-06-10-median-of-3-boxing-validation.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/docs/baselines/2026-06-10-micro-deadband-adaptive-boxing-validation.md`
+- `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-07-22-aerobeat-camera-tracking-and-beatsaver-feedback-wave.md`
+
+**Status:** ✅ Complete
+
+**Results:** Hard-cut the public contract with no compatibility aliases. `aerobeat-input-core` now exposes a third shared `BodyCellInput` lane for `left_wrist_cell_entered(cell, direction)`, `right_wrist_cell_entered(cell, direction)`, `nose_cell_entered(cell, direction)`, `calibration_session_updated(session)`, and the generic `start_calibration() / cancel_calibration() / get_calibration_session()` surface. `FlowInput` now keeps only that shared wrist/nose lane plus `squat_enabled` / `squat_disabled`; `BoxingInput` now keeps the approved canonical boxing names (`straight_*`, `hook_*`, `uppercut_*`, `guard_enabled/disabled`, `squat_enabled/disabled`, `weave_*_enabled/disabled`) while also inheriting the shared body-cell + calibration lane. `InputManager` proxies the full shared lane and calibration controls.
+
+In `aerobeat-input-camera-tracking`, the detector/provider/singleton/adapter stack now emits the canonical boxing names, always exposes the generic wrist/nose cell-entry events in both flow and boxing, and publishes shared calibration session updates through the wrapper surfaces. Boxing no longer relies on old `punch_*`, `guard_start/end`, `squat_start/end`, `weave_*_start/end`, or `flow_*_cell_entered` aliases. Downstream docs, proving harness copy, and contract/unit tests were updated to the new source of truth.
+
+**Validation:**
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-core && godot --headless --path .testbed -s res://addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gexit` ✅ (28/28 passing; pre-existing orphan warning still reported by the repo testbed)
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && godot --headless --path .testbed -s res://addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gdir=res://tests/unit -ginclude_subdirs -gexit` ⚠️ mixed: contract-targeted files passed (`test_aero_camera_tracking.gd`, `test_camera_tracking_provider.gd`, `test_input_provider_adapter.gd`), while unrelated long-red straight-punch / proving-fixture tests in `test_pose_detector_substrate.gd` and `test_proving_harness_fixture_timeline.gd` still fail outside this contract slice
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && godot --headless --path .testbed -s res://addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=flow_ -gexit` ✅ (12/12 passing)
+- `cd /home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking && godot --headless --path .testbed -s res://addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_pose_detector_substrate.gd -gunit_test_name=calibration -gexit` ✅ (9/9 passing)
+
+**Commits:**
+- `67971ba` - `aerobeat-input-core` - Harden shared body-cell and calibration input contract
+- `651fb40` - `aerobeat-input-camera-tracking` - Hard-cut camera tracking event contract lanes
+
+**Landed contract decisions:**
+- No compatibility aliases were kept.
+- Canonical boxing gameplay events are now exactly `straight_left/right`, `hook_left/right`, `uppercut_left/right`, `guard_enabled/disabled`, `squat_enabled/disabled`, and `weave_left/right_enabled/disabled`.
+- Generic gameplay-family-agnostic cell-entry events are now exactly `left_wrist_cell_entered(cell, direction)`, `right_wrist_cell_entered(cell, direction)`, and `nose_cell_entered(cell, direction)`.
+- Shared calibration contract is now exactly `start_calibration()`, `cancel_calibration()`, `get_calibration_session()`, and `calibration_session_updated(session)`.
+
+**Follow-up seam exposed:** the camera-tracking repo still has existing non-Task-108 red straight-punch / proving-fixture coverage in the broader `.testbed` sweep; the contract-targeted flow/calibration slices are green, but the remaining straight-punch/proving debt should be handled as a separate focused seam rather than folded into this contract hard-cut.
 
 ---
 
