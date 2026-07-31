@@ -2501,20 +2501,16 @@ func _build_boxing_event_feed_text() -> String:
 	var hook_backend := String(hook_family.get("backend", "threshold")).strip_edges().to_lower()
 	var hook_config: Dictionary = _gesture_family_backend_document(gesture_document, "hook", hook_backend)
 	var hook_eval: Dictionary = hook_config.get("evaluation", {}) if hook_config.get("evaluation", {}) is Dictionary else {}
-	var hook_thresholds: Dictionary = hook_config.get("thresholds", {}) if hook_config.get("thresholds", {}) is Dictionary else {}
 	var hook_timing: Dictionary = hook_config.get("timing", {}) if hook_config.get("timing", {}) is Dictionary else {}
 	var hook_rearm: Dictionary = hook_config.get("rearm", {}) if hook_config.get("rearm", {}) is Dictionary else {}
 	var hook_state_machine: Dictionary = hook_config.get("state_machine", {}) if hook_config.get("state_machine", {}) is Dictionary else {}
-	var hook_depth: Dictionary = hook_config.get("depth", {}) if hook_config.get("depth", {}) is Dictionary else {}
 	var uppercut_family: Dictionary = _gesture_family_document(gesture_document, "uppercut")
 	var uppercut_backend := String(uppercut_family.get("backend", "threshold")).strip_edges().to_lower()
 	var uppercut_config: Dictionary = _gesture_family_backend_document(gesture_document, "uppercut", uppercut_backend)
 	var uppercut_eval: Dictionary = uppercut_config.get("evaluation", {}) if uppercut_config.get("evaluation", {}) is Dictionary else {}
-	var uppercut_thresholds: Dictionary = uppercut_config.get("thresholds", {}) if uppercut_config.get("thresholds", {}) is Dictionary else {}
 	var uppercut_timing: Dictionary = uppercut_config.get("timing", {}) if uppercut_config.get("timing", {}) is Dictionary else {}
 	var uppercut_rearm: Dictionary = uppercut_config.get("rearm", {}) if uppercut_config.get("rearm", {}) is Dictionary else {}
 	var uppercut_state_machine: Dictionary = uppercut_config.get("state_machine", {}) if uppercut_config.get("state_machine", {}) is Dictionary else {}
-	var uppercut_depth: Dictionary = uppercut_config.get("depth", {}) if uppercut_config.get("depth", {}) is Dictionary else {}
 
 	lines.append("")
 	lines.append("Profile bundle")

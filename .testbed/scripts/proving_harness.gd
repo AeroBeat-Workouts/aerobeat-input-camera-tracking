@@ -291,7 +291,6 @@ var _athlete_recalibrate_button: Button = null
 var _athlete_calibration_secondary_button: Button = null
 var _t_pose_calibration_badge: TPoseCalibrationBadgeScript = null
 var _last_reported_calibration_session_state := ""
-var _last_logged_flow_grid_overlay_truth_signature := ""
 
 func _enter_tree() -> void:
 	if startup_mode != StartupMode.GODOT_ONLY_DEBUG:
@@ -2585,56 +2584,10 @@ func _refresh_flow_grid_overlay() -> void:
 		if flow_grid_overlay.has_method("clear_grid_debug"):
 			flow_grid_overlay.clear_grid_debug()
 		flow_grid_overlay.visible = false
-		_last_logged_flow_grid_overlay_truth_signature = ""
 		return
 	flow_grid_overlay.visible = true
 	if flow_grid_overlay.has_method("update_grid_debug"):
 		flow_grid_overlay.update_grid_debug(grid_debug)
-	_log_flow_grid_overlay_truth_if_changed()
-
-func _log_flow_grid_overlay_truth_if_changed() -> void:
-	if flow_grid_overlay == null or not flow_grid_overlay.has_method("get_overlay_snapshot"):
-		return
-	var snapshot: Dictionary = flow_grid_overlay.get_overlay_snapshot()
-	if snapshot.is_empty() or not bool(snapshot.get("is_calibrated", false)):
-		_last_logged_flow_grid_overlay_truth_signature = ""
-		return
-	var signature := "%.6f|%.6f|%.3f|%.3f|%.3f|%.3f|%.3f|%.3f|%s" % [
-		float(snapshot.get("width", 0.0)),
-		float(snapshot.get("height", 0.0)),
-		float(snapshot.get("render_top_left", Vector2.ZERO).x),
-		float(snapshot.get("render_top_left", Vector2.ZERO).y),
-		float(snapshot.get("render_width_px", 0.0)),
-		float(snapshot.get("render_height_px", 0.0)),
-		float(snapshot.get("visible_width_px", 0.0)),
-		float(snapshot.get("visible_height_px", 0.0)),
-		str(bool(snapshot.get("visible_clipped", false))),
-	]
-	if signature == _last_logged_flow_grid_overlay_truth_signature:
-		return
-	_last_logged_flow_grid_overlay_truth_signature = signature
-	var render_top_left: Vector2 = snapshot.get("render_top_left", Vector2.ZERO)
-	var visible_top_left: Vector2 = snapshot.get("visible_top_left", Vector2.ZERO)
-	var content_rect: Rect2 = snapshot.get("content_rect", Rect2())
-	_emit_console_log_line(
-		"grid_overlay_truth norm=%.6fx%.6f render=(%.1f,%.1f %.1fx%.1f) visible=(%.1f,%.1f %.1fx%.1f) content=(%.1f,%.1f %.1fx%.1f) clipped=%s" % [
-			float(snapshot.get("width", 0.0)),
-			float(snapshot.get("height", 0.0)),
-			render_top_left.x,
-			render_top_left.y,
-			float(snapshot.get("render_width_px", 0.0)),
-			float(snapshot.get("render_height_px", 0.0)),
-			visible_top_left.x,
-			visible_top_left.y,
-			float(snapshot.get("visible_width_px", 0.0)),
-			float(snapshot.get("visible_height_px", 0.0)),
-			content_rect.position.x,
-			content_rect.position.y,
-			content_rect.size.x,
-			content_rect.size.y,
-			str(bool(snapshot.get("visible_clipped", false))),
-		]
-	)
 
 func _refresh_grid_truth_panel() -> void:
 	if grid_truth_panel != null:
