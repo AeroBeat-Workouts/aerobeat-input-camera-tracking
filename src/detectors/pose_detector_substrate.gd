@@ -1255,7 +1255,7 @@ func _build_straight_punch_side_debug(side: String, _measurements: Dictionary, h
 		hands = _latest_state.get("metrics", {}).get("hands", {})
 	var hand_payload: Dictionary = hands.get(side, {}) if hands.get(side, {}) is Dictionary else {}
 	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
-	var hand_tracking_enabled := _straight_punch_uses_hand_tracking()
+	var hand_tracking_enabled := bool(state.get("hand_tracking_enabled", _straight_punch_uses_hand_tracking()))
 	var tracking_state := String(hand_payload.get("tracking_state", state.get("hand_tracking_state", "idle")))
 	return {
 		"backend": _get_punch_backend_for_family("straight_punch"),
@@ -1845,13 +1845,14 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	if not bool(straight_punch_config.get("enabled", true)):
 		_set_straight_punch_state(side, _build_straight_punch_state(STRAIGHT_PUNCH_STATE_TRACKING_LOST))
 		return
-	var event_name := "punch_%s" % side
+	var event_name := "straight_%s" % side
 	var state := _get_straight_punch_state(side)
 	_clear_same_family_block(state)
-	var use_hand_tracking := _straight_punch_uses_hand_tracking()
 	var pose_reference_shoulder_width := _resolve_pose_reference_shoulder_width(shoulder_width)
 	var pose_tracking_valid := _is_pose_valid_for_straight_punch(shoulder, wrist, pose_reference_shoulder_width)
 	var hand_payload := _get_tracking_hand_payload(tracking_frame, side)
+	var configured_hand_tracking := _straight_punch_uses_hand_tracking()
+	var use_hand_tracking := configured_hand_tracking and not hand_payload.is_empty()
 	var bbox: Dictionary = hand_payload.get("bbox", {}) if hand_payload.get("bbox", {}) is Dictionary else {}
 	var bbox_area := maxf(float(bbox.get("area", 0.0)), 0.0)
 	var hand_tracking_state := String(hand_payload.get("tracking_state", "idle")) if use_hand_tracking else ("pose_tracked" if pose_tracking_valid else "pose_missing")
@@ -1880,6 +1881,7 @@ func _process_straight_punch(events: Array, side: String, shoulder: Dictionary, 
 	state["last_wrist_forward_velocity"] = wrist_forward_velocity
 	state["last_forward_depth_spike"] = forward_depth_spike
 	state["last_sample_fresh"] = fresh_sample
+	state["hand_tracking_enabled"] = use_hand_tracking
 	state["hand_tracking_state"] = hand_tracking_state
 	state["hand_sample_source"] = String(hand_payload.get("sample_source", "none")) if use_hand_tracking else "pose"
 	state["pose_tracking_valid"] = pose_tracking_valid
@@ -3049,7 +3051,7 @@ func _set_straight_punch_state(side: String, state: Dictionary) -> void:
 	var straight_punch: Dictionary = _gesture_state.get("straight_punch", {})
 	straight_punch[side] = state.duplicate(true)
 	_gesture_state["straight_punch"] = straight_punch
-	_set_ready("punch_%s" % side, String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)) == STRAIGHT_PUNCH_STATE_READY)
+	_set_ready("straight_%s" % side, String(state.get("phase", STRAIGHT_PUNCH_STATE_TRACKING_LOST)) == STRAIGHT_PUNCH_STATE_READY)
 
 
 func _configure_depth_runtime_managers() -> void:
@@ -4178,6 +4180,7 @@ func _transition_straight_punch_state(events: Array, side: String, state: Dictio
 		"side": side,
 		"state": next_phase,
 		"previous_state": previous_phase,
+		"hand_tracking_enabled": bool(state.get("hand_tracking_enabled", false)),
 		"elbow_shoulder_xy_distance": float(state.get("elbow_shoulder_xy_distance", 0.0)),
 		"max_elbow_shoulder_xy_distance": float(state.get("max_elbow_shoulder_xy_distance", STRAIGHT_PUNCH_DEFAULT_MAX_ELBOW_SHOULDER_XY_DISTANCE)),
 		"elbow_shoulder_xy_gate_passed": bool(state.get("elbow_shoulder_xy_gate_passed", false)),

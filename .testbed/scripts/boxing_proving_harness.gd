@@ -1489,8 +1489,13 @@ func _build_compact_pose_strike_inspector_body(model: Dictionary) -> String:
 
 func _build_hover_card_model(card_key: String) -> Dictionary:
 	var resolved_card_key := card_key
-	if card_key == "weave_left" or card_key == "weave_right":
-		resolved_card_key = "weave"
+	match card_key:
+		"straight_left":
+			resolved_card_key = "punch_left"
+		"straight_right":
+			resolved_card_key = "punch_right"
+		"weave_left", "weave_right":
+			resolved_card_key = "weave"
 	var spec: Dictionary = HOVER_REQUIREMENT_SPECS.get(resolved_card_key, {})
 	if spec.is_empty():
 		return {
@@ -1504,7 +1509,7 @@ func _build_hover_card_model(card_key: String) -> Dictionary:
 				},
 			],
 		}
-	match card_key:
+	match resolved_card_key:
 		"punch_left":
 			return _build_punch_hover_card_model(spec, "left")
 		"punch_right":
