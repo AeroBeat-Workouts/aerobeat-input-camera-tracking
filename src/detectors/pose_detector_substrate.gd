@@ -2189,9 +2189,9 @@ func _process_pose_strike(events: Array, family: String, side: String, event_nam
 	state["grid_progress_ready"] = false
 	state["grid_overflow_accumulation_frozen"] = false
 	if family == "hook":
-		state["wrist_horizontal_angle_gate_passed"] = wrist_on_required_hook_side
+		state["wrist_horizontal_angle_gate_passed"] = wrist_angle_from_elbow_horizontal_deg <= float(config.get("max_wrist_angle_from_elbow_horizontal_deg", HOOK_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_HORIZONTAL_DEG))
 	else:
-		state["wrist_vertical_angle_gate_passed"] = wrist_above_elbow_gate_passed
+		state["wrist_vertical_angle_gate_passed"] = wrist_angle_from_elbow_vertical_deg <= float(config.get("max_wrist_angle_from_elbow_vertical_deg", UPPERCUT_DEFAULT_MAX_WRIST_ANGLE_FROM_ELBOW_VERTICAL_DEG))
 	state["dominance_ratio"] = float(motion_window.get("hook_dominance_ratio", 0.0)) if family == "hook" else float(motion_window.get("uppercut_dominance_ratio", 0.0))
 	if not pose_tracking_valid:
 		state["wrist_velocity_history"] = []
@@ -2657,7 +2657,7 @@ func _set_state_toggle(events: Array, state_name: String, active: bool) -> void:
 	if _get_state(state_name) == active:
 		return
 	_gesture_state["states"][state_name] = active
-	var suffix := "start" if active else "end"
+	var suffix := "enabled" if active else "disabled"
 	events.append({"name": StringName("%s_%s" % [state_name, suffix])})
 
 func _build_public_gesture_states() -> Dictionary:
@@ -3313,7 +3313,8 @@ func _get_squat_config() -> Dictionary:
 		return config
 	var squat: Dictionary = _get_family_backend_document("squat", _get_non_punch_backend_for_family("squat"))
 	config["enabled"] = _get_non_punch_backend_for_family("squat") != BACKEND_DISABLED and bool(squat.get("enabled", config.get("enabled", true)))
-	var obstacle: Dictionary = squat.get("obstacle", {}) if squat.get("obstacle", {}) is Dictionary else {}
+	var squat_grid_avoidance: Dictionary = squat.get("grid_avoidance", {}) if squat.get("grid_avoidance", {}) is Dictionary else {}
+	var obstacle: Dictionary = squat_grid_avoidance.get("obstacle", squat.get("obstacle", {})) if squat_grid_avoidance.get("obstacle", squat.get("obstacle", {})) is Dictionary else {}
 	config["obstacle"] = _normalize_grid_avoidance_obstacle(obstacle, config.get("obstacle", {}))
 	return config
 
@@ -3335,8 +3336,9 @@ func _get_weave_config() -> Dictionary:
 		return config
 	var weave: Dictionary = _get_family_backend_document("weave", _get_non_punch_backend_for_family("weave"))
 	config["enabled"] = _get_non_punch_backend_for_family("weave") != BACKEND_DISABLED and bool(weave.get("enabled", config.get("enabled", true)))
-	var left_obstacle: Dictionary = weave.get("left_obstacle", {}) if weave.get("left_obstacle", {}) is Dictionary else {}
-	var right_obstacle: Dictionary = weave.get("right_obstacle", {}) if weave.get("right_obstacle", {}) is Dictionary else {}
+	var weave_grid_avoidance: Dictionary = weave.get("grid_avoidance", {}) if weave.get("grid_avoidance", {}) is Dictionary else {}
+	var left_obstacle: Dictionary = weave_grid_avoidance.get("left_obstacle", weave.get("left_obstacle", {})) if weave_grid_avoidance.get("left_obstacle", weave.get("left_obstacle", {})) is Dictionary else {}
+	var right_obstacle: Dictionary = weave_grid_avoidance.get("right_obstacle", weave.get("right_obstacle", {})) if weave_grid_avoidance.get("right_obstacle", weave.get("right_obstacle", {})) is Dictionary else {}
 	config["left_obstacle"] = _normalize_grid_avoidance_obstacle(left_obstacle, config.get("left_obstacle", {}))
 	config["right_obstacle"] = _normalize_grid_avoidance_obstacle(right_obstacle, config.get("right_obstacle", {}))
 	return config
