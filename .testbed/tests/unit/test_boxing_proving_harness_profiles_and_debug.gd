@@ -134,8 +134,6 @@ class FakeAthleteRecalibrateProvider:
 		})
 		return true
 
-	func start_calibration() -> bool:
-		return start_calibration()
 
 	func cancel_calibration() -> bool:
 		cancel_count += 1
