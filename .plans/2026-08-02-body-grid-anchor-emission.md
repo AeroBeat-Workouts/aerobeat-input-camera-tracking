@@ -91,7 +91,7 @@ Accepted gaps:
 - Full repository GUT suite was not run; targeted suites covered the changed provider, substrate, facade, adapter, and debug YAML surfaces.
 
 Commit:
-- `1a22bde` Emit normalized body-grid anchors
+- `28d4572` Emit normalized body-grid anchors
 
 ---
 
