@@ -80,6 +80,8 @@ const FLOW_DIRECTION_MIN_TRAVEL_CELL_RATIO := 0.35
 const FLOW_GRID_COLUMNS := 4
 const FLOW_GRID_ROWS := 3
 const FLOW_GRID_SOURCE_ASPECT_RATIO := 16.0 / 9.0
+const BODY_GRID_ANCHOR_SCHEMA := "aerobeat/body_grid_anchor"
+const BODY_GRID_ANCHOR_VERSION := 1
 
 const CALIBRATION_SESSION_IDLE := "idle"
 const CALIBRATION_SESSION_WAITING := "waiting"
@@ -546,6 +548,58 @@ func get_tracking_confidence(body_part: StringName) -> float:
 func get_measurements() -> Dictionary:
 	return _get_metric_dictionary("measurements")
 
+func get_body_grid_anchor(anchor_name: String, calibration_id: Variant = null, timestamp_ms: int = 0) -> Dictionary:
+	var landmark_id := _body_grid_landmark_id(anchor_name)
+	var normalized_anchor_name := _normalize_body_grid_anchor_name(anchor_name)
+	if landmark_id < 0:
+		return _make_invalid_body_grid_anchor(normalized_anchor_name, calibration_id, timestamp_ms)
+	var latest_timestamp_ms := timestamp_ms if timestamp_ms > 0 else int(_latest_state.get("timestamp_ms", 0))
+	if not bool(_baseline.get("is_calibrated", false)):
+		return _make_invalid_body_grid_anchor(normalized_anchor_name, calibration_id, latest_timestamp_ms)
+	var tracking_state := get_tracking_state()
+	if tracking_state != TRACKING_TRACKING and tracking_state != TRACKING_REACQUIRING:
+		return _make_invalid_body_grid_anchor(normalized_anchor_name, calibration_id, latest_timestamp_ms)
+	var landmark := get_landmark(landmark_id)
+	if landmark.is_empty() or PoseMetrics.visibility(landmark) < 0.35:
+		return _make_invalid_body_grid_anchor(normalized_anchor_name, calibration_id, latest_timestamp_ms)
+	var grid_rect := _get_flow_grid_rect()
+	var width := float(grid_rect.get("right_boundary", 0.0)) - float(grid_rect.get("left_boundary", 0.0))
+	var height := float(grid_rect.get("top_boundary", 0.0)) - float(grid_rect.get("bottom_boundary", 0.0))
+	if width <= 0.000001 or height <= 0.000001:
+		return _make_invalid_body_grid_anchor(normalized_anchor_name, calibration_id, latest_timestamp_ms)
+	var position := PoseMetrics.to_vector2(landmark)
+	var raw_x := (float(grid_rect.get("right_boundary", 0.0)) - position.x) / width
+	var raw_y := (float(grid_rect.get("top_boundary", 0.0)) - position.y) / height
+	var x := clampf(raw_x, 0.0, 1.0)
+	var y := clampf(raw_y, 0.0, 1.0)
+	var columns := FLOW_GRID_COLUMNS
+	var rows := FLOW_GRID_ROWS
+	var column := mini(int(floor(x * float(columns))), columns - 1)
+	var row := mini(int(floor(y * float(rows))), rows - 1)
+	return {
+		"schema": BODY_GRID_ANCHOR_SCHEMA,
+		"version": BODY_GRID_ANCHOR_VERSION,
+		"anchor": normalized_anchor_name,
+		"valid": true,
+		"calibration_id": calibration_id,
+		"timestamp_ms": latest_timestamp_ms,
+		"grid": _make_body_grid(),
+		"raw_x": raw_x,
+		"raw_y": raw_y,
+		"x": x,
+		"y": y,
+		"cell": row * columns + column,
+		"row": row,
+		"column": column,
+	}
+
+func get_body_grid_anchors(calibration_id: Variant = null, timestamp_ms: int = 0) -> Dictionary:
+	return {
+		"nose": get_body_grid_anchor("nose", calibration_id, timestamp_ms),
+		"left_wrist": get_body_grid_anchor("left_wrist", calibration_id, timestamp_ms),
+		"right_wrist": get_body_grid_anchor("right_wrist", calibration_id, timestamp_ms),
+	}
+
 func _build_empty_state() -> Dictionary:
 	return {
 		"frame_index": 0,
@@ -568,6 +622,53 @@ func _build_empty_state() -> Dictionary:
 		"gesture_states": _build_public_gesture_states(),
 		"gesture_debug": _build_gesture_debug_state(),
 	}
+
+func _make_body_grid() -> Dictionary:
+	return {
+		"columns": FLOW_GRID_COLUMNS,
+		"rows": FLOW_GRID_ROWS,
+		"origin": "top_left",
+		"indexing": "row_major",
+	}
+
+func _make_invalid_body_grid_anchor(anchor_name: String, calibration_id: Variant = null, timestamp_ms: int = 0) -> Dictionary:
+	return {
+		"schema": BODY_GRID_ANCHOR_SCHEMA,
+		"version": BODY_GRID_ANCHOR_VERSION,
+		"anchor": anchor_name,
+		"valid": false,
+		"calibration_id": calibration_id,
+		"timestamp_ms": timestamp_ms,
+		"grid": _make_body_grid(),
+		"raw_x": null,
+		"raw_y": null,
+		"x": null,
+		"y": null,
+		"cell": null,
+		"row": null,
+		"column": null,
+	}
+
+func _normalize_body_grid_anchor_name(anchor_name: String) -> String:
+	var normalized := anchor_name.strip_edges().to_lower()
+	if normalized == "left_hand":
+		return "left_wrist"
+	if normalized == "right_hand":
+		return "right_wrist"
+	if normalized == "head":
+		return "nose"
+	return normalized
+
+func _body_grid_landmark_id(anchor_name: String) -> int:
+	match _normalize_body_grid_anchor_name(anchor_name):
+		"nose":
+			return PoseLandmarkIds.NOSE
+		"left_wrist":
+			return PoseLandmarkIds.LEFT_WRIST
+		"right_wrist":
+			return PoseLandmarkIds.RIGHT_WRIST
+		_:
+			return -1
 
 func _build_metrics(landmarks_by_id: Dictionary, timestamp_ms: int) -> Dictionary:
 	var nose := PoseMetrics.get_landmark(landmarks_by_id, PoseLandmarkIds.NOSE)

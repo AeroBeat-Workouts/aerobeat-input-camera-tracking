@@ -43,6 +43,43 @@ func test_input_provider_adapter_reemits_shared_body_cell_signals_from_provider(
 	adapter._provider.nose_cell_entered.emit(7, 0)
 	assert_eq(flow_calls, [["left", 12, 5], ["right", 4, 1], ["nose", 7, 0]])
 
+func test_input_provider_adapter_reemits_and_proxies_body_grid_surface() -> void:
+	var adapter = _make_started_tracking_adapter()["adapter"] as Node
+	var nose_calls: Array = []
+	var failed_calls: Array = []
+	adapter.body_grid_nose_updated.connect(func(anchor: Dictionary) -> void:
+		nose_calls.append(anchor.duplicate(true))
+	)
+	adapter.body_grid_calibration_failed.connect(func(event: Dictionary) -> void:
+		failed_calls.append(event.duplicate(true))
+	)
+	var anchor := {
+		"schema": "aerobeat/body_grid_anchor",
+		"version": 1,
+		"anchor": "nose",
+		"valid": true,
+		"calibration_id": "adapter-calibration",
+		"timestamp_ms": 321,
+		"grid": {"columns": 4, "rows": 3, "origin": "top_left", "indexing": "row_major"},
+		"raw_x": 0.25,
+		"raw_y": 0.25,
+		"x": 0.25,
+		"y": 0.25,
+		"cell": 1,
+		"row": 0,
+		"column": 1,
+	}
+	adapter._provider.set("_body_grid_anchors", {
+		"nose": anchor.duplicate(true),
+		"left_wrist": {},
+		"right_wrist": {},
+	})
+	adapter._provider.body_grid_nose_updated.emit(anchor)
+	adapter._provider.body_grid_calibration_failed.emit({"state": "failed", "calibration_id": "adapter-calibration"})
+	assert_eq(nose_calls.size(), 1)
+	assert_eq(failed_calls.size(), 1)
+	assert_eq(adapter.get_body_grid_nose().get("calibration_id", null), "adapter-calibration")
+
 func test_input_provider_adapter_reemits_boxing_signals_from_provider() -> void:
 	var adapter = _make_started_tracking_adapter()["adapter"] as Node
 	var punch_calls: Array = []

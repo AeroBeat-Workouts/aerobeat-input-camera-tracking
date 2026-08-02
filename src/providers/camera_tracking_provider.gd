@@ -30,6 +30,13 @@ signal left_wrist_cell_entered(cell: int, direction: int)
 signal right_wrist_cell_entered(cell: int, direction: int)
 signal nose_cell_entered(cell: int, direction: int)
 signal calibration_session_updated(session: Dictionary)
+signal body_grid_nose_updated(anchor: Dictionary)
+signal body_grid_left_wrist_updated(anchor: Dictionary)
+signal body_grid_right_wrist_updated(anchor: Dictionary)
+signal body_grid_calibration_started(event: Dictionary)
+signal body_grid_calibration_succeeded(event: Dictionary)
+signal body_grid_calibration_failed(event: Dictionary)
+signal body_grid_calibration_canceled(event: Dictionary)
 signal guard_enabled()
 signal guard_disabled()
 signal squat_enabled()
@@ -51,6 +58,12 @@ var _last_tracking_frame: Dictionary = {}
 var _last_tracking_frame_signature := ""
 var _was_tracking := false
 var _last_preview_descriptor: Dictionary = {}
+var _body_grid_calibration_id: Variant = null
+var _body_grid_calibration_sequence := 0
+var _body_grid_calibration_state: Dictionary = {}
+var _body_grid_anchors: Dictionary = {}
+var _last_calibration_session_state := ""
+var _last_success_captured_at_ms := 0
 
 enum TrackingMode {
 	MODE_2D,
@@ -66,6 +79,7 @@ const LANDMARK_RIGHT_ANKLE = PoseLandmarkIds.RIGHT_ANKLE
 func _ready() -> void:
 	config = _ensure_config()
 	_ensure_detector_substrate()
+	_reset_body_grid_runtime_cache(false)
 	set_process(true)
 
 func set_tracking_session(session) -> void:
@@ -111,11 +125,14 @@ func reset_runtime_state() -> void:
 	_was_tracking = false
 	if _detector_substrate != null:
 		_detector_substrate.reset()
+	_reset_body_grid_runtime_cache(true)
 
 func start_calibration() -> bool:
 	if _detector_substrate == null or not _detector_substrate.has_method("start_calibration"):
 		return false
 	_detector_substrate.start_calibration()
+	_emit_body_grid_invalid_anchors()
+	_emit_body_grid_calibration_event("started", get_calibration_session())
 	_emit_calibration_session_updated()
 	return true
 
@@ -123,6 +140,8 @@ func cancel_calibration() -> bool:
 	if _detector_substrate == null or not _detector_substrate.has_method("cancel_calibration"):
 		return false
 	_detector_substrate.cancel_calibration()
+	_emit_body_grid_invalid_anchors()
+	_emit_body_grid_calibration_event("canceled", get_calibration_session())
 	_emit_calibration_session_updated()
 	return true
 
@@ -130,6 +149,20 @@ func get_calibration_session() -> Dictionary:
 	if _detector_substrate == null or not _detector_substrate.has_method("get_calibration_session"):
 		return {}
 	return _detector_substrate.get_calibration_session()
+
+func get_body_grid_nose() -> Dictionary:
+	return (_body_grid_anchors.get("nose", _make_invalid_body_grid_anchor("nose")) as Dictionary).duplicate(true)
+
+func get_body_grid_left_wrist() -> Dictionary:
+	return (_body_grid_anchors.get("left_wrist", _make_invalid_body_grid_anchor("left_wrist")) as Dictionary).duplicate(true)
+
+func get_body_grid_right_wrist() -> Dictionary:
+	return (_body_grid_anchors.get("right_wrist", _make_invalid_body_grid_anchor("right_wrist")) as Dictionary).duplicate(true)
+
+func get_body_grid_calibration_state() -> Dictionary:
+	if _body_grid_calibration_state.is_empty():
+		_body_grid_calibration_state = _make_body_grid_calibration_event("none", {})
+	return _body_grid_calibration_state.duplicate(true)
 
 func _emit_calibration_session_updated() -> void:
 	calibration_session_updated.emit(get_calibration_session().duplicate(true))
@@ -480,6 +513,8 @@ func _process_primary_landmarks(landmarks: Array, emit_signal_flag: bool, overwr
 	if _detector_substrate != null:
 		state = _detector_substrate.process_landmarks(landmarks, timestamp_ms, _last_tracking_frame)
 		_landmarks = state.get("landmarks_by_id", {}).duplicate(true)
+		_sync_body_grid_calibration_lifecycle(state.get("calibration_session", {}))
+		_emit_body_grid_anchors_from_substrate(int(state.get("timestamp_ms", timestamp_ms)))
 		_emit_detector_events(state.get("events", []))
 	else:
 		_landmarks.clear()
@@ -508,6 +543,10 @@ func _clear_tracking_runtime_state(active: bool) -> void:
 	_landmarks.clear()
 	if _detector_substrate != null and not active:
 		_detector_substrate.mark_tracking_timeout(Time.get_ticks_msec() + 1000)
+		_emit_body_grid_invalid_anchors()
+		var session := _detector_substrate.get_calibration_session()
+		if bool(session.get("is_active", false)):
+			_emit_body_grid_calibration_event("failed", session)
 	pose_updated.emit([])
 
 func _emit_tracking_edge_signals(active: bool) -> void:
@@ -572,6 +611,114 @@ func _emit_detector_events(events: Array) -> void:
 				weave_right_enabled.emit()
 			"weave_right_disabled":
 				weave_right_disabled.emit()
+
+func _reset_body_grid_runtime_cache(emit_invalid: bool) -> void:
+	_body_grid_calibration_state = _make_body_grid_calibration_event("none", {})
+	_last_calibration_session_state = ""
+	_last_success_captured_at_ms = 0
+	_body_grid_anchors = {
+		"nose": _make_invalid_body_grid_anchor("nose"),
+		"left_wrist": _make_invalid_body_grid_anchor("left_wrist"),
+		"right_wrist": _make_invalid_body_grid_anchor("right_wrist"),
+	}
+	if emit_invalid:
+		_emit_body_grid_invalid_anchors()
+
+func _emit_body_grid_anchors_from_substrate(timestamp_ms: int) -> void:
+	if _detector_substrate == null or not _detector_substrate.has_method("get_body_grid_anchors"):
+		_emit_body_grid_invalid_anchors(timestamp_ms)
+		return
+	var anchors: Dictionary = _detector_substrate.get_body_grid_anchors(_body_grid_calibration_id, timestamp_ms)
+	_store_and_emit_body_grid_anchor("nose", anchors.get("nose", _make_invalid_body_grid_anchor("nose", timestamp_ms)))
+	_store_and_emit_body_grid_anchor("left_wrist", anchors.get("left_wrist", _make_invalid_body_grid_anchor("left_wrist", timestamp_ms)))
+	_store_and_emit_body_grid_anchor("right_wrist", anchors.get("right_wrist", _make_invalid_body_grid_anchor("right_wrist", timestamp_ms)))
+
+func _emit_body_grid_invalid_anchors(timestamp_ms: int = 0) -> void:
+	_store_and_emit_body_grid_anchor("nose", _make_invalid_body_grid_anchor("nose", timestamp_ms))
+	_store_and_emit_body_grid_anchor("left_wrist", _make_invalid_body_grid_anchor("left_wrist", timestamp_ms))
+	_store_and_emit_body_grid_anchor("right_wrist", _make_invalid_body_grid_anchor("right_wrist", timestamp_ms))
+
+func _store_and_emit_body_grid_anchor(anchor_name: String, anchor_variant: Variant) -> void:
+	var anchor: Dictionary = anchor_variant.duplicate(true) if anchor_variant is Dictionary else _make_invalid_body_grid_anchor(anchor_name)
+	_body_grid_anchors[anchor_name] = anchor.duplicate(true)
+	match anchor_name:
+		"nose":
+			body_grid_nose_updated.emit(anchor.duplicate(true))
+		"left_wrist":
+			body_grid_left_wrist_updated.emit(anchor.duplicate(true))
+		"right_wrist":
+			body_grid_right_wrist_updated.emit(anchor.duplicate(true))
+
+func _sync_body_grid_calibration_lifecycle(session_variant: Variant) -> void:
+	if not session_variant is Dictionary:
+		return
+	var session: Dictionary = session_variant
+	var state_name := String(session.get("state", "")).strip_edges().to_lower()
+	var captured_at_ms := int(session.get("captured_at_ms", 0))
+	if state_name == "succeeded" and captured_at_ms > 0 and captured_at_ms != _last_success_captured_at_ms:
+		_body_grid_calibration_sequence += 1
+		_body_grid_calibration_id = "camera_tracking:%d:%d" % [captured_at_ms, _body_grid_calibration_sequence]
+		_last_success_captured_at_ms = captured_at_ms
+		_emit_body_grid_calibration_event("succeeded", session)
+	elif state_name == "cancelled" and _last_calibration_session_state != "cancelled":
+		_emit_body_grid_calibration_event("canceled", session)
+	_last_calibration_session_state = state_name
+
+func _emit_body_grid_calibration_event(state_name: String, session: Dictionary = {}) -> void:
+	var event := _make_body_grid_calibration_event(state_name, session)
+	_body_grid_calibration_state = event.duplicate(true)
+	if state_name == "canceled":
+		_last_calibration_session_state = "cancelled"
+	elif state_name == "failed":
+		_last_calibration_session_state = "failed"
+	elif state_name == "started":
+		_last_calibration_session_state = String(session.get("state", "waiting")).strip_edges().to_lower()
+	match state_name:
+		"started":
+			body_grid_calibration_started.emit(event.duplicate(true))
+		"succeeded":
+			body_grid_calibration_succeeded.emit(event.duplicate(true))
+		"failed":
+			body_grid_calibration_failed.emit(event.duplicate(true))
+		"canceled":
+			body_grid_calibration_canceled.emit(event.duplicate(true))
+
+func _make_body_grid() -> Dictionary:
+	return {
+		"columns": 4,
+		"rows": 3,
+		"origin": "top_left",
+		"indexing": "row_major",
+	}
+
+func _make_invalid_body_grid_anchor(anchor_name: String, timestamp_ms: int = 0) -> Dictionary:
+	return {
+		"schema": "aerobeat/body_grid_anchor",
+		"version": 1,
+		"anchor": anchor_name,
+		"valid": false,
+		"calibration_id": _body_grid_calibration_id,
+		"timestamp_ms": timestamp_ms,
+		"grid": _make_body_grid(),
+		"raw_x": null,
+		"raw_y": null,
+		"x": null,
+		"y": null,
+		"cell": null,
+		"row": null,
+		"column": null,
+	}
+
+func _make_body_grid_calibration_event(state_name: String, session: Dictionary = {}) -> Dictionary:
+	return {
+		"schema": "aerobeat/body_grid_calibration_event",
+		"version": 1,
+		"state": state_name,
+		"calibration_id": _body_grid_calibration_id,
+		"captured_at_ms": int(session.get("captured_at_ms", 0)) if int(session.get("captured_at_ms", 0)) > 0 else null,
+		"grid": _make_body_grid(),
+		"session": session.duplicate(true),
+	}
 
 func _augment_tracking_frame_runtime_context(frame: Dictionary) -> Dictionary:
 	var enriched := frame.duplicate(true)

@@ -608,3 +608,41 @@ func test_aero_camera_tracking_exposes_shared_calibration_session_wrappers() -> 
 	assert_eq(String(singleton.get_calibration_session().get("state", "")), "waiting")
 	assert_true(singleton.cancel_calibration())
 	assert_eq(String(singleton.get_calibration_session().get("state", "")), "cancelled")
+
+func test_aero_camera_tracking_proxies_body_grid_signals_and_queries() -> void:
+	var singleton = add_child_autoqfree(AeroCameraTrackingScript.new())
+	var provider = singleton.get_provider()
+	var nose_updates: Array = []
+	var succeeded_events: Array = []
+	singleton.body_grid_nose_updated.connect(func(anchor: Dictionary) -> void:
+		nose_updates.append(anchor.duplicate(true))
+	)
+	singleton.body_grid_calibration_succeeded.connect(func(event: Dictionary) -> void:
+		succeeded_events.append(event.duplicate(true))
+	)
+	var anchor := {
+		"schema": "aerobeat/body_grid_anchor",
+		"version": 1,
+		"anchor": "nose",
+		"valid": true,
+		"calibration_id": "calibration-proxy",
+		"timestamp_ms": 1234,
+		"grid": {"columns": 4, "rows": 3, "origin": "top_left", "indexing": "row_major"},
+		"raw_x": 0.5,
+		"raw_y": 0.5,
+		"x": 0.5,
+		"y": 0.5,
+		"cell": 5,
+		"row": 1,
+		"column": 1,
+	}
+	provider.set("_body_grid_anchors", {
+		"nose": anchor.duplicate(true),
+		"left_wrist": {},
+		"right_wrist": {},
+	})
+	provider.body_grid_nose_updated.emit(anchor)
+	provider.body_grid_calibration_succeeded.emit({"state": "succeeded", "calibration_id": "calibration-proxy"})
+	assert_eq(nose_updates.size(), 1)
+	assert_eq(succeeded_events.size(), 1)
+	assert_eq(singleton.get_body_grid_nose().get("calibration_id", null), "calibration-proxy")

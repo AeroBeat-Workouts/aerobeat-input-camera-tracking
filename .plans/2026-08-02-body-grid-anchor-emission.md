@@ -68,11 +68,30 @@ Debug config should follow the existing public YAML comment style from this repo
 - `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.testbed/tests/`
 
 **Files Created/Deleted/Modified:**
-- Pending implementation.
+- `src/detectors/pose_detector_substrate.gd`
+- `src/providers/camera_tracking_provider.gd`
+- `src/AeroCameraTracking.gd`
+- `src/input_provider.gd`
+- `assets/flow.testbed_debug.yaml`
+- `assets/boxing.testbed_debug.yaml`
+- `.testbed/tests/unit/test_camera_tracking_provider.gd`
+- `.testbed/tests/unit/test_pose_detector_substrate.gd`
+- `.testbed/tests/unit/test_aero_camera_tracking.gd`
+- `.testbed/tests/unit/test_input_provider_adapter.gd`
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending implementation.
+**Results:** Implemented normalized body-grid anchor emission and query surfaces for nose, left wrist, and right wrist. `PoseDetectorSubstrate` now owns calibrated athlete-space top-left anchor payload construction, while `CameraTrackingProvider`, `AeroCameraTracking`, and `input_provider.gd` own outward signals, lifecycle events, caches, and queries. Calibration lifecycle emits started/succeeded/failed/canceled separately from anchors; `calibration_id` is generated only on successful calibration and remains stable through normal tracking. Invalid schema-shaped anchors emit on tracking loss/timeout, calibration start/cancel/fail, stop, and reset. Proving-scene debug YAML exposes body-grid, nose, left-wrist, and right-wrist options with existing `input debug only` comment style.
+
+Validation:
+- `godot --headless --path .testbed --import` completed successfully.
+- `godot --headless --path .testbed --script addons/aerobeat-vendor-godot-unit-test/gut_cmdln.gd -gtest=res://tests/unit/test_camera_tracking_provider.gd,res://tests/unit/test_pose_detector_substrate.gd,res://tests/unit/test_aero_camera_tracking.gd,res://tests/unit/test_input_provider_adapter.gd` passed: 162 tests, 1725 assertions.
+
+Accepted gaps:
+- Full repository GUT suite was not run; targeted suites covered the changed provider, substrate, facade, adapter, and debug YAML surfaces.
+
+Commit:
+- `1a22bde` Emit normalized body-grid anchors
 
 ---
 

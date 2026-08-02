@@ -22,6 +22,46 @@ func test_builds_session_baseline_after_stable_frames() -> void:
 	assert_true(is_equal_approx(float(baseline.get("shoulder_width", 0.0)), 0.20))
 	assert_true(is_equal_approx(float(baseline.get("torso_height", 0.0)), 0.30))
 
+func test_body_grid_anchor_payload_uses_top_left_row_major_cells() -> void:
+	_calibrate_stance()
+	var cases := [
+		{"raw_x": 0.125, "raw_y": 0.166, "cell": 0, "row": 0, "column": 0},
+		{"raw_x": 0.875, "raw_y": 0.166, "cell": 3, "row": 0, "column": 3},
+		{"raw_x": 0.125, "raw_y": 0.833, "cell": 8, "row": 2, "column": 0},
+		{"raw_x": 0.875, "raw_y": 0.833, "cell": 11, "row": 2, "column": 3},
+	]
+	for index: int in range(cases.size()):
+		var spec: Dictionary = cases[index]
+		var position := _body_grid_position_for_raw(float(spec.get("raw_x", 0.0)), float(spec.get("raw_y", 0.0)))
+		substrate.process_landmarks(_make_pose_frame({
+			PoseLandmarkIds.LEFT_WRIST: {"x": position.x, "y": position.y},
+		}), 2000 + index * 100)
+		var anchor := substrate.get_body_grid_anchor("left_wrist", "calibration-test")
+		assert_eq(String(anchor.get("schema", "")), "aerobeat/body_grid_anchor")
+		assert_eq(int(anchor.get("version", 0)), 1)
+		assert_true(bool(anchor.get("valid", false)))
+		assert_eq(anchor.get("calibration_id", null), "calibration-test")
+		assert_eq(int(anchor.get("cell", -1)), int(spec.get("cell", -1)))
+		assert_eq(int(anchor.get("row", -1)), int(spec.get("row", -1)))
+		assert_eq(int(anchor.get("column", -1)), int(spec.get("column", -1)))
+		assert_true(is_equal_approx(float(anchor.get("x", -1.0)), float(spec.get("raw_x", 0.0))))
+		assert_true(is_equal_approx(float(anchor.get("y", -1.0)), float(spec.get("raw_y", 0.0))))
+		assert_eq(String(anchor.get("grid", {}).get("origin", "")), "top_left")
+		assert_eq(String(anchor.get("grid", {}).get("indexing", "")), "row_major")
+
+func test_body_grid_invalid_anchor_retains_schema_with_null_coordinates() -> void:
+	var anchor := substrate.get_body_grid_anchor("nose", "calibration-test", 1234)
+	assert_eq(String(anchor.get("schema", "")), "aerobeat/body_grid_anchor")
+	assert_eq(int(anchor.get("version", 0)), 1)
+	assert_false(bool(anchor.get("valid", true)))
+	assert_eq(anchor.get("raw_x", 1), null)
+	assert_eq(anchor.get("raw_y", 1), null)
+	assert_eq(anchor.get("x", 1), null)
+	assert_eq(anchor.get("y", 1), null)
+	assert_eq(anchor.get("cell", 1), null)
+	assert_eq(anchor.get("row", 1), null)
+	assert_eq(anchor.get("column", 1), null)
+
 func test_reduced_anchor_boundary_keeps_local_gameplay_helper_separate_from_full_runtime_contract() -> void:
 	assert_eq(PoseLandmarkIds.GAMEPLAY_ANCHOR_LANDMARKS, [
 		PoseLandmarkIds.NOSE,
@@ -3576,3 +3616,14 @@ func _landmarks_by_id(frame: Array) -> Dictionary:
 		var landmark: Dictionary = (landmark_variant as Dictionary).duplicate(true)
 		landmarks_by_id[int(landmark.get("id", -1))] = landmark
 	return landmarks_by_id
+
+func _body_grid_position_for_raw(raw_x: float, raw_y: float) -> Vector2:
+	var grid_rect: Dictionary = substrate._get_flow_grid_rect()
+	var left := float(grid_rect.get("left_boundary", 0.0))
+	var right := float(grid_rect.get("right_boundary", 0.0))
+	var top := float(grid_rect.get("top_boundary", 0.0))
+	var bottom := float(grid_rect.get("bottom_boundary", 0.0))
+	return Vector2(
+		right - clampf(raw_x, 0.0, 1.0) * (right - left),
+		top - clampf(raw_y, 0.0, 1.0) * (top - bottom)
+	)

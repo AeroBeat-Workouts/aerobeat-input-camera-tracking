@@ -397,6 +397,144 @@ func test_camera_tracking_provider_polls_tracking_session_frames_between_signals
 	assert_eq(provider.get_all_poses().size(), 1)
 	assert_ne(provider.get_detector_state().get("tracking_state", &""), &"lost")
 
+func test_camera_tracking_provider_emits_body_grid_anchors_and_same_cell_frames() -> void:
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.config = provider._ensure_config()
+	provider.config.gesture_profile_document = {
+		"calibration": {
+			"t_pose": {
+				"hold_ms": 0,
+			},
+		},
+	}
+	var nose_updates: Array = []
+	var left_updates: Array = []
+	var right_updates: Array = []
+	var succeeded: Array = []
+	provider.body_grid_nose_updated.connect(func(anchor: Dictionary) -> void:
+		nose_updates.append(anchor.duplicate(true))
+	)
+	provider.body_grid_left_wrist_updated.connect(func(anchor: Dictionary) -> void:
+		left_updates.append(anchor.duplicate(true))
+	)
+	provider.body_grid_right_wrist_updated.connect(func(anchor: Dictionary) -> void:
+		right_updates.append(anchor.duplicate(true))
+	)
+	provider.body_grid_calibration_succeeded.connect(func(event: Dictionary) -> void:
+		succeeded.append(event.duplicate(true))
+	)
+
+	assert_true(provider.start_calibration())
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(1000, _body_grid_calibration_landmarks()))
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(1100, _body_grid_calibration_landmarks()))
+	assert_eq(succeeded.size(), 1)
+	var calibration_id: Variant = provider.get_body_grid_calibration_state().get("calibration_id", null)
+	assert_ne(calibration_id, null)
+
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(1200, _body_grid_runtime_landmarks()))
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(1300, _body_grid_runtime_landmarks()))
+	assert_true(nose_updates.size() >= 4)
+	assert_true(left_updates.size() >= 4)
+	assert_true(right_updates.size() >= 4)
+	var latest_nose: Dictionary = provider.get_body_grid_nose()
+	assert_eq(String(latest_nose.get("schema", "")), "aerobeat/body_grid_anchor")
+	assert_eq(int(latest_nose.get("version", 0)), 1)
+	assert_true(bool(latest_nose.get("valid", false)))
+	assert_eq(latest_nose.get("calibration_id", null), calibration_id)
+	assert_eq(String(latest_nose.get("grid", {}).get("origin", "")), "top_left")
+	assert_eq(String(latest_nose.get("grid", {}).get("indexing", "")), "row_major")
+	var first_runtime_count := nose_updates.size()
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(1400, _body_grid_runtime_landmarks()))
+	assert_eq(nose_updates.size(), first_runtime_count + 1)
+	assert_eq(nose_updates[nose_updates.size() - 1].get("cell", null), nose_updates[nose_updates.size() - 2].get("cell", null))
+
+func test_camera_tracking_provider_invalidates_body_grid_on_loss_stop_and_calibration_lifecycle() -> void:
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.config = provider._ensure_config()
+	var started: Array = []
+	var canceled: Array = []
+	var failed: Array = []
+	var invalid_nose_updates: Array = []
+	provider.body_grid_calibration_started.connect(func(event: Dictionary) -> void:
+		started.append(event.duplicate(true))
+	)
+	provider.body_grid_calibration_canceled.connect(func(event: Dictionary) -> void:
+		canceled.append(event.duplicate(true))
+	)
+	provider.body_grid_calibration_failed.connect(func(event: Dictionary) -> void:
+		failed.append(event.duplicate(true))
+	)
+	provider.body_grid_nose_updated.connect(func(anchor: Dictionary) -> void:
+		if not bool(anchor.get("valid", true)):
+			invalid_nose_updates.append(anchor.duplicate(true))
+	)
+
+	assert_true(provider.start_calibration())
+	assert_eq(started.size(), 1)
+	assert_false(bool(provider.get_body_grid_nose().get("valid", true)))
+	assert_true(provider.cancel_calibration())
+	assert_eq(canceled.size(), 1)
+	assert_false(bool(provider.get_body_grid_left_wrist().get("valid", true)))
+
+	assert_true(provider.start_calibration())
+	provider.ingest_tracking_frame({
+		"timestamp_ms": 2000,
+		"tracking_state": "lost",
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": [],
+	})
+	assert_eq(failed.size(), 1)
+	assert_false(bool(provider.get_body_grid_right_wrist().get("valid", true)))
+	provider.stop()
+	assert_true(invalid_nose_updates.size() >= 4)
+	var invalid_anchor: Dictionary = provider.get_body_grid_nose()
+	assert_eq(invalid_anchor.get("raw_x", 1), null)
+	assert_eq(invalid_anchor.get("raw_y", 1), null)
+	assert_eq(invalid_anchor.get("x", 1), null)
+	assert_eq(invalid_anchor.get("y", 1), null)
+	assert_eq(invalid_anchor.get("cell", 1), null)
+	assert_eq(invalid_anchor.get("row", 1), null)
+	assert_eq(invalid_anchor.get("column", 1), null)
+
+func test_camera_tracking_provider_keeps_calibration_id_stable_until_next_success() -> void:
+	var provider = add_child_autoqfree(CameraTrackingProviderScript.new())
+	provider.config = provider._ensure_config()
+	provider.config.gesture_profile_document = {
+		"calibration": {
+			"t_pose": {
+				"hold_ms": 0,
+			},
+		},
+	}
+	assert_true(provider.start_calibration())
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(3000, _body_grid_calibration_landmarks()))
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(3100, _body_grid_calibration_landmarks()))
+	var first_id: Variant = provider.get_body_grid_calibration_state().get("calibration_id", null)
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(3200, _body_grid_runtime_landmarks()))
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(3300, _body_grid_runtime_landmarks()))
+	assert_eq(provider.get_body_grid_left_wrist().get("calibration_id", null), first_id)
+	assert_true(provider.start_calibration())
+	assert_eq(provider.get_body_grid_calibration_state().get("calibration_id", null), first_id)
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(5000, _body_grid_calibration_landmarks()))
+	provider.ingest_tracking_frame(_body_grid_tracking_frame(5100, _body_grid_calibration_landmarks()))
+	var second_id: Variant = provider.get_body_grid_calibration_state().get("calibration_id", null)
+	assert_ne(second_id, first_id)
+
+func test_testbed_debug_yaml_exposes_body_grid_options_with_comment_style() -> void:
+	for path: String in [
+		"res://addons/aerobeat-input-camera-tracking/assets/flow.testbed_debug.yaml",
+		"res://addons/aerobeat-input-camera-tracking/assets/boxing.testbed_debug.yaml",
+	]:
+		var text := FileAccess.get_file_as_string(path)
+		assert_true(text.contains("# Draw the calibrated body-grid overlay in the proving scene. True helps inspect top-left body-grid cells; false hides the grid. input debug only."))
+		assert_true(text.contains("show_body_grid: true"))
+		assert_true(text.contains("# Draw the normalized nose body-grid anchor. True helps inspect head cell routing; false hides the anchor. input debug only."))
+		assert_true(text.contains("show_body_grid_nose: true"))
+		assert_true(text.contains("# Draw the normalized left-wrist body-grid anchor. True helps inspect left hand cell routing; false hides the anchor. input debug only."))
+		assert_true(text.contains("show_body_grid_left_wrist: true"))
+		assert_true(text.contains("# Draw the normalized right-wrist body-grid anchor. True helps inspect right hand cell routing; false hides the anchor. input debug only."))
+		assert_true(text.contains("show_body_grid_right_wrist: true"))
+
 func _enable_boxing_depth_runtime(config) -> void:
 	if config == null:
 		return
@@ -480,3 +618,58 @@ func test_camera_tracking_provider_exposes_shared_calibration_session_wrappers()
 	assert_eq(String(provider.get_calibration_session().get("state", "")), "waiting")
 	assert_true(provider.cancel_calibration())
 	assert_eq(String(provider.get_calibration_session().get("state", "")), "cancelled")
+
+func _body_grid_tracking_frame(timestamp_ms: int, landmarks: Array) -> Dictionary:
+	return {
+		"timestamp_ms": timestamp_ms,
+		"frame_index": timestamp_ms,
+		"tracking_state": "tracked",
+		"confidence": 0.95,
+		"preview_transform": {"flip_horizontal": true, "space": "gameplay_normalized"},
+		"landmarks": landmarks,
+	}
+
+func _body_grid_calibration_landmarks(overrides: Dictionary = {}) -> Array:
+	return _body_grid_landmarks({
+		0: {"x": 0.50, "y": 0.14},
+		13: {"x": 0.22, "y": 0.30},
+		14: {"x": 0.78, "y": 0.30},
+		15: {"x": 0.10, "y": 0.30},
+		16: {"x": 0.90, "y": 0.30},
+	}, overrides)
+
+func _body_grid_runtime_landmarks(overrides: Dictionary = {}) -> Array:
+	return _body_grid_landmarks({
+		0: {"x": 0.48, "y": 0.18},
+		15: {"x": 0.30, "y": 0.45},
+		16: {"x": 0.70, "y": 0.45},
+	}, overrides)
+
+func _body_grid_landmarks(base_overrides: Dictionary = {}, extra_overrides: Dictionary = {}) -> Array:
+	var landmarks := [
+		{"id": 0, "x": 0.50, "y": 0.15, "z": 0.0, "visibility": 0.98},
+		{"id": 11, "x": 0.42, "y": 0.32, "z": 0.0, "visibility": 0.98},
+		{"id": 12, "x": 0.58, "y": 0.32, "z": 0.0, "visibility": 0.98},
+		{"id": 13, "x": 0.30, "y": 0.32, "z": 0.0, "visibility": 0.98},
+		{"id": 14, "x": 0.70, "y": 0.32, "z": 0.0, "visibility": 0.98},
+		{"id": 15, "x": 0.30, "y": 0.45, "z": 0.0, "visibility": 0.98},
+		{"id": 16, "x": 0.70, "y": 0.45, "z": 0.0, "visibility": 0.98},
+		{"id": 23, "x": 0.45, "y": 0.56, "z": 0.0, "visibility": 0.98},
+		{"id": 24, "x": 0.55, "y": 0.56, "z": 0.0, "visibility": 0.98},
+		{"id": 25, "x": 0.45, "y": 0.70, "z": 0.0, "visibility": 0.98},
+		{"id": 26, "x": 0.55, "y": 0.70, "z": 0.0, "visibility": 0.98},
+		{"id": 27, "x": 0.45, "y": 0.86, "z": 0.0, "visibility": 0.98},
+		{"id": 28, "x": 0.55, "y": 0.86, "z": 0.0, "visibility": 0.98},
+	]
+	var merged := base_overrides.duplicate(true)
+	for key_variant: Variant in extra_overrides.keys():
+		merged[key_variant] = extra_overrides[key_variant]
+	for landmark_variant: Variant in landmarks:
+		var landmark: Dictionary = landmark_variant
+		var landmark_id := int(landmark.get("id", -1))
+		if not merged.has(landmark_id):
+			continue
+		var patch: Dictionary = merged[landmark_id]
+		for key_variant: Variant in patch.keys():
+			landmark[key_variant] = patch[key_variant]
+	return landmarks

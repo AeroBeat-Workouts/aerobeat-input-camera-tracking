@@ -7,6 +7,14 @@ profile: flow
 visuals:
   # Draw the pose landmark overlay in the proving scene. True helps inspect calibrated grid occupancy; false gives a cleaner gameplay-only view. input debug only.
   show_landmarks: true
+  # Draw the calibrated body-grid overlay in the proving scene. True helps inspect top-left body-grid cells; false hides the grid. input debug only.
+  show_body_grid: true
+  # Draw the normalized nose body-grid anchor. True helps inspect head cell routing; false hides the anchor. input debug only.
+  show_body_grid_nose: true
+  # Draw the normalized left-wrist body-grid anchor. True helps inspect left hand cell routing; false hides the anchor. input debug only.
+  show_body_grid_left_wrist: true
+  # Draw the normalized right-wrist body-grid anchor. True helps inspect right hand cell routing; false hides the anchor. input debug only.
+  show_body_grid_right_wrist: true
   # Draw debug hit targets around landmarks. True exposes landmark interaction zones; false reduces overlay clutter. input debug only.
   show_landmark_hit_targets: false
   # Draw labels on the landmark hit targets. True helps identify which target is which; false keeps the scene less noisy. input debug only.

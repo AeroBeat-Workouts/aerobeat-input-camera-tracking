@@ -193,6 +193,30 @@ func get_calibration_session() -> Dictionary:
 		return {}
 	return _provider.get_calibration_session()
 
+func get_body_grid_nose() -> Dictionary:
+	_ensure_provider()
+	if _provider == null or not _provider.has_method("get_body_grid_nose"):
+		return {}
+	return _provider.get_body_grid_nose()
+
+func get_body_grid_left_wrist() -> Dictionary:
+	_ensure_provider()
+	if _provider == null or not _provider.has_method("get_body_grid_left_wrist"):
+		return {}
+	return _provider.get_body_grid_left_wrist()
+
+func get_body_grid_right_wrist() -> Dictionary:
+	_ensure_provider()
+	if _provider == null or not _provider.has_method("get_body_grid_right_wrist"):
+		return {}
+	return _provider.get_body_grid_right_wrist()
+
+func get_body_grid_calibration_state() -> Dictionary:
+	_ensure_provider()
+	if _provider == null or not _provider.has_method("get_body_grid_calibration_state"):
+		return {}
+	return _provider.get_body_grid_calibration_state()
+
 func get_head_position(mode: TrackingMode = TrackingMode.MODE_2D) -> Vector3:
 	return _to_vector3(_provider.get_head_position(_to_provider_mode(mode))) if _provider != null else Vector3.ZERO
 
@@ -441,6 +465,13 @@ func _connect_provider_signals() -> void:
 	_connect_provider_signal("right_wrist_cell_entered", _on_provider_right_wrist_cell_entered)
 	_connect_provider_signal("nose_cell_entered", _on_provider_nose_cell_entered)
 	_connect_provider_signal("calibration_session_updated", _on_provider_calibration_session_updated)
+	_connect_provider_signal("body_grid_nose_updated", _on_provider_body_grid_nose_updated)
+	_connect_provider_signal("body_grid_left_wrist_updated", _on_provider_body_grid_left_wrist_updated)
+	_connect_provider_signal("body_grid_right_wrist_updated", _on_provider_body_grid_right_wrist_updated)
+	_connect_provider_signal("body_grid_calibration_started", _on_provider_body_grid_calibration_started)
+	_connect_provider_signal("body_grid_calibration_succeeded", _on_provider_body_grid_calibration_succeeded)
+	_connect_provider_signal("body_grid_calibration_failed", _on_provider_body_grid_calibration_failed)
+	_connect_provider_signal("body_grid_calibration_canceled", _on_provider_body_grid_calibration_canceled)
 	_connect_provider_signal("guard_enabled", _on_provider_guard_enabled)
 	_connect_provider_signal("guard_disabled", _on_provider_guard_disabled)
 	_connect_provider_signal("squat_enabled", _on_provider_squat_enabled)
@@ -622,6 +653,27 @@ func _on_provider_nose_cell_entered(cell: int, direction: int) -> void:
 
 func _on_provider_calibration_session_updated(session: Dictionary) -> void:
 	calibration_session_updated.emit(session.duplicate(true))
+
+func _on_provider_body_grid_nose_updated(anchor: Dictionary) -> void:
+	body_grid_nose_updated.emit(anchor.duplicate(true))
+
+func _on_provider_body_grid_left_wrist_updated(anchor: Dictionary) -> void:
+	body_grid_left_wrist_updated.emit(anchor.duplicate(true))
+
+func _on_provider_body_grid_right_wrist_updated(anchor: Dictionary) -> void:
+	body_grid_right_wrist_updated.emit(anchor.duplicate(true))
+
+func _on_provider_body_grid_calibration_started(event: Dictionary) -> void:
+	body_grid_calibration_started.emit(event.duplicate(true))
+
+func _on_provider_body_grid_calibration_succeeded(event: Dictionary) -> void:
+	body_grid_calibration_succeeded.emit(event.duplicate(true))
+
+func _on_provider_body_grid_calibration_failed(event: Dictionary) -> void:
+	body_grid_calibration_failed.emit(event.duplicate(true))
+
+func _on_provider_body_grid_calibration_canceled(event: Dictionary) -> void:
+	body_grid_calibration_canceled.emit(event.duplicate(true))
 
 func _on_provider_guard_enabled() -> void:
 	guard_enabled.emit()
