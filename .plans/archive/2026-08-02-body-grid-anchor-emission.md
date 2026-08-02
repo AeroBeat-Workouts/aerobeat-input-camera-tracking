@@ -1,8 +1,8 @@
 # Camera Tracking Body-Grid Anchor Emission
 
 **Date:** 2026-08-02
-**Status:** In Progress
-**Last Updated:** 2026-08-02 19:26 EDT
+**Status:** Complete
+**Last Updated:** 2026-08-02 19:30 EDT
 **Blocked Reason:** None
 **Agent:** pico
 
@@ -155,6 +155,7 @@ Bead:
 - `28d4572` - Emit normalized body-grid anchors
 - `f8b0d01` - Record body-grid implementation handoff
 - `79906fe` - Record camera body-grid QA result
+- `62df596` - Archive body-grid anchor emission plan
 
 **Lessons Learned:** The per-body-part API shape and separate calibration lifecycle clarified the repo boundary cleanly: input-core owns the stable contract, camera tracking owns concrete calibrated pose math, and runner can consume `InputManager` without touching provider internals.
 
