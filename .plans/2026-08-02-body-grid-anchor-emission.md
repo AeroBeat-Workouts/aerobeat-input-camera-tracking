@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-02
 **Status:** In Progress
-**Last Updated:** 2026-08-02 19:05 EDT
+**Last Updated:** 2026-08-02 19:20 EDT
 **Blocked Reason:** None
 **Agent:** pico
 
@@ -109,9 +109,9 @@ Commit:
 **Files Created/Deleted/Modified:**
 - None expected.
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending QA.
+**Results:** QA passed against the plan, input-core contract, and implementation commits `28d4572` / `f8b0d01`. QA verified anchor payload shape, schema-shaped invalid anchors, separate calibration lifecycle events, invalidation on tracking loss/timeout/calibration start/cancel/fail/stop/reset, athlete-space top-left normalized cells `0`, `3`, `8`, and `11`, stable `calibration_id` behavior, same-cell fresh-frame emission, wrapper proxying through `AeroCameraTracking` and `input_provider.gd`, and Flow/Boxing debug YAML options/comment style. Fresh validation passed: `godot --headless --path .testbed --import`; targeted GUT suite passed `162/162` tests with `1725` assertions. No source changes were made during QA.
 
 ---
 
