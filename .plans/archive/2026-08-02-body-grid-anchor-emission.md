@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-02
 **Status:** In Progress
-**Last Updated:** 2026-08-02 19:20 EDT
+**Last Updated:** 2026-08-02 19:26 EDT
 **Blocked Reason:** None
 **Agent:** pico
 
@@ -129,25 +129,35 @@ Commit:
 **Files Created/Deleted/Modified:**
 - None expected.
 
-**Status:** ⏳ Pending
+**Status:** ✅ Complete
 
-**Results:** Pending audit.
+**Results:** Audit passed. The auditor independently checked the plan, bead notes, implementation commits, relevant source/tests/YAML, and reran validation. The seam satisfies the frozen requirements: body-grid anchors and lifecycle events are separated, schema/version/null invalid payloads match, athlete-space top-left row-major cells `0/3/8/11` are covered, same-cell fresh-frame emission is tested, invalidation paths are covered, `calibration_id` semantics are stable, wrapper/query proxying exists, and Flow/Boxing debug YAML uses the expected comment style.
+
+Validation:
+- `godot --headless --path .testbed --import` passed.
+- Targeted GUT suite passed: 162/162 tests, 1725 assertions.
+
+Bead:
+- `oc-zex8` closed with audit pass reason.
 
 ---
 
 ## Final Results
 
-**Status:** ⚠️ Partial
+**Status:** ✅ Complete
 
-**What We Built:** Plan created; implementation pending.
+**What We Built:** Camera tracking now emits first-class normalized body-grid anchors for nose, left wrist, and right wrist, with separate calibration lifecycle events, stable successful-calibration IDs, schema-shaped invalid anchors, facade/adapter proxy surfaces, and proving-scene debug YAML toggles.
 
-**Reference Check:** Pending.
+**Reference Check:** `REF-01` through `REF-06` satisfied by implementation, QA, and audit evidence.
 
 **Commits:**
-- Pending.
+- `2fa2758` - Plan camera body-grid anchor emission
+- `28d4572` - Emit normalized body-grid anchors
+- `f8b0d01` - Record body-grid implementation handoff
+- `79906fe` - Record camera body-grid QA result
 
-**Lessons Learned:** Pending.
+**Lessons Learned:** The per-body-part API shape and separate calibration lifecycle clarified the repo boundary cleanly: input-core owns the stable contract, camera tracking owns concrete calibrated pose math, and runner can consume `InputManager` without touching provider internals.
 
 ---
 
-*Completed on Pending*
+*Completed on 2026-08-02*
