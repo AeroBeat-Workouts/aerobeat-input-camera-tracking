@@ -1,9 +1,11 @@
 # AeroBeat Boxing Classifier Eval and Data Hardening
 
 **Date:** 2026-06-16
-**Status:** In Progress
+**Status:** Stale
 **Last Updated:** 2026-06-16 18:00 EDT
 **Blocked Reason:** None.
+
+**Stale Archive Note:** Marked stale and archived on 2026-08-03 during Byte workspace cleanup; newer AeroBeat work remains with Pico.
 **Agent:** `pico`
 
 ---

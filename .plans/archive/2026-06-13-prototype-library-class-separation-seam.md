@@ -1,9 +1,11 @@
 # Prototype Library Class-Separation Seam
 
 **Date:** 2026-06-13  
-**Status:** Blocked  
+**Status:** Stale
 **Last Updated:** 2026-06-13 21:06 EDT  
 **Blocked Reason:** Two library-only class-separation experiments regressed the benchmark; next move requires attribution-guided tuning rather than further blind prototype surgery.  
+
+**Stale Archive Note:** Marked stale and archived on 2026-08-03 during Byte workspace cleanup; newer AeroBeat work remains with Pico.
 **Agent:** `pico`
 
 ---

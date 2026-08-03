@@ -1,9 +1,11 @@
 # AeroBeat Input Camera Tracking — Boxing Testbed Live/Replay/Timeline Audit
 
 **Date:** 2026-06-02  
-**Status:** In Progress  
+**Status:** Stale
 **Last Updated:** 2026-06-02 12:09 EDT  
 **Blocked Reason:** None  
+
+**Stale Archive Note:** Marked stale and archived on 2026-08-03 during Byte workspace cleanup; newer AeroBeat work remains with Pico.
 **Agent:** Cookie 🍪
 
 ---

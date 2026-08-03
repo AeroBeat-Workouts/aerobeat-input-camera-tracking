@@ -1,9 +1,11 @@
 # Prototype Matcher Attribution Seam
 
 **Date:** 2026-06-13  
-**Status:** In Progress  
+**Status:** Stale
 **Last Updated:** 2026-06-13 22:10 EDT  
 **Blocked Reason:** Session stopped for handoff after coder completed attribution slice; QA/audit not yet run on the new attribution artifacts.  
+
+**Stale Archive Note:** Marked stale and archived on 2026-08-03 during Byte workspace cleanup; newer AeroBeat work remains with Pico.
 **Agent:** `pico`
 
 ---

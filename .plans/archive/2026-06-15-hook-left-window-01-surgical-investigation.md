@@ -1,9 +1,11 @@
 # AeroBeat Hook-Left Window 01 Surgical Investigation
 
 **Date:** 2026-06-15  
-**Status:** In Progress  
+**Status:** Stale
 **Last Updated:** 2026-06-15 15:07 EDT  
 **Blocked Reason:** None  
+
+**Stale Archive Note:** Marked stale and archived on 2026-08-03 during Byte workspace cleanup; newer AeroBeat work remains with Pico.
 **Agent:** `pico`
 
 ---

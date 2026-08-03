@@ -1,9 +1,11 @@
 # AeroBeat Straight-Punch Depth-Spike Threshold Experiment
 
 **Date:** 2026-06-12  
-**Status:** In Progress  
+**Status:** Stale
 **Last Updated:** 2026-06-12 16:20 EDT  
 **Blocked Reason:** None  
+
+**Stale Archive Note:** Marked stale and archived on 2026-08-03 during Byte workspace cleanup; newer AeroBeat work remains with Pico.
 **Agent:** `pico`
 
 ---

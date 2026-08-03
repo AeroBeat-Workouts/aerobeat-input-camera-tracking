@@ -1,9 +1,11 @@
 # AeroBeat Boxing Classifier Frozen-Benchmark CNN Improvement Pass
 
 **Date:** 2026-06-16
-**Status:** Blocked
+**Status:** Stale
 **Last Updated:** 2026-06-17 09:36 EDT
 **Blocked Reason:** QA failed on an internal artifact-consistency issue: `tuning-summary.json` records the threshold baseline test macro-F1 as `0.25925925925925924`, while the frozen source/export artifacts and committed `best-cnn/cnn-result.json` agree on `0.2585034013605442`. Corrective follow-up moved to `/home/derrick/.openclaw/workspace/projects/aerobeat/aerobeat-input-camera-tracking/.plans/2026-06-17-boxing-classifier-frozen-benchmark-cnn-artifact-consistency-fix.md`.
+
+**Stale Archive Note:** Marked stale and archived on 2026-08-03 during Byte workspace cleanup; newer AeroBeat work remains with Pico.
 **Agent:** `pico`
 
 ---

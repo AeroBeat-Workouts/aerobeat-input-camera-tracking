@@ -1,9 +1,11 @@
 # AeroBeat Input Camera Tracking — Boxing Live/Replay Repair
 
 **Date:** 2026-06-02  
-**Status:** In Progress  
+**Status:** Stale
 **Last Updated:** 2026-06-02 12:49 EDT  
 **Blocked Reason:** None  
+
+**Stale Archive Note:** Marked stale and archived on 2026-08-03 during Byte workspace cleanup; newer AeroBeat work remains with Pico.
 **Agent:** Cookie 🍪
 
 ---
